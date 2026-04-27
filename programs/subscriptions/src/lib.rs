@@ -36,7 +36,7 @@ pub use constants::*;
 
 pub mod tests;
 
-declare_id!("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44");
+declare_id!("EPEUTog1kptYkthDJF6MuB1aM4aDAwHYwoF32Rzv5rqg");
 
 /// Program entrypoint: deserializes the instruction discriminator and dispatches
 /// to the appropriate instruction processor.
