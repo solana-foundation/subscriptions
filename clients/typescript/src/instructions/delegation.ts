@@ -243,28 +243,23 @@ export async function buildCreateRecurringDelegation(params: {
 }
 
 /**
- * Builds a `revokeDelegation` instruction that permanently closes a delegation
- * (or subscription) account.
+ * Builds a `revokeDelegation` instruction for **fixed or recurring**
+ * delegations. For subscription PDAs use {@link buildRevokeSubscription}.
  *
- * Trailing-account layout depends on the delegation kind read on-chain:
- *
- * * Fixed / Recurring: `[receiver?]` — only required if `payer` differs from `authority`.
- * * Subscription: `[planPda, receiver?]` — `planPda` is required for subscription
- *   PDAs so the program can prove plan-ended / plan-closed conditions and bind
- *   the subscription to the passed plan.
+ * Trailing-account layout for fixed/recurring: `[receiver?]`. `receiver` is
+ * only required when the recorded payer differs from `authority` (e.g., the
+ * delegator is revoking a sponsor-funded delegation, or the sponsor is
+ * revoking an expired delegation).
  *
  * @param params.authority - The delegator or sponsor authorized to revoke.
- * @param params.delegationAccount - Address of the delegation PDA to revoke.
- * @param params.planPda - Required when revoking a subscription PDA. Pass the
- *   plan PDA the subscription was created against. Ignored for fixed/recurring.
+ * @param params.delegationAccount - Address of the fixed/recurring delegation PDA.
  * @param params.receiver - Rent destination when the recorded payer differs
- *   from the authority (e.g., subscriber revoking a sponsor-funded subscription).
+ *   from the authority. Must equal the stored `header.payer`.
  * @returns The instruction array.
  */
 export function buildRevokeDelegation(params: {
   authority: TransactionSigner;
   delegationAccount: Address;
-  planPda?: Address;
   receiver?: Address;
   programAddress?: Address;
 }): { instructions: Instruction[] } {
@@ -279,20 +274,63 @@ export function buildRevokeDelegation(params: {
     config,
   );
 
-  const trailing: Array<{ address: Address; role: number }> = [];
-  if (params.planPda) {
-    trailing.push({ address: params.planPda, role: AccountRole.READONLY });
-  }
   if (params.receiver) {
-    trailing.push({ address: params.receiver, role: AccountRole.WRITABLE });
-  }
-
-  if (trailing.length > 0) {
-    const accounts = [...instruction.accounts, ...trailing];
+    const accounts = [
+      ...instruction.accounts,
+      { address: params.receiver, role: AccountRole.WRITABLE },
+    ];
     return { instructions: [{ ...instruction, accounts }] };
   }
 
   return { instructions: [instruction] };
+}
+
+/**
+ * Builds a `revokeDelegation` instruction for **subscription** PDAs. Wraps
+ * the same on-chain instruction as {@link buildRevokeDelegation} but appends
+ * the subscription-specific trailing accounts (`[planPda, receiver?]`).
+ *
+ * For fixed/recurring delegations, use {@link buildRevokeDelegation} — passing
+ * `planPda` to the program for a fixed/recurring revoke would be misread as a
+ * `receiver` and fail with `Unauthorized`.
+ *
+ * @param params.authority - Subscriber (delegator) or sponsor (recorded `header.payer`).
+ * @param params.subscriptionPda - Address of the subscription PDA to revoke.
+ * @param params.planPda - Required. The plan PDA the subscription is bound to.
+ *   Used by the program for the binding check and plan-ended / plan-closed
+ *   detection on the sponsor path. Pass the plan PDA address even if the plan
+ *   has been closed by the merchant — the program inspects ownership directly.
+ * @param params.receiver - Rent destination when the recorded payer differs
+ *   from the authority. Must equal the stored `header.payer`.
+ * @returns The instruction array.
+ */
+export function buildRevokeSubscription(params: {
+  authority: TransactionSigner;
+  subscriptionPda: Address;
+  planPda: Address;
+  receiver?: Address;
+  programAddress?: Address;
+}): { instructions: Instruction[] } {
+  const config = params.programAddress
+    ? { programAddress: params.programAddress }
+    : undefined;
+  const instruction = getRevokeDelegationInstruction(
+    {
+      authority: params.authority,
+      delegationAccount: params.subscriptionPda,
+    },
+    config,
+  );
+
+  const trailing: Array<{ address: Address; role: number }> = [
+    { address: params.planPda, role: AccountRole.READONLY },
+  ];
+  if (params.receiver) {
+    trailing.push({ address: params.receiver, role: AccountRole.WRITABLE });
+  }
+
+  const accounts = [...instruction.accounts, ...trailing];
+  return { instructions: [{ ...instruction, accounts }] };
 }
 
 /**

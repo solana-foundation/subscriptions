@@ -13,6 +13,7 @@ import {
   buildCreateRecurringDelegation,
   buildInitMultiDelegate,
   buildRevokeDelegation,
+  buildRevokeSubscription,
 } from './instructions/delegation.js';
 import {
   buildCreatePlan,
@@ -166,18 +167,35 @@ export class MultiDelegatorClient {
     return { signature };
   }
 
-  /** Revoke (close) a delegation account, returning rent to the original payer.
-   *
-   * For subscription PDAs, `planPda` must be supplied (see
-   * `buildRevokeDelegation`). It is ignored for fixed/recurring delegations.
+  /** Revoke (close) a fixed or recurring delegation account, returning rent
+   * to the original payer. For subscription PDAs, use {@link revokeSubscription}.
    */
   async revokeDelegation(params: {
     authority: TransactionSigner;
     delegationAccount: Address;
-    planPda?: Address;
     receiver?: Address;
   }): Promise<TransactionResult> {
     const { instructions } = buildRevokeDelegation(params);
+    const signature = await this.buildAndSendTransaction(
+      instructions,
+      params.authority,
+    );
+    return { signature };
+  }
+
+  /** Revoke (close) a subscription PDA, returning rent to the original payer.
+   *
+   * `planPda` is required so the program can bind the subscription and detect
+   * plan-ended / plan-closed conditions for the sponsor path. Pass `receiver`
+   * when the recorded payer differs from the authority.
+   */
+  async revokeSubscription(params: {
+    authority: TransactionSigner;
+    subscriptionPda: Address;
+    planPda: Address;
+    receiver?: Address;
+  }): Promise<TransactionResult> {
+    const { instructions } = buildRevokeSubscription(params);
     const signature = await this.buildAndSendTransaction(
       instructions,
       params.authority,
