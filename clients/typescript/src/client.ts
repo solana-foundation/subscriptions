@@ -145,10 +145,15 @@ export class MultiDelegatorClient {
     return { signature };
   }
 
-  /** Revoke (close) a delegation account, returning rent to the original payer. */
+  /** Revoke (close) a delegation account, returning rent to the original payer.
+   *
+   * For subscription PDAs, `planPda` must be supplied (see
+   * `buildRevokeDelegation`). It is ignored for fixed/recurring delegations.
+   */
   async revokeDelegation(params: {
     authority: TransactionSigner;
     delegationAccount: Address;
+    planPda?: Address;
     receiver?: Address;
   }): Promise<TransactionResult> {
     const { instructions } = buildRevokeDelegation(params);

@@ -295,6 +295,7 @@ describe('Subscription Lifecycle', () => {
     const { signature: revokeSig } = await t.client.revokeDelegation({
       authority: subscriber,
       delegationAccount: subscriptionPda,
+      planPda,
     });
     expect(revokeSig).toBeDefined();
 

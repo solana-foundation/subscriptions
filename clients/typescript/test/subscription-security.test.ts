@@ -81,6 +81,7 @@ describe('Subscription Security', () => {
       t.client.revokeDelegation({
         authority: subscriber,
         delegationAccount: subscriptionPda,
+        planPda,
       }),
       MULTI_DELEGATOR_ERROR__SUBSCRIPTION_NOT_CANCELLED,
     );
@@ -90,6 +91,7 @@ describe('Subscription Security', () => {
     const { signature } = await t.client.revokeDelegation({
       authority: subscriber,
       delegationAccount: subscriptionPda,
+      planPda,
     });
     expect(signature).toBeDefined();
   });
@@ -619,6 +621,7 @@ describe('Subscription Security', () => {
     await t.client.revokeDelegation({
       authority: subscriber,
       delegationAccount: subscriptionPda,
+      planPda,
     });
 
     const subAfterRevoke = await fetchMaybeSubscriptionDelegation(
@@ -774,6 +777,7 @@ describe('Subscription Security', () => {
     const { signature } = await t.client.revokeDelegation({
       authority: subscriber,
       delegationAccount: subscriptionPda,
+      planPda,
     });
     expect(signature).toBeDefined();
 
@@ -1201,6 +1205,7 @@ describe('Subscription Security', () => {
     const { signature } = await t.client.revokeDelegation({
       authority: subscriber,
       delegationAccount: subscriptionPda,
+      planPda,
     });
     expect(signature).toBeDefined();
 
