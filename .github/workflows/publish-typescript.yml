@@ -23,9 +23,26 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
-    name: Publish TypeScript Client
+  guard-allowed-branch:
+    name: Guard allowed source branch for release publish
     runs-on: ubuntu-latest
+    steps:
+      - name: Guard allowed source branch for release publish
+        run: |
+          case "${{ github.ref }}" in
+            refs/heads/main|refs/heads/hotfix/*) ;;
+            *)
+              echo "::error::Publish TypeScript Client must be run from main or hotfix/*. Current ref: ${{ github.ref }}"
+              exit 1
+              ;;
+          esac
+
+  publish:
+    name: Publish @subscriptions/client package
+    runs-on: ubuntu-latest
+    needs: guard-allowed-branch
+    env:
+      NPM_CONFIG_PROVENANCE: true
     steps:
       - uses: actions/checkout@v6
         with:
@@ -37,14 +54,29 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - uses: ./.github/actions/setup
-        with:
-          rust-cache-key: publish-ts
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
 
-      - uses: actions/setup-node@v6
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate IDL and clients
+        run: |
+          cd programs/subscriptions && cargo build
+          cd ../.. && pnpm run generate
+
+      - name: Build TypeScript client
+        working-directory: clients/typescript
+        run: pnpm build
 
       - name: Get version
         id: version
@@ -52,7 +84,7 @@ jobs:
         run: |
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Publishing version: $VERSION"
+          echo "Publishing @subscriptions/client v$VERSION"
 
       - name: Check if prerelease
         id: prerelease
@@ -65,12 +97,6 @@ jobs:
             echo "npm_tag=latest" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build TypeScript client
-        run: |
-          cd programs/subscriptions && cargo build
-          pnpm run generate
-          cd clients/typescript && pnpm build
-
       - name: Create and push tag
         run: |
           TAG="ts-client-v${{ steps.version.outputs.version }}"
@@ -82,12 +108,10 @@ jobs:
           fi
           git push origin "$TAG" 2>/dev/null || echo "Tag already pushed"
 
-      - name: Publish to npm
+      - name: Publish to npm (with provenance)
         if: ${{ inputs.publish-to-npm }}
         working-directory: clients/typescript
-        run: pnpm publish --access public --no-git-checks --tag ${{ steps.prerelease.outputs.npm_tag }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm publish --access public --no-git-checks --tag ${{ steps.prerelease.outputs.npm_tag }} --provenance
 
       - name: Create GitHub Release
         if: ${{ inputs.create-github-release }}
@@ -105,7 +129,7 @@ jobs:
                 repo: context.repo.repo,
                 tag: tagName,
               });
-              console.log(`Release ${tagName} already exists`);
+              console.log(`Release ${tagName} already exists, skipping`);
               return;
             } catch (e) {
               if (e.status !== 404) throw e;
@@ -116,19 +140,20 @@ jobs:
               repo: context.repo.repo,
               tag_name: tagName,
               name: releaseName,
-              body: `Release of @subscriptions/client v${{ steps.version.outputs.version }}`,
+              body: `Release of @subscriptions/client v${{ steps.version.outputs.version }}\n\n**npm:** https://www.npmjs.com/package/@subscriptions/client/v/${{ steps.version.outputs.version }}`,
               draft: false,
               prerelease: isPrerelease,
             });
 
       - name: Publish summary
         run: |
-          echo "## TypeScript Client Published" >> $GITHUB_STEP_SUMMARY
+          echo "## @subscriptions/client Published" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Version**: \`${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Package**: \`@subscriptions/client\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag**: \`ts-client-v${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ inputs.publish-to-npm }}" == "true" ]; then
-            echo "Published to npm" >> $GITHUB_STEP_SUMMARY
+            echo "Published to npm: https://www.npmjs.com/package/@subscriptions/client/v/${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           else
             echo "Skipped npm publish" >> $GITHUB_STEP_SUMMARY
           fi
