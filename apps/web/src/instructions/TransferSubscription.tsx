@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Address } from '@solana/kit';
-import { buildTransferSubscription } from '@subscriptions/client';
+import { getTransferSubscriptionOverlayInstructionAsync } from '@subscriptions/client';
 import { findAssociatedTokenPda } from '@solana-program/token';
 import { useWallet } from '@/contexts/WalletContext';
 import { useSavedValues } from '@/contexts/SavedValuesContext';
@@ -39,14 +39,14 @@ export function TransferSubscription() {
             receiver = derived;
         }
 
-        const { instructions } = await buildTransferSubscription({
+        const instruction = await getTransferSubscriptionOverlayInstructionAsync({
             caller: signer, delegator: delegator.trim() as Address, tokenMint: mintAddress,
             subscriptionPda: subscriptionPda.trim() as Address, planPda: planPda.trim() as Address,
             amount: BigInt(amount), receiverAta: receiver, tokenProgram,
             programAddress: getProgramAddress(),
         });
 
-        await send(instructions, {
+        await send([instruction], {
             action: 'TransferSubscription',
             values: { subscriptionPda: subscriptionPda.trim(), planPda: planPda.trim(), mint: mintAddress, amount },
         });

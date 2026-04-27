@@ -1,5 +1,5 @@
 import { useWalletUi } from '@wallet-ui/react'
-import { address } from 'gill'
+import { address } from '@solana/kit'
 import { WalletBalanceCards } from '../components/account/account-ui'
 import { SummaryCards } from '@/components/dashboard/summary-cards'
 

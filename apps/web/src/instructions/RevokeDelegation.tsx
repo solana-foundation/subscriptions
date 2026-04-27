@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Address } from '@solana/kit';
-import { buildRevokeDelegation } from '@subscriptions/client';
+import { getRevokeDelegationOverlayInstruction } from '@subscriptions/client';
 import { useWallet } from '@/contexts/WalletContext';
 import { useSavedValues } from '@/contexts/SavedValuesContext';
 import { getProgramAddress } from '@/lib/program';
@@ -22,13 +22,13 @@ export function RevokeDelegation() {
         const signer = createSigner();
         if (!signer) return;
 
-        const { instructions } = buildRevokeDelegation({
+        const instruction = getRevokeDelegationOverlayInstruction({
             authority: signer,
             delegationAccount: delegationAccount.trim() as Address,
             programAddress: getProgramAddress(),
         });
 
-        await send(instructions, {
+        await send([instruction], {
             action: 'RevokeDelegation',
             values: { delegationPda: delegationAccount.trim() },
         });

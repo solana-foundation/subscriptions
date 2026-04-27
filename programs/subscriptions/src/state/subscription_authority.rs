@@ -16,6 +16,9 @@ use crate::{state::common::AccountDiscriminator, SubscriptionsError};
 /// **PDA seeds:** `["SubscriptionAuthority", user, token_mint]`
 #[repr(C, packed)]
 #[derive(CodamaAccount)]
+#[codama(seed(type = string(utf8), value = "SubscriptionAuthority"))]
+#[codama(seed(name = "user", type = public_key))]
+#[codama(seed(name = "tokenMint", type = public_key))]
 pub struct SubscriptionAuthority {
     /// Account type discriminator ([`AccountDiscriminator::SubscriptionAuthority`]).
     pub discriminator: u8,

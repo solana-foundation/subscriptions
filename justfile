@@ -66,27 +66,20 @@ build-program:
 
 # Generate IDL from Rust source
 generate-idl:
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    if just needs-rebuild "{{idl_file}}" "{{program_dir}}/src/instructions/mod.rs" 2>/dev/null; then
-        cd {{program_dir}}
-        cargo build
-        echo "✓ IDL generated"
-    fi
+    pnpm run generate-idl
+    @echo "✓ IDL generated"
 
 # Generate TypeScript and Rust clients from IDL
-generate-client: generate-idl
-    #!/usr/bin/env bash
-    set -euo pipefail
+generate-clients: generate-idl
+    pnpm run generate-clients
+    @echo "✓ Clients generated"
 
-    if just needs-rebuild "clients/typescript/src/generated/index.ts" "{{idl_file}}" 2>/dev/null; then
-        pnpm run generate
-        echo "✓ Clients generated"
-    fi
+# Backwards-compatible alias for the old recipe name
+generate-client: generate-clients
+    @true
 
 # Build TypeScript client
-build-client: generate-client
+build-client: generate-clients
     #!/usr/bin/env bash
     set -euo pipefail
 
@@ -116,7 +109,7 @@ test-and-benchmark:
     cd {{program_dir}} && CU_REPORT=1 CU_REPORT_DATE=$(date +%Y-%m-%d) cargo test-sbf
 
 # Run TypeScript client integration tests
-test-client: build-program generate-client ensure-surfpool
+test-client: build-program generate-clients ensure-surfpool
     cd {{ts_client_dir}} && pnpm run test
 
 # ============================================

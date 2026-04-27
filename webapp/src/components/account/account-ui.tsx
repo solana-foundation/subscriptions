@@ -1,6 +1,8 @@
 import { useWalletUi } from '@wallet-ui/react'
-import { address, lamportsToSol } from 'gill'
-import type { Address, Lamports } from 'gill'
+import { address } from '@solana/kit'
+import type { Address, Lamports } from '@solana/kit'
+
+const lamportsToSol = (lamports: bigint | number): number => Number(lamports) / 1e9
 import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { AppAlert } from '@/components/app-alert'

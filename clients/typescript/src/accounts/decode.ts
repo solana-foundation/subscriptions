@@ -1,30 +1,27 @@
-import type { Address, EncodedAccount } from 'gill';
-import { getBase64Encoder } from 'gill';
+import type {
+  AccountInfoBase,
+  AccountInfoWithBase64EncodedData,
+  AccountInfoWithPubkey,
+  Address,
+  EncodedAccount,
+} from '@solana/kit';
+import { getBase64Encoder } from '@solana/kit';
 import { DISCRIMINATOR_OFFSET } from '../constants.js';
 import {
   AccountDiscriminator,
   decodeFixedDelegation,
-  decodePlan,
   decodeRecurringDelegation,
   decodeSubscriptionDelegation,
 } from '../generated/index.js';
 import type { Delegation } from '../types/delegation.js';
-import type { PlanWithAddress } from '../types/plan.js';
 
 /** Raw account shape returned by `getProgramAccounts` RPC calls. */
-export type RawProgramAccount = {
-  pubkey: Address;
-  account: {
-    data: [string, string];
-    executable: boolean;
-    lamports: bigint;
-    owner: Address;
-    space: bigint;
-  };
-};
+export type RawProgramAccount = AccountInfoWithPubkey<
+  AccountInfoBase & AccountInfoWithBase64EncodedData
+>;
 
 /**
- * Converts a {@link RawProgramAccount} into Gill's `EncodedAccount` format for use with Codama decoders.
+ * Converts a {@link RawProgramAccount} into  Kit's `EncodedAccount` format for use with Codama decoders.
  *
  * @param raw - The raw account as returned by `getProgramAccounts`.
  * @param programAddress - The program address that owns the account.
@@ -89,20 +86,4 @@ export function decodeDelegationAccount(
       console.warn(`Unknown delegation discriminator: ${kind}`);
       return null;
   }
-}
-
-/**
- * Decodes a raw program account into a {@link PlanWithAddress}.
- *
- * @param raw - The raw account as returned by `getProgramAccounts`.
- * @param programAddress - The program address that owns the account.
- * @returns The decoded plan paired with its on-chain address.
- */
-export function decodePlanAccount(
-  raw: RawProgramAccount,
-  programAddress: Address,
-): PlanWithAddress {
-  const encoded = toEncodedAccount(raw, programAddress);
-  const decoded = decodePlan(encoded);
-  return { address: raw.pubkey, data: decoded.data };
 }

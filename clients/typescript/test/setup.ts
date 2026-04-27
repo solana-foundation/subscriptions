@@ -1,34 +1,25 @@
-import { getCreateAccountInstruction } from '@solana-program/system';
-import {
-  findAssociatedTokenPda,
-  getCreateAssociatedTokenInstructionAsync,
-  getInitializeMintInstruction,
-  getMintSize,
-  getMintToInstruction,
-  TOKEN_PROGRAM_ADDRESS,
-} from '@solana-program/token';
 import {
   type Address,
-  appendTransactionMessageInstructions,
-  createSolanaClient,
-  createTransactionMessage,
+  createClient,
   generateKeyPairSigner,
   type KeyPairSigner,
   lamports,
-  pipe,
-  setTransactionMessageFeePayerSigner,
-  setTransactionMessageLifetimeUsingBlockhash,
-  signTransactionMessageWithSigners,
-} from 'gill';
+} from '@solana/kit';
+import { solanaLocalRpc } from '@solana/kit-plugin-rpc';
+import { signer } from '@solana/kit-plugin-signer';
+import {
+  findAssociatedTokenPda,
+  TOKEN_PROGRAM_ADDRESS,
+  tokenProgram,
+} from '@solana-program/token';
 import { expect } from 'vitest';
-import { SubscriptionsClient } from '../src/client.js';
-import { parseProgramError } from '../src/errors/map.js';
-import { KeyPairWallet, type Wallet } from '../src/wallet.js';
+import { subscriptionsProgram } from '../src/index.js';
 import {
   createSmartWallets as createAdapterSmartWallets,
   type SmartWallet,
   type SmartWalletChoice,
 } from './smart-wallets/index.ts';
+import { KeyPairWallet, type Wallet } from './utils/wallet.js';
 
 export const SURFPOOL_PORT = 8899;
 export const SURFPOOL_RPC_URL = `http://127.0.0.1:${SURFPOOL_PORT}`;
@@ -39,7 +30,6 @@ const SYSVAR_CLOCK_ADDRESS =
   'SysvarC1ock11111111111111111111111111111111' as Address;
 const SYSVAR_CLOCK_UNIX_TIMESTAMP_OFFSET = 32;
 
-type SolanaClient = ReturnType<typeof createSolanaClient>;
 export type SmartWalletName = 'swig' | 'squads';
 
 function normalizeSmartWalletChoice(rawChoice: string): SmartWalletChoice {
@@ -68,6 +58,22 @@ export function getSmartWalletList(): SmartWalletName[] {
   return [choice];
 }
 
+/**
+ * Build the Kit plugin client used by the test suite.
+ *
+ * Surfpool tests use kit's default planner/executor with `skipPreflight` for
+ * speed.
+ */
+async function createTestClient(payer: KeyPairSigner) {
+  return createClient()
+    .use(signer(payer))
+    .use(solanaLocalRpc({ rpcUrl: SURFPOOL_RPC_URL, skipPreflight: true }))
+    .use(tokenProgram())
+    .use(subscriptionsProgram());
+}
+
+type KitClient = Awaited<ReturnType<typeof createTestClient>>;
+
 // Backward-compatible alias for requested naming.
 export const getSmartWalletlist = getSmartWalletList;
 
@@ -81,7 +87,7 @@ export function getWalletProviders(): WalletProvider[] {
     {
       name: 'keypair',
       createWallet: async (t: IntegrationTest) =>
-        new KeyPairWallet(t.payerKeypair, t.client.client),
+        new KeyPairWallet(t.payerKeypair, t.client),
     },
   ];
 
@@ -107,11 +113,11 @@ export async function getSmartWallet(
  * for integration testing the Subscriptions program.
  */
 export class IntegrationTest {
-  /** The SubscriptionsClient instance for interacting with the program */
-  public readonly client: SubscriptionsClient;
+  /** The `@solana/kit` plugin client under test. */
+  public readonly client: KitClient;
 
   /** Direct RPC access for queries and assertions */
-  public readonly rpc: SolanaClient['rpc'];
+  public readonly rpc: KitClient['rpc'];
 
   /** Pre-funded payer wrapped as a Wallet — the primary owner/delegator identity */
   public readonly payer: Wallet;
@@ -125,21 +131,18 @@ export class IntegrationTest {
   /** Token program address used for the default tokenMint */
   public readonly tokenProgram: Address;
 
-  private solanaClient: SolanaClient;
   private readonly smartWalletsByName = new Map<SmartWalletName, SmartWallet>();
 
   private constructor(
-    solanaClient: SolanaClient,
-    client: SubscriptionsClient,
+    client: KitClient,
     payer: KeyPairSigner,
     tokenMint: Address,
     tokenProgram: Address,
   ) {
-    this.solanaClient = solanaClient;
     this.client = client;
-    this.rpc = solanaClient.rpc;
+    this.rpc = client.rpc;
     this.payerKeypair = payer;
-    this.payer = new KeyPairWallet(payer, solanaClient);
+    this.payer = new KeyPairWallet(payer, client);
     this.tokenMint = tokenMint;
     this.tokenProgram = tokenProgram;
   }
@@ -149,74 +152,63 @@ export class IntegrationTest {
    * This initializes a payer with 10 SOL and creates a default token mint.
    */
   static async create(): Promise<IntegrationTest> {
-    await isSurfnetRunning(); // Just verify surfpool is running
+    await isSurfnetRunning();
+    // Generate payer outside the kit client so we can airdrop before installing
+    // the rpc plugin asks for a payer-with-balance.
+    const payer = await generateKeyPairSigner();
+    const client = await createTestClient(payer);
 
-    const solanaClient = createSolanaClient({ urlOrMoniker: 'localnet' });
-    const client = new SubscriptionsClient(solanaClient);
+    await airdropToAddress(client, payer.address, 10_000_000_000n);
 
-    // Create and fund payer with 10 SOL
-    const payer = await createFundedKeypair(solanaClient, 10_000_000_000n);
+    const tokenMint = await createMint(client, payer, 6);
 
-    // Create default token mint (payer is mint authority) using TOKEN_PROGRAM_ADDRESS
-    const tokenMint = await createMint(solanaClient, payer, 6);
-
-    return new IntegrationTest(
-      solanaClient,
-      client,
-      payer,
-      tokenMint,
-      TOKEN_PROGRAM_ADDRESS,
-    );
+    return new IntegrationTest(client, payer, tokenMint, TOKEN_PROGRAM_ADDRESS);
   }
 
   /**
    * Creates a new token mint with the payer as the mint authority.
-   * @param decimals - Number of decimals for the mint (default: 6)
-   * @returns The address of the newly created mint
    */
   async createTokenMint(decimals: number = 6): Promise<Address> {
-    return createMint(this.solanaClient, this.payerKeypair, decimals);
+    return createMint(this.client, this.payerKeypair, decimals);
   }
 
   /**
    * Creates an Associated Token Account for the given owner and mints tokens to it.
-   * @param mint - The token mint address
-   * @param owner - The owner of the ATA
-   * @param amount - The amount of tokens to mint (in base units)
-   * @returns The address of the created ATA
    */
   async createAtaWithBalance(
     mint: Address,
     owner: Address,
     amount: bigint,
+    decimals: number = 6,
   ): Promise<Address> {
     return createAtaWithTokens(
-      this.solanaClient,
+      this.client,
       this.payerKeypair,
       mint,
       owner,
       amount,
+      decimals,
     );
   }
 
   async createFundedKeypair(
     lamportsAmount: bigint = 1_000_000_000n,
   ): Promise<KeyPairSigner> {
-    return createFundedKeypair(this.solanaClient, lamportsAmount);
+    return createFundedKeypair(this.client, lamportsAmount);
   }
 
   async createFundedWallet(
     lamportsAmount: bigint = 1_000_000_000n,
   ): Promise<Wallet> {
-    const signer = await createFundedKeypair(this.solanaClient, lamportsAmount);
-    return new KeyPairWallet(signer, this.solanaClient);
+    const keypair = await createFundedKeypair(this.client, lamportsAmount);
+    return new KeyPairWallet(keypair, this.client);
   }
 
   async airdropToAddress(
     address: Address,
     lamportsAmount: bigint = 1_000_000_000n,
   ): Promise<void> {
-    await airdropToAddress(this.solanaClient, address, lamportsAmount);
+    await airdropToAddress(this.client, address, lamportsAmount);
   }
 
   async getValidatorTime(): Promise<bigint> {
@@ -322,7 +314,7 @@ async function setSurfpoolClock(targetTimestampSec: number): Promise<void> {
 }
 
 async function getClockSysvarTime(
-  rpc: SolanaClient['rpc'],
+  rpc: KitClient['rpc'],
 ): Promise<bigint | null> {
   const account = await rpc
     .getAccountInfo(SYSVAR_CLOCK_ADDRESS, { encoding: 'base64' })
@@ -339,14 +331,6 @@ async function getClockSysvarTime(
   return clockData.readBigInt64LE(SYSVAR_CLOCK_UNIX_TIMESTAMP_OFFSET);
 }
 
-/**
- * Checks that Surfpool is running and returns the RPC URL.
- *
- * Note: Surfpool should be started separately with `surfpool start`
- * which will auto-deploy the subscriptions program via the runbook.
- *
- * @throws Error if Surfpool is not running
- */
 async function isSurfnetRunning(): Promise<string> {
   try {
     const response = await fetch(SURFPOOL_RPC_URL, {
@@ -374,192 +358,85 @@ async function isSurfnetRunning(): Promise<string> {
   }
 }
 
-/**
- * Creates a new keypair and funds it with SOL via airdrop.
- */
 async function createFundedKeypair(
-  client: SolanaClient,
+  client: KitClient,
   lamportsAmount: bigint,
 ): Promise<KeyPairSigner> {
   const keypair = await generateKeyPairSigner();
-
-  // Request airdrop
-  const signature = await client.rpc
-    .requestAirdrop(keypair.address, lamports(lamportsAmount))
-    .send();
-
-  // Poll until confirmed
-  let confirmed = false;
-  for (let i = 0; i < 30; i++) {
-    const status = await client.rpc.getSignatureStatuses([signature]).send();
-    if (
-      status.value[0]?.confirmationStatus === 'confirmed' ||
-      status.value[0]?.confirmationStatus === 'finalized'
-    ) {
-      confirmed = true;
-      break;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-
-  if (!confirmed) {
-    throw new Error('Airdrop confirmation timeout');
-  }
-
+  await airdropToAddress(client, keypair.address, lamportsAmount);
   return keypair;
 }
 
 async function airdropToAddress(
-  client: SolanaClient,
+  client: KitClient,
   address: Address,
   lamportsAmount: bigint,
 ): Promise<void> {
-  const signature = await client.rpc
-    .requestAirdrop(address, lamports(lamportsAmount))
-    .send();
-
-  let confirmed = false;
-  for (let i = 0; i < 30; i++) {
-    const status = await client.rpc.getSignatureStatuses([signature]).send();
-    if (
-      status.value[0]?.confirmationStatus === 'confirmed' ||
-      status.value[0]?.confirmationStatus === 'finalized'
-    ) {
-      confirmed = true;
-      break;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-
-  if (!confirmed) {
-    throw new Error('Airdrop confirmation timeout');
-  }
+  await client.airdrop(address, lamports(lamportsAmount));
 }
 
-/**
- * Creates a new SPL token mint.
- * @param client - The Solana client
- * @param payer - The payer/mint authority
- * @param decimals - Number of decimals for the mint
- * @returns The address of the created mint
- */
 async function createMint(
-  client: SolanaClient,
+  client: KitClient,
   payer: KeyPairSigner,
   decimals: number,
 ): Promise<Address> {
   const mint = await generateKeyPairSigner();
-  const mintSize = getMintSize();
-
-  const rent = await client.rpc
-    .getMinimumBalanceForRentExemption(BigInt(mintSize))
-    .send();
-
-  const { value: latestBlockhash } = await client.rpc
-    .getLatestBlockhash()
-    .send();
-
-  // Create account for the mint
-  const createAccountIx = getCreateAccountInstruction({
-    payer,
-    newAccount: mint,
-    lamports: rent,
-    space: mintSize,
-    programAddress: TOKEN_PROGRAM_ADDRESS,
-  });
-
-  // Initialize the mint with payer as mint authority
-  const initializeMintIx = getInitializeMintInstruction({
-    mint: mint.address,
-    decimals,
-    mintAuthority: payer.address,
-    freezeAuthority: payer.address,
-  });
-
-  const transactionMessage = pipe(
-    createTransactionMessage({ version: 0 }),
-    (tx) => setTransactionMessageFeePayerSigner(payer, tx),
-    (tx) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
-    (tx) =>
-      appendTransactionMessageInstructions(
-        [createAccountIx, initializeMintIx],
-        tx,
-      ),
-  );
-
-  const signedTransaction =
-    await signTransactionMessageWithSigners(transactionMessage);
-  await client.sendAndConfirmTransaction(signedTransaction);
-
+  await client.token.instructions
+    .createMint({
+      payer,
+      newMint: mint,
+      decimals,
+      mintAuthority: payer.address,
+      freezeAuthority: payer.address,
+    })
+    .sendTransaction();
   return mint.address;
 }
 
-/**
- * Creates an Associated Token Account and mints tokens to it.
- * @param client - The Solana client
- * @param payer - The payer (must be mint authority to mint tokens)
- * @param mint - The token mint address
- * @param owner - The owner of the ATA
- * @param amount - The amount of tokens to mint
- * @returns The address of the created ATA
- */
 async function createAtaWithTokens(
-  client: SolanaClient,
+  client: KitClient,
   payer: KeyPairSigner,
   mint: Address,
   owner: Address,
   amount: bigint,
+  decimals: number,
 ): Promise<Address> {
-  // Derive the ATA address
   const [ata] = await findAssociatedTokenPda({
     mint,
     owner,
     tokenProgram: TOKEN_PROGRAM_ADDRESS,
   });
-
-  const { value: latestBlockhash } = await client.rpc
-    .getLatestBlockhash()
-    .send();
-
-  // Create ATA instruction
-  const createAtaIx = await getCreateAssociatedTokenInstructionAsync({
-    payer,
-    mint,
-    owner,
-  });
-
-  // Mint tokens instruction
-  const mintToIx = getMintToInstruction({
-    mint,
-    token: ata,
-    mintAuthority: payer,
-    amount,
-  });
-
-  const transactionMessage = pipe(
-    createTransactionMessage({ version: 0 }),
-    (tx) => setTransactionMessageFeePayerSigner(payer, tx),
-    (tx) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
-    (tx) => appendTransactionMessageInstructions([createAtaIx, mintToIx], tx),
-  );
-
-  const signedTransaction =
-    await signTransactionMessageWithSigners(transactionMessage);
-  await client.sendAndConfirmTransaction(signedTransaction);
-
+  await client.token.instructions
+    .mintToATA({
+      payer,
+      mint,
+      owner,
+      mintAuthority: payer,
+      amount,
+      decimals,
+    })
+    .sendTransaction();
   return ata;
 }
 
 function extractErrorCode(error: unknown): number | null {
   if (error == null) return null;
-  const pe = parseProgramError(error);
-  if (pe) return pe.errorCode;
   // biome-ignore lint/suspicious/noExplicitAny: error introspection
   const ctx = (error as any)?.context;
   if (ctx?.code != null) return Number(ctx.code);
   const msg = error instanceof Error ? error.message : String(error);
-  const m = /custom program error: #(\d+)/.exec(msg);
-  if (m?.[1]) return Number(m[1]);
+  const hex = /custom program error: 0x([0-9a-fA-F]+)/.exec(msg);
+  if (hex?.[1]) return Number.parseInt(hex[1], 16);
+  const dec = /custom program error: #(\d+)/.exec(msg);
+  if (dec?.[1]) return Number(dec[1]);
+  // biome-ignore lint/suspicious/noExplicitAny: error introspection
+  const logs = (error as any)?.logs;
+  if (Array.isArray(logs)) {
+    for (const log of logs as string[]) {
+      const m = /custom program error: 0x([0-9a-fA-F]+)/.exec(log);
+      if (m?.[1]) return Number.parseInt(m[1], 16);
+    }
+  }
   if (error instanceof Error && error.cause) {
     return extractErrorCode(error.cause);
   }
@@ -595,10 +472,6 @@ export async function expectProgramError(
 // Backward Compatibility
 // ============================================================================
 
-/**
- * Convenience function for backward compatibility.
- * @returns A new IntegrationTest instance
- */
 export async function initTestSuite(): Promise<IntegrationTest> {
   return IntegrationTest.create();
 }

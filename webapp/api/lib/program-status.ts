@@ -1,4 +1,4 @@
-import { getAddressDecoder } from 'gill'
+import { getAddressDecoder } from '@solana/kit'
 
 const PROGRAM_ACCOUNT_TAG = 2
 const PROGRAM_DATA_OFFSET = 4

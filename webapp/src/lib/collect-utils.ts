@@ -5,8 +5,8 @@ import {
   type Address,
   type Instruction,
   type TransactionSendingSigner,
-} from 'gill'
-import { findAssociatedTokenPda } from 'gill/programs/token'
+} from '@solana/kit'
+import { findAssociatedTokenPda } from '@solana-program/token'
 import { packInstructionBatches } from './tx-packer'
 
 const SUBSCRIPTION_AUTHORITY_SEED = 'SubscriptionAuthority'

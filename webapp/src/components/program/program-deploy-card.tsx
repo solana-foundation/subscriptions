@@ -14,7 +14,7 @@ import { useTransactionToast } from '@/components/use-transaction-toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { isValidBase58Address } from '@/lib/validators'
 import { buildSetAuthorityIx, deriveProgramDataAddress } from '@/lib/bpf-loader-browser'
-import { address, createTransaction, compileTransaction, getBase64EncodedWireTransaction, getBase58Decoder, createNoopSigner, generateKeyPair, createSignerFromKeyPair, type TransactionSendingSigner } from 'gill'
+import { address, appendTransactionMessageInstructions, compileTransaction, createTransactionMessage, getBase64EncodedWireTransaction, getBase58Decoder, createNoopSigner, generateKeyPair, createSignerFromKeyPair, pipe, setTransactionMessageFeePayerSigner, setTransactionMessageLifetimeUsingBlockhash, type TransactionSendingSigner } from '@solana/kit'
 import { useRpc } from '@/hooks/use-rpc'
 
 function ProgressBar({ current, total }: { current: number; total: number }) {
@@ -108,7 +108,12 @@ function TransferAuthoritySection() {
       const authSigner = createNoopSigner(currentAuth)
       const dummyFeePayer = await createSignerFromKeyPair(await generateKeyPair())
       const ix = buildSetAuthorityIx(programDataPDA, authSigner, address(newAuthority))
-      const tx = createTransaction({ feePayer: dummyFeePayer, version: 'legacy', latestBlockhash, instructions: [ix] })
+      const tx = pipe(
+        createTransactionMessage({ version: 'legacy' }),
+        m => setTransactionMessageFeePayerSigner(dummyFeePayer, m),
+        m => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
+        m => appendTransactionMessageInstructions([ix], m),
+      )
       const compiled = compileTransaction(tx)
       const base64 = getBase64EncodedWireTransaction(compiled)
       const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0))

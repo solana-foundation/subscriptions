@@ -1,5 +1,5 @@
 import { createContext, useContext, type ReactNode } from 'react'
-import type { TransactionSendingSigner } from 'gill'
+import type { TransactionSendingSigner } from '@solana/kit'
 import type { UiWalletAccount } from '@wallet-ui/react'
 import { useWalletAccountTransactionSendingSigner, useWalletUi } from '@wallet-ui/react'
 

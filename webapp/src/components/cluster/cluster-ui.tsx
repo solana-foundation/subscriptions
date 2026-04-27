@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { GetExplorerLinkArgs } from 'gill'
+import type { Address } from '@solana/kit'
 import { Button } from '@/components/ui/button'
 import { AppAlert } from '@/components/app-alert'
 import { useWalletUi } from '@wallet-ui/react'
@@ -27,7 +27,11 @@ export function ExplorerLink({
   className,
   label = '',
   ...link
-}: GetExplorerLinkArgs & {
+}: {
+  cluster?: 'mainnet' | 'mainnet-beta' | 'devnet' | 'testnet' | 'localnet'
+  address?: Address | string
+  transaction?: string
+  block?: bigint | number
   className?: string
   label: string
 }) {

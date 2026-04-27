@@ -1,8 +1,24 @@
-import { getAddressFromPublicKey, createKeyPairFromBytes, generateExtractableKeyPair, extractBytesFromKeyPair } from 'gill'
+import { getAddressFromPublicKey, createKeyPairFromBytes, createKeyPairFromPrivateKeyBytes } from '@solana/kit'
 import crypto from 'node:crypto'
 import { CHUNK_SIZE } from './bpf-loader.js'
 
 export { CHUNK_SIZE }
+
+/**
+ * Generate a fresh ed25519 keypair and serialize it as the 64-byte
+ * `[priv(32) | pub(32)]` Solana keypair format that `createKeyPairFromBytes`
+ * expects on the client side. Replaces the removed kit helpers
+ * `generateExtractableKeyPair` + `extractBytesFromKeyPair`.
+ */
+async function generateKeypairBytes(): Promise<{ keypairBytes: Uint8Array; publicKey: CryptoKey }> {
+  const privBytes = crypto.getRandomValues(new Uint8Array(32))
+  const kp = await createKeyPairFromPrivateKeyBytes(privBytes, true)
+  const pubBytes = new Uint8Array(await crypto.subtle.exportKey('raw', kp.publicKey))
+  const keypairBytes = new Uint8Array(64)
+  keypairBytes.set(privBytes, 0)
+  keypairBytes.set(pubBytes, 32)
+  return { keypairBytes, publicKey: kp.publicKey }
+}
 
 export interface DeployPlan {
   bufferKeypair: number[]
@@ -32,9 +48,8 @@ export async function buildDeployPlan(
 ): Promise<DeployPlan> {
   const soHash = crypto.createHash('sha256').update(soBytes).digest('hex')
 
-  const bufferKp = await generateExtractableKeyPair()
-  const bufferKeypairBytes = await extractBytesFromKeyPair(bufferKp)
-  const bufferAddress = await getAddressFromPublicKey(bufferKp.publicKey)
+  const { keypairBytes: bufferKeypairBytes, publicKey: bufferPubKey } = await generateKeypairBytes()
+  const bufferAddress = await getAddressFromPublicKey(bufferPubKey)
 
   const programKp = await createKeyPairFromBytes(programKeypairBytes)
   const programAddress = await getAddressFromPublicKey(programKp.publicKey)
@@ -59,9 +74,8 @@ export async function buildUpgradePlan(
 ): Promise<DeployPlan> {
   const soHash = crypto.createHash('sha256').update(soBytes).digest('hex')
 
-  const bufferKp = await generateExtractableKeyPair()
-  const bufferKeypairBytes = await extractBytesFromKeyPair(bufferKp)
-  const bufferAddress = await getAddressFromPublicKey(bufferKp.publicKey)
+  const { keypairBytes: bufferKeypairBytes, publicKey: bufferPubKey } = await generateKeypairBytes()
+  const bufferAddress = await getAddressFromPublicKey(bufferPubKey)
 
   const chunks = chunkSoBytes(soBytes)
 

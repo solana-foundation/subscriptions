@@ -1,28 +1,28 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast as sonnerToast } from "sonner";
-import { address, createSolanaRpc, type Instruction } from "gill";
+import { address, createSolanaRpc, type Instruction } from "@solana/kit";
 import {
   findAssociatedTokenPda,
-  TOKEN_2022_PROGRAM_ADDRESS,
   getCreateAssociatedTokenIdempotentInstruction,
-} from "gill/programs/token";
+} from "@solana-program/token";
+import { TOKEN_2022_PROGRAM_ADDRESS } from "@solana-program/token-2022";
 import {
-  buildInitSubscriptionAuthority,
-  buildCloseSubscriptionAuthority,
-  buildCreateFixedDelegation,
-  buildCreateRecurringDelegation,
-  buildRevokeDelegation,
-  buildRevokeSubscription,
-  buildTransferFixed,
-  buildTransferRecurring,
-  buildTransferSubscription,
-  buildCreatePlan,
-  buildUpdatePlan,
-  buildDeletePlan,
-  buildSubscribe,
-  buildCancelSubscription,
+  getInitSubscriptionAuthorityOverlayInstructionAsync,
+  getCloseSubscriptionAuthorityOverlayInstructionAsync,
+  getCreateFixedDelegationOverlayInstructionAsync,
+  getCreateRecurringDelegationOverlayInstructionAsync,
+  getRevokeDelegationOverlayInstruction,
+  getRevokeSubscriptionOverlayInstruction,
+  getTransferFixedOverlayInstructionAsync,
+  getTransferRecurringOverlayInstructionAsync,
+  getTransferSubscriptionOverlayInstructionAsync,
+  getCreatePlanOverlayInstructionAsync,
+  getUpdatePlanOverlayInstruction,
+  getDeletePlanOverlayInstruction,
+  getSubscribeOverlayInstructionAsync,
+  getCancelSubscriptionOverlayInstructionAsync,
   fetchMaybeSubscriptionAuthority,
-  getSubscriptionAuthorityPDA,
+  findSubscriptionAuthorityPda,
   ZERO_ADDRESS,
   PlanStatus,
 } from "@subscriptions/client";
@@ -66,7 +66,7 @@ export function useSubscriptionsMutations() {
       if (!signer) throw new Error("Wallet not connected");
       if (!progId) throw new Error("Program address not configured");
 
-      const { instructions } = await buildInitSubscriptionAuthority({
+      const instruction = await getInitSubscriptionAuthorityOverlayInstructionAsync({
         owner: signer,
         tokenMint: address(tokenMint),
         userAta: address(userAta),
@@ -74,7 +74,7 @@ export function useSubscriptionsMutations() {
         programAddress: progId,
       });
 
-      const signature = await signAndSend(instructions, signer);
+      const signature = await signAndSend([instruction], signer);
       return { signature };
     },
     onSuccess: (res) => {
@@ -97,20 +97,23 @@ export function useSubscriptionsMutations() {
       let storedPayer = payer;
       if (!storedPayer) {
         const rpc = createSolanaRpc(rpcUrl);
-        const [pda] = await getSubscriptionAuthorityPDA(signer.address, address(tokenMint), progId);
+        const [pda] = await findSubscriptionAuthorityPda(
+          { user: signer.address, tokenMint: address(tokenMint) },
+          { programAddress: progId },
+        );
         const maybe = await fetchMaybeSubscriptionAuthority(rpc, pda);
         if (maybe.exists) storedPayer = maybe.data.payer;
       }
       const receiver = storedPayer && storedPayer !== signer.address ? address(storedPayer) : undefined;
 
-      const { instructions } = await buildCloseSubscriptionAuthority({
+      const instruction = await getCloseSubscriptionAuthorityOverlayInstructionAsync({
         user: signer,
         tokenMint: address(tokenMint),
         receiver,
         programAddress: progId,
       });
 
-      const signature = await signAndSend(instructions, signer);
+      const signature = await signAndSend([instruction], signer);
       return { signature };
     },
     onSuccess: (res) => {
@@ -141,7 +144,7 @@ export function useSubscriptionsMutations() {
       if (!signer) throw new Error("Wallet not connected");
       if (!progId) throw new Error("Program address not configured");
 
-      const { instructions } = await buildCreateFixedDelegation({
+      const instruction = await getCreateFixedDelegationOverlayInstructionAsync({
         delegator: signer,
         tokenMint: address(tokenMint),
         delegatee: address(delegatee),
@@ -151,7 +154,7 @@ export function useSubscriptionsMutations() {
         programAddress: progId,
       });
 
-      const signature = await signAndSend(instructions, signer);
+      const signature = await signAndSend([instruction], signer);
       return { signature };
     },
     onSuccess: (res) => {
@@ -182,7 +185,7 @@ export function useSubscriptionsMutations() {
       if (!signer) throw new Error("Wallet not connected");
       if (!progId) throw new Error("Program address not configured");
 
-      const { instructions } = await buildCreateRecurringDelegation({
+      const instruction = await getCreateRecurringDelegationOverlayInstructionAsync({
         delegator: signer,
         tokenMint: address(tokenMint),
         delegatee: address(delegatee),
@@ -194,7 +197,7 @@ export function useSubscriptionsMutations() {
         programAddress: progId,
       });
 
-      const signature = await signAndSend(instructions, signer);
+      const signature = await signAndSend([instruction], signer);
       return { signature };
     },
     onSuccess: (res) => {
@@ -216,14 +219,14 @@ export function useSubscriptionsMutations() {
 
       const receiver = payer !== signer.address ? address(payer) : undefined;
 
-      const { instructions } = buildRevokeDelegation({
+      const instruction = getRevokeDelegationOverlayInstruction({
         authority: signer,
         delegationAccount: address(delegationAccount),
         receiver,
         programAddress: progId,
       });
 
-      const signature = await signAndSend(instructions, signer);
+      const signature = await signAndSend([instruction], signer);
       return { signature };
     },
     onSuccess: (res) => {
@@ -273,8 +276,11 @@ export function useSubscriptionsMutations() {
       tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
     });
 
-    const buildFn = kind === "fixed" ? buildTransferFixed : buildTransferRecurring;
-    const { instructions: transferIxs } = await buildFn({
+    const buildFn =
+      kind === "fixed"
+        ? getTransferFixedOverlayInstructionAsync
+        : getTransferRecurringOverlayInstructionAsync;
+    const transferIx = await buildFn({
       delegatee: signer,
       delegator: delegatorAddr,
       delegatorAta,
@@ -286,7 +292,7 @@ export function useSubscriptionsMutations() {
       programAddress: progId,
     });
 
-    return { instructions: [createAtaIx, ...transferIxs], signer };
+    return { instructions: [createAtaIx, transferIx], signer };
   };
 
   const transferFixed = useMutation({
@@ -342,7 +348,7 @@ export function useSubscriptionsMutations() {
       if (!signer) throw new Error("Wallet not connected");
       if (!progId) throw new Error("Program address not configured");
 
-      const { instructions } = await buildCreatePlan({
+      const instruction = await getCreatePlanOverlayInstructionAsync({
         owner: signer,
         planId,
         mint: address(mint),
@@ -356,7 +362,7 @@ export function useSubscriptionsMutations() {
         programAddress: progId,
       });
 
-      const signature = await signAndSend(instructions, signer);
+      const signature = await signAndSend([instruction], signer);
       return { signature };
     },
     onSuccess: (res) => {
@@ -382,7 +388,7 @@ export function useSubscriptionsMutations() {
     }) => {
       if (!signer) throw new Error("Wallet not connected");
 
-      const { instructions } = buildUpdatePlan({
+      const instruction = getUpdatePlanOverlayInstruction({
         owner: signer,
         planPda: address(planPda),
         status,
@@ -392,7 +398,7 @@ export function useSubscriptionsMutations() {
         programAddress: progId,
       });
 
-      const signature = await signAndSend(instructions, signer);
+      const signature = await signAndSend([instruction], signer);
       return { signature };
     },
     onSuccess: (res) => {
@@ -406,13 +412,13 @@ export function useSubscriptionsMutations() {
     mutationFn: async ({ planPda }: { planPda: string }) => {
       if (!signer) throw new Error("Wallet not connected");
 
-      const { instructions } = buildDeletePlan({
+      const instruction = getDeletePlanOverlayInstruction({
         owner: signer,
         planPda: address(planPda),
         programAddress: progId,
       });
 
-      const signature = await signAndSend(instructions, signer);
+      const signature = await signAndSend([instruction], signer);
       return { signature };
     },
     onSuccess: (res) => {
@@ -441,7 +447,7 @@ export function useSubscriptionsMutations() {
       if (!signer) throw new Error("Wallet not connected");
       if (!progId) throw new Error("Program address not configured");
 
-      const { instructions } = await buildSubscribe({
+      const instruction = await getSubscribeOverlayInstructionAsync({
         subscriber: signer,
         merchant: address(merchant),
         planId,
@@ -452,7 +458,7 @@ export function useSubscriptionsMutations() {
         programAddress: progId,
       });
 
-      const signature = await signAndSend(instructions, signer);
+      const signature = await signAndSend([instruction], signer);
       return { signature };
     },
     onSuccess: (res) => {
@@ -473,14 +479,14 @@ export function useSubscriptionsMutations() {
       if (!signer) throw new Error("Wallet not connected");
       if (!progId) throw new Error("Program address not configured");
 
-      const { instructions } = await buildCancelSubscription({
+      const instruction = await getCancelSubscriptionOverlayInstructionAsync({
         subscriber: signer,
         planPda: address(planPda),
         subscriptionPda: address(subscriptionPda),
         programAddress: progId,
       });
 
-      const signature = await signAndSend(instructions, signer);
+      const signature = await signAndSend([instruction], signer);
       return { signature };
     },
     onSuccess: (res) => {
@@ -504,7 +510,7 @@ export function useSubscriptionsMutations() {
 
       const receiver = payer !== signer.address ? address(payer) : undefined;
 
-      const { instructions } = buildRevokeSubscription({
+      const instruction = getRevokeSubscriptionOverlayInstruction({
         authority: signer,
         subscriptionPda: address(subscriptionPda),
         planPda: address(planPda),
@@ -512,7 +518,7 @@ export function useSubscriptionsMutations() {
         programAddress: progId,
       });
 
-      const signature = await signAndSend(instructions, signer);
+      const signature = await signAndSend([instruction], signer);
       return { signature };
     },
     onSuccess: (res) => {
@@ -537,14 +543,14 @@ export function useSubscriptionsMutations() {
 
       const receiver = payer !== signer.address ? address(payer) : undefined;
 
-      const { instructions: cancelIxs } = await buildCancelSubscription({
+      const cancelIx = await getCancelSubscriptionOverlayInstructionAsync({
         subscriber: signer,
         planPda: address(planPda),
         subscriptionPda: address(subscriptionPda),
         programAddress: progId,
       });
 
-      const { instructions: revokeIxs } = buildRevokeSubscription({
+      const revokeIx = getRevokeSubscriptionOverlayInstruction({
         authority: signer,
         subscriptionPda: address(subscriptionPda),
         planPda: address(planPda),
@@ -552,7 +558,7 @@ export function useSubscriptionsMutations() {
         programAddress: progId,
       });
 
-      const signature = await signAndSend([...cancelIxs, ...revokeIxs], signer);
+      const signature = await signAndSend([cancelIx, revokeIx], signer);
       return { signature };
     },
     onSuccess: (res) => {
@@ -607,7 +613,7 @@ export function useSubscriptionsMutations() {
 
       const transferEntries: SubscriberTransfer[] = await Promise.all(
         payable.map(async (sub) => {
-          const { instructions } = await buildTransferSubscription({
+          const instruction = await getTransferSubscriptionOverlayInstructionAsync({
             caller: signer,
             delegator: address(sub.delegator),
             tokenMint: mintAddr,
@@ -618,7 +624,7 @@ export function useSubscriptionsMutations() {
             tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
             programAddress: progId,
           });
-          return { subscriber: sub, instruction: instructions[0] };
+          return { subscriber: sub, instruction };
         })
       );
 
@@ -735,7 +741,7 @@ export function useSubscriptionsMutations() {
         }
 
         for (const sub of payable) {
-          const { instructions } = await buildTransferSubscription({
+          const instruction = await getTransferSubscriptionOverlayInstructionAsync({
             caller: signer,
             delegator: address(sub.delegator),
             tokenMint: mintAddr,
@@ -746,7 +752,7 @@ export function useSubscriptionsMutations() {
             tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
             programAddress: progId,
           });
-          transferEntries.push({ subscriber: sub, instruction: instructions[0] });
+          transferEntries.push({ subscriber: sub, instruction });
         }
       }
 
@@ -814,13 +820,12 @@ export function useSubscriptionsMutations() {
 
       const revokeIxs = delegations.map(({ address: account, payer }) => {
         const receiver = payer !== signer.address ? address(payer) : undefined;
-        const { instructions } = buildRevokeDelegation({
+        return getRevokeDelegationOverlayInstruction({
           authority: signer,
           delegationAccount: address(account),
           receiver,
           programAddress: progId,
         });
-        return instructions[0];
       });
 
       const batches = packInstructionBatches(revokeIxs, signer);

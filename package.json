@@ -13,19 +13,16 @@
     }
   },
   "scripts": {
-    "generate": "codama run js rust"
+    "generate-idl": "cd programs/subscriptions && GENERATE_IDL=1 cargo check",
+    "generate-clients": "tsx ./scripts/generate-clients.ts"
   },
   "devDependencies": {
-    "@codama/cli": "latest",
-    "@codama/nodes": "^1.5.1",
-    "@codama/nodes-from-anchor": "latest",
-    "@codama/renderers-js": "latest",
-    "@codama/renderers-rust": "latest",
-    "@codama/visitors": "^1.5.1",
+    "@codama/nodes-from-anchor": "^1.4.1",
+    "@codama/renderers-js": "^2.2.0",
+    "@codama/renderers-rust": "^1.2.9",
     "@types/node": "^25.0.10",
-    "typescript": "latest"
-  },
-  "dependencies": {
-    "gill": "^0.14.0"
+    "codama": "^1.6.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.3"
   }
 }

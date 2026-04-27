@@ -1,3 +1,4 @@
+import type { Instruction } from '@solana/kit';
 import {
   type Connection,
   type Keypair,
@@ -8,7 +9,6 @@ import {
   TransactionInstruction,
 } from '@solana/web3.js';
 import { type KitInstruction, SolInstruction } from '@swig-wallet/kit';
-import type { Instruction } from 'gill';
 
 export type SmartWalletInstruction = Instruction | KitInstruction;
 

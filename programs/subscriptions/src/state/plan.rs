@@ -21,6 +21,9 @@ pub const PLAN_DISCRIMINATOR_OFFSET: usize = 0;
 /// **PDA seeds:** `["plan", owner, plan_id]`
 #[repr(C, packed)]
 #[derive(CodamaAccount)]
+#[codama(seed(type = string(utf8), value = "plan"))]
+#[codama(seed(name = "owner", type = public_key))]
+#[codama(seed(name = "planId", type = number(u64)))]
 pub struct Plan {
     /// Account type discriminator ([`AccountDiscriminator::Plan`]).
     pub discriminator: u8,

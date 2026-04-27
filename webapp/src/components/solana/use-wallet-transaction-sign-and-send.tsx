@@ -1,19 +1,23 @@
 import { useMemo } from 'react'
-import type { Instruction, TransactionSendingSigner } from 'gill'
+import type { Instruction, TransactionSendingSigner } from '@solana/kit'
 import {
+  appendTransactionMessageInstructions,
   createSolanaRpc,
-  createTransaction,
+  createTransactionMessage,
   compileTransaction,
   getBase64EncodedWireTransaction,
+  pipe,
+  setTransactionMessageFeePayerSigner,
+  setTransactionMessageLifetimeUsingBlockhash,
   signAndSendTransactionMessageWithSigners,
   getBase58Decoder,
-} from 'gill'
+} from '@solana/kit'
 import { useClusterConfig } from '@/hooks/use-cluster-config'
 
 /**
  * Hook to build, sign via wallet, and send transactions.
  * Mirrors the working perena pattern:
- * - build a full gill transaction
+ * - build a full kit transaction message
  * - (best-effort) simulate via RPC
  * - request wallet sign+send
  */
@@ -25,12 +29,12 @@ export function useWalletTransactionSignAndSend() {
     const { value: latestBlockhash } = await rpc.getLatestBlockhash().send()
     const instructions = Array.isArray(ix) ? ix : [ix]
 
-    const transaction = createTransaction({
-      feePayer: signer,
-      version: 0,
-      latestBlockhash,
-      instructions,
-    })
+    const transaction = pipe(
+      createTransactionMessage({ version: 0 }),
+      tx => setTransactionMessageFeePayerSigner(signer, tx),
+      tx => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
+      tx => appendTransactionMessageInstructions(instructions, tx),
+    )
 
     // Best-effort simulate before asking wallet to sign+send
     try {

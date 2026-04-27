@@ -16,7 +16,7 @@ jobs:
       - name: Generate IDL
         run: cd programs/subscriptions && cargo build
       - name: Generate clients
-        run: pnpm run generate
+        run: pnpm run generate-clients
       - name: Check for uncommitted changes
         run: |
           if [ -n "$(git status --porcelain)" ]; then

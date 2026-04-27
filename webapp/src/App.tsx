@@ -14,7 +14,7 @@ import { useNetworkConfig } from '@/hooks/use-token-config'
 import { clusterIdToNetwork } from '@/lib/api-client'
 import { useClusterConfig } from '@/hooks/use-cluster-config'
 import { useQuery } from '@tanstack/react-query'
-import { createSolanaRpc } from 'gill'
+import { createSolanaRpc } from '@solana/kit'
 
 function useRpcReachable() {
   const { id, url } = useClusterConfig()

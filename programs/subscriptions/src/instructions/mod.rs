@@ -53,7 +53,8 @@ pub enum SubscriptionsInstruction {
     #[codama(account(
         name = "subscription_authority",
         writable,
-        docs = "The subscription_authority PDA that will be the delegate instance for this token"
+        docs = "The subscription_authority PDA that will be the delegate instance for this token",
+        default_value = pda("subscriptionAuthority", [seed("user", account("owner")), seed("tokenMint", account("token_mint"))])
     ))]
     #[codama(account(
         name = "token_mint",
@@ -158,8 +159,16 @@ pub enum SubscriptionsInstruction {
         signer,
         docs = "The delegatee signing the transfer"
     ))]
-    #[codama(account(name = "event_authority", docs = "The event authority PDA"))]
-    #[codama(account(name = "self_program", docs = "This program (for self-CPI)"))]
+    #[codama(account(
+        name = "event_authority",
+        docs = "The event authority PDA",
+        default_value = public_key("3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7")
+    ))]
+    #[codama(account(
+        name = "self_program",
+        docs = "This program (for self-CPI)",
+        default_value = public_key("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44")
+    ))]
     TransferFixed(#[codama(name = "transfer_data")] TransferData) = 4,
 
     #[codama(account(
@@ -187,8 +196,16 @@ pub enum SubscriptionsInstruction {
         signer,
         docs = "The delegatee signing the transfer"
     ))]
-    #[codama(account(name = "event_authority", docs = "The event authority PDA"))]
-    #[codama(account(name = "self_program", docs = "This program (for self-CPI)"))]
+    #[codama(account(
+        name = "event_authority",
+        docs = "The event authority PDA",
+        default_value = public_key("3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7")
+    ))]
+    #[codama(account(
+        name = "self_program",
+        docs = "This program (for self-CPI)",
+        default_value = public_key("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44")
+    ))]
     TransferRecurring(#[codama(name = "transfer_data")] TransferData) = 5,
 
     #[codama(account(
@@ -263,8 +280,16 @@ pub enum SubscriptionsInstruction {
         docs = "The authorized puller (plan owner or whitelisted)"
     ))]
     #[codama(account(name = "token_program", docs = "Token program"))]
-    #[codama(account(name = "event_authority", docs = "The event authority PDA"))]
-    #[codama(account(name = "self_program", docs = "This program (for self-CPI)"))]
+    #[codama(account(
+        name = "event_authority",
+        docs = "The event authority PDA",
+        default_value = public_key("3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7")
+    ))]
+    #[codama(account(
+        name = "self_program",
+        docs = "This program (for self-CPI)",
+        default_value = public_key("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44")
+    ))]
     TransferSubscription(#[codama(name = "transfer_data")] TransferData) = 10,
 
     #[codama(account(
@@ -278,7 +303,8 @@ pub enum SubscriptionsInstruction {
     #[codama(account(
         name = "subscription_pda",
         writable,
-        docs = "The subscription PDA being created"
+        docs = "The subscription PDA being created",
+        default_value = pda("subscriptionDelegation", [seed("planPda", account("plan_pda")), seed("subscriber", account("subscriber"))])
     ))]
     #[codama(account(
         name = "subscription_authority_pda",
@@ -289,8 +315,16 @@ pub enum SubscriptionsInstruction {
         docs = "The system program",
         default_value = program("system")
     ))]
-    #[codama(account(name = "event_authority", docs = "The event authority PDA"))]
-    #[codama(account(name = "self_program", docs = "This program (for self-CPI)"))]
+    #[codama(account(
+        name = "event_authority",
+        docs = "The event authority PDA",
+        default_value = public_key("3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7")
+    ))]
+    #[codama(account(
+        name = "self_program",
+        docs = "This program (for self-CPI)",
+        default_value = public_key("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44")
+    ))]
     Subscribe(#[codama(name = "subscribe_data")] SubscribeData) = 11,
 
     #[codama(account(
@@ -302,13 +336,28 @@ pub enum SubscriptionsInstruction {
     #[codama(account(
         name = "subscription_pda",
         writable,
-        docs = "The subscription PDA being cancelled"
+        docs = "The subscription PDA being cancelled",
+        default_value = pda("subscriptionDelegation", [seed("planPda", account("plan_pda")), seed("subscriber", account("subscriber"))])
     ))]
-    #[codama(account(name = "event_authority", docs = "The event authority PDA"))]
-    #[codama(account(name = "self_program", docs = "This program (for self-CPI)"))]
+    #[codama(account(
+        name = "event_authority",
+        docs = "The event authority PDA",
+        default_value = public_key("3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7")
+    ))]
+    #[codama(account(
+        name = "self_program",
+        docs = "This program (for self-CPI)",
+        default_value = public_key("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44")
+    ))]
     CancelSubscription = 12,
 
-    #[codama(account(name = "event_authority", signer, docs = "The event authority PDA"))]
+    #[codama(skip)]
+    #[codama(account(
+        name = "event_authority",
+        signer,
+        docs = "The event authority PDA",
+        default_value = public_key("3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7")
+    ))]
     EmitEvent = 228,
 }
 

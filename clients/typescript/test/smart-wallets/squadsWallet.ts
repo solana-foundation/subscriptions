@@ -1,3 +1,4 @@
+import type { Address, Instruction } from '@solana/kit';
 import {
   type Connection,
   Keypair,
@@ -8,7 +9,6 @@ import {
   TransactionMessage,
 } from '@solana/web3.js';
 import * as squads from '@sqds/multisig';
-import type { Address, Instruction } from 'gill';
 import type { SmartWallet } from './SmartWallet.ts';
 import { toWeb3Instruction } from './utils.ts';
 

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Address } from '@solana/kit';
-import { buildCancelSubscription } from '@subscriptions/client';
+import { getCancelSubscriptionOverlayInstructionAsync } from '@subscriptions/client';
 import { useWallet } from '@/contexts/WalletContext';
 import { useSavedValues } from '@/contexts/SavedValuesContext';
 import { getProgramAddress } from '@/lib/program';
@@ -23,13 +23,13 @@ export function CancelSubscription() {
         const signer = createSigner();
         if (!signer) return;
 
-        const { instructions } = await buildCancelSubscription({
+        const instruction = await getCancelSubscriptionOverlayInstructionAsync({
             subscriber: signer, planPda: planPda.trim() as Address,
             subscriptionPda: subscriptionPda.trim() as Address,
             programAddress: getProgramAddress(),
         });
 
-        await send(instructions, {
+        await send([instruction], {
             action: 'CancelSubscription',
             values: { planPda: planPda.trim(), subscriptionPda: subscriptionPda.trim() },
         });

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Address } from '@solana/kit';
-import { buildUpdatePlan, PlanStatus } from '@subscriptions/client';
+import { getUpdatePlanOverlayInstruction, PlanStatus } from '@subscriptions/client';
 import { useWallet } from '@/contexts/WalletContext';
 import { useSavedValues } from '@/contexts/SavedValuesContext';
 import { getProgramAddress } from '@/lib/program';
@@ -30,14 +30,14 @@ export function UpdatePlan() {
         const signer = createSigner();
         if (!signer) return;
 
-        const { instructions } = buildUpdatePlan({
+        const instruction = getUpdatePlanOverlayInstruction({
             owner: signer, planPda: planPda.trim() as Address,
             status: statusKey === 'Active' ? PlanStatus.Active : PlanStatus.Sunset,
             endTs: BigInt(endTs), metadataUri: metadataUri.trim(),
             pullers: parseAddressList(pullers), programAddress: getProgramAddress(),
         });
 
-        await send(instructions, { action: 'UpdatePlan', values: { planPda: planPda.trim() } });
+        await send([instruction], { action: 'UpdatePlan', values: { planPda: planPda.trim() } });
     }
 
     return (

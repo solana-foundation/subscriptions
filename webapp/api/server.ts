@@ -291,7 +291,9 @@ async function handleStartValidator(): Promise<Response> {
 
   startingValidator = true
   return new Promise((resolve) => {
-    const child = spawn('surfpool', ['start', '--no-tui', '--port', '8899', '--offline', '--yes'], {
+    // Use the surfnet-setup runbook so the program is installed at its
+    // canonical address (no keypair required) on a fresh validator.
+    const child = spawn('surfpool', ['start', '--no-tui', '--port', '8899', '--offline', '--yes', '--runbook', 'surfnet-setup'], {
       cwd: PROJECT_ROOT,
       stdio: ['ignore', 'pipe', 'pipe'],
       detached: false,

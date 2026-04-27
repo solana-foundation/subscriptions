@@ -8,7 +8,7 @@ export const CURRENT_PROGRAM_VERSION = 1;
 
 /** Default zero address used for padding arrays (e.g. empty puller/destination slots). */
 export const ZERO_ADDRESS =
-  '11111111111111111111111111111111' as import('gill').Address<'11111111111111111111111111111111'>;
+  '11111111111111111111111111111111' as import('@solana/kit').Address<'11111111111111111111111111111111'>;
 
 /** Byte offset of the account discriminator in the Header struct. */
 export const DISCRIMINATOR_OFFSET = 0;
@@ -48,26 +48,5 @@ export const MAX_PLAN_PULLERS = 4;
 /** Maximum byte length of a Plan's metadata URI. */
 export const METADATA_URI_LEN = 128;
 
-/** Delegation kind metadata for UI display. Maps to the on-chain AccountDiscriminator enum. */
-export const DELEGATION_KINDS = {
-  fixed: {
-    id: 'fixed',
-    label: 'Fixed',
-    description: 'One-time delegation with a fixed total amount',
-    icon: 'Coins', // lucide-react icon name
-  },
-  recurring: {
-    id: 'recurring',
-    label: 'Recurring',
-    description: 'Periodic delegation with amount per time period',
-    icon: 'RefreshCw', // lucide-react icon name
-  },
-  subscription: {
-    id: 'subscription',
-    label: 'Subscription',
-    description: 'Plan-based recurring subscription delegation',
-    icon: 'CalendarCheck',
-  },
-} as const;
-
-export type DelegationKindId = keyof typeof DELEGATION_KINDS;
+/** On-chain delegation variant identifier (matches the `kind` tag in the `Delegation` union). */
+export type DelegationKindId = 'fixed' | 'recurring' | 'subscription';

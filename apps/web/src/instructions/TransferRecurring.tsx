@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Address } from '@solana/kit';
-import { buildTransferRecurring } from '@subscriptions/client';
+import { getTransferRecurringOverlayInstructionAsync } from '@subscriptions/client';
 import { findAssociatedTokenPda } from '@solana-program/token';
 import { useWallet } from '@/contexts/WalletContext';
 import { useSavedValues } from '@/contexts/SavedValuesContext';
@@ -41,14 +41,14 @@ export function TransferRecurring() {
             receiver = derived;
         }
 
-        const { instructions } = await buildTransferRecurring({
+        const instruction = await getTransferRecurringOverlayInstructionAsync({
             delegatee: signer, delegator: delegatorAddress, delegatorAta,
             tokenMint: mintAddress, delegationPda: delegationPda.trim() as Address,
             amount: BigInt(amount), receiverAta: receiver, tokenProgram,
             programAddress: getProgramAddress(),
         });
 
-        await send(instructions, {
+        await send([instruction], {
             action: 'TransferRecurring',
             values: { delegationPda: delegationPda.trim(), mint: mintAddress, amount },
         });

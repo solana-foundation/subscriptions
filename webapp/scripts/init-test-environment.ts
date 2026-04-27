@@ -3,7 +3,7 @@
  * Idempotent - checks on-chain state before creating resources
  */
 
-import { createSolanaRpc, address } from 'gill'
+import { createSolanaRpc, address } from '@solana/kit'
 import { readConfig, addToken, clearConfig, setProgramAddress } from './config-manager'
 import { createMockUsdc } from './helpers'
 

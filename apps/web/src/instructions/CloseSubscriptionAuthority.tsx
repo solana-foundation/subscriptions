@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Address } from '@solana/kit';
-import { buildCloseSubscriptionAuthority } from '@subscriptions/client';
+import { getCloseSubscriptionAuthorityOverlayInstructionAsync } from '@subscriptions/client';
 import { useWallet } from '@/contexts/WalletContext';
 import { useSavedValues } from '@/contexts/SavedValuesContext';
 import { getProgramAddress } from '@/lib/program';
@@ -22,11 +22,11 @@ export function CloseSubscriptionAuthority() {
         const signer = createSigner();
         if (!signer) return;
 
-        const { instructions } = await buildCloseSubscriptionAuthority({
+        const instruction = await getCloseSubscriptionAuthorityOverlayInstructionAsync({
             user: signer, tokenMint: mint.trim() as Address, programAddress: getProgramAddress(),
         });
 
-        await send(instructions, { action: 'CloseSubscriptionAuthority', values: { mint: mint.trim() } });
+        await send([instruction], { action: 'CloseSubscriptionAuthority', values: { mint: mint.trim() } });
     }
 
     return (

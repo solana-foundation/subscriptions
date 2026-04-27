@@ -21,6 +21,9 @@ use crate::{
 /// **PDA seeds:** `["subscription", plan_pda, subscriber]`
 #[repr(C, packed)]
 #[derive(Debug, CodamaAccount)]
+#[codama(seed(type = string(utf8), value = "subscription"))]
+#[codama(seed(name = "planPda", type = public_key))]
+#[codama(seed(name = "subscriber", type = public_key))]
 pub struct SubscriptionDelegation {
     /// Common delegation header (discriminator, version, bump, delegator, delegatee, payer).
     ///
