@@ -23,13 +23,16 @@ pub struct InitializeMultiDelegateAccounts<'a> {
     pub user_ata: &'a AccountView,
     pub system_program: &'a AccountView,
     pub token_program: &'a AccountView,
+    /// The account funding rent. Defaults to `user` if no extra account is provided.
+    pub payer: &'a AccountView,
 }
 
 impl<'a> TryFrom<&'a [AccountView]> for InitializeMultiDelegateAccounts<'a> {
     type Error = ProgramError;
 
     fn try_from(accounts: &'a [AccountView]) -> Result<Self, Self::Error> {
-        let [user, multi_delegate, token_mint, user_ata, system_program, token_program] = accounts
+        let [user, multi_delegate, token_mint, user_ata, system_program, token_program, rem @ ..] =
+            accounts
         else {
             return Err(MultiDelegatorError::NotEnoughAccountKeys.into());
         };
@@ -43,6 +46,14 @@ impl<'a> TryFrom<&'a [AccountView]> for InitializeMultiDelegateAccounts<'a> {
         TokenProgramInterface::check(token_program)?;
         SystemAccount::check(system_program)?;
 
+        let payer = if let Some(payer) = rem.first() {
+            SignerAccount::check(payer)?;
+            WritableAccount::check(payer)?;
+            payer
+        } else {
+            user
+        };
+
         Ok(Self {
             multi_delegate,
             user,
@@ -50,6 +61,7 @@ impl<'a> TryFrom<&'a [AccountView]> for InitializeMultiDelegateAccounts<'a> {
             user_ata,
             system_program,
             token_program,
+            payer,
         })
     }
 }
@@ -81,10 +93,16 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
         Seed::from(&bump_binding),
     ];
 
-    // Initialize the account if it doesn't exist
+    // Initialize the account if it doesn't exist.
+    //
+    // Idempotency note: when the PDA already exists (e.g., re-running init
+    // to refresh the SPL `Approve` after the user revoked it), the trailing
+    // optional `payer` account is intentionally NOT used to overwrite the
+    // stored payer. The original sponsor recorded at first creation remains
+    // the rent recipient on close.
     if accounts.multi_delegate.data_len() == 0 {
         ProgramAccount::init::<MultiDelegate>(
-            accounts.user,
+            accounts.payer,
             accounts.multi_delegate,
             &seeds,
             MultiDelegate::LEN,
@@ -96,6 +114,7 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
             &mut data,
             accounts.user.address(),
             accounts.token_mint.address(),
+            accounts.payer.address(),
             bump,
             init_id,
         )?;
@@ -109,6 +128,10 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
 
     // Approve delegation on the correct token program (SPL Token vs Token-2022).
     // The instruction data is the same, but the program id differs.
+    //
+    // Authority must be `accounts.user` (the ATA owner). A sponsor cannot
+    // approve on the user's ATA — sponsor only funds rent. The user must
+    // still sign this instruction so the Approve CPI succeeds.
     if accounts.token_program.address().eq(&TOKEN_2022_PROGRAM_ID) {
         Approve2022 {
             token_program: accounts.token_program.address(),
@@ -143,7 +166,10 @@ mod tests {
             constants::{
                 MINT_DECIMALS, SYSTEM_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID,
             },
-            utils::{fetch_account, init_ata, init_mint, initialize_multidelegate_action, setup},
+            utils::{
+                fetch_account, init_ata, init_mint, init_wallet, initialize_multidelegate_action,
+                initialize_multidelegate_action_with_sponsor, setup,
+            },
         },
         AccountDiscriminator, MultiDelegate, MultiDelegatorError,
     };
@@ -174,12 +200,53 @@ mod tests {
         );
         assert_eq!(multi_delegate.user.to_bytes(), user.pubkey().to_bytes());
         assert_eq!(multi_delegate.token_mint.to_bytes(), mint.to_bytes());
+        // Default payer is the user when no sponsor is supplied.
+        assert_eq!(multi_delegate.payer.to_bytes(), user.pubkey().to_bytes());
         assert_eq!(multi_delegate.bump, bump);
         assert!(multi_delegate.init_id >= 0);
 
         // Verify delegation
         let ata_account = fetch_account::<spl_token_2022::state::Account>(litesvm, &user_ata);
         assert!(ata_account.delegate.is_some());
+        assert_eq!(ata_account.delegate.unwrap(), multi_delegate_pda);
+        assert_eq!(ata_account.delegated_amount, u64::MAX);
+    }
+
+    #[test]
+    fn initialize_multidelegate_with_sponsor() {
+        let (litesvm, user) = &mut setup();
+        let sponsor = init_wallet(litesvm, 10_000_000_000);
+
+        let mint = init_mint(
+            litesvm,
+            TOKEN_PROGRAM_ID,
+            MINT_DECIMALS,
+            1_000_000_000,
+            Some(user.pubkey()),
+            &[],
+        );
+        let user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
+
+        let user_balance_before = litesvm.get_account(&user.pubkey()).unwrap().lamports;
+        let sponsor_balance_before = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
+
+        let (res, multi_delegate_pda, _bump) =
+            initialize_multidelegate_action_with_sponsor(litesvm, user, mint, Some(&sponsor));
+        res.assert_ok();
+
+        let account = litesvm.get_account(&multi_delegate_pda).unwrap();
+        let md = MultiDelegate::load(&account.data).unwrap();
+        assert_eq!(md.user.to_bytes(), user.pubkey().to_bytes());
+        assert_eq!(md.payer.to_bytes(), sponsor.pubkey().to_bytes());
+
+        // Sponsor pays both rent and the transaction fee. User must not be charged.
+        let user_balance_after = litesvm.get_account(&user.pubkey()).unwrap().lamports;
+        let sponsor_balance_after = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
+        assert_eq!(user_balance_after, user_balance_before);
+        assert!(sponsor_balance_after < sponsor_balance_before);
+
+        // Verify Approve still went through with user as the ATA authority.
+        let ata_account = fetch_account::<spl_token_2022::state::Account>(litesvm, &user_ata);
         assert_eq!(ata_account.delegate.unwrap(), multi_delegate_pda);
         assert_eq!(ata_account.delegated_amount, u64::MAX);
     }
@@ -537,9 +604,13 @@ mod tests {
         }
     }
 
+    /// A trailing account is interpreted as the optional sponsor payer.
+    /// A non-signer extra must be rejected because the payer slot requires a
+    /// signer.
     #[test]
-    fn extra_accounts_rejected() {
+    fn non_signer_payer_rejected() {
         use solana_instruction::{AccountMeta, Instruction};
+        use solana_pubkey::Pubkey;
         use solana_signer::Signer;
 
         use crate::{
@@ -564,7 +635,8 @@ mod tests {
 
         let (multi_delegate_pda, _bump) = get_multidelegate_pda(&user.pubkey(), &mint);
 
-        let extra_account = user.pubkey();
+        // Random pubkey that is NOT a signer in this transaction.
+        let extra_account = Pubkey::new_unique();
 
         let ix = Instruction {
             program_id: PROGRAM_ID,
@@ -581,6 +653,6 @@ mod tests {
         };
 
         let res = build_and_send_transaction(litesvm, &[user], &user.pubkey(), &ix);
-        assert!(res.is_err());
+        res.assert_err(MultiDelegatorError::NotSigner);
     }
 }

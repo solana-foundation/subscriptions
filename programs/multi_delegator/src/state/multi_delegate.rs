@@ -23,6 +23,9 @@ pub struct MultiDelegate {
     pub user: Address,
     /// The SPL token mint this delegation covers.
     pub token_mint: Address,
+    /// The account that funded the PDA creation. Receives rent on close.
+    /// Defaults to `user` when no separate sponsor was provided at init time.
+    pub payer: Address,
     /// PDA bump seed.
     pub bump: u8,
     /// Initialization identifier set from `Clock::slot` when the account is created.
@@ -44,6 +47,7 @@ impl MultiDelegate {
         bytes: &'a mut [u8],
         user: &Address,
         token_mint: &Address,
+        payer: &Address,
         bump: u8,
         init_id: i64,
     ) -> Result<&'a Self, ProgramError> {
@@ -54,6 +58,7 @@ impl MultiDelegate {
         account.discriminator = AccountDiscriminator::MultiDelegate as u8;
         account.user = *user;
         account.token_mint = *token_mint;
+        account.payer = *payer;
         account.bump = bump;
         account.init_id = init_id;
         Ok(account)

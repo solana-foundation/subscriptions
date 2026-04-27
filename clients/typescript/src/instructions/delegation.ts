@@ -21,6 +21,7 @@ import { getDelegationPDA, getMultiDelegatePDA } from '../pdas.js';
  * @param params.tokenMint - SPL token mint address.
  * @param params.userAta - Owner's associated token account for the mint.
  * @param params.tokenProgram - Token program (typically Token-2022).
+ * @param params.payer - Optional sponsor that funds the rent. Defaults to `owner` when omitted.
  * @returns The instruction array and the derived `multiDelegatePda`.
  */
 export async function buildInitMultiDelegate(params: {
@@ -28,9 +29,11 @@ export async function buildInitMultiDelegate(params: {
   tokenMint: Address;
   userAta: Address;
   tokenProgram: Address;
+  payer?: TransactionSigner;
   programAddress?: Address;
 }): Promise<{ instructions: Instruction[]; multiDelegatePda: Address }> {
-  const { owner, tokenMint, userAta, tokenProgram, programAddress } = params;
+  const { owner, tokenMint, userAta, tokenProgram, payer, programAddress } =
+    params;
   const config = programAddress ? { programAddress } : undefined;
   const [multiDelegatePda] = await getMultiDelegatePDA(
     owner.address,
@@ -48,6 +51,21 @@ export async function buildInitMultiDelegate(params: {
     },
     config,
   );
+
+  if (payer) {
+    const accounts = [
+      ...instruction.accounts,
+      {
+        address: payer.address,
+        role: AccountRole.WRITABLE_SIGNER,
+        signer: payer,
+      },
+    ];
+    return {
+      instructions: [{ ...instruction, accounts }],
+      multiDelegatePda,
+    };
+  }
 
   return { instructions: [instruction], multiDelegatePda };
 }
@@ -225,16 +243,28 @@ export async function buildCreateRecurringDelegation(params: {
 }
 
 /**
- * Builds a `revokeDelegation` instruction that permanently closes a delegation account.
+ * Builds a `revokeDelegation` instruction that permanently closes a delegation
+ * (or subscription) account.
+ *
+ * Trailing-account layout depends on the delegation kind read on-chain:
+ *
+ * * Fixed / Recurring: `[receiver?]` — only required if `payer` differs from `authority`.
+ * * Subscription: `[planPda, receiver?]` — `planPda` is required for subscription
+ *   PDAs so the program can prove plan-ended / plan-closed conditions and bind
+ *   the subscription to the passed plan.
  *
  * @param params.authority - The delegator or sponsor authorized to revoke.
  * @param params.delegationAccount - Address of the delegation PDA to revoke.
- * @param params.receiver - Rent destination when payer differs from authority (e.g., delegator revoking a sponsor-funded delegation).
+ * @param params.planPda - Required when revoking a subscription PDA. Pass the
+ *   plan PDA the subscription was created against. Ignored for fixed/recurring.
+ * @param params.receiver - Rent destination when the recorded payer differs
+ *   from the authority (e.g., subscriber revoking a sponsor-funded subscription).
  * @returns The instruction array.
  */
 export function buildRevokeDelegation(params: {
   authority: TransactionSigner;
   delegationAccount: Address;
+  planPda?: Address;
   receiver?: Address;
   programAddress?: Address;
 }): { instructions: Instruction[] } {
@@ -249,11 +279,16 @@ export function buildRevokeDelegation(params: {
     config,
   );
 
+  const trailing: Array<{ address: Address; role: number }> = [];
+  if (params.planPda) {
+    trailing.push({ address: params.planPda, role: AccountRole.READONLY });
+  }
   if (params.receiver) {
-    const accounts = [
-      ...instruction.accounts,
-      { address: params.receiver, role: AccountRole.WRITABLE },
-    ];
+    trailing.push({ address: params.receiver, role: AccountRole.WRITABLE });
+  }
+
+  if (trailing.length > 0) {
+    const accounts = [...instruction.accounts, ...trailing];
     return { instructions: [{ ...instruction, accounts }] };
   }
 
@@ -266,11 +301,16 @@ export function buildRevokeDelegation(params: {
  *
  * @param params.user - The wallet that owns the multi-delegate account.
  * @param params.tokenMint - SPL token mint associated with the account.
+ * @param params.receiver - Required when the MultiDelegate was sponsor-funded
+ *   (i.e., the stored `payer` differs from `user`). Must equal the stored payer
+ *   address. The caller is responsible for fetching the on-chain MultiDelegate
+ *   account to determine whether a receiver is needed.
  * @returns The instruction array.
  */
 export async function buildCloseMultiDelegate(params: {
   user: TransactionSigner;
   tokenMint: Address;
+  receiver?: Address;
   programAddress?: Address;
 }): Promise<{ instructions: Instruction[] }> {
   const config = params.programAddress
@@ -289,6 +329,14 @@ export async function buildCloseMultiDelegate(params: {
     },
     config,
   );
+
+  if (params.receiver) {
+    const accounts = [
+      ...instruction.accounts,
+      { address: params.receiver, role: AccountRole.WRITABLE },
+    ];
+    return { instructions: [{ ...instruction, accounts }] };
+  }
 
   return { instructions: [instruction] };
 }

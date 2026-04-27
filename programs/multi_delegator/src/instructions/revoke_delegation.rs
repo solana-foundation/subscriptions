@@ -7,7 +7,7 @@ use pinocchio::{
 use crate::{
     check_and_update_version,
     state::{
-        common::AccountDiscriminator, fixed_delegation::FixedDelegation,
+        common::AccountDiscriminator, fixed_delegation::FixedDelegation, plan::Plan,
         recurring_delegation::RecurringDelegation, subscription_delegation::SubscriptionDelegation,
     },
     AccountCheck, AccountClose, Header, MultiDelegatorError, ProgramAccount, SignerAccount,
@@ -15,14 +15,18 @@ use crate::{
 };
 
 /// Validated accounts for the [`RevokeDelegation`](crate::MultiDelegatorInstruction::RevokeDelegation) instruction.
+///
+/// Trailing accounts (`rem`) are parsed inside `process` based on the
+/// delegation kind read from the account data, since the layout differs
+/// between fixed/recurring (just an optional `receiver`) and subscription
+/// (a required `plan_pda` followed by an optional `receiver`).
 pub struct RevokeDelegationAccounts<'a> {
-    /// The delegator revoking the delegation (must be signer + writable; receives rent if self-funded).
+    /// The delegator or sponsor revoking the delegation (must be signer + writable).
     pub authority: &'a AccountView,
     /// The delegation PDA to close.
     pub delegation_account: &'a AccountView,
-    /// Optional third-party account to receive rent (required when the original
-    /// payer differs from the delegator).
-    pub receiver: Option<&'a AccountView>,
+    /// Trailing accounts whose interpretation depends on delegation kind.
+    pub rem: &'a [AccountView],
 }
 
 impl<'a> TryFrom<&'a [AccountView]> for RevokeDelegationAccounts<'a> {
@@ -41,7 +45,7 @@ impl<'a> TryFrom<&'a [AccountView]> for RevokeDelegationAccounts<'a> {
         Ok(Self {
             authority,
             delegation_account,
-            receiver: rem.first(),
+            rem,
         })
     }
 }
@@ -52,9 +56,23 @@ pub const DISCRIMINATOR: &u8 = &3;
 /// Revokes a delegation by closing the delegation PDA.
 /// The rent lamports are returned to the original payer.
 ///
-/// For Fixed/Recurring delegations: the delegator can close at any time;
-/// a third-party sponsor (original payer) can close only after expiry.
-/// For Subscriptions: requires cancellation first (expires_at_ts != 0) and expiration in the past.
+/// Trailing-account layout depends on the delegation kind read from the
+/// account data:
+///
+/// * Fixed / Recurring: `[receiver?]` — `receiver` required when the original
+///   payer differs from the authority.
+/// * Subscription: `[plan_pda, receiver?]` — `plan_pda` always required;
+///   `receiver` required when the original payer differs from the authority.
+///
+/// Authorization rules:
+///
+/// * Fixed / Recurring: the delegator can close at any time. The sponsor
+///   (original payer) can close only after the delegation's `expiry_ts` is in
+///   the past (and non-zero).
+/// * Subscription: the subscriber (delegator) can close once `expires_at_ts`
+///   has elapsed (set by `cancel_subscription`). The sponsor can close when
+///   the plan ended naturally, the plan account was deleted, or the
+///   subscriber cancelled and the subscription expired.
 pub fn process(accounts: &[AccountView]) -> ProgramResult {
     let accounts = RevokeDelegationAccounts::try_from(accounts)?;
 
@@ -67,20 +85,52 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
 
         let kind = AccountDiscriminator::try_from(data[DISCRIMINATOR_OFFSET])?;
 
-        match kind {
+        let receiver = match kind {
             AccountDiscriminator::SubscriptionDelegation => {
                 check_and_update_version(&mut data)?;
                 let subscription = SubscriptionDelegation::load_with_min_size(&data)?;
-
-                if subscription.header.delegator != *accounts.authority.address() {
-                    return Err(MultiDelegatorError::Unauthorized.into());
-                }
-
-                // Subscription must be cancelled (expires_at_ts != 0) and expired
                 let current_ts = Clock::get()?.unix_timestamp;
-                if subscription.expires_at_ts == 0 || subscription.expires_at_ts > current_ts {
-                    return Err(MultiDelegatorError::SubscriptionNotCancelled.into());
+
+                // Subscription branch consumes `[plan_pda, receiver?]`.
+                let plan_pda = accounts
+                    .rem
+                    .first()
+                    .ok_or(MultiDelegatorError::NotEnoughAccountKeys)?;
+                let receiver = accounts.rem.get(1);
+
+                // Bind the passed plan_pda to the subscription via header.delegatee.
+                if subscription.header.delegatee != *plan_pda.address() {
+                    return Err(MultiDelegatorError::SubscriptionPlanMismatch.into());
                 }
+
+                let is_sponsor = check_is_sponsor(&data, accounts.authority)?;
+
+                if is_sponsor {
+                    // Sponsor can revoke when subscription is cancelled+expired,
+                    // when the plan account has been closed, or when the plan
+                    // ended naturally.
+                    let sub_expired =
+                        subscription.expires_at_ts != 0 && subscription.expires_at_ts <= current_ts;
+                    let plan_closed = !plan_pda.owned_by(&crate::ID);
+                    let plan_ended = if plan_closed {
+                        false
+                    } else {
+                        let plan_data = plan_pda.try_borrow()?;
+                        let plan = Plan::load(&plan_data)?;
+                        plan.data.end_ts != 0 && current_ts > plan.data.end_ts
+                    };
+
+                    if !(sub_expired || plan_closed || plan_ended) {
+                        return Err(MultiDelegatorError::Unauthorized.into());
+                    }
+                } else {
+                    // Subscriber: must have cancelled and waited out the period.
+                    if subscription.expires_at_ts == 0 || subscription.expires_at_ts > current_ts {
+                        return Err(MultiDelegatorError::SubscriptionNotCancelled.into());
+                    }
+                }
+
+                receiver
             }
             AccountDiscriminator::FixedDelegation | AccountDiscriminator::RecurringDelegation => {
                 let is_sponsor = check_is_sponsor(&data, accounts.authority)?;
@@ -101,11 +151,13 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
                         return Err(MultiDelegatorError::Unauthorized.into());
                     }
                 }
+
+                accounts.rem.first()
             }
             _ => return Err(MultiDelegatorError::InvalidAccountDiscriminator.into()),
-        }
+        };
 
-        resolve_destination(&data, &accounts)?
+        resolve_destination(&data, accounts.authority, receiver)?
     };
 
     ProgramAccount::close(accounts.delegation_account, destination)
@@ -138,18 +190,17 @@ fn check_is_sponsor(data: &[u8], authority: &AccountView) -> Result<bool, Progra
 /// authority directly; otherwise require a receiver account matching payer.
 fn resolve_destination<'a>(
     data: &[u8],
-    accounts: &RevokeDelegationAccounts<'a>,
+    authority: &'a AccountView,
+    receiver: Option<&'a AccountView>,
 ) -> Result<&'a AccountView, ProgramError> {
     let payer_bytes: &[u8; 32] = data[PAYER_OFFSET..PAYER_OFFSET + 32]
         .try_into()
         .map_err(|_| MultiDelegatorError::InvalidPayerData)?;
 
-    if payer_bytes == accounts.authority.address().as_ref() {
-        Ok(accounts.authority)
+    if payer_bytes == authority.address().as_ref() {
+        Ok(authority)
     } else {
-        let receiver = accounts
-            .receiver
-            .ok_or(MultiDelegatorError::NotEnoughAccountKeys)?;
+        let receiver = receiver.ok_or(MultiDelegatorError::NotEnoughAccountKeys)?;
         WritableAccount::check(receiver)?;
         if receiver.address().as_ref() != payer_bytes {
             return Err(MultiDelegatorError::Unauthorized.into());
@@ -539,11 +590,12 @@ mod tests {
 
     #[test]
     fn revoke_subscription_without_cancel_rejected() {
-        let (mut litesvm, alice, _merchant, _mint, _plan_pda, _, subscription_pda) =
+        let (mut litesvm, alice, _merchant, _mint, plan_pda, _, subscription_pda) =
             setup_with_subscription();
 
         // Try to revoke without cancelling first
-        let result = RevokeSubscription::new(&mut litesvm, &alice, subscription_pda).execute();
+        let result =
+            RevokeSubscription::new(&mut litesvm, &alice, subscription_pda, plan_pda).execute();
         result.assert_err(MultiDelegatorError::SubscriptionNotCancelled);
 
         // Account should still exist
@@ -567,7 +619,7 @@ mod tests {
         move_clock_forward(&mut litesvm, hours(1));
 
         // Then revoke
-        RevokeSubscription::new(&mut litesvm, &alice, subscription_pda)
+        RevokeSubscription::new(&mut litesvm, &alice, subscription_pda, plan_pda)
             .execute()
             .assert_ok();
 
@@ -594,7 +646,8 @@ mod tests {
                 .expires_at_ts(current_ts() + days(1) as i64)
                 .execute();
 
-        let result = RevokeSubscription::new(&mut litesvm, &alice, subscription_pda).execute();
+        let result =
+            RevokeSubscription::new(&mut litesvm, &alice, subscription_pda, plan_pda).execute();
         result.assert_err(MultiDelegatorError::SubscriptionNotCancelled);
 
         // Account should still exist
@@ -703,7 +756,7 @@ mod tests {
         account.data[VERSION_OFFSET] = 0;
         litesvm.set_account(subscription_pda, account).unwrap();
 
-        RevokeSubscription::new(&mut litesvm, &alice, subscription_pda)
+        RevokeSubscription::new(&mut litesvm, &alice, subscription_pda, plan_pda)
             .execute()
             .assert_err(MultiDelegatorError::MigrationRequired);
     }
@@ -1030,5 +1083,247 @@ mod tests {
         };
 
         build_and_send_transaction(litesvm, &[signer], &signer.pubkey(), &ix)
+    }
+
+    /// Helper: spin up a sponsor-funded subscription, returning everything callers
+    /// need to drive subsequent revoke-subscription tests.
+    fn setup_sponsored_subscription(
+        plan_end_ts: i64,
+    ) -> (
+        litesvm::LiteSVM,
+        solana_keypair::Keypair, // alice (subscriber)
+        solana_keypair::Keypair, // merchant
+        solana_keypair::Keypair, // sponsor
+        Pubkey,                  // plan_pda
+        Pubkey,                  // subscription_pda
+    ) {
+        use crate::tests::{
+            constants::{MINT_DECIMALS, TOKEN_PROGRAM_ID},
+            pda::get_subscription_pda,
+            utils::{
+                init_ata, init_mint, init_wallet, initialize_multidelegate_action, setup,
+                CreatePlan, Subscribe,
+            },
+        };
+
+        let (mut litesvm, alice) = setup();
+        let merchant = solana_keypair::Keypair::new();
+        litesvm.airdrop(&merchant.pubkey(), 10_000_000_000).unwrap();
+        let sponsor = init_wallet(&mut litesvm, 10_000_000_000);
+
+        let mint = init_mint(
+            &mut litesvm,
+            TOKEN_PROGRAM_ID,
+            MINT_DECIMALS,
+            1_000_000_000,
+            Some(alice.pubkey()),
+            &[],
+        );
+        let _alice_ata = init_ata(&mut litesvm, mint, alice.pubkey(), 100_000_000);
+
+        initialize_multidelegate_action(&mut litesvm, &alice, mint)
+            .0
+            .assert_ok();
+
+        let (res, plan_pda) = CreatePlan::new(&mut litesvm, &merchant, mint)
+            .plan_id(1)
+            .amount(50_000_000)
+            .period_hours(1)
+            .end_ts(plan_end_ts)
+            .execute();
+        res.assert_ok();
+
+        let (_, plan_bump) = crate::tests::pda::get_plan_pda(&merchant.pubkey(), 1);
+
+        Subscribe::new(
+            &mut litesvm,
+            &alice,
+            merchant.pubkey(),
+            plan_pda,
+            1,
+            plan_bump,
+            mint,
+        )
+        .payer(&sponsor)
+        .execute()
+        .assert_ok();
+
+        let (subscription_pda, _) = get_subscription_pda(&plan_pda, &alice.pubkey());
+        (
+            litesvm,
+            alice,
+            merchant,
+            sponsor,
+            plan_pda,
+            subscription_pda,
+        )
+    }
+
+    #[test]
+    fn sponsor_revoke_subscription_when_plan_ended() {
+        let plan_end_ts = current_ts() + hours(2) as i64;
+        let (mut litesvm, _alice, _merchant, sponsor, plan_pda, subscription_pda) =
+            setup_sponsored_subscription(plan_end_ts);
+
+        let sub_rent = litesvm.get_account(&subscription_pda).unwrap().lamports;
+        let sponsor_balance_before = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
+
+        // Move past plan end.
+        move_clock_forward(&mut litesvm, hours(3));
+
+        RevokeSubscription::new(&mut litesvm, &sponsor, subscription_pda, plan_pda)
+            .execute()
+            .assert_ok();
+
+        let account_after = litesvm.get_account(&subscription_pda);
+        assert!(
+            account_after.is_none() || account_after.as_ref().map(|a| a.lamports).unwrap_or(0) == 0
+        );
+
+        let sponsor_balance_after = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
+        assert!(sponsor_balance_after >= sponsor_balance_before + sub_rent - 10_000);
+    }
+
+    #[test]
+    fn sponsor_revoke_subscription_when_plan_closed() {
+        use crate::{state::common::PlanStatus, tests::utils::DeletePlan};
+
+        let plan_end_ts = current_ts() + hours(2) as i64;
+        let (mut litesvm, _alice, merchant, sponsor, plan_pda, subscription_pda) =
+            setup_sponsored_subscription(plan_end_ts);
+
+        // Sunset, expire, and delete the plan.
+        crate::tests::utils::UpdatePlan::new(&mut litesvm, &merchant, plan_pda)
+            .status(PlanStatus::Sunset)
+            .end_ts(plan_end_ts)
+            .execute()
+            .assert_ok();
+
+        move_clock_forward(&mut litesvm, hours(3));
+
+        DeletePlan::new(&mut litesvm, &merchant, plan_pda)
+            .execute()
+            .assert_ok();
+
+        // Plan account is now system-owned (closed). Sponsor can revoke.
+        RevokeSubscription::new(&mut litesvm, &sponsor, subscription_pda, plan_pda)
+            .execute()
+            .assert_ok();
+
+        let account_after = litesvm.get_account(&subscription_pda);
+        assert!(
+            account_after.is_none() || account_after.as_ref().map(|a| a.lamports).unwrap_or(0) == 0
+        );
+    }
+
+    #[test]
+    fn sponsor_revoke_subscription_when_cancelled_and_expired() {
+        let plan_end_ts = current_ts() + days(30) as i64;
+        let (mut litesvm, alice, _merchant, sponsor, plan_pda, subscription_pda) =
+            setup_sponsored_subscription(plan_end_ts);
+
+        // Subscriber cancels.
+        CancelSubscription::new(&mut litesvm, &alice, plan_pda, subscription_pda)
+            .execute()
+            .assert_ok();
+
+        // Wait for the cancellation period to end.
+        move_clock_forward(&mut litesvm, hours(2));
+
+        let sub_rent = litesvm.get_account(&subscription_pda).unwrap().lamports;
+        let sponsor_balance_before = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
+
+        RevokeSubscription::new(&mut litesvm, &sponsor, subscription_pda, plan_pda)
+            .execute()
+            .assert_ok();
+
+        let sponsor_balance_after = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
+        assert!(sponsor_balance_after >= sponsor_balance_before + sub_rent - 10_000);
+    }
+
+    #[test]
+    fn sponsor_revoke_active_subscription_rejected() {
+        let plan_end_ts = current_ts() + days(30) as i64;
+        let (mut litesvm, _alice, _merchant, sponsor, plan_pda, subscription_pda) =
+            setup_sponsored_subscription(plan_end_ts);
+
+        // Plan still active, subscription not cancelled. Sponsor cannot revoke.
+        RevokeSubscription::new(&mut litesvm, &sponsor, subscription_pda, plan_pda)
+            .execute()
+            .assert_err(MultiDelegatorError::Unauthorized);
+    }
+
+    #[test]
+    fn sponsor_revoke_subscription_with_wrong_plan_pda_rejected() {
+        let plan_end_ts = current_ts() + hours(2) as i64;
+        let (mut litesvm, _alice, merchant, sponsor, _plan_pda, subscription_pda) =
+            setup_sponsored_subscription(plan_end_ts);
+
+        // Create a second, unrelated plan.
+        let mint = init_mint(
+            &mut litesvm,
+            crate::tests::constants::TOKEN_PROGRAM_ID,
+            crate::tests::constants::MINT_DECIMALS,
+            1_000_000_000,
+            None,
+            &[],
+        );
+        let other_plan_end = current_ts() + days(60) as i64;
+        let (res, other_plan_pda) =
+            crate::tests::utils::CreatePlan::new(&mut litesvm, &merchant, mint)
+                .plan_id(99)
+                .amount(1_000)
+                .period_hours(24)
+                .end_ts(other_plan_end)
+                .execute();
+        res.assert_ok();
+
+        move_clock_forward(&mut litesvm, hours(3));
+
+        RevokeSubscription::new(&mut litesvm, &sponsor, subscription_pda, other_plan_pda)
+            .execute()
+            .assert_err(MultiDelegatorError::SubscriptionPlanMismatch);
+    }
+
+    #[test]
+    fn attacker_cannot_revoke_sponsor_funded_subscription() {
+        let plan_end_ts = current_ts() + hours(2) as i64;
+        let (mut litesvm, _alice, _merchant, _sponsor, plan_pda, subscription_pda) =
+            setup_sponsored_subscription(plan_end_ts);
+
+        let attacker = init_wallet(&mut litesvm, 10_000_000_000);
+
+        // Even after the plan expires, an attacker (not delegator and not payer)
+        // must not be able to revoke.
+        move_clock_forward(&mut litesvm, hours(3));
+
+        RevokeSubscription::new(&mut litesvm, &attacker, subscription_pda, plan_pda)
+            .execute()
+            .assert_err(MultiDelegatorError::Unauthorized);
+    }
+
+    #[test]
+    fn subscriber_revoke_routes_rent_to_sponsor() {
+        let plan_end_ts = current_ts() + days(30) as i64;
+        let (mut litesvm, alice, _merchant, sponsor, plan_pda, subscription_pda) =
+            setup_sponsored_subscription(plan_end_ts);
+
+        // Subscriber cancels and waits.
+        CancelSubscription::new(&mut litesvm, &alice, plan_pda, subscription_pda)
+            .execute()
+            .assert_ok();
+        move_clock_forward(&mut litesvm, hours(2));
+
+        let sub_rent = litesvm.get_account(&subscription_pda).unwrap().lamports;
+        let sponsor_balance_before = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
+
+        // Subscriber revokes but receiver = sponsor (because header.payer = sponsor).
+        RevokeSubscription::new(&mut litesvm, &alice, subscription_pda, plan_pda)
+            .receiver(sponsor.pubkey())
+            .execute()
+            .assert_ok();
+
+        let sponsor_balance_after = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
+        assert!(sponsor_balance_after >= sponsor_balance_before + sub_rent - 10_000);
     }
 }
