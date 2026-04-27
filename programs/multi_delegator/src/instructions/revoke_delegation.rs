@@ -107,20 +107,25 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
 
                 if is_sponsor {
                     // Sponsor can revoke when subscription is cancelled+expired,
-                    // when the plan account has been closed, or when the plan
-                    // ended naturally.
+                    // when the plan account has been closed, when the plan
+                    // ended naturally, or when the same plan_id was deleted and
+                    // recreated with different terms — a "ghost" the
+                    // subscription can no longer pull from.
                     let sub_expired =
                         subscription.expires_at_ts != 0 && subscription.expires_at_ts <= current_ts;
                     let plan_closed = !plan_pda.owned_by(&crate::ID);
-                    let plan_ended = if plan_closed {
+                    let plan_ended_or_recreated = if plan_closed {
                         false
                     } else {
                         let plan_data = plan_pda.try_borrow()?;
                         let plan = Plan::load(&plan_data)?;
-                        plan.data.end_ts != 0 && current_ts > plan.data.end_ts
+                        let terms_mismatch =
+                            subscription.check_plan_terms(&plan.data.terms).is_err();
+                        let plan_ended = plan.data.end_ts != 0 && current_ts > plan.data.end_ts;
+                        terms_mismatch || plan_ended
                     };
 
-                    if !(sub_expired || plan_closed || plan_ended) {
+                    if !(sub_expired || plan_closed || plan_ended_or_recreated) {
                         return Err(MultiDelegatorError::Unauthorized.into());
                     }
                 } else {
@@ -1214,6 +1219,69 @@ mod tests {
         assert!(
             account_after.is_none() || account_after.as_ref().map(|a| a.lamports).unwrap_or(0) == 0
         );
+    }
+
+    #[test]
+    fn sponsor_revoke_subscription_when_plan_recreated_with_different_terms() {
+        // Same-address ghost plan: merchant deletes the expired plan and
+        // recreates it under the same `plan_id` with different terms. The
+        // subscription is no longer pull-eligible (transfers fail via
+        // `check_plan_terms`), and the sponsor should be able to recover rent
+        // unilaterally even though `plan_closed` is false on the recreated PDA.
+        use crate::{state::common::PlanStatus, tests::utils::DeletePlan};
+
+        let plan_end_ts = current_ts() + hours(2) as i64;
+        let (mut litesvm, _alice, merchant, sponsor, plan_pda, subscription_pda) =
+            setup_sponsored_subscription(plan_end_ts);
+
+        // Sunset, expire, delete.
+        crate::tests::utils::UpdatePlan::new(&mut litesvm, &merchant, plan_pda)
+            .status(PlanStatus::Sunset)
+            .end_ts(plan_end_ts)
+            .execute()
+            .assert_ok();
+
+        move_clock_forward(&mut litesvm, hours(3));
+
+        DeletePlan::new(&mut litesvm, &merchant, plan_pda)
+            .execute()
+            .assert_ok();
+
+        // Recreate the same plan_id with different terms (ghost plan). End_ts
+        // is in the future so neither plan_ended nor plan_closed would fire.
+        let new_end_ts = current_ts() + days(60) as i64;
+        let mint = init_mint(
+            &mut litesvm,
+            crate::tests::constants::TOKEN_PROGRAM_ID,
+            crate::tests::constants::MINT_DECIMALS,
+            1_000_000_000,
+            None,
+            &[],
+        );
+        let (res, recreated_plan_pda) =
+            crate::tests::utils::CreatePlan::new(&mut litesvm, &merchant, mint)
+                .plan_id(1)
+                .amount(999_000_000)
+                .period_hours(720)
+                .end_ts(new_end_ts)
+                .execute();
+        res.assert_ok();
+        assert_eq!(recreated_plan_pda, plan_pda);
+
+        let sub_rent = litesvm.get_account(&subscription_pda).unwrap().lamports;
+        let sponsor_balance_before = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
+
+        RevokeSubscription::new(&mut litesvm, &sponsor, subscription_pda, plan_pda)
+            .execute()
+            .assert_ok();
+
+        let account_after = litesvm.get_account(&subscription_pda);
+        assert!(
+            account_after.is_none() || account_after.as_ref().map(|a| a.lamports).unwrap_or(0) == 0
+        );
+
+        let sponsor_balance_after = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
+        assert!(sponsor_balance_after >= sponsor_balance_before + sub_rent - 10_000);
     }
 
     #[test]
