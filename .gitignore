@@ -5,8 +5,7 @@ dist
 .next
 bun.lockb
 
-# Generated IDL and clients are committed; CI checks for drift.
-# Regenerate locally: `just generate-idl && just generate-client`
+**/generated/
 
 # Surfpool logs and temporary files
 .surfpool/
