@@ -1,25 +1,34 @@
 [package]
 name = "subscriptions"
-version = "0.1.0"
-edition = "2021"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
 
 [lib]
 crate-type = ["lib", "cdylib"]
 
+[lints]
+workspace = true
+
+[features]
+no-entrypoint = []
+
 [build-dependencies]
-codama = "0.7.2"
-serde_json = "1"
+codama = { workspace = true }
+serde_json = { workspace = true }
 
 [dependencies]
-pinocchio = { version = "0.10.2", features = ["cpi", "copy"] }
-solana-address = { version = "2", features = ["curve25519"] }
-pinocchio-associated-token-account = "0.3.0"
-pinocchio-system = "0.5.0"
-pinocchio-token = "0.5.0"
-pinocchio-token-2022 = "0.2.0"
-codama = "0.7.2"
-const-crypto = "0.3"
-thiserror = { version = "2", default-features = false }
+codama = { workspace = true }
+const-crypto = { workspace = true }
+pinocchio = { workspace = true }
+pinocchio-associated-token-account = { workspace = true }
+pinocchio-system = { workspace = true }
+pinocchio-token = { workspace = true }
+pinocchio-token-2022 = { workspace = true }
+solana-address = { workspace = true }
+solana-security-txt = { workspace = true }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 litesvm = "^0.7"
@@ -35,10 +44,7 @@ solana-transaction-error = "^2"
 spl-associated-token-account = "7.0.0"
 spl-token-2022 = "^8"
 spl-token = "^8"
-serde_json = "1"
+serde_json = { workspace = true }
 rstest = "0.24"
 tabled = "0.17"
 ctor = "0.2"
-
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }

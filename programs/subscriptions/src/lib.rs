@@ -17,6 +17,7 @@
 
 use pinocchio::{address::declare_id, AccountView, Address, ProgramResult};
 
+#[cfg(not(feature = "no-entrypoint"))]
 pinocchio::entrypoint!(process_instruction);
 
 pub mod instructions;
@@ -37,6 +38,19 @@ pub use constants::*;
 pub mod tests;
 
 declare_id!("EPEUTog1kptYkthDJF6MuB1aM4aDAwHYwoF32Rzv5rqg");
+
+#[cfg(not(feature = "no-entrypoint"))]
+use solana_security_txt::security_txt;
+
+#[cfg(not(feature = "no-entrypoint"))]
+security_txt! {
+    name: "Subscriptions Program",
+    project_url: "https://github.com/solana-program/multi-delegator",
+    contacts: "link:https://github.com/solana-program/multi-delegator/security/advisories/new",
+    policy: "https://github.com/solana-program/multi-delegator/security/policy",
+    source_code: "https://github.com/solana-program/multi-delegator",
+    auditors: "Cantina"
+}
 
 /// Program entrypoint: deserializes the instruction discriminator and dispatches
 /// to the appropriate instruction processor.
