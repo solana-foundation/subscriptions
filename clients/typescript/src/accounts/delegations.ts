@@ -5,7 +5,7 @@ import type {
   Rpc,
 } from 'gill';
 import { DELEGATEE_OFFSET, DELEGATOR_OFFSET } from '../constants.js';
-import { MULTI_DELEGATOR_PROGRAM_ADDRESS } from '../generated/index.js';
+import { SUBSCRIPTIONS_PROGRAM_ADDRESS } from '../generated/index.js';
 import type { Delegation } from '../types/delegation.js';
 import { decodeDelegationAccount } from './decode.js';
 
@@ -56,7 +56,7 @@ async function fetchDelegationsByOffset(
   offset: number,
   programAddress?: Address,
 ): Promise<Delegation[]> {
-  const progAddr = programAddress ?? MULTI_DELEGATOR_PROGRAM_ADDRESS;
+  const progAddr = programAddress ?? SUBSCRIPTIONS_PROGRAM_ADDRESS;
   const response = await rpc
     .getProgramAccounts(progAddr, {
       encoding: 'base64',

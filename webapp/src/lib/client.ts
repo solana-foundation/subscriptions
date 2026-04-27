@@ -1,7 +1,7 @@
-import { MultiDelegatorClient } from '@multidelegator/client'
+import { SubscriptionsClient } from '@subscriptions/client'
 import { createSolanaRpc, createSolanaRpcSubscriptions, sendAndConfirmTransactionFactory, getBase58Decoder } from 'gill'
 
-export function createMultiDelegatorClient(endpoint: string) {
+export function createSubscriptionsClient(endpoint: string) {
   const rpc = createSolanaRpc(endpoint)
   const wsEndpoint = endpoint.replace('http', 'ws')
   const rpcSubscriptions = createSolanaRpcSubscriptions(wsEndpoint)
@@ -11,7 +11,7 @@ export function createMultiDelegatorClient(endpoint: string) {
     rpcSubscriptions,
   })
 
-  return new MultiDelegatorClient({
+  return new SubscriptionsClient({
     rpc,
     sendAndConfirmTransaction: async (tx) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

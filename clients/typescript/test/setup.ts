@@ -21,7 +21,7 @@ import {
   signTransactionMessageWithSigners,
 } from 'gill';
 import { expect } from 'vitest';
-import { MultiDelegatorClient } from '../src/client.js';
+import { SubscriptionsClient } from '../src/client.js';
 import { parseProgramError } from '../src/errors/map.js';
 import { KeyPairWallet, type Wallet } from '../src/wallet.js';
 import {
@@ -101,11 +101,11 @@ export async function getSmartWallet(
 
 /**
  * IntegrationTest class that provides test fixtures and helper methods
- * for integration testing the MultiDelegator program.
+ * for integration testing the Subscriptions program.
  */
 export class IntegrationTest {
-  /** The MultiDelegatorClient instance for interacting with the program */
-  public readonly client: MultiDelegatorClient;
+  /** The SubscriptionsClient instance for interacting with the program */
+  public readonly client: SubscriptionsClient;
 
   /** Direct RPC access for queries and assertions */
   public readonly rpc: SolanaClient['rpc'];
@@ -127,7 +127,7 @@ export class IntegrationTest {
 
   private constructor(
     solanaClient: SolanaClient,
-    client: MultiDelegatorClient,
+    client: SubscriptionsClient,
     payer: KeyPairSigner,
     tokenMint: Address,
     tokenProgram: Address,
@@ -148,7 +148,7 @@ export class IntegrationTest {
   static async create(): Promise<IntegrationTest> {
     await isSurfnetRunning(); // Just verify surfpool is running
     const solanaClient = createSolanaClient({ urlOrMoniker: 'localnet' });
-    const client = new MultiDelegatorClient(solanaClient);
+    const client = new SubscriptionsClient(solanaClient);
 
     // Create and fund payer with 10 SOL
     const payer = await createFundedKeypair(solanaClient, 10_000_000_000n);
@@ -310,7 +310,7 @@ export class IntegrationTest {
  * Checks that Surfpool is running and returns the RPC URL.
  *
  * Note: Surfpool should be started separately with `surfpool start`
- * which will auto-deploy the multi_delegator program via the runbook.
+ * which will auto-deploy the subscriptions program via the runbook.
  *
  * @throws Error if Surfpool is not running
  */

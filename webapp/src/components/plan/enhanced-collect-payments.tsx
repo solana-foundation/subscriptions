@@ -11,7 +11,7 @@ import { ExplorerLink } from '@/components/cluster/cluster-ui'
 import { HistoryEntry } from '@/components/plan/collect-payments-panel'
 import { useAllPlanSubscribers, type PlanSubscriberData } from '@/hooks/use-plan-subscribers'
 import { useQueryClient } from '@tanstack/react-query'
-import { useMultiDelegatorMutations } from '@/hooks/use-multi-delegator'
+import { useSubscriptionsMutations } from '@/hooks/use-subscriptions'
 import { useClusterConfig } from '@/hooks/use-cluster-config'
 import { useProgramAddress } from '@/hooks/use-token-config'
 import { fetchPlanSubscriptions } from '@/hooks/use-subscriptions'
@@ -104,7 +104,7 @@ function CollectAllButton({
   const [progress, setProgress] = useState('')
   const { url: rpcUrl } = useClusterConfig()
   const progAddr = useProgramAddress()
-  const { collectAllPlanPayments } = useMultiDelegatorMutations()
+  const { collectAllPlanPayments } = useSubscriptionsMutations()
 
   const eligiblePlans = useMemo(
     () => plansData.filter((p) => p.eligible.length > 0),
@@ -206,7 +206,7 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
   const [historyVersion, setHistoryVersion] = useState(0)
   const { url: rpcUrl } = useClusterConfig()
   const progAddr = useProgramAddress()
-  const { collectSubscriptionPayments } = useMultiDelegatorMutations()
+  const { collectSubscriptionPayments } = useSubscriptionsMutations()
 
   const { plan, subscribers, eligible } = planData
   const meta = useMemo(() => parsePlanMeta(plan.data.metadataUri), [plan.data.metadataUri])

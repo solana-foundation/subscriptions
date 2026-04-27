@@ -20,7 +20,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}  Multi-Delegator Webapp Launcher${NC}"
+echo -e "${GREEN}  Subscriptions Webapp Launcher${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 

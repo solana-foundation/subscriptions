@@ -1,10 +1,10 @@
-# Multi Delegator
+# Subscriptions
 
 Solana program and clients for managed token delegations on SPL Token and Token-2022.
 
 ## Overview
 
-For each `(user, mint)` pair, the program creates a **Multi Delegate Authority (MDA)** PDA and sets it as the single delegate on the user's token account with `u64::MAX` approval. The MDA can only transfer tokens when a Delegation PDA authorizes it, making the system as secure as traditional approval-based delegations while enabling multiple simultaneous delegations from a single token account.
+For each `(user, mint)` pair, the program creates a **Subscription Authority (SA)** PDA and sets it as the single delegate on the user's token account with `u64::MAX` approval. The SA can only transfer tokens when a Delegation PDA authorizes it, making the system as secure as traditional approval-based delegations while enabling multiple simultaneous delegations from a single token account.
 
 This works for both token programs: SPL Token and Token-2022.
 
@@ -16,7 +16,7 @@ Supported delegation models:
 
 The program emits on-chain events via self-CPI for indexer integration (subscription created/cancelled, fixed/recurring/subscription transfers).
 
-Token-2022 mints are supported, but the following extensions are rejected during MDA initialization: ConfidentialTransfer, NonTransferable, PermanentDelegate, TransferHook, TransferFee, MintCloseAuthority, and Pausable.
+Token-2022 mints are supported, but the following extensions are rejected during SA initialization: ConfidentialTransfer, NonTransferable, PermanentDelegate, TransferHook, TransferFee, MintCloseAuthority, and Pausable.
 
 Delegation accounts include a version field and the program implements a three-tier migration framework (lazy in-place update, explicit migrate instruction, revoke/recreate) for future upgrades. See [ADR-003](docs/003-versioning-migration-architecture.md) for details.
 
@@ -25,33 +25,33 @@ This repository contains:
 - A Rust Solana program built with [Pinocchio](https://github.com/febo/pinocchio)
 - IDL generation via [Codama](https://github.com/codama-idl/codama)
 - Generated clients via Codama:
-  - TypeScript client (`@multidelegator/client`) in `clients/typescript`
-  - Rust client (`multidelegator-client`) in `clients/rust`
+  - TypeScript client (`@subscriptions/client`) in `clients/typescript`
+  - Rust client (`subscriptions-client`) in `clients/rust`
 - A local demo webapp in `webapp/`
 - CI pipeline with build, test, lint, and CU benchmarking
 
 ## Program ID
 
 ```
-EPEUTog1kptYkthDJF6MuB1aM4aDAwHYwoF32Rzv5rqg
+De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44
 ```
 
 ## Project Structure
 
 ```text
-multi-delegator/
-├── programs/multi_delegator/      # Rust Solana program
+subscriptions/
+├── programs/subscriptions/      # Rust Solana program
 │   ├── src/
 │   │   ├── instructions/          # Instruction handlers
 │   │   │   └── helpers/           # Transfer validation, token helpers, traits
-│   │   ├── state/                 # Account types (MDA, fixed, recurring, plan, subscription)
+│   │   ├── state/                 # Account types (SA, fixed, recurring, plan, subscription)
 │   │   │   └── versioning/        # Version checks and migration logic
 │   │   ├── events/                # On-chain event definitions
 │   │   ├── event_engine.rs        # Self-CPI event emission
 │   │   ├── errors.rs              # Error codes
 │   │   ├── constants.rs           # Program constants
 │   │   └── tests/                 # Rust unit tests (LiteSVM)
-│   └── idl/                       # Generated IDL (multi_delegator.json)
+│   └── idl/                       # Generated IDL (subscriptions.json)
 ├── clients/
 │   ├── typescript/                # TypeScript SDK + integration tests
 │   └── rust/                      # Rust generated client
@@ -75,8 +75,8 @@ multi-delegator/
 ## Quick Start
 
 ```bash
-git clone git@github.com:solana-program/multi-delegator.git
-cd multi-delegator
+git clone git@github.com:solana-program/subscriptions.git
+cd subscriptions
 just setup
 just build
 just test-program
@@ -128,12 +128,12 @@ curl -sL https://run.surfpool.run/ | bash
 
 ## Keypair and Program ID
 
-Local workflows use `keys/multi_delegator-keypair.json` as the source keypair. The `just build` and `just build-program` recipes copy it to `target/deploy/` and verify that the keypair matches the `declare_id!` in `lib.rs`.
+Local workflows use `keys/subscriptions-keypair.json` as the source keypair. The `just build` and `just build-program` recipes copy it to `target/deploy/` and verify that the keypair matches the `declare_id!` in `lib.rs`.
 
 The keypair is checked into the repository. If it is missing, `prepare-deploy-keys` will error and prompt you to restore it:
 
 ```bash
-git show <commit>^:keys/multi_delegator-keypair.json > keys/multi_delegator-keypair.json
+git show <commit>^:keys/subscriptions-keypair.json > keys/subscriptions-keypair.json
 ```
 
 Print the program ID at any time:
@@ -152,7 +152,7 @@ The `justfile` is the main entrypoint for day-to-day development.
 |---|---|
 | `just build` | Build program + generate IDL + generate clients + build TypeScript client |
 | `just build-program` | Compile the SBF program (`.so`) |
-| `just generate-idl` | Regenerate `programs/multi_delegator/idl/multi_delegator.json` |
+| `just generate-idl` | Regenerate `programs/subscriptions/idl/subscriptions.json` |
 | `just generate-client` | Regenerate TypeScript and Rust clients from IDL via Codama |
 | `just build-client` | Build `clients/typescript` into `clients/typescript/dist` |
 
@@ -194,29 +194,29 @@ Both default to `http://localhost:8899`.
 
 ## TypeScript Client SDK
 
-The `@multidelegator/client` package in `clients/typescript` provides a high-level `MultiDelegatorClient` class wrapping all program instructions:
+The `@subscriptions/client` package in `clients/typescript` provides a high-level `SubscriptionsClient` class wrapping all program instructions:
 
 | Method | Purpose |
 |---|---|
-| `initMultiDelegate` / `closeMultiDelegate` | Create or close the MDA for a (user, mint) pair |
+| `initSubscriptionAuthority` / `closeSubscriptionAuthority` | Create or close the SA for a (user, mint) pair |
 | `createFixedDelegation` / `transferFixed` | Create a fixed delegation and execute transfers against it |
 | `createRecurringDelegation` / `transferRecurring` | Create a recurring delegation and execute transfers against it |
 | `createPlan` / `updatePlan` / `deletePlan` | Manage merchant subscription plans |
 | `subscribe` / `cancelSubscription` / `transferSubscription` | Subscribe to plans, cancel, and pull payments |
 | `revokeDelegation` | Close any delegation PDA and return rent to the original payer |
 | `getDelegationsForWallet` / `getPlansForOwner` | Query on-chain accounts |
-| `isMultiDelegateInitialized` | Check if an MDA exists for a wallet/mint pair |
+| `isSubscriptionAuthorityInitialized` | Check if an SA exists for a wallet/mint pair |
 
-PDA derivation helpers are exported from `pdas.ts`: `getMultiDelegatePDA`, `getDelegationPDA`, `getPlanPDA`, `getSubscriptionPDA`, `getEventAuthorityPDA`.
+PDA derivation helpers are exported from `pdas.ts`: `getSubscriptionAuthorityPDA`, `getDelegationPDA`, `getPlanPDA`, `getSubscriptionPDA`, `getEventAuthorityPDA`.
 
 Install and use:
 
 ```bash
-pnpm add @multidelegator/client
+pnpm add @subscriptions/client
 ```
 
 ```typescript
-import { MultiDelegatorClient } from '@multidelegator/client';
+import { SubscriptionsClient } from '@subscriptions/client';
 ```
 
 ## Webapp Demo
@@ -259,7 +259,7 @@ just webapp-clean     # also removes generated state
 
 ## Security Audit
 
-`multi-delegator` has been audited by [Cantina](https://cantina.xyz). View the [audit report](audits/report-cli-cantina-db2ffeea-c85c-4f35-b188-e861cdcd785d-solana-multi-delegator.pdf).
+`subscriptions` has been audited by [Cantina](https://cantina.xyz). View the [audit report](audits/report-cli-cantina-db2ffeea-c85c-4f35-b188-e861cdcd785d-solana-subscriptions.pdf).
 
 The external audit baseline is commit `18a50bc21c4b91ed62e612109c371f41200385e8`, and audit fixes were implemented and verified through commit `b4b0345f9fd616e1355b7b6628362283fd6b1691`.
 
@@ -281,7 +281,7 @@ The GitHub Actions workflow (`.github/workflows/ci.yml`) runs on PRs and pushes 
 
 | Document | Description |
 |---|---|
-| [ADR-001](docs/001-multi-delegator-architecture.md) | Core program architecture: MDA, fixed/recurring delegations, PDA design |
+| [ADR-001](docs/001-program-architecture.md) | Core program architecture: SA, fixed/recurring delegations, PDA design |
 | [ADR-002](docs/002-subscriptions-architecture.md) | Subscription plans: merchant plans, subscriber flow, pull payments |
 | [ADR-003](docs/003-versioning-migration-architecture.md) | Versioning and migration: three-tier fallback chain for on-chain account upgrades |
 

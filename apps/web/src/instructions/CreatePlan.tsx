@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Address } from '@solana/kit';
-import { buildCreatePlan } from '@multidelegator/client';
+import { buildCreatePlan } from '@subscriptions/client';
 import { useWallet } from '@/contexts/WalletContext';
 import { useSavedValues } from '@/contexts/SavedValuesContext';
 import { getProgramAddress, TOKEN_2022_PROGRAM_ID } from '@/lib/program';

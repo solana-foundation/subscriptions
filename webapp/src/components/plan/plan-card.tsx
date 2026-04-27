@@ -14,10 +14,10 @@ import {
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from '@/components/ui/dropdown-menu'
-import { ZERO_ADDRESS, PlanStatus } from '@multidelegator/client'
+import { ZERO_ADDRESS, PlanStatus } from '@subscriptions/client'
 import { cn, ellipsify, USDC_MULTIPLIER, fmtDate, fmtDateTime, formatPeriod, formatPeriodLabel } from '@/lib/utils'
-import { useMultiDelegatorMutations } from '@/hooks/use-multi-delegator'
-import { useMultiDelegateStatus } from '@/hooks/use-multi-delegate-status'
+import { useSubscriptionsMutations } from '@/hooks/use-subscriptions'
+import { useSubscriptionAuthorityStatus } from '@/hooks/use-subscription-authority-status'
 import { useTimeTravel } from '@/hooks/use-time-travel'
 import { useWalletUi } from '@wallet-ui/react'
 import { address } from 'gill'
@@ -46,7 +46,7 @@ function EditPlanDialog({ plan, meta, open, onOpenChange }: {
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { updatePlan } = useMultiDelegatorMutations()
+  const { updatePlan } = useSubscriptionsMutations()
   const { getCurrentTimestamp } = useTimeTravel()
   const isSunset = plan.status === PlanStatus.Sunset
   const [blockTime, setBlockTime] = useState<number | undefined>()
@@ -357,7 +357,7 @@ function DeletePlanDialog({ plan, meta, open, onOpenChange }: {
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { deletePlan } = useMultiDelegatorMutations()
+  const { deletePlan } = useSubscriptionsMutations()
   const { getCurrentTimestamp } = useTimeTravel()
   const endTs = Number(plan.data.endTs)
   const [canDelete, setCanDelete] = useState(false)
@@ -410,8 +410,8 @@ function SubscribeDialog({ plan, meta, open, onOpenChange }: {
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { subscribe, initMultiDelegate } = useMultiDelegatorMutations()
-  const { isInitialized, isLoading: statusLoading, refetch: refetchStatus } = useMultiDelegateStatus(plan.data.mint)
+  const { subscribe, initSubscriptionAuthority } = useSubscriptionsMutations()
+  const { isInitialized, isLoading: statusLoading, refetch: refetchStatus } = useSubscriptionAuthorityStatus(plan.data.mint)
   const { account } = useWalletUi()
   const amount = Number(plan.data.terms.amount) / USDC_MULTIPLIER
 
@@ -423,7 +423,7 @@ function SubscribeDialog({ plan, meta, open, onOpenChange }: {
       owner: address(account.address),
       tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
     })
-    initMultiDelegate.mutate({
+    initSubscriptionAuthority.mutate({
       tokenMint: plan.data.mint,
       userAta: userAta,
       tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
@@ -445,14 +445,14 @@ function SubscribeDialog({ plan, meta, open, onOpenChange }: {
         ) : !isInitialized ? (
           <div className="space-y-3">
             <div className="text-sm text-amber-400 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
-              Your MultiDelegate account must be initialized for this token before subscribing.
+              Your SubscriptionAuthority account must be initialized for this token before subscribing.
             </div>
             <Button
               onClick={handleInit}
-              disabled={initMultiDelegate.isPending}
+              disabled={initSubscriptionAuthority.isPending}
               className="w-full bg-amber-600 hover:bg-amber-500 text-white"
             >
-              {initMultiDelegate.isPending ? 'Initializing...' : 'Initialize MultiDelegate'}
+              {initSubscriptionAuthority.isPending ? 'Initializing...' : 'Initialize SubscriptionAuthority'}
             </Button>
           </div>
         ) : (

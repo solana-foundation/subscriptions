@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "programs/multi_delegator",
+    "programs/subscriptions",
     "clients/rust",
 ]
 resolver = "2"

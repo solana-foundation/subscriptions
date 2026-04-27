@@ -6,45 +6,45 @@ import {
 } from 'gill';
 import { ValidationError } from '../errors/types.js';
 import {
-  getCloseMultiDelegateInstruction,
+  getCloseSubscriptionAuthorityInstruction,
   getCreateFixedDelegationInstruction,
   getCreateRecurringDelegationInstruction,
-  getInitMultiDelegateInstruction,
+  getInitSubscriptionAuthorityInstruction,
   getRevokeDelegationInstruction,
 } from '../generated/index.js';
-import { getDelegationPDA, getMultiDelegatePDA } from '../pdas.js';
+import { getDelegationPDA, getSubscriptionAuthorityPDA } from '../pdas.js';
 
 /**
- * Builds an `initMultiDelegate` instruction, deriving the MultiDelegate PDA automatically.
+ * Builds an `initSubscriptionAuthority` instruction, deriving the SubscriptionAuthority PDA automatically.
  *
- * @param params.owner - The wallet that owns the multi-delegate account.
+ * @param params.owner - The wallet that owns the subscription-authority account.
  * @param params.tokenMint - SPL token mint address.
  * @param params.userAta - Owner's associated token account for the mint.
  * @param params.tokenProgram - Token program (typically Token-2022).
  * @param params.payer - Optional sponsor that funds the rent. Defaults to `owner` when omitted.
- * @returns The instruction array and the derived `multiDelegatePda`.
+ * @returns The instruction array and the derived `subscriptionAuthorityPda`.
  */
-export async function buildInitMultiDelegate(params: {
+export async function buildInitSubscriptionAuthority(params: {
   owner: TransactionSigner;
   tokenMint: Address;
   userAta: Address;
   tokenProgram: Address;
   payer?: TransactionSigner;
   programAddress?: Address;
-}): Promise<{ instructions: Instruction[]; multiDelegatePda: Address }> {
+}): Promise<{ instructions: Instruction[]; subscriptionAuthorityPda: Address }> {
   const { owner, tokenMint, userAta, tokenProgram, payer, programAddress } =
     params;
   const config = programAddress ? { programAddress } : undefined;
-  const [multiDelegatePda] = await getMultiDelegatePDA(
+  const [subscriptionAuthorityPda] = await getSubscriptionAuthorityPDA(
     owner.address,
     tokenMint,
     programAddress,
   );
 
-  const instruction = getInitMultiDelegateInstruction(
+  const instruction = getInitSubscriptionAuthorityInstruction(
     {
       owner,
-      multiDelegate: multiDelegatePda,
+      subscriptionAuthority: subscriptionAuthorityPda,
       tokenMint,
       userAta,
       tokenProgram,
@@ -63,15 +63,15 @@ export async function buildInitMultiDelegate(params: {
     ];
     return {
       instructions: [{ ...instruction, accounts }],
-      multiDelegatePda,
+      subscriptionAuthorityPda,
     };
   }
 
-  return { instructions: [instruction], multiDelegatePda };
+  return { instructions: [instruction], subscriptionAuthorityPda };
 }
 
 /**
- * Builds a `createFixedDelegation` instruction, deriving MultiDelegate and Delegation PDAs.
+ * Builds a `createFixedDelegation` instruction, deriving SubscriptionAuthority and Delegation PDAs.
  *
  * @param params.delegator - The wallet creating the delegation.
  * @param params.tokenMint - SPL token mint address.
@@ -107,13 +107,13 @@ export async function buildCreateFixedDelegation(params: {
   if (BigInt(amount) <= 0n)
     throw new ValidationError('amount must be greater than zero');
 
-  const [multiDelegate] = await getMultiDelegatePDA(
+  const [subscriptionAuthority] = await getSubscriptionAuthorityPDA(
     delegator.address,
     tokenMint,
     programAddress,
   );
   const [delegationPda] = await getDelegationPDA(
-    multiDelegate,
+    subscriptionAuthority,
     delegator.address,
     delegatee,
     nonce,
@@ -123,7 +123,7 @@ export async function buildCreateFixedDelegation(params: {
   const instruction = getCreateFixedDelegationInstruction(
     {
       delegator,
-      multiDelegate,
+      subscriptionAuthority,
       delegationAccount: delegationPda,
       delegatee,
       fixedDelegation: { nonce, amount, expiryTs },
@@ -150,7 +150,7 @@ export async function buildCreateFixedDelegation(params: {
 }
 
 /**
- * Builds a `createRecurringDelegation` instruction, deriving MultiDelegate and Delegation PDAs.
+ * Builds a `createRecurringDelegation` instruction, deriving SubscriptionAuthority and Delegation PDAs.
  *
  * @param params.delegator - The wallet creating the delegation.
  * @param params.tokenMint - SPL token mint address.
@@ -194,13 +194,13 @@ export async function buildCreateRecurringDelegation(params: {
   if (BigInt(periodLengthS) <= 0n)
     throw new ValidationError('periodLengthS must be greater than zero');
 
-  const [multiDelegate] = await getMultiDelegatePDA(
+  const [subscriptionAuthority] = await getSubscriptionAuthorityPDA(
     delegator.address,
     tokenMint,
     programAddress,
   );
   const [delegationPda] = await getDelegationPDA(
-    multiDelegate,
+    subscriptionAuthority,
     delegator.address,
     delegatee,
     nonce,
@@ -210,7 +210,7 @@ export async function buildCreateRecurringDelegation(params: {
   const instruction = getCreateRecurringDelegationInstruction(
     {
       delegator,
-      multiDelegate,
+      subscriptionAuthority,
       delegationAccount: delegationPda,
       delegatee,
       recurringDelegation: {
@@ -334,18 +334,18 @@ export function buildRevokeSubscription(params: {
 }
 
 /**
- * Builds a `closeMultiDelegate` instruction, deriving the MultiDelegate PDA automatically.
- * Closes the multi-delegate account and reclaims its rent.
+ * Builds a `closeSubscriptionAuthority` instruction, deriving the SubscriptionAuthority PDA automatically.
+ * Closes the subscription-authority account and reclaims its rent.
  *
- * @param params.user - The wallet that owns the multi-delegate account.
+ * @param params.user - The wallet that owns the subscription-authority account.
  * @param params.tokenMint - SPL token mint associated with the account.
- * @param params.receiver - Required when the MultiDelegate was sponsor-funded
+ * @param params.receiver - Required when the SubscriptionAuthority was sponsor-funded
  *   (i.e., the stored `payer` differs from `user`). Must equal the stored payer
- *   address. The caller is responsible for fetching the on-chain MultiDelegate
+ *   address. The caller is responsible for fetching the on-chain SubscriptionAuthority
  *   account to determine whether a receiver is needed.
  * @returns The instruction array.
  */
-export async function buildCloseMultiDelegate(params: {
+export async function buildCloseSubscriptionAuthority(params: {
   user: TransactionSigner;
   tokenMint: Address;
   receiver?: Address;
@@ -354,16 +354,16 @@ export async function buildCloseMultiDelegate(params: {
   const config = params.programAddress
     ? { programAddress: params.programAddress }
     : undefined;
-  const [multiDelegate] = await getMultiDelegatePDA(
+  const [subscriptionAuthority] = await getSubscriptionAuthorityPDA(
     params.user.address,
     params.tokenMint,
     params.programAddress,
   );
 
-  const instruction = getCloseMultiDelegateInstruction(
+  const instruction = getCloseSubscriptionAuthorityInstruction(
     {
       user: params.user,
-      multiDelegate,
+      subscriptionAuthority,
     },
     config,
   );

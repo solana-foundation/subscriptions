@@ -7,7 +7,7 @@ import type {
 import { DELEGATOR_OFFSET, SUBSCRIPTION_SIZE } from '../constants.js';
 import {
   decodeSubscriptionDelegation,
-  MULTI_DELEGATOR_PROGRAM_ADDRESS,
+  SUBSCRIPTIONS_PROGRAM_ADDRESS,
   type SubscriptionDelegation,
 } from '../generated/index.js';
 import { toEncodedAccount } from './decode.js';
@@ -24,7 +24,7 @@ export async function fetchSubscriptionsForUser(
   user: Address,
   programAddress?: Address,
 ): Promise<Array<{ address: Address; data: SubscriptionDelegation }>> {
-  const progAddr = programAddress ?? MULTI_DELEGATOR_PROGRAM_ADDRESS;
+  const progAddr = programAddress ?? SUBSCRIPTIONS_PROGRAM_ADDRESS;
   const response = await rpc
     .getProgramAccounts(progAddr, {
       encoding: 'base64',

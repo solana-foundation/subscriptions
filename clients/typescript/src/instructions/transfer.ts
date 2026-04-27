@@ -6,7 +6,7 @@ import {
   getTransferRecurringInstructionAsync,
   getTransferSubscriptionInstructionAsync,
 } from '../generated/index.js';
-import { getMultiDelegatePDA } from '../pdas.js';
+import { getSubscriptionAuthorityPDA } from '../pdas.js';
 
 /** Shared parameters for fixed and recurring transfer instruction builders. */
 export type TransferParams = {
@@ -32,7 +32,7 @@ async function buildTransferInternal(
     ? { programAddress: params.programAddress }
     : undefined;
 
-  const [multiDelegate] = await getMultiDelegatePDA(
+  const [subscriptionAuthority] = await getSubscriptionAuthorityPDA(
     params.delegator,
     params.tokenMint,
     params.programAddress,
@@ -41,7 +41,7 @@ async function buildTransferInternal(
   const instruction = await getInstruction(
     {
       delegationPda: params.delegationPda,
-      multiDelegate,
+      subscriptionAuthority,
       delegatorAta: params.delegatorAta,
       receiverAta: params.receiverAta,
       tokenProgram: params.tokenProgram,
@@ -59,7 +59,7 @@ async function buildTransferInternal(
 }
 
 /**
- * Builds a `transferFixed` instruction, deriving the MultiDelegate PDA from the delegator and mint.
+ * Builds a `transferFixed` instruction, deriving the SubscriptionAuthority PDA from the delegator and mint.
  *
  * @param params - Transfer details including delegatee signer, delegator, token accounts, and amount.
  * @returns The instruction array.
@@ -72,7 +72,7 @@ export async function buildTransferFixed(
 }
 
 /**
- * Builds a `transferRecurring` instruction, deriving the MultiDelegate PDA from the delegator and mint.
+ * Builds a `transferRecurring` instruction, deriving the SubscriptionAuthority PDA from the delegator and mint.
  *
  * @param params - Transfer details including delegatee signer, delegator, token accounts, and amount.
  * @returns The instruction array.
@@ -85,7 +85,7 @@ export async function buildTransferRecurring(
 }
 
 /**
- * Builds a `transferSubscription` instruction, deriving MultiDelegate and delegator ATA PDAs.
+ * Builds a `transferSubscription` instruction, deriving SubscriptionAuthority and delegator ATA PDAs.
  *
  * @param params.caller - The signer executing the pull (plan owner or authorized puller).
  * @param params.delegator - The subscriber's wallet address.
@@ -116,7 +116,7 @@ export async function buildTransferSubscription(params: {
     ? { programAddress: params.programAddress }
     : undefined;
 
-  const [multiDelegate] = await getMultiDelegatePDA(
+  const [subscriptionAuthority] = await getSubscriptionAuthorityPDA(
     params.delegator,
     params.tokenMint,
     params.programAddress,
@@ -131,7 +131,7 @@ export async function buildTransferSubscription(params: {
     {
       subscriptionPda: params.subscriptionPda,
       planPda: params.planPda,
-      multiDelegate,
+      subscriptionAuthority,
       delegatorAta,
       receiverAta: params.receiverAta,
       caller: params.caller,

@@ -15,7 +15,7 @@ function truncate(value: string, start = 6, end = 6) {
 
 export function RecentTransactions() {
     const { recentTransactions, clearRecentTransactions } = useRecentTransactions();
-    const { rememberDelegatee, rememberMultiDelegate, rememberDelegation, rememberMint, rememberPlan } = useSavedValues();
+    const { rememberDelegatee, rememberSubscriptionAuthority, rememberDelegation, rememberMint, rememberPlan } = useSavedValues();
     const { rpcUrl } = useRpcContext();
     const [collapsed, setCollapsed] = useState(false);
 
@@ -65,7 +65,7 @@ export function RecentTransactions() {
                                         <Button type="button" size="sm" variant="secondary" onClick={() => {
                                             if (!tx.values) return;
                                             if (tx.values.delegatee) rememberDelegatee(tx.values.delegatee);
-                                            if (tx.values.multiDelegate) rememberMultiDelegate(tx.values.multiDelegate);
+                                            if (tx.values.subscriptionAuthority) rememberSubscriptionAuthority(tx.values.subscriptionAuthority);
                                             if (tx.values.delegationPda) rememberDelegation(tx.values.delegationPda);
                                             if (tx.values.mint) rememberMint(tx.values.mint);
                                             if (tx.values.planPda) rememberPlan(tx.values.planPda);

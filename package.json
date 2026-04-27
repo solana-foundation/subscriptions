@@ -1,5 +1,5 @@
 {
-  "name": "multidelegator-monorepo",
+  "name": "subscriptions-monorepo",
   "type": "module",
   "private": true,
   "workspaces": [

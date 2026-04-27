@@ -2,7 +2,7 @@ import { AlertCircle } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { ActiveDelegations } from './active-delegations'
 import { useUsdcMintRaw } from '@/hooks/use-token-config'
-import { useMultiDelegateStatus } from '@/hooks/use-multi-delegate-status'
+import { useSubscriptionAuthorityStatus } from '@/hooks/use-subscription-authority-status'
 
 function LoadingState() {
   return (
@@ -51,7 +51,7 @@ function StatusError({ onRetry }: { onRetry: () => void }) {
 
 export function DelegationManagementPanel() {
   const { mint: usdcMint, isLoading: isMintLoading } = useUsdcMintRaw()
-  const { isLoading: statusLoading, isError, isApproved, data: statusData, refetch: refetchStatus } = useMultiDelegateStatus(usdcMint)
+  const { isLoading: statusLoading, isError, isApproved, data: statusData, refetch: refetchStatus } = useSubscriptionAuthorityStatus(usdcMint)
 
   if (isMintLoading || statusLoading) {
     return <LoadingState />
@@ -65,19 +65,19 @@ export function DelegationManagementPanel() {
     return <TokenConfigError />
   }
 
-  const multiDelegateInitId = statusData?.data?.initId ?? null
+  const subscriptionAuthorityInitId = statusData?.data?.initId ?? null
 
   return (
     <div className="w-full">
-      {multiDelegateInitId != null && (
+      {subscriptionAuthorityInitId != null && (
         <div className="flex items-center gap-2 mb-4 text-xs text-gray-500 tracking-wide">
           <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-700/40 to-transparent" />
           <span className="uppercase">Current Delegation ID</span>
-          <span className="text-gray-400">{multiDelegateInitId.toString()}</span>
+          <span className="text-gray-400">{subscriptionAuthorityInitId.toString()}</span>
           <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-700/40 to-transparent" />
         </div>
       )}
-      <ActiveDelegations tokenMint={usdcMint} isApproved={isApproved} multiDelegateInitId={multiDelegateInitId} onInitSuccess={refetchStatus} />
+      <ActiveDelegations tokenMint={usdcMint} isApproved={isApproved} subscriptionAuthorityInitId={subscriptionAuthorityInitId} onInitSuccess={refetchStatus} />
     </div>
   )
 }

@@ -10,8 +10,8 @@ import {
   decodeSubscriptionDelegation,
   toEncodedAccount,
   type RawProgramAccount,
-} from '@multidelegator/client'
-import type { SubscriptionDelegation, Plan } from '@multidelegator/client'
+} from '@subscriptions/client'
+import type { SubscriptionDelegation, Plan } from '@subscriptions/client'
 import { useClusterConfig } from '@/hooks/use-cluster-config'
 import { useProgramAddress } from '@/hooks/use-token-config'
 

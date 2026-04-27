@@ -20,8 +20,8 @@ let startingValidator = false
 const MIN_SOL_AIRDROP = 0.1
 const MAX_SOL_AIRDROP = 10
 
-const SO_PATH = join(__dirname, '../../target/deploy/multi_delegator.so')
-const KEYPAIR_PATH = join(__dirname, '../../keys/multi_delegator-keypair.json')
+const SO_PATH = join(__dirname, '../../target/deploy/subscriptions.so')
+const KEYPAIR_PATH = join(__dirname, '../../keys/subscriptions-keypair.json')
 
 let cachedKeypairAddress: string | null = null
 function getProgramAddressFromKeypair(): string {
@@ -633,7 +633,7 @@ const server = createServer(async (req, res) => {
 })
 
 server.listen(PORT, () => {
-  console.log(`Multi-Delegator API server running on port ${PORT}`)
+  console.log(`Subscriptions API server running on port ${PORT}`)
   console.log('')
   console.log('Endpoints:')
   console.log(`  GET  http://localhost:${PORT}/api/health`)

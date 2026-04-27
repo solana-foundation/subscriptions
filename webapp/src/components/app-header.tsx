@@ -6,7 +6,7 @@ import { TimeTravelButton } from './time-travel/time-travel-button'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { useWalletUi } from '@wallet-ui/react'
 import { NAV_ITEMS } from './nav-items'
-import { CURRENT_PROGRAM_VERSION } from '@multidelegator/client'
+import { CURRENT_PROGRAM_VERSION } from '@subscriptions/client'
 
 function NetworkButton() {
   const navigate = useNavigate()
@@ -44,7 +44,7 @@ export function AppHeader() {
   return (
     <header className="relative z-50 px-4 py-2 bg-neutral-100 dark:bg-neutral-900 dark:text-neutral-400">
       <div className="mx-auto flex justify-between items-center">
-        <span className="text-xl md:hidden">MultiDelegator <span className="text-sm font-bold text-blue-400/60">v{CURRENT_PROGRAM_VERSION}</span></span>
+        <span className="text-xl md:hidden">Subscriptions <span className="text-sm font-bold text-blue-400/60">v{CURRENT_PROGRAM_VERSION}</span></span>
 
         <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setShowMenu(!showMenu)}>
           {showMenu ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}

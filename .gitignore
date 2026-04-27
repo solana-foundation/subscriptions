@@ -6,7 +6,7 @@ dist
 bun.lockb
 
 # Where idl will be generated
-programs/multi_delegator/idl/*
+programs/subscriptions/idl/*
 # where the generated typescript files from idl and codama are kept
 clients/typescript/src/generated/
 clients/rust/src/generated/

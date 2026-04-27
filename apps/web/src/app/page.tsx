@@ -7,8 +7,8 @@ import { RecentTransactions } from '@/components/RecentTransactions';
 import { ProgramBadge } from '@/components/ProgramBadge';
 import { RpcBadge } from '@/components/RpcBadge';
 import { WalletButton } from '@/components/WalletButton';
-import { InitMultiDelegate } from '@/instructions/InitMultiDelegate';
-import { CloseMultiDelegate } from '@/instructions/CloseMultiDelegate';
+import { InitSubscriptionAuthority } from '@/instructions/InitSubscriptionAuthority';
+import { CloseSubscriptionAuthority } from '@/instructions/CloseSubscriptionAuthority';
 import { CreateFixedDelegation } from '@/instructions/CreateFixedDelegation';
 import { CreateRecurringDelegation } from '@/instructions/CreateRecurringDelegation';
 import { RevokeDelegation } from '@/instructions/RevokeDelegation';
@@ -22,7 +22,7 @@ import { CancelSubscription } from '@/instructions/CancelSubscription';
 import { TransferSubscription } from '@/instructions/TransferSubscription';
 
 type InstructionId =
-    | 'initMultiDelegate' | 'closeMultiDelegate'
+    | 'initSubscriptionAuthority' | 'closeSubscriptionAuthority'
     | 'createFixedDelegation' | 'createRecurringDelegation' | 'revokeDelegation'
     | 'transferFixed' | 'transferRecurring'
     | 'createPlan' | 'updatePlan' | 'deletePlan'
@@ -32,8 +32,8 @@ const NAV: { group: string; items: { id: InstructionId; label: string }[] }[] = 
     {
         group: 'DELEGATE',
         items: [
-            { id: 'initMultiDelegate', label: 'Init Multi-Delegate' },
-            { id: 'closeMultiDelegate', label: 'Close Multi-Delegate' },
+            { id: 'initSubscriptionAuthority', label: 'Init Subscription Authority' },
+            { id: 'closeSubscriptionAuthority', label: 'Close Subscription Authority' },
             { id: 'createFixedDelegation', label: 'Create Fixed Delegation' },
             { id: 'createRecurringDelegation', label: 'Create Recurring Delegation' },
             { id: 'revokeDelegation', label: 'Revoke Delegation' },
@@ -60,8 +60,8 @@ const NAV: { group: string; items: { id: InstructionId; label: string }[] }[] = 
 ];
 
 const PANELS: Record<InstructionId, { title: string; component: React.ComponentType }> = {
-    initMultiDelegate: { title: 'Init Multi-Delegate', component: InitMultiDelegate },
-    closeMultiDelegate: { title: 'Close Multi-Delegate', component: CloseMultiDelegate },
+    initSubscriptionAuthority: { title: 'Init Subscription Authority', component: InitSubscriptionAuthority },
+    closeSubscriptionAuthority: { title: 'Close Subscription Authority', component: CloseSubscriptionAuthority },
     createFixedDelegation: { title: 'Create Fixed Delegation', component: CreateFixedDelegation },
     createRecurringDelegation: { title: 'Create Recurring Delegation', component: CreateRecurringDelegation },
     revokeDelegation: { title: 'Revoke Delegation', component: RevokeDelegation },
@@ -76,7 +76,7 @@ const PANELS: Record<InstructionId, { title: string; component: React.ComponentT
 };
 
 export default function HomePage() {
-    const [active, setActive] = useState<InstructionId>('initMultiDelegate');
+    const [active, setActive] = useState<InstructionId>('initSubscriptionAuthority');
     const panel = PANELS[active];
     const Panel = panel.component;
 
@@ -89,7 +89,7 @@ export default function HomePage() {
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-accent)' }}>
-                        Multi-Delegator
+                        Subscriptions
                     </span>
                     <RpcBadge />
                     <ProgramBadge />

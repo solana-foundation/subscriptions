@@ -1,6 +1,6 @@
 'use client';
 
-import { parseProgramError } from '@multidelegator/client';
+import { parseProgramError } from '@subscriptions/client';
 
 const FALLBACK_TX_FAILED_MESSAGE = 'Transaction failed';
 

@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-const STORAGE_KEY = 'multidelegator-rpc-url';
+const STORAGE_KEY = 'subscriptions-rpc-url';
 const FALLBACK_RPC = 'https://api.devnet.solana.com';
 const DEFAULT_RPC = process.env.NEXT_PUBLIC_RPC_URL ?? FALLBACK_RPC;
 

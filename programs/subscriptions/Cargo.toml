@@ -1,0 +1,44 @@
+[package]
+name = "subscriptions"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["lib", "cdylib"]
+
+[build-dependencies]
+codama = "0.7.2"
+serde_json = "1"
+
+[dependencies]
+pinocchio = { version = "0.10.2", features = ["cpi", "copy"] }
+solana-address = { version = "2", features = ["curve25519"] }
+pinocchio-associated-token-account = "0.3.0"
+pinocchio-system = "0.5.0"
+pinocchio-token = "0.5.0"
+pinocchio-token-2022 = "0.2.0"
+codama = "0.7.2"
+const-crypto = "0.3"
+thiserror = { version = "2", default-features = false }
+
+[dev-dependencies]
+litesvm = "^0.7"
+litesvm-token = { version = "^0.7", features = ["token-2022"] }
+solana-account = "^2"
+solana-instruction = "^2"
+solana-keypair = "^2"
+solana-message = "^2"
+solana-pubkey = "^2"
+solana-signer = "^2"
+solana-transaction = "^2"
+solana-transaction-error = "^2"
+spl-associated-token-account = "7.0.0"
+spl-token-2022 = "^8"
+spl-token = "^8"
+serde_json = "1"
+rstest = "0.24"
+tabled = "0.17"
+ctor = "0.2"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }

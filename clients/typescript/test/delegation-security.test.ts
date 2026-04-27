@@ -1,20 +1,20 @@
 import { describe, expect, test } from 'vitest';
 import {
-  MULTI_DELEGATOR_ERROR__AMOUNT_EXCEEDS_PERIOD_LIMIT,
-  MULTI_DELEGATOR_ERROR__DELEGATION_ALREADY_EXISTS,
-  MULTI_DELEGATOR_ERROR__DELEGATION_EXPIRED,
-  MULTI_DELEGATOR_ERROR__DELEGATION_NOT_STARTED,
-  MULTI_DELEGATOR_ERROR__INVALID_MULTI_DELEGATE_PDA,
-  MULTI_DELEGATOR_ERROR__STALE_MULTI_DELEGATE,
-  MULTI_DELEGATOR_ERROR__UNAUTHORIZED,
-} from '../src/generated/errors/multiDelegator.ts';
+  SUBSCRIPTIONS_ERROR__AMOUNT_EXCEEDS_PERIOD_LIMIT,
+  SUBSCRIPTIONS_ERROR__DELEGATION_ALREADY_EXISTS,
+  SUBSCRIPTIONS_ERROR__DELEGATION_EXPIRED,
+  SUBSCRIPTIONS_ERROR__DELEGATION_NOT_STARTED,
+  SUBSCRIPTIONS_ERROR__INVALID_SUBSCRIPTION_AUTHORITY_PDA,
+  SUBSCRIPTIONS_ERROR__STALE_SUBSCRIPTION_AUTHORITY,
+  SUBSCRIPTIONS_ERROR__UNAUTHORIZED,
+} from '../src/generated/errors/subscriptions.ts';
 import {
-  buildCloseMultiDelegate,
+  buildCloseSubscriptionAuthority,
   buildCreateFixedDelegation,
   buildCreateRecurringDelegation,
   buildRevokeDelegation,
 } from '../src/instructions/delegation.ts';
-import { getDelegationPDA, getMultiDelegatePDA } from '../src/pdas.ts';
+import { getDelegationPDA, getSubscriptionAuthorityPDA } from '../src/pdas.ts';
 import { addressAsSigner } from '../src/wallet.ts';
 import {
   DEFAULT_TEST_BALANCE,
@@ -34,14 +34,14 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: t.payerKeypair,
       tokenMint: t.tokenMint,
       userAta,
       tokenProgram: t.tokenProgram,
     });
 
-    const [multiDelegatePda] = await getMultiDelegatePDA(
+    const [subscriptionAuthorityPda] = await getSubscriptionAuthorityPDA(
       t.payerKeypair.address,
       t.tokenMint,
     );
@@ -65,7 +65,7 @@ describe('Delegation Security', () => {
     });
 
     const [oldDelegationPda] = await getDelegationPDA(
-      multiDelegatePda,
+      subscriptionAuthorityPda,
       t.payerKeypair.address,
       delegatee.address,
       0n,
@@ -82,13 +82,13 @@ describe('Delegation Security', () => {
       tokenProgram: t.tokenProgram,
     });
 
-    const { instructions: closeIxs } = await buildCloseMultiDelegate({
+    const { instructions: closeIxs } = await buildCloseSubscriptionAuthority({
       user: addressAsSigner(t.payerKeypair.address),
       tokenMint: t.tokenMint,
     });
     await t.payer.sendInstructions(closeIxs);
 
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: t.payerKeypair,
       tokenMint: t.tokenMint,
       userAta,
@@ -106,7 +106,7 @@ describe('Delegation Security', () => {
         receiverAta: delegateeAta,
         tokenProgram: t.tokenProgram,
       }),
-      MULTI_DELEGATOR_ERROR__STALE_MULTI_DELEGATE,
+      SUBSCRIPTIONS_ERROR__STALE_SUBSCRIPTION_AUTHORITY,
     );
 
     await t.client.createFixedDelegation({
@@ -119,7 +119,7 @@ describe('Delegation Security', () => {
     });
 
     const [newDelegationPda] = await getDelegationPDA(
-      multiDelegatePda,
+      subscriptionAuthorityPda,
       t.payerKeypair.address,
       delegatee.address,
       1n,
@@ -138,7 +138,7 @@ describe('Delegation Security', () => {
     expect(signature).toBeDefined();
   });
 
-  test('close MultiDelegate kills all transfers', async () => {
+  test('close SubscriptionAuthority kills all transfers', async () => {
     const t = await initTestSuite();
 
     const userAta = await t.createAtaWithBalance(
@@ -147,14 +147,14 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE * 2n,
     );
 
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: t.payerKeypair,
       tokenMint: t.tokenMint,
       userAta,
       tokenProgram: t.tokenProgram,
     });
 
-    const [multiDelegatePda] = await getMultiDelegatePDA(
+    const [subscriptionAuthorityPda] = await getSubscriptionAuthorityPDA(
       t.payerKeypair.address,
       t.tokenMint,
     );
@@ -195,13 +195,13 @@ describe('Delegation Security', () => {
     });
 
     const [fixedPda] = await getDelegationPDA(
-      multiDelegatePda,
+      subscriptionAuthorityPda,
       t.payerKeypair.address,
       delegatee1.address,
       0n,
     );
     const [recurringPda] = await getDelegationPDA(
-      multiDelegatePda,
+      subscriptionAuthorityPda,
       t.payerKeypair.address,
       delegatee2.address,
       0n,
@@ -229,7 +229,7 @@ describe('Delegation Security', () => {
       tokenProgram: t.tokenProgram,
     });
 
-    const { instructions: closeIxs } = await buildCloseMultiDelegate({
+    const { instructions: closeIxs } = await buildCloseSubscriptionAuthority({
       user: addressAsSigner(t.payerKeypair.address),
       tokenMint: t.tokenMint,
     });
@@ -246,7 +246,7 @@ describe('Delegation Security', () => {
         receiverAta: delegatee1Ata,
         tokenProgram: t.tokenProgram,
       }),
-      MULTI_DELEGATOR_ERROR__INVALID_MULTI_DELEGATE_PDA,
+      SUBSCRIPTIONS_ERROR__INVALID_SUBSCRIPTION_AUTHORITY_PDA,
     );
 
     await expectProgramError(
@@ -260,7 +260,7 @@ describe('Delegation Security', () => {
         receiverAta: delegatee2Ata,
         tokenProgram: t.tokenProgram,
       }),
-      MULTI_DELEGATOR_ERROR__INVALID_MULTI_DELEGATE_PDA,
+      SUBSCRIPTIONS_ERROR__INVALID_SUBSCRIPTION_AUTHORITY_PDA,
     );
   });
 
@@ -273,7 +273,7 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: t.payerKeypair,
       tokenMint: t.tokenMint,
       userAta,
@@ -299,12 +299,12 @@ describe('Delegation Security', () => {
       expiryTs,
     });
 
-    const [multiDelegatePda] = await getMultiDelegatePDA(
+    const [subscriptionAuthorityPda] = await getSubscriptionAuthorityPDA(
       t.payerKeypair.address,
       t.tokenMint,
     );
     const [delegationPda] = await getDelegationPDA(
-      multiDelegatePda,
+      subscriptionAuthorityPda,
       t.payerKeypair.address,
       delegatee.address,
       0n,
@@ -335,7 +335,7 @@ describe('Delegation Security', () => {
         receiverAta: delegateeAta,
         tokenProgram: t.tokenProgram,
       }),
-      MULTI_DELEGATOR_ERROR__DELEGATION_EXPIRED,
+      SUBSCRIPTIONS_ERROR__DELEGATION_EXPIRED,
     );
   });
 
@@ -348,7 +348,7 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: t.payerKeypair,
       tokenMint: t.tokenMint,
       userAta,
@@ -376,12 +376,12 @@ describe('Delegation Security', () => {
       expiryTs,
     });
 
-    const [multiDelegatePda] = await getMultiDelegatePDA(
+    const [subscriptionAuthorityPda] = await getSubscriptionAuthorityPDA(
       t.payerKeypair.address,
       t.tokenMint,
     );
     const [delegationPda] = await getDelegationPDA(
-      multiDelegatePda,
+      subscriptionAuthorityPda,
       t.payerKeypair.address,
       delegatee.address,
       0n,
@@ -412,7 +412,7 @@ describe('Delegation Security', () => {
         receiverAta: delegateeAta,
         tokenProgram: t.tokenProgram,
       }),
-      MULTI_DELEGATOR_ERROR__DELEGATION_EXPIRED,
+      SUBSCRIPTIONS_ERROR__DELEGATION_EXPIRED,
     );
   });
 
@@ -425,7 +425,7 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: t.payerKeypair,
       tokenMint: t.tokenMint,
       userAta,
@@ -451,12 +451,12 @@ describe('Delegation Security', () => {
       expiryTs: currentTs + BigInt(ONE_HOUR_IN_SECONDS),
     });
 
-    const [multiDelegatePda] = await getMultiDelegatePDA(
+    const [subscriptionAuthorityPda] = await getSubscriptionAuthorityPDA(
       t.payerKeypair.address,
       t.tokenMint,
     );
     const [delegationPda] = await getDelegationPDA(
-      multiDelegatePda,
+      subscriptionAuthorityPda,
       t.payerKeypair.address,
       legitimateDelegatee.address,
       0n,
@@ -473,7 +473,7 @@ describe('Delegation Security', () => {
         receiverAta: attackerAta,
         tokenProgram: t.tokenProgram,
       }),
-      MULTI_DELEGATOR_ERROR__UNAUTHORIZED,
+      SUBSCRIPTIONS_ERROR__UNAUTHORIZED,
     );
 
     const legitimateAta = await t.createAtaWithBalance(
@@ -503,7 +503,7 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: t.payerKeypair,
       tokenMint: t.tokenMint,
       userAta,
@@ -531,12 +531,12 @@ describe('Delegation Security', () => {
       expiryTs: currentTs + BigInt(ONE_DAY_IN_SECONDS * 30),
     });
 
-    const [multiDelegatePda] = await getMultiDelegatePDA(
+    const [subscriptionAuthorityPda] = await getSubscriptionAuthorityPDA(
       t.payerKeypair.address,
       t.tokenMint,
     );
     const [delegationPda] = await getDelegationPDA(
-      multiDelegatePda,
+      subscriptionAuthorityPda,
       t.payerKeypair.address,
       legitimateDelegatee.address,
       0n,
@@ -553,7 +553,7 @@ describe('Delegation Security', () => {
         receiverAta: attackerAta,
         tokenProgram: t.tokenProgram,
       }),
-      MULTI_DELEGATOR_ERROR__UNAUTHORIZED,
+      SUBSCRIPTIONS_ERROR__UNAUTHORIZED,
     );
 
     const legitimateAta = await t.createAtaWithBalance(
@@ -583,7 +583,7 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: t.payerKeypair,
       tokenMint: t.tokenMint,
       userAta,
@@ -612,12 +612,12 @@ describe('Delegation Security', () => {
       expiryTs: currentTs + BigInt(ONE_DAY_IN_SECONDS * 30),
     });
 
-    const [multiDelegatePda] = await getMultiDelegatePDA(
+    const [subscriptionAuthorityPda] = await getSubscriptionAuthorityPDA(
       t.payerKeypair.address,
       t.tokenMint,
     );
     const [delegationPda] = await getDelegationPDA(
-      multiDelegatePda,
+      subscriptionAuthorityPda,
       t.payerKeypair.address,
       delegatee.address,
       0n,
@@ -636,7 +636,7 @@ describe('Delegation Security', () => {
         receiverAta: delegateeAta,
         tokenProgram: t.tokenProgram,
       }),
-      MULTI_DELEGATOR_ERROR__AMOUNT_EXCEEDS_PERIOD_LIMIT,
+      SUBSCRIPTIONS_ERROR__AMOUNT_EXCEEDS_PERIOD_LIMIT,
     );
 
     const { signature } = await t.client.transferRecurring({
@@ -661,7 +661,7 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: t.payerKeypair,
       tokenMint: t.tokenMint,
       userAta,
@@ -689,12 +689,12 @@ describe('Delegation Security', () => {
       expiryTs: currentTs + BigInt(ONE_DAY_IN_SECONDS * 30),
     });
 
-    const [multiDelegatePda] = await getMultiDelegatePDA(
+    const [subscriptionAuthorityPda] = await getSubscriptionAuthorityPDA(
       t.payerKeypair.address,
       t.tokenMint,
     );
     const [delegationPda] = await getDelegationPDA(
-      multiDelegatePda,
+      subscriptionAuthorityPda,
       t.payerKeypair.address,
       delegatee.address,
       0n,
@@ -722,7 +722,7 @@ describe('Delegation Security', () => {
         receiverAta: delegateeAta,
         tokenProgram: t.tokenProgram,
       }),
-      MULTI_DELEGATOR_ERROR__AMOUNT_EXCEEDS_PERIOD_LIMIT,
+      SUBSCRIPTIONS_ERROR__AMOUNT_EXCEEDS_PERIOD_LIMIT,
     );
 
     const { signature } = await t.client.transferRecurring({
@@ -747,7 +747,7 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: t.payerKeypair,
       tokenMint: t.tokenMint,
       userAta,
@@ -775,12 +775,12 @@ describe('Delegation Security', () => {
       expiryTs: startTs + BigInt(ONE_DAY_IN_SECONDS * 30),
     });
 
-    const [multiDelegatePda] = await getMultiDelegatePDA(
+    const [subscriptionAuthorityPda] = await getSubscriptionAuthorityPDA(
       t.payerKeypair.address,
       t.tokenMint,
     );
     const [delegationPda] = await getDelegationPDA(
-      multiDelegatePda,
+      subscriptionAuthorityPda,
       t.payerKeypair.address,
       delegatee.address,
       0n,
@@ -797,7 +797,7 @@ describe('Delegation Security', () => {
         receiverAta: delegateeAta,
         tokenProgram: t.tokenProgram,
       }),
-      MULTI_DELEGATOR_ERROR__DELEGATION_NOT_STARTED,
+      SUBSCRIPTIONS_ERROR__DELEGATION_NOT_STARTED,
     );
 
     await t.timeTravel(Number(startTs) + 60);
@@ -824,7 +824,7 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: t.payerKeypair,
       tokenMint: t.tokenMint,
       userAta,
@@ -854,7 +854,7 @@ describe('Delegation Security', () => {
         startTs: currentTs,
         expiryTs: currentTs + BigInt(ONE_DAY_IN_SECONDS * 30),
       }),
-      MULTI_DELEGATOR_ERROR__DELEGATION_ALREADY_EXISTS,
+      SUBSCRIPTIONS_ERROR__DELEGATION_ALREADY_EXISTS,
     );
   });
 
@@ -868,14 +868,14 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: subscriber,
       tokenMint: t.tokenMint,
       userAta: subscriberAta,
       tokenProgram: t.tokenProgram,
     });
 
-    const [multiDelegatePda] = await getMultiDelegatePDA(
+    const [subscriptionAuthorityPda] = await getSubscriptionAuthorityPDA(
       subscriber.address,
       t.tokenMint,
     );
@@ -898,7 +898,7 @@ describe('Delegation Security', () => {
     });
 
     const [delegationPda] = await getDelegationPDA(
-      multiDelegatePda,
+      subscriptionAuthorityPda,
       subscriber.address,
       delegatee.address,
       0n,
@@ -911,7 +911,7 @@ describe('Delegation Security', () => {
     });
     await t.payer.sendInstructions([revokeIx]);
 
-    // Fails at SPL Token program level (not a multi-delegator error),
+    // Fails at SPL Token program level (not a subscriptions error),
     // so we assert the generic rejection rather than a specific program error code
     await expect(
       t.client.transferFixed({
@@ -929,7 +929,7 @@ describe('Delegation Security', () => {
     const { getApproveInstruction } = await import('@solana-program/token');
     const approveIx = getApproveInstruction({
       source: subscriberAta,
-      delegate: multiDelegatePda,
+      delegate: subscriptionAuthorityPda,
       owner: subscriber,
       amount: BigInt('18446744073709551615'),
     });
@@ -957,7 +957,7 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: t.payerKeypair,
       tokenMint: t.tokenMint,
       userAta,
@@ -985,7 +985,7 @@ describe('Delegation Security', () => {
         amount: 500_000n,
         expiryTs: currentTs + BigInt(ONE_HOUR_IN_SECONDS),
       }),
-      MULTI_DELEGATOR_ERROR__DELEGATION_ALREADY_EXISTS,
+      SUBSCRIPTIONS_ERROR__DELEGATION_ALREADY_EXISTS,
     );
 
     const { signature } = await t.client.createFixedDelegation({
@@ -1012,7 +1012,7 @@ describe('Sponsor Revoke', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: t.payerKeypair,
       tokenMint: t.tokenMint,
       userAta,
@@ -1061,7 +1061,7 @@ describe('Sponsor Revoke', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: t.payerKeypair,
       tokenMint: t.tokenMint,
       userAta,
@@ -1111,7 +1111,7 @@ describe('Sponsor Revoke', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: t.payerKeypair,
       tokenMint: t.tokenMint,
       userAta,
@@ -1139,7 +1139,7 @@ describe('Sponsor Revoke', () => {
         authority: sponsor,
         delegationAccount: delegationPda,
       }),
-      MULTI_DELEGATOR_ERROR__UNAUTHORIZED,
+      SUBSCRIPTIONS_ERROR__UNAUTHORIZED,
     );
   });
 
@@ -1153,7 +1153,7 @@ describe('Sponsor Revoke', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: t.payerKeypair,
       tokenMint: t.tokenMint,
       userAta,
@@ -1179,7 +1179,7 @@ describe('Sponsor Revoke', () => {
         authority: sponsor,
         delegationAccount: delegationPda,
       }),
-      MULTI_DELEGATOR_ERROR__UNAUTHORIZED,
+      SUBSCRIPTIONS_ERROR__UNAUTHORIZED,
     );
   });
 
@@ -1193,7 +1193,7 @@ describe('Sponsor Revoke', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: t.payerKeypair,
       tokenMint: t.tokenMint,
       userAta,
@@ -1241,7 +1241,7 @@ describe('Sponsor Revoke', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: t.payerKeypair,
       tokenMint: t.tokenMint,
       userAta,
@@ -1271,7 +1271,7 @@ describe('Sponsor Revoke', () => {
         authority: attacker,
         delegationAccount: delegationPda,
       }),
-      MULTI_DELEGATOR_ERROR__UNAUTHORIZED,
+      SUBSCRIPTIONS_ERROR__UNAUTHORIZED,
     );
   });
 });

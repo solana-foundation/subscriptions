@@ -37,14 +37,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: program-so
-          path: target/deploy/multi_delegator.so
+          path: target/deploy/subscriptions.so
           retention-days: 1
 
       - name: Upload program keypair
         uses: actions/upload-artifact@v4
         with:
           name: program-keypair
-          path: target/deploy/multi_delegator-keypair.json
+          path: target/deploy/subscriptions-keypair.json
           retention-days: 1
 
       - name: Upload client dist
@@ -169,7 +169,7 @@ jobs:
           PR=${{ github.event.pull_request.number }}
           MARKER="<!-- cu-report -->"
           REPORT="$MARKER
-          $(cat programs/multi_delegator/cu_report.md)"
+          $(cat programs/subscriptions/cu_report.md)"
 
           COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${PR}/comments" \
             --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" | head -1)

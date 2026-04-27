@@ -29,7 +29,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@idl": ["../programs/multi_delegator/idl/multi_delegator.json"]
+      "@idl": ["../programs/subscriptions/idl/subscriptions.json"]
     }
   },
   "include": ["src"]

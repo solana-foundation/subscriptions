@@ -1,27 +1,27 @@
 import { describe, expect, test } from 'vitest';
 import {
-  MULTI_DELEGATOR_ERROR__ALREADY_SUBSCRIBED,
-  MULTI_DELEGATOR_ERROR__PLAN_CLOSED,
-  MULTI_DELEGATOR_ERROR__PLAN_EXPIRED,
-  MULTI_DELEGATOR_ERROR__PLAN_IMMUTABLE_AFTER_SUNSET,
-  MULTI_DELEGATOR_ERROR__PLAN_NOT_EXPIRED,
-  MULTI_DELEGATOR_ERROR__PLAN_SUNSET,
-  MULTI_DELEGATOR_ERROR__STALE_MULTI_DELEGATE,
-  MULTI_DELEGATOR_ERROR__SUBSCRIPTION_ALREADY_CANCELLED,
-  MULTI_DELEGATOR_ERROR__SUBSCRIPTION_CANCELLED,
-  MULTI_DELEGATOR_ERROR__SUBSCRIPTION_NOT_CANCELLED,
-  MULTI_DELEGATOR_ERROR__SUBSCRIPTION_PLAN_MISMATCH,
-  MULTI_DELEGATOR_ERROR__UNAUTHORIZED,
-  MULTI_DELEGATOR_ERROR__UNAUTHORIZED_DESTINATION,
-} from '../src/generated/errors/multiDelegator.ts';
+  SUBSCRIPTIONS_ERROR__ALREADY_SUBSCRIBED,
+  SUBSCRIPTIONS_ERROR__PLAN_CLOSED,
+  SUBSCRIPTIONS_ERROR__PLAN_EXPIRED,
+  SUBSCRIPTIONS_ERROR__PLAN_IMMUTABLE_AFTER_SUNSET,
+  SUBSCRIPTIONS_ERROR__PLAN_NOT_EXPIRED,
+  SUBSCRIPTIONS_ERROR__PLAN_SUNSET,
+  SUBSCRIPTIONS_ERROR__STALE_SUBSCRIPTION_AUTHORITY,
+  SUBSCRIPTIONS_ERROR__SUBSCRIPTION_ALREADY_CANCELLED,
+  SUBSCRIPTIONS_ERROR__SUBSCRIPTION_CANCELLED,
+  SUBSCRIPTIONS_ERROR__SUBSCRIPTION_NOT_CANCELLED,
+  SUBSCRIPTIONS_ERROR__SUBSCRIPTION_PLAN_MISMATCH,
+  SUBSCRIPTIONS_ERROR__UNAUTHORIZED,
+  SUBSCRIPTIONS_ERROR__UNAUTHORIZED_DESTINATION,
+} from '../src/generated/errors/subscriptions.ts';
 import {
   fetchMaybePlan,
   fetchMaybeSubscriptionDelegation,
   fetchSubscriptionDelegation,
   PlanStatus,
 } from '../src/generated/index.ts';
-import { buildCloseMultiDelegate } from '../src/instructions/delegation.ts';
-import { getMultiDelegatePDA, getPlanPDA } from '../src/pdas.ts';
+import { buildCloseSubscriptionAuthority } from '../src/instructions/delegation.ts';
+import { getSubscriptionAuthorityPDA, getPlanPDA } from '../src/pdas.ts';
 import { addressAsSigner } from '../src/wallet.ts';
 import {
   DEFAULT_TEST_BALANCE,
@@ -52,7 +52,7 @@ describe('Subscription Security', () => {
       subscriber.address,
       DEFAULT_TEST_BALANCE,
     );
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: subscriber,
       tokenMint: t.tokenMint,
       userAta: subscriberAta,
@@ -83,7 +83,7 @@ describe('Subscription Security', () => {
         subscriptionPda,
         planPda,
       }),
-      MULTI_DELEGATOR_ERROR__SUBSCRIPTION_NOT_CANCELLED,
+      SUBSCRIPTIONS_ERROR__SUBSCRIPTION_NOT_CANCELLED,
     );
 
     await t.timeTravel(Number(subAfterCancel.expiresAtTs) + 60);
@@ -119,7 +119,7 @@ describe('Subscription Security', () => {
       subscriber.address,
       DEFAULT_TEST_BALANCE,
     );
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: subscriber,
       tokenMint: t.tokenMint,
       userAta: subscriberAta,
@@ -150,7 +150,7 @@ describe('Subscription Security', () => {
         receiverAta: attackerAta,
         tokenProgram: t.tokenProgram,
       }),
-      MULTI_DELEGATOR_ERROR__UNAUTHORIZED,
+      SUBSCRIPTIONS_ERROR__UNAUTHORIZED,
     );
 
     const pullerAta = await t.createAtaWithBalance(
@@ -223,7 +223,7 @@ describe('Subscription Security', () => {
       subscriber.address,
       DEFAULT_TEST_BALANCE,
     );
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: subscriber,
       tokenMint: t.tokenMint,
       userAta: subscriberAta,
@@ -248,7 +248,7 @@ describe('Subscription Security', () => {
         receiverAta: unauthorizedAta,
         tokenProgram: t.tokenProgram,
       }),
-      MULTI_DELEGATOR_ERROR__UNAUTHORIZED_DESTINATION,
+      SUBSCRIPTIONS_ERROR__UNAUTHORIZED_DESTINATION,
     );
 
     const { signature } = await t.client.transferSubscription({
@@ -285,7 +285,7 @@ describe('Subscription Security', () => {
       subscriber.address,
       DEFAULT_TEST_BALANCE,
     );
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: subscriber,
       tokenMint: t.tokenMint,
       userAta: subscriberAta,
@@ -306,7 +306,7 @@ describe('Subscription Security', () => {
         planId: 1n,
         tokenMint: t.tokenMint,
       }),
-      MULTI_DELEGATOR_ERROR__ALREADY_SUBSCRIBED,
+      SUBSCRIPTIONS_ERROR__ALREADY_SUBSCRIBED,
     );
   });
 
@@ -341,7 +341,7 @@ describe('Subscription Security', () => {
       subscriber.address,
       DEFAULT_TEST_BALANCE,
     );
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: subscriber,
       tokenMint: t.tokenMint,
       userAta: subscriberAta,
@@ -355,7 +355,7 @@ describe('Subscription Security', () => {
         planId: 1n,
         tokenMint: t.tokenMint,
       }),
-      MULTI_DELEGATOR_ERROR__PLAN_SUNSET,
+      SUBSCRIPTIONS_ERROR__PLAN_SUNSET,
     );
   });
 
@@ -380,7 +380,7 @@ describe('Subscription Security', () => {
       subscriber.address,
       DEFAULT_TEST_BALANCE,
     );
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: subscriber,
       tokenMint: t.tokenMint,
       userAta: subscriberAta,
@@ -444,7 +444,7 @@ describe('Subscription Security', () => {
         receiverAta: merchantAta,
         tokenProgram: t.tokenProgram,
       }),
-      MULTI_DELEGATOR_ERROR__SUBSCRIPTION_CANCELLED,
+      SUBSCRIPTIONS_ERROR__SUBSCRIPTION_CANCELLED,
     );
   });
 
@@ -469,7 +469,7 @@ describe('Subscription Security', () => {
       subscriber.address,
       DEFAULT_TEST_BALANCE,
     );
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: subscriber,
       tokenMint: t.tokenMint,
       userAta: subscriberAta,
@@ -495,7 +495,7 @@ describe('Subscription Security', () => {
         planPda,
         subscriptionPda,
       }),
-      MULTI_DELEGATOR_ERROR__SUBSCRIPTION_ALREADY_CANCELLED,
+      SUBSCRIPTIONS_ERROR__SUBSCRIPTION_ALREADY_CANCELLED,
     );
   });
 
@@ -521,7 +521,7 @@ describe('Subscription Security', () => {
         owner: t.payerKeypair,
         planPda,
       }),
-      MULTI_DELEGATOR_ERROR__PLAN_NOT_EXPIRED,
+      SUBSCRIPTIONS_ERROR__PLAN_NOT_EXPIRED,
     );
 
     await t.timeTravel(Number(endTs) + 60);
@@ -569,7 +569,7 @@ describe('Subscription Security', () => {
         endTs: 0n,
         metadataUri: 'https://example.com/updated.json',
       }),
-      MULTI_DELEGATOR_ERROR__PLAN_IMMUTABLE_AFTER_SUNSET,
+      SUBSCRIPTIONS_ERROR__PLAN_IMMUTABLE_AFTER_SUNSET,
     );
   });
 
@@ -594,7 +594,7 @@ describe('Subscription Security', () => {
       subscriber.address,
       DEFAULT_TEST_BALANCE,
     );
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: subscriber,
       tokenMint: t.tokenMint,
       userAta: subscriberAta,
@@ -664,7 +664,7 @@ describe('Subscription Security', () => {
       subscriber.address,
       DEFAULT_TEST_BALANCE,
     );
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: subscriber,
       tokenMint: t.tokenMint,
       userAta: subscriberAta,
@@ -684,12 +684,12 @@ describe('Subscription Security', () => {
       0n,
     );
 
-    await t.client.closeMultiDelegate({
+    await t.client.closeSubscriptionAuthority({
       user: subscriber,
       tokenMint: t.tokenMint,
     });
 
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: subscriber,
       tokenMint: t.tokenMint,
       userAta: subscriberAta,
@@ -707,7 +707,7 @@ describe('Subscription Security', () => {
         receiverAta: merchantAta,
         tokenProgram: t.tokenProgram,
       }),
-      MULTI_DELEGATOR_ERROR__STALE_MULTI_DELEGATE,
+      SUBSCRIPTIONS_ERROR__STALE_SUBSCRIPTION_AUTHORITY,
     );
   });
 
@@ -734,7 +734,7 @@ describe('Subscription Security', () => {
       subscriber.address,
       DEFAULT_TEST_BALANCE,
     );
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: subscriber,
       tokenMint: t.tokenMint,
       userAta: subscriberAta,
@@ -809,7 +809,7 @@ describe('Subscription Security', () => {
       subscriber.address,
       DEFAULT_TEST_BALANCE,
     );
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: subscriber,
       tokenMint: t.tokenMint,
       userAta: subscriberAta,
@@ -836,7 +836,7 @@ describe('Subscription Security', () => {
         planId: 1n,
         tokenMint: t.tokenMint,
       }),
-      MULTI_DELEGATOR_ERROR__ALREADY_SUBSCRIBED,
+      SUBSCRIPTIONS_ERROR__ALREADY_SUBSCRIBED,
     );
   });
 
@@ -863,7 +863,7 @@ describe('Subscription Security', () => {
       subscriber.address,
       DEFAULT_TEST_BALANCE,
     );
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: subscriber,
       tokenMint: t.tokenMint,
       userAta: subscriberAta,
@@ -915,7 +915,7 @@ describe('Subscription Security', () => {
         receiverAta: merchantAta,
         tokenProgram: t.tokenProgram,
       }),
-      MULTI_DELEGATOR_ERROR__PLAN_CLOSED,
+      SUBSCRIPTIONS_ERROR__PLAN_CLOSED,
     );
   });
 
@@ -942,7 +942,7 @@ describe('Subscription Security', () => {
       subscriber.address,
       DEFAULT_TEST_BALANCE,
     );
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: subscriber,
       tokenMint: t.tokenMint,
       userAta: subscriberAta,
@@ -994,7 +994,7 @@ describe('Subscription Security', () => {
         receiverAta: pullerAAta,
         tokenProgram: t.tokenProgram,
       }),
-      MULTI_DELEGATOR_ERROR__UNAUTHORIZED,
+      SUBSCRIPTIONS_ERROR__UNAUTHORIZED,
     );
 
     const pullerBAta = await t.createAtaWithBalance(
@@ -1050,7 +1050,7 @@ describe('Subscription Security', () => {
       subscriber.address,
       DEFAULT_TEST_BALANCE,
     );
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: subscriber,
       tokenMint: t.tokenMint,
       userAta: subscriberAta,
@@ -1070,7 +1070,7 @@ describe('Subscription Security', () => {
         planPda: planBPda,
         subscriptionPda,
       }),
-      MULTI_DELEGATOR_ERROR__SUBSCRIPTION_PLAN_MISMATCH,
+      SUBSCRIPTIONS_ERROR__SUBSCRIPTION_PLAN_MISMATCH,
     );
 
     const { signature } = await t.client.cancelSubscription({
@@ -1104,7 +1104,7 @@ describe('Subscription Security', () => {
       subscriber.address,
       DEFAULT_TEST_BALANCE,
     );
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: subscriber,
       tokenMint: t.tokenMint,
       userAta: subscriberAta,
@@ -1149,7 +1149,7 @@ describe('Subscription Security', () => {
         receiverAta: merchantAta,
         tokenProgram: t.tokenProgram,
       }),
-      MULTI_DELEGATOR_ERROR__PLAN_EXPIRED,
+      SUBSCRIPTIONS_ERROR__PLAN_EXPIRED,
     );
   });
 
@@ -1176,7 +1176,7 @@ describe('Subscription Security', () => {
       subscriber.address,
       DEFAULT_TEST_BALANCE,
     );
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: subscriber,
       tokenMint: t.tokenMint,
       userAta: subscriberAta,

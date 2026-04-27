@@ -5,7 +5,7 @@ import {
   fetchDelegationsByDelegator,
   fetchDelegationsByDelegatee,
   type Delegation,
-} from '@multidelegator/client'
+} from '@subscriptions/client'
 import { useClusterConfig } from '@/hooks/use-cluster-config'
 import { useProgramAddress } from '@/hooks/use-token-config'
 

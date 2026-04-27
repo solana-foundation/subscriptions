@@ -7,8 +7,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
 import { useMySubscriptions, type EnrichedSubscription } from '@/hooks/use-subscriptions'
-import { useMultiDelegatorMutations } from '@/hooks/use-multi-delegator'
-import { useMultiDelegateStatus } from '@/hooks/use-multi-delegate-status'
+import { useSubscriptionsMutations } from '@/hooks/use-subscriptions'
+import { useSubscriptionAuthorityStatus } from '@/hooks/use-subscription-authority-status'
 import { useUsdcMintRaw } from '@/hooks/use-token-config'
 import { useTimeTravel } from '@/hooks/use-time-travel'
 import { cn, USDC_MULTIPLIER, ellipsify, fmtDate, fmtDateTime, formatPeriod } from '@/lib/utils'
@@ -19,7 +19,7 @@ function CancelSubscriptionDialog({ item, open, onOpenChange }: {
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { cancelSubscription } = useMultiDelegatorMutations()
+  const { cancelSubscription } = useSubscriptionsMutations()
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -54,7 +54,7 @@ function RevokeSubscriptionDialog({ item, open, onOpenChange }: {
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { revokeSubscription } = useMultiDelegatorMutations()
+  const { revokeSubscription } = useSubscriptionsMutations()
   const { getCurrentTimestamp } = useTimeTravel()
   const revokedTs = Number(item.subscription.expiresAtTs)
   const [canRevoke, setCanRevoke] = useState(false)
@@ -105,7 +105,7 @@ function CancelAndRevokeDialog({ item, isGhostPlan, open, onOpenChange }: {
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { cancelAndRevokeSubscription } = useMultiDelegatorMutations()
+  const { cancelAndRevokeSubscription } = useSubscriptionsMutations()
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -137,11 +137,11 @@ function CancelAndRevokeDialog({ item, isGhostPlan, open, onOpenChange }: {
   )
 }
 
-function SubscriptionCard({ item, multiDelegateInitId }: { item: EnrichedSubscription; multiDelegateInitId: bigint | null }) {
+function SubscriptionCard({ item, subscriptionAuthorityInitId }: { item: EnrichedSubscription; subscriptionAuthorityInitId: bigint | null }) {
   const [cancelOpen, setCancelOpen] = useState(false)
   const [revokeOpen, setRevokeOpen] = useState(false)
   const [cancelAndRevokeOpen, setCancelAndRevokeOpen] = useState(false)
-  const { cancelSubscription } = useMultiDelegatorMutations()
+  const { cancelSubscription } = useSubscriptionsMutations()
   const { getCurrentTimestamp } = useTimeTravel()
   const isActive = Number(item.subscription.expiresAtTs) === 0
   const isCancelled = !isActive
@@ -175,7 +175,7 @@ function SubscriptionCard({ item, multiDelegateInitId }: { item: EnrichedSubscri
   )
   const pulled = Number(item.subscription.amountPulledInPeriod) / USDC_MULTIPLIER
   const subInitId = item.subscription.header.initId
-  const isStale = multiDelegateInitId != null && subInitId !== multiDelegateInitId
+  const isStale = subscriptionAuthorityInitId != null && subInitId !== subscriptionAuthorityInitId
 
   return (
     <>
@@ -281,8 +281,8 @@ function SubscriptionCard({ item, multiDelegateInitId }: { item: EnrichedSubscri
 export function MySubscriptionsPanel() {
   const { data: subscriptions, isLoading } = useMySubscriptions()
   const { mint: usdcMint } = useUsdcMintRaw()
-  const { data: statusData } = useMultiDelegateStatus(usdcMint)
-  const multiDelegateInitId = statusData?.data?.initId ?? null
+  const { data: statusData } = useSubscriptionAuthorityStatus(usdcMint)
+  const subscriptionAuthorityInitId = statusData?.data?.initId ?? null
 
   if (isLoading) {
     return (
@@ -315,7 +315,7 @@ export function MySubscriptionsPanel() {
           {hasSubs ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {subscriptions.map((item) => (
-                <SubscriptionCard key={item.address} item={item} multiDelegateInitId={multiDelegateInitId} />
+                <SubscriptionCard key={item.address} item={item} subscriptionAuthorityInitId={subscriptionAuthorityInitId} />
               ))}
             </div>
           ) : (

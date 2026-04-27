@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router'
 import { useWalletUi } from '@wallet-ui/react'
 import { NAV_ITEMS, type NavItem } from './nav-items'
 import solanaLogo from '@/assets/solana-logo.svg'
-import { CURRENT_PROGRAM_VERSION } from '@multidelegator/client'
+import { CURRENT_PROGRAM_VERSION } from '@subscriptions/client'
 
 export function AppSidebar() {
   const { pathname } = useLocation()
@@ -23,7 +23,7 @@ export function AppSidebar() {
   return (
     <aside className="hidden md:flex flex-col w-64 shrink-0 bg-[#0a0a0a] text-sidebar-foreground border-r border-white/5">
       <div className="flex items-center gap-2 px-6 pt-8 pb-4">
-        <span className="text-xl font-bold text-white tracking-tight">Multi Delegator</span>
+        <span className="text-xl font-bold text-white tracking-tight">Subscriptions</span>
         <span className="text-sm font-bold text-blue-400/60">v{CURRENT_PROGRAM_VERSION}</span>
         <img src={solanaLogo} alt="Solana" className="h-5 w-5 shrink-0" />
       </div>

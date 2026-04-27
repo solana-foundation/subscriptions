@@ -5,7 +5,7 @@ import type {
   Rpc,
 } from 'gill';
 import { PLAN_OWNER_OFFSET, PLAN_SIZE } from '../constants.js';
-import { MULTI_DELEGATOR_PROGRAM_ADDRESS } from '../generated/index.js';
+import { SUBSCRIPTIONS_PROGRAM_ADDRESS } from '../generated/index.js';
 import type { PlanWithAddress } from '../types/plan.js';
 import { decodePlanAccount } from './decode.js';
 
@@ -21,7 +21,7 @@ export async function fetchPlansForOwner(
   owner: Address,
   programAddress?: Address,
 ): Promise<PlanWithAddress[]> {
-  const progAddr = programAddress ?? MULTI_DELEGATOR_PROGRAM_ADDRESS;
+  const progAddr = programAddress ?? SUBSCRIPTIONS_PROGRAM_ADDRESS;
   const response = await rpc
     .getProgramAccounts(progAddr, {
       encoding: 'base64',

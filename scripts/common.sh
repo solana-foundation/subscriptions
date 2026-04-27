@@ -2,8 +2,8 @@
 # Shared configuration and functions for scripts
 
 # Configuration (can be overridden via environment)
-KEYPAIR_FILE="${KEYPAIR_FILE:-keys/multi_delegator-keypair.json}"
-PROGRAM_SO="${PROGRAM_SO:-target/deploy/multi_delegator.so}"
+KEYPAIR_FILE="${KEYPAIR_FILE:-keys/subscriptions-keypair.json}"
+PROGRAM_SO="${PROGRAM_SO:-target/deploy/subscriptions.so}"
 LEDGER_DIR="${LEDGER_DIR:-.validator-ledger}"
 RPC_PORT="${RPC_PORT:-8899}"
 
@@ -31,7 +31,7 @@ check_program_so() {
       echo -e "${YELLOW}Program SO file not found. Building...${NC}"
       SCRIPT_DIR_COMMON="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
       PROJECT_ROOT_COMMON="$( cd "$SCRIPT_DIR_COMMON/.." && pwd )"
-      cd "$PROJECT_ROOT_COMMON/programs/multi_delegator" && cargo build-sbf
+      cd "$PROJECT_ROOT_COMMON/programs/subscriptions" && cargo build-sbf
       cd "$PROJECT_ROOT_COMMON"
     else
       echo -e "${YELLOW}Warning: Program SO file not found: $PROGRAM_SO${NC}"
@@ -156,7 +156,7 @@ wait_for_http() {
 prepare_deploy_keys() {
   mkdir -p "target/deploy"
   if [[ -f "$KEYPAIR_FILE" ]]; then
-    cp "$KEYPAIR_FILE" "target/deploy/multi_delegator-keypair.json"
+    cp "$KEYPAIR_FILE" "target/deploy/subscriptions-keypair.json"
     echo -e "  ${GREEN}Deploy key copied${NC}"
   else
     echo -e "  ${RED}Error: $KEYPAIR_FILE not found${NC}"

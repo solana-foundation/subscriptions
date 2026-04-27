@@ -8,5 +8,5 @@
   "excludeInternal": true,
   "excludeExternals": true,
   "readme": "none",
-  "name": "@multidelegator/client"
+  "name": "@subscriptions/client"
 }

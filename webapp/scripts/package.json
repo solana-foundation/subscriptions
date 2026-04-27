@@ -1,5 +1,5 @@
 {
-  "name": "multi-delegator-scripts",
+  "name": "subscriptions-scripts",
   "type": "module",
   "private": true,
   "scripts": {

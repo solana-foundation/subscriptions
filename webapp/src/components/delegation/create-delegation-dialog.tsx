@@ -11,8 +11,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useMultiDelegatorMutations } from '@/hooks/use-multi-delegator'
-import { DELEGATION_KINDS, type DelegationKindId } from '@multidelegator/client'
+import { useSubscriptionsMutations } from '@/hooks/use-subscriptions'
+import { DELEGATION_KINDS, type DelegationKindId } from '@subscriptions/client'
 import { cn, USDC_MULTIPLIER, SECONDS_PER_DAY } from '@/lib/utils'
 import { getBlockTimestamp } from '@/hooks/use-time-travel'
 import { useClusterConfig } from '@/hooks/use-cluster-config'
@@ -65,7 +65,7 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
   const [expiryHour, setExpiryHour] = useState('12')
   const [periodDays, setPeriodDays] = useState('')
 
-  const { createFixedDelegation, createRecurringDelegation } = useMultiDelegatorMutations()
+  const { createFixedDelegation, createRecurringDelegation } = useSubscriptionsMutations()
   const { url: rpcUrl } = useClusterConfig()
   const [blockTime, setBlockTime] = useState<number | undefined>()
 

@@ -4,10 +4,10 @@ import type { Address } from '@solana/kit';
 export {
   getDelegationPDA,
   getEventAuthorityPDA,
-  getMultiDelegatePDA,
+  getSubscriptionAuthorityPDA,
   getPlanPDA,
   getSubscriptionPDA,
-} from '@multidelegator/client';
+} from '@subscriptions/client';
 
 export async function getAssociatedTokenAddress(
   owner: Address,

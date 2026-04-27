@@ -9,13 +9,13 @@ import {
   getSubscribeInstructionAsync,
 } from '../generated/index.js';
 import {
-  getMultiDelegatePDA,
+  getSubscriptionAuthorityPDA,
   getPlanPDA,
   getSubscriptionPDA,
 } from '../pdas.js';
 
 /**
- * Builds a `subscribe` instruction, deriving Plan, MultiDelegate, and Subscription PDAs.
+ * Builds a `subscribe` instruction, deriving Plan, SubscriptionAuthority, and Subscription PDAs.
  *
  * @param params.subscriber - The wallet subscribing to the plan.
  * @param params.merchant - The plan owner's address.
@@ -43,7 +43,7 @@ export async function buildSubscribe(params: {
     planId,
     programAddress,
   );
-  const [multiDelegatePda] = await getMultiDelegatePDA(
+  const [subscriptionAuthorityPda] = await getSubscriptionAuthorityPDA(
     subscriber.address,
     tokenMint,
     programAddress,
@@ -60,7 +60,7 @@ export async function buildSubscribe(params: {
       merchant,
       planPda,
       subscriptionPda,
-      multiDelegatePda,
+      subscriptionAuthorityPda,
       subscribeData: { planId, planBump },
     },
     config,

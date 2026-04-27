@@ -1,7 +1,7 @@
-import { MULTI_DELEGATOR_PROGRAM_ADDRESS } from './generated/index.js';
+import { SUBSCRIPTIONS_PROGRAM_ADDRESS } from './generated/index.js';
 
 /** Deployed program address, sourced from Codama-generated bindings. */
-export const PROGRAM_ID = MULTI_DELEGATOR_PROGRAM_ADDRESS;
+export const PROGRAM_ID = SUBSCRIPTIONS_PROGRAM_ADDRESS;
 
 /** Current on-chain account schema version. */
 export const CURRENT_PROGRAM_VERSION = 1;
@@ -20,8 +20,8 @@ export const DELEGATEE_OFFSET = 35;
 /** Byte size of a u64 value (used in nonce encoding). */
 export const U64_BYTE_SIZE = 8;
 
-/** PDA seed for MultiDelegate accounts. */
-export const MULTI_DELEGATE_SEED = 'MultiDelegate';
+/** PDA seed for SubscriptionAuthority accounts. */
+export const SUBSCRIPTION_AUTHORITY_SEED = 'SubscriptionAuthority';
 
 /** PDA seed for delegation accounts (FixedDelegation, RecurringDelegation). */
 export const DELEGATION_SEED = 'delegation';

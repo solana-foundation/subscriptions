@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Address } from '@solana/kit';
-import { buildTransferSubscription } from '@multidelegator/client';
+import { buildTransferSubscription } from '@subscriptions/client';
 import { findAssociatedTokenPda } from '@solana-program/token';
 import { useWallet } from '@/contexts/WalletContext';
 import { useSavedValues } from '@/contexts/SavedValuesContext';
