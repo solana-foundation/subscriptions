@@ -6,9 +6,9 @@ import {
 import {
   DELEGATION_SEED,
   EVENT_AUTHORITY_SEED,
-  MULTI_DELEGATE_SEED,
   PLAN_SEED,
   PROGRAM_ID,
+  SUBSCRIPTION_AUTHORITY_SEED,
   SUBSCRIPTION_SEED,
   U64_BYTE_SIZE,
 } from './constants.js';
@@ -23,20 +23,20 @@ function encodeU64Le(value: number | bigint): Uint8Array {
 }
 
 /**
- * Derives the MultiDelegate PDA for a user and token mint.
+ * Derives the SubscriptionAuthority PDA for a user and token mint.
  *
  * @param user - Wallet address of the delegate owner.
  * @param tokenMint - SPL token mint address.
  * @param programId - Program address override (defaults to {@link PROGRAM_ID}).
  * @returns A tuple of `[pda, bump]`.
  */
-export async function getMultiDelegatePDA(
+export async function getSubscriptionAuthorityPDA(
   user: Address,
   tokenMint: Address,
   programId?: Address,
 ): Promise<[Address, number]> {
   const seeds = [
-    textEncoder.encode(MULTI_DELEGATE_SEED),
+    textEncoder.encode(SUBSCRIPTION_AUTHORITY_SEED),
     addressEncoder.encode(user),
     addressEncoder.encode(tokenMint),
   ];
@@ -51,7 +51,7 @@ export async function getMultiDelegatePDA(
 /**
  * Derives the delegation PDA for fixed or recurring delegations.
  *
- * @param multiDelegate - The MultiDelegate PDA address.
+ * @param subscriptionAuthority - The SubscriptionAuthority PDA address.
  * @param delegator - Wallet address of the delegator.
  * @param delegatee - Wallet address of the delegatee.
  * @param nonce - Unique nonce allowing multiple delegations between the same pair.
@@ -59,7 +59,7 @@ export async function getMultiDelegatePDA(
  * @returns A tuple of `[pda, bump]`.
  */
 export async function getDelegationPDA(
-  multiDelegate: Address,
+  subscriptionAuthority: Address,
   delegator: Address,
   delegatee: Address,
   nonce: number | bigint,
@@ -67,7 +67,7 @@ export async function getDelegationPDA(
 ): Promise<[Address, number]> {
   const seeds = [
     textEncoder.encode(DELEGATION_SEED),
-    addressEncoder.encode(multiDelegate),
+    addressEncoder.encode(subscriptionAuthority),
     addressEncoder.encode(delegator),
     addressEncoder.encode(delegatee),
     encodeU64Le(nonce),

@@ -1,8 +1,8 @@
-# ADR-002: Multi-Delegator Subscriptions (Plan Track)
+# ADR-002: Subscriptions Subscriptions (Plan Track)
 
 **Status:** Implemented
 
-**Parent ADR:** ADR-001 - Multi-Delegator Program Architecture
+**Parent ADR:** ADR-001 - Subscriptions Program Architecture
 
 ## Context
 
@@ -38,7 +38,7 @@ ADR-001 implements a direct delegation model where delegators create Delegation 
 Extend ADR-001 with a **Plan-based subscription layer** that:
 1. Allows delegatees to publish reusable, immutable terms as Plans
 2. Lets delegators subscribe to Plans, creating Delegation PDAs that reference the Plan
-3. Uses the same MultiDelegate Authority (MDA) and transfer flows from ADR-001
+3. Uses the same Subscription Authority (SA) and transfer flows from ADR-001
 4. Adds mutual agreement verification: delegators verify Plan terms before subscribing
 
 ### Architecture Overview
@@ -48,12 +48,12 @@ ADR-002 is an **add-on** to ADR-001 that introduces Plans while reusing all exis
 ```mermaid
 graph TB
     subgraph "ADR-001 Core Infrastructure (Always Available)"
-        User[Alice] -->|initialize_multidelegate| MDA[MultiDelegate PDA<br/>u64::MAX approval]
-        MDA -.->|Used by| TransferFlows[Transfer Flows]
+        User[Alice] -->|initialize_subscription_authority| SA[SubscriptionAuthority PDA<br/>u64::MAX approval]
+        SA -.->|Used by| TransferFlows[Transfer Flows]
 
         subgraph "Direct Delegations (ADR-001)"
-            MDA -->|create_fixed_delegation| FD[FixedDelegation PDA<br/>Embedded terms]
-            MDA -->|create_recurring_delegation| RD[RecurringDelegation PDA<br/>Embedded terms]
+            SA -->|create_fixed_delegation| FD[FixedDelegation PDA<br/>Embedded terms]
+            SA -->|create_recurring_delegation| RD[RecurringDelegation PDA<br/>Embedded terms]
         end
     end
 
@@ -69,8 +69,8 @@ graph TB
         SD2 -->|pull| TransferFlows
         FD -->|pull| TransferFlows
         RD -->|pull| TransferFlows
-        TransferFlows -->|validates constraints| MDA
-        MDA -->|transfers| TokenProg[Token Program]
+        TransferFlows -->|validates constraints| SA
+        SA -->|transfers| TokenProg[Token Program]
     end
 ```
 
@@ -80,7 +80,7 @@ graph TB
 2. **Mutual Agreement**: Plans enable both parties to verify and agree on terms before commitment
 3. **Immutable Terms**: Once published, Plan terms cannot change (prevents mid-stream price hikes)
 4. **Separate Controls vs Terms**: `update_plan` can modify status, end_ts, pullers, metadata_uri - but NOT core terms (mint, terms.amount, terms.period_hours, terms.created_at, destinations)
-5. **Unified Execution**: Subscriptions and direct delegations share the same MDA and transfer flows
+5. **Unified Execution**: Subscriptions and direct delegations share the same SA and transfer flows
 6. **Coexistence**: Direct delegations (ADR-001) and subscriptions (ADR-002) operate simultaneously
 
 ### Rationale
@@ -124,7 +124,7 @@ ADR-001 provides the core delegation infrastructure. Plans add a subscription mo
    - All direct delegation flows continue working unchanged
    - Transfer logic is reused with Plan-provided terms instead of embedded terms
    - `pullers` array configures authorization without modifying core transfer validation
-   - Both models use the same MultiDelegate PDA infrastructure
+   - Both models use the same SubscriptionAuthority PDA infrastructure
 
 7. **Opt-In Enhancement**
    - Use ADR-001 for: P2P, ad-hoc, customized delegations
@@ -185,7 +185,7 @@ When a subscriber subscribes, the plan's `PlanTerms` (amount, period_hours, crea
 
 | Component | ADR-001 | ADR-002 |
 |-----------|---------|---------|
-| `MultiDelegate` PDA | Used | Same MDA |
+| `SubscriptionAuthority` PDA | Used | Same SA |
 | `FixedDelegation` | Standalone delegation | Not used for subscriptions |
 | `RecurringDelegation` | Standalone delegation | Not used for subscriptions |
 | `transfer_fixed` / `transfer_recurring` | Delegation transfers | Not used for subscriptions |
@@ -196,13 +196,13 @@ When a subscriber subscribes, the plan's `PlanTerms` (amount, period_hours, crea
 | **NEW**: `transfer_subscription` instruction | - | Pulls tokens using Plan terms + Delegation state |
 
 **Seeded Separation for Coexistence:**
-- **Direct Delegations**: Seeds `["delegation", multi_delegate, delegator, delegatee, nonce]`
+- **Direct Delegations**: Seeds `["delegation", subscription_authority, delegator, delegatee, nonce]`
 - **Subscription Delegations**: Seeds `["subscription", plan_pda, subscriber]`
 - Different seeds prevent PDA collisions
-- Both can use the same MultiDelegate PDA simultaneously
+- Both can use the same SubscriptionAuthority PDA simultaneously
 
 **Flows Remain Available:**
-- All ADR-001 instructions (`initialize_multidelegate`, `create_fixed_delegation`, `create_recurring_delegation`) continue to work unchanged
+- All ADR-001 instructions (`initialize_subscription_authority`, `create_fixed_delegation`, `create_recurring_delegation`) continue to work unchanged
 - New ADR-002 instructions (`create_plan`, `update_plan`, `delete_plan`, `subscribe`, `cancel_subscription`, `transfer_subscription`) add subscription capability
 - Direct delegations and subscriptions can be created and withdrawn independently
 
@@ -365,7 +365,7 @@ Subscriber subscribes to a Plan, creating a lightweight `SubscriptionDelegation`
 | 1       |                  | Merchant (Plan owner)                                 |
 | 2       |                  | Plan PDA being subscribed to                          |
 | 3       | writable         | SubscriptionDelegation PDA being created              |
-| 4       |                  | Subscriber's MultiDelegate PDA (must match plan mint) |
+| 4       |                  | Subscriber's SubscriptionAuthority PDA (must match plan mint) |
 | 5       |                  | System program                                        |
 | 6       |                  | Event authority PDA                                   |
 | 7       |                  | This program (for self-CPI event emission)            |
@@ -377,7 +377,7 @@ Subscriber subscribes to a Plan, creating a lightweight `SubscriptionDelegation`
 **Process:**
 1. Validate Plan PDA derivation from `["plan", merchant, plan_id]` using `plan_bump`
 2. Load Plan, verify `status == Active` (else `PlanSunset`), and check not expired (else `PlanExpired`)
-3. Validate subscriber's MultiDelegate PDA exists and matches the plan's mint (else `MintMismatch`)
+3. Validate subscriber's SubscriptionAuthority PDA exists and matches the plan's mint (else `MintMismatch`)
 4. Derive SubscriptionDelegation PDA from `["subscription", plan_pda, subscriber]`
 5. Check subscription doesn't already exist (else `AlreadySubscribed`)
 6. Create SubscriptionDelegation account with:
@@ -396,7 +396,7 @@ Authorized caller (plan owner or whitelisted puller) pulls tokens from a subscri
 | ------- | ---------------- | ------------------------------------------------ |
 | 0       | writable         | SubscriptionDelegation PDA                       |
 | 1       |                  | Plan PDA                                         |
-| 2       |                  | MultiDelegate PDA                                |
+| 2       |                  | SubscriptionAuthority PDA                                |
 | 3       | writable         | Delegator's ATA (source of funds)                |
 | 4       | writable         | Receiver's ATA (destination)                     |
 | 5       | signer           | Caller (plan owner or whitelisted puller)         |
@@ -421,7 +421,7 @@ Authorized caller (plan owner or whitelisted puller) pulls tokens from a subscri
 9. Check subscription not cancelled: if `expires_at_ts != 0 && current_ts >= expires_at_ts`, block the transfer (else `SubscriptionCancelled`)
 10. Validate recurring transfer using subscription's snapshotted terms: amount within period limit, handle period rollover
 11. Update subscription state (`current_period_start_ts`, `amount_pulled_in_period`)
-12. Execute transfer via MultiDelegate PDA (CPI to Token Program)
+12. Execute transfer via SubscriptionAuthority PDA (CPI to Token Program)
 13. Emit `SubscriptionTransferEvent` via self-CPI
 
 **Authorization Logic:**
@@ -488,14 +488,14 @@ sequenceDiagram
     participant A as Alice
     participant P as Program
     participant Plan as Plan PDA
-    participant MDA as MDA
+    participant SA as SA
 
     A->>P: subscribe(plan_id, plan_bump)
     Note over P: Plan status == Active?
     Note over P: Derive SubscriptionDelegation PDA from<br/>["subscription", plan_pda, alice]
     Note over P: Create SubscriptionDelegation PDA<br/>referencing Plan
     Note over P: Emit SubscriptionCreatedEvent
-    P->>A: Subscribed through MDA
+    P->>A: Subscribed through SA
 ```
 
 ### Transfer Subscription (Pull)
@@ -513,7 +513,7 @@ sequenceDiagram
         X->>P: transfer_subscription(amount, delegator, mint)
         Note over P: Authorization passed
         P->>SD: Validate subscription state<br/>and recurring period limits
-        P->>T: Transfer via MDA
+        P->>T: Transfer via SA
         T->>X: Tokens transferred
     else Caller not authorized
         X->>P: transfer_subscription(amount, delegator, mint)
@@ -609,7 +609,7 @@ sequenceDiagram
 | Unauthorized plan deletion | `delete_plan` requires owner signature and expired end_ts (`PlanNotExpired`). Does not require Sunset status. |
 | Plan with invalid data | Validated: amount>0, period_hours in (0,8760], destinations optional (0-4), end_ts=0 or future |
 | Orphaned Delegation reference | Delegation tracks state; `transfer_subscription` checks Plan reference |
-| MDA spends without Plan constraint | Pull must validate Plan terms and Delegation constraints |
+| SA spends without Plan constraint | Pull must validate Plan terms and Delegation constraints |
 
 ---
 
@@ -620,7 +620,7 @@ sequenceDiagram
 - `+` **Trust Through Immutability** - Terms fixed at creation prevent price changes
 - `+` **Discoverability** - Plans can be published and discovered via marketplaces
 - `+` **Flexible Control** - Pullers array for authorization, status and end_ts for lifecycle
-- `+` **Reuses ADR-001** - Shares MDA infrastructure, minimal code duplication
+- `+` **Reuses ADR-001** - Shares SA infrastructure, minimal code duplication
 - `+` **Complementary** - Subscriptions and direct delegations can coexist
 - `+` **Marketplace Enabling** - Standard structure for subscription services
 
@@ -660,7 +660,7 @@ Subscription Delegations would use different PDA seeds than direct delegations, 
 
 **Direct Delegation Seeds (ADR-001):**
 ```
-["delegation", multi_delegate, delegator, delegatee, nonce]
+["delegation", subscription_authority, delegator, delegatee, nonce]
 ```
 
 **Subscription Delegation Seeds (ADR-002):**

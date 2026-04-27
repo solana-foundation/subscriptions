@@ -18,7 +18,7 @@ import {
 } from './account-data-access'
 import { useDelegations, useIncomingDelegations } from '@/hooks/use-delegations'
 import { useUsdcMint, useUsdcMintRaw } from '@/hooks/use-token-config'
-import { useMultiDelegateStatus } from '@/hooks/use-multi-delegate-status'
+import { useSubscriptionAuthorityStatus } from '@/hooks/use-subscription-authority-status'
 import { USDC_MULTIPLIER, recurringAvailable } from '@/lib/utils'
 import { getBlockTimestamp } from '@/hooks/use-time-travel'
 import { useClusterConfig } from '@/hooks/use-cluster-config'
@@ -110,7 +110,7 @@ export function WalletBalanceCards({ address: addr }: { address: Address }) {
   const usdcBalance = usdcAccount?.account?.data?.parsed?.info?.tokenAmount?.uiAmount ?? 0
 
   const { mint: usdcMintRaw } = useUsdcMintRaw()
-  const { data: statusData } = useMultiDelegateStatus(usdcMintRaw)
+  const { data: statusData } = useSubscriptionAuthorityStatus(usdcMintRaw)
   const delegationId = statusData?.data?.initId ?? null
 
   const [spinning, setSpinning] = useState(false)

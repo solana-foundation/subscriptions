@@ -1,0 +1,50 @@
+[package]
+name = "subscriptions"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+
+[lib]
+crate-type = ["lib", "cdylib"]
+
+[lints]
+workspace = true
+
+[features]
+no-entrypoint = []
+
+[build-dependencies]
+codama = { workspace = true }
+serde_json = { workspace = true }
+
+[dependencies]
+codama = { workspace = true }
+const-crypto = { workspace = true }
+pinocchio = { workspace = true }
+pinocchio-associated-token-account = { workspace = true }
+pinocchio-system = { workspace = true }
+pinocchio-token = { workspace = true }
+pinocchio-token-2022 = { workspace = true }
+solana-address = { workspace = true }
+solana-security-txt = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+litesvm = "^0.7"
+litesvm-token = { version = "^0.7", features = ["token-2022"] }
+solana-account = "^2"
+solana-instruction = "^2"
+solana-keypair = "^2"
+solana-message = "^2"
+solana-pubkey = "^2"
+solana-signer = "^2"
+solana-transaction = "^2"
+solana-transaction-error = "^2"
+spl-associated-token-account = "7.0.0"
+spl-token-2022 = "^8"
+spl-token = "^8"
+serde_json = { workspace = true }
+rstest = "0.24"
+tabled = "0.17"
+ctor = "0.2"

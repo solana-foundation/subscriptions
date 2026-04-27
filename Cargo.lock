@@ -2070,55 +2070,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "multi-delegator"
-version = "0.1.0"
-dependencies = [
- "codama",
- "const-crypto",
- "ctor",
- "litesvm",
- "litesvm-token",
- "pinocchio",
- "pinocchio-associated-token-account",
- "pinocchio-system",
- "pinocchio-token",
- "pinocchio-token-2022",
- "rstest",
- "serde_json",
- "solana-account",
- "solana-address",
- "solana-instruction",
- "solana-keypair",
- "solana-message",
- "solana-pubkey",
- "solana-signer",
- "solana-transaction",
- "solana-transaction-error",
- "spl-associated-token-account",
- "spl-token",
- "spl-token-2022",
- "tabled",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "multidelegator-client"
-version = "0.1.0"
-dependencies = [
- "borsh 1.6.0",
- "num-derive",
- "num-traits",
- "serde",
- "serde_with",
- "solana-account-info",
- "solana-cpi",
- "solana-instruction",
- "solana-program-error 2.2.2",
- "solana-pubkey",
- "thiserror 1.0.69",
-]
-
-[[package]]
 name = "num"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5334,6 +5285,56 @@ name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
+
+[[package]]
+name = "subscriptions"
+version = "0.1.0"
+dependencies = [
+ "codama",
+ "const-crypto",
+ "ctor",
+ "litesvm",
+ "litesvm-token",
+ "pinocchio",
+ "pinocchio-associated-token-account",
+ "pinocchio-system",
+ "pinocchio-token",
+ "pinocchio-token-2022",
+ "rstest",
+ "serde_json",
+ "solana-account",
+ "solana-address",
+ "solana-instruction",
+ "solana-keypair",
+ "solana-message",
+ "solana-pubkey",
+ "solana-security-txt",
+ "solana-signer",
+ "solana-transaction",
+ "solana-transaction-error",
+ "spl-associated-token-account",
+ "spl-token",
+ "spl-token-2022",
+ "tabled",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "subscriptions-client"
+version = "0.1.0"
+dependencies = [
+ "borsh 1.6.0",
+ "num-derive",
+ "num-traits",
+ "serde",
+ "serde_with",
+ "solana-account-info",
+ "solana-cpi",
+ "solana-instruction",
+ "solana-program-error 2.2.2",
+ "solana-pubkey",
+ "thiserror 1.0.69",
+]
 
 [[package]]
 name = "subtle"

@@ -5,11 +5,7 @@ dist
 .next
 bun.lockb
 
-# Where idl will be generated
-programs/multi_delegator/idl/*
-# where the generated typescript files from idl and codama are kept
-clients/typescript/src/generated/
-clients/rust/src/generated/
+**/generated/
 
 # Surfpool logs and temporary files
 .surfpool/

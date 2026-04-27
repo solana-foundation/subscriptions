@@ -204,7 +204,7 @@ function NetworkSelection({ onSelect, onSkip }: { onSelect: (n: Network) => void
             <Settings2 className="h-10 w-10 text-purple-400" />
             <img src={solanaLogo} alt="Solana" className="h-8 w-8" />
           </div>
-          <h1 className="text-3xl font-bold text-white">Multi Delegator Setup</h1>
+          <h1 className="text-3xl font-bold text-white">Subscriptions Setup</h1>
           <p className="text-gray-400">Choose your network to get started</p>
         </div>
 

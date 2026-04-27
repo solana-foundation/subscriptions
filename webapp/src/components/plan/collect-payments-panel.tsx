@@ -8,7 +8,7 @@ import { cn, USDC_MULTIPLIER, ellipsify, fmtDateTime } from '@/lib/utils'
 import { ExplorerLink } from '@/components/cluster/cluster-ui'
 import { useMyPlans, type PlanItem } from '@/hooks/use-plans'
 import { useSubscriberCounts, fetchPlanSubscriptions } from '@/hooks/use-subscriptions'
-import { useMultiDelegatorMutations } from '@/hooks/use-multi-delegator'
+import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations'
 import { useClusterConfig } from '@/hooks/use-cluster-config'
 import { useProgramAddress } from '@/hooks/use-token-config'
 import { getBlockTimestamp } from '@/hooks/use-time-travel'
@@ -52,7 +52,7 @@ function CollectPlanCard({ plan, subscriberCount, progAddr }: { plan: PlanItem; 
   const [isCollecting, setIsCollecting] = useState(false)
   const [historyVersion, setHistoryVersion] = useState(0)
   const { url: rpcUrl } = useClusterConfig()
-  const { collectSubscriptionPayments } = useMultiDelegatorMutations()
+  const { collectSubscriptionPayments } = useSubscriptionsMutations()
 
   const meta = useMemo(() => parsePlanMeta(plan.data.metadataUri), [plan.data.metadataUri])
   const planName = meta.n || `Plan ${ellipsify(plan.address)}`

@@ -11,7 +11,7 @@ import {
 /// Used to automatically derive the event authority for codama
 /// Generated client code will now be able to autofill the eventAuthority
 export const addEventAuthorityPda = addPdasVisitor({
-  multiDelegator: [
+  subscriptions: [
     {
       name: "eventAuthority",
       seeds: [constantPdaSeedNodeFromString("utf8", "event_authority")],

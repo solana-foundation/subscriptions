@@ -1,6 +1,6 @@
-# Multi Delegator Webapp
+# Subscriptions Webapp
 
-Web interface for managing Solana token delegations (USDC). Connects to the Multi Delegator on-chain program, allowing users to create, manage, and revoke delegations with controlled spending limits and time-based expiry.
+Web interface for managing Solana token delegations (USDC). Connects to the Subscriptions on-chain program, allowing users to create, manage, and revoke delegations with controlled spending limits and time-based expiry.
 
 ## Features
 
@@ -12,7 +12,7 @@ Web interface for managing Solana token delegations (USDC). Connects to the Mult
 - **View Delegations** - Separate tabs for outgoing (delegator) and incoming (delegatee) delegations, with active/expired filtering
 - **Revoke Delegations** - Cancel active outgoing delegations on-chain
 - **Transfer Under Delegation** - Delegatees can withdraw amounts within the delegation rules
-- **MDA Initialization** - Multi Delegate Account setup flow required before creating delegations
+- **SA Initialization** - Subscription Authority Account setup flow required before creating delegations
 - **Dev Faucet** - Request SOL/USDC airdrops for local testing (hidden on mainnet)
 - **Theme Support** - Dark/light mode toggle
 

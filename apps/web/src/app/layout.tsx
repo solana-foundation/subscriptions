@@ -5,8 +5,8 @@ import '@solana/wallet-adapter-react-ui/styles.css';
 import { Providers } from '@/components/Providers';
 
 export const metadata: Metadata = {
-    title: 'Multi-Delegator Dev Tool',
-    description: 'Developer tool for direct on-chain interaction with the Multi-Delegator program',
+    title: 'Subscriptions Dev Tool',
+    description: 'Developer tool for direct on-chain interaction with the Subscriptions program',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

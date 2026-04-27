@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { useDelegations, useIncomingDelegations, type DelegationItem } from '@/hooks/use-delegations'
-import { useMultiDelegatorMutations } from '@/hooks/use-multi-delegator'
+import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations'
 import { useGetTokenAccountsQuery } from '@/components/account/account-data-access'
 import { useWalletUi } from '@wallet-ui/react'
 import { address } from 'gill'
@@ -34,7 +34,7 @@ import { useMySubscriptions } from '@/hooks/use-subscriptions'
 interface ActiveDelegationsProps {
   tokenMint: string
   isApproved: boolean
-  multiDelegateInitId?: bigint | null
+  subscriptionAuthorityInitId?: bigint | null
   onInitSuccess?: () => void
 }
 
@@ -88,7 +88,7 @@ interface RevokeDelegationButtonProps {
 
 function RevokeDelegationButton({ delegation }: RevokeDelegationButtonProps) {
   const [open, setOpen] = useState(false)
-  const { revokeDelegation } = useMultiDelegatorMutations()
+  const { revokeDelegation } = useSubscriptionsMutations()
 
   const handleRevoke = async () => {
     try {
@@ -147,7 +147,7 @@ interface TransferDelegationButtonProps {
 function TransferDelegationButton({ delegation, tokenMint, disabled, blockTime }: TransferDelegationButtonProps) {
   const [open, setOpen] = useState(false)
   const [amount, setAmount] = useState('')
-  const { transferFixed, transferRecurring } = useMultiDelegatorMutations()
+  const { transferFixed, transferRecurring } = useSubscriptionsMutations()
 
   const isFixed = delegation.type === 'Fixed'
   const availableRaw = isFixed
@@ -257,10 +257,10 @@ interface DelegationTableProps {
   showExpired?: boolean
   tokenMint: string
   blockTime?: number
-  multiDelegateInitId?: bigint | null
+  subscriptionAuthorityInitId?: bigint | null
 }
 
-function FixedDelegationTable({ delegations, mode, showExpired, tokenMint, blockTime, multiDelegateInitId }: DelegationTableProps) {
+function FixedDelegationTable({ delegations, mode, showExpired, tokenMint, blockTime, subscriptionAuthorityInitId }: DelegationTableProps) {
   if (delegations.length === 0) return null
   const isOutgoing = mode === 'outgoing'
   const partyLabel = isOutgoing ? 'Delegatee' : 'Delegator'
@@ -286,7 +286,7 @@ function FixedDelegationTable({ delegations, mode, showExpired, tokenMint, block
           <TableBody>
             {delegations.map((d) => {
               const rowExpired = showExpired || (!isOutgoing && isExpired(d.data.expiryTs, blockTime))
-              const isStale = multiDelegateInitId != null && d.data.header.initId !== multiDelegateInitId
+              const isStale = subscriptionAuthorityInitId != null && d.data.header.initId !== subscriptionAuthorityInitId
               return (
                 <TableRow key={d.address} className={`border-none hover:bg-white/[0.03] transition-colors ${rowExpired || isStale ? 'opacity-60' : ''}`}>
                   <TableCell className="py-5 text-center">
@@ -333,7 +333,7 @@ function FixedDelegationTable({ delegations, mode, showExpired, tokenMint, block
   )
 }
 
-function RecurringDelegationTable({ delegations, mode, showExpired, tokenMint, blockTime, multiDelegateInitId }: DelegationTableProps) {
+function RecurringDelegationTable({ delegations, mode, showExpired, tokenMint, blockTime, subscriptionAuthorityInitId }: DelegationTableProps) {
   if (delegations.length === 0) return null
   const isOutgoing = mode === 'outgoing'
   const partyLabel = isOutgoing ? 'Delegatee' : 'Delegator'
@@ -359,7 +359,7 @@ function RecurringDelegationTable({ delegations, mode, showExpired, tokenMint, b
           <TableBody>
             {delegations.map((d) => {
               const rowExpired = showExpired || (!isOutgoing && isExpired(d.data.expiryTs, blockTime))
-              const isStale = multiDelegateInitId != null && d.data.header.initId !== multiDelegateInitId
+              const isStale = subscriptionAuthorityInitId != null && d.data.header.initId !== subscriptionAuthorityInitId
               const available = recurringAvailable(d.data.amountPerPeriod, d.data.amountPulledInPeriod, d.data.currentPeriodStartTs, d.data.periodLengthS, blockTime)
               return (
                 <TableRow key={d.address} className={`border-none hover:bg-white/[0.03] transition-colors ${rowExpired || isStale ? 'opacity-60' : ''}`}>
@@ -470,7 +470,7 @@ function FilterCard({ active, onClick, label, count, subLabel, isActiveCard = tr
 
 function InitPrompt({ tokenMint, onSuccess }: { tokenMint: string; onSuccess?: () => void }) {
   const { account } = useWalletUi()
-  const { initMultiDelegate } = useMultiDelegatorMutations()
+  const { initSubscriptionAuthority } = useSubscriptionsMutations()
   const queryClient = useQueryClient()
 
   const walletAddress = account?.address
@@ -497,11 +497,11 @@ function InitPrompt({ tokenMint, onSuccess }: { tokenMint: string; onSuccess?: (
 
   const handleInitialize = async () => {
     if (!userAtaAddress || !tokenProgram) return
-    await initMultiDelegate.mutateAsync(
+    await initSubscriptionAuthority.mutateAsync(
       { tokenMint, userAta: userAtaAddress, tokenProgram },
       {
         onSuccess: () => {
-          invalidateWithDelay(queryClient, [['multiDelegateStatus'], ['get-token-accounts']])
+          invalidateWithDelay(queryClient, [['subscriptionAuthorityStatus'], ['get-token-accounts']])
           onSuccess?.()
         },
       }
@@ -522,21 +522,21 @@ function InitPrompt({ tokenMint, onSuccess }: { tokenMint: string; onSuccess?: (
       )}
       <Button
         onClick={handleInitialize}
-        disabled={initMultiDelegate.isPending || !hasAta || tokenAccountsLoading}
+        disabled={initSubscriptionAuthority.isPending || !hasAta || tokenAccountsLoading}
         size="sm"
       >
-        {initMultiDelegate.isPending ? 'Initializing...' : tokenAccountsLoading ? 'Loading...' : 'Enable Delegations'}
+        {initSubscriptionAuthority.isPending ? 'Initializing...' : tokenAccountsLoading ? 'Loading...' : 'Enable Delegations'}
       </Button>
     </div>
   )
 }
 
-function CloseMultiDelegateDialog({ tokenMint, open, onOpenChange }: {
+function CloseSubscriptionAuthorityDialog({ tokenMint, open, onOpenChange }: {
   tokenMint: string
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { closeMultiDelegate } = useMultiDelegatorMutations()
+  const { closeSubscriptionAuthority } = useSubscriptionsMutations()
   const outgoing = useDelegations()
   const { data: subscriptions } = useMySubscriptions()
   const { url: rpcUrl } = useClusterConfig()
@@ -560,7 +560,7 @@ function CloseMultiDelegateDialog({ tokenMint, open, onOpenChange }: {
 
   const handleClose = async () => {
     try {
-      await closeMultiDelegate.mutateAsync({ tokenMint })
+      await closeSubscriptionAuthority.mutateAsync({ tokenMint })
       handleOpenChange(false)
     } catch {
       // error handled by toast
@@ -574,8 +574,8 @@ function CloseMultiDelegateDialog({ tokenMint, open, onOpenChange }: {
           <DialogTitle className="text-red-400">Disable Delegations</DialogTitle>
           <DialogDescription>
             {hasActive
-              ? 'You have active outgoing delegations. Closing the MultiDelegate account will invalidate them.'
-              : 'Close your MultiDelegate account and return the rent to your wallet.'}
+              ? 'You have active outgoing delegations. Closing the SubscriptionAuthority account will invalidate them.'
+              : 'Close your SubscriptionAuthority account and return the rent to your wallet.'}
           </DialogDescription>
         </DialogHeader>
         {hasActive && (
@@ -605,9 +605,9 @@ function CloseMultiDelegateDialog({ tokenMint, open, onOpenChange }: {
           <Button
             variant="destructive"
             onClick={handleClose}
-            disabled={closeMultiDelegate.isPending || (hasActive && confirmText !== 'CLOSE')}
+            disabled={closeSubscriptionAuthority.isPending || (hasActive && confirmText !== 'CLOSE')}
           >
-            {closeMultiDelegate.isPending ? 'Closing...' : 'Disable Delegations'}
+            {closeSubscriptionAuthority.isPending ? 'Closing...' : 'Disable Delegations'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -615,7 +615,7 @@ function CloseMultiDelegateDialog({ tokenMint, open, onOpenChange }: {
   )
 }
 
-export function ActiveDelegations({ tokenMint, isApproved, multiDelegateInitId, onInitSuccess }: ActiveDelegationsProps) {
+export function ActiveDelegations({ tokenMint, isApproved, subscriptionAuthorityInitId, onInitSuccess }: ActiveDelegationsProps) {
   const [activeTab, setActiveTab] = useState<TabType>('outgoing')
   const [outgoingSubTab, setOutgoingSubTab] = useState<OutgoingSubTab>('active')
   const [closeDialogOpen, setCloseDialogOpen] = useState(false)
@@ -655,11 +655,11 @@ export function ActiveDelegations({ tokenMint, isApproved, multiDelegateInitId, 
   }, [incoming.all])
 
   const staleDelegations = useMemo(() => {
-    if (multiDelegateInitId == null) return []
-    return outgoing.all.filter((d) => d.data.header.initId !== multiDelegateInitId)
-  }, [outgoing.all, multiDelegateInitId])
+    if (subscriptionAuthorityInitId == null) return []
+    return outgoing.all.filter((d) => d.data.header.initId !== subscriptionAuthorityInitId)
+  }, [outgoing.all, subscriptionAuthorityInitId])
 
-  const { revokeMultipleDelegations } = useMultiDelegatorMutations()
+  const { revokeMultipleDelegations } = useSubscriptionsMutations()
 
   const handleRevokeAllStale = async () => {
     if (staleDelegations.length === 0) return
@@ -699,8 +699,8 @@ export function ActiveDelegations({ tokenMint, isApproved, multiDelegateInitId, 
 
     return (
       <div className="space-y-6">
-        <FixedDelegationTable delegations={data.fixed} mode="outgoing" showExpired={showExpired} tokenMint={tokenMint} blockTime={blockTime} multiDelegateInitId={multiDelegateInitId} />
-        <RecurringDelegationTable delegations={data.recurring} mode="outgoing" showExpired={showExpired} tokenMint={tokenMint} blockTime={blockTime} multiDelegateInitId={multiDelegateInitId} />
+        <FixedDelegationTable delegations={data.fixed} mode="outgoing" showExpired={showExpired} tokenMint={tokenMint} blockTime={blockTime} subscriptionAuthorityInitId={subscriptionAuthorityInitId} />
+        <RecurringDelegationTable delegations={data.recurring} mode="outgoing" showExpired={showExpired} tokenMint={tokenMint} blockTime={blockTime} subscriptionAuthorityInitId={subscriptionAuthorityInitId} />
       </div>
     )
   }
@@ -797,7 +797,7 @@ export function ActiveDelegations({ tokenMint, isApproved, multiDelegateInitId, 
       <div className="flex justify-end">
         <CreateDelegationDialog tokenMint={tokenMint} disabled={!isApproved} />
       </div>
-      <CloseMultiDelegateDialog tokenMint={tokenMint} open={closeDialogOpen} onOpenChange={setCloseDialogOpen} />
+      <CloseSubscriptionAuthorityDialog tokenMint={tokenMint} open={closeDialogOpen} onOpenChange={setCloseDialogOpen} />
     </div>
   )
 }

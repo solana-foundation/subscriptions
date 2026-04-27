@@ -13,24 +13,24 @@ export {
 } from './accounts/delegations.js';
 export { fetchPlansForOwner } from './accounts/plans.js';
 export { fetchSubscriptionsForUser } from './accounts/subscriptions.js';
-export { MultiDelegatorClient } from './client.js';
+export { SubscriptionsClient } from './client.js';
 // Constants
 export * from './constants.js';
 export { parseProgramError } from './errors/map.js';
 // Errors
 export {
-  MultiDelegatorSDKError,
   ProgramError,
+  SubscriptionsSDKError,
   ValidationError,
 } from './errors/types.js';
 // Re-export generated types and utilities for power users
 export * from './generated/index.js';
 // Instruction builders
 export {
-  buildCloseMultiDelegate,
+  buildCloseSubscriptionAuthority,
   buildCreateFixedDelegation,
   buildCreateRecurringDelegation,
-  buildInitMultiDelegate,
+  buildInitSubscriptionAuthority,
   buildRevokeDelegation,
   buildRevokeSubscription,
 } from './instructions/delegation.js';

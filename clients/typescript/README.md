@@ -1,11 +1,11 @@
-# @multidelegator/client
+# @subscriptions/client
 
-TypeScript SDK for the Multi-Delegator Solana program: token delegation, recurring payments, and subscriptions.
+TypeScript SDK for the Subscriptions Solana program: token delegation, recurring payments, and subscriptions.
 
 ## Installation
 
 ```bash
-npm install @multidelegator/client
+npm install @subscriptions/client
 ```
 
 ## Quick Start
@@ -15,12 +15,12 @@ The SDK exports `build*` helpers that return Solana instructions. You sign and s
 ```typescript
 import { address } from "gill";
 import {
-  buildInitMultiDelegate,
+  buildInitSubscriptionAuthority,
   buildCreateFixedDelegation,
-} from "@multidelegator/client";
+} from "@subscriptions/client";
 
-// 1. Initialize the MultiDelegate for a user's token account (once per mint)
-const { instructions: initIxs } = await buildInitMultiDelegate({
+// 1. Initialize the SubscriptionAuthority for a user's token account (once per mint)
+const { instructions: initIxs } = await buildInitSubscriptionAuthority({
   owner: walletSigner,
   tokenMint: address("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"),
   userAta: address("..."),
@@ -42,7 +42,7 @@ await signAndSendTransaction(delegateIxs, walletSigner);
 
 Each `build*` helper returns `{ instructions: IInstruction[] }`. You provide signing/sending, so it works with any wallet adapter or backend signer.
 
-> For Node.js/backend usage, `MultiDelegatorClient` wraps all `build*` helpers with automatic transaction signing and sending via a [Gill](https://github.com/solana-foundation/gill)-compatible RPC client. It also provides query methods like `getDelegationsForWallet` and `getActiveDelegationSummary`.
+> For Node.js/backend usage, `SubscriptionsClient` wraps all `build*` helpers with automatic transaction signing and sending via a [Gill](https://github.com/solana-foundation/gill)-compatible RPC client. It also provides query methods like `getDelegationsForWallet` and `getActiveDelegationSummary`.
 
 ## Capabilities
 
@@ -50,8 +50,8 @@ Each `build*` helper returns `{ instructions: IInstruction[] }`. You provide sig
 
 | Helper | Description |
 |--------|-------------|
-| `buildInitMultiDelegate` | Set up the per-mint MultiDelegate PDA and token approval |
-| `buildCloseMultiDelegate` | Tear down MultiDelegate, invalidating all delegations (kill switch) |
+| `buildInitSubscriptionAuthority` | Set up the per-mint SubscriptionAuthority PDA and token approval |
+| `buildCloseSubscriptionAuthority` | Tear down SubscriptionAuthority, invalidating all delegations (kill switch) |
 | `buildCreateFixedDelegation` | One-time token allowance with optional expiry |
 | `buildCreateRecurringDelegation` | Periodic allowance (amount per time period) |
 | `buildRevokeDelegation` | Permanently close any delegation and reclaim rent |
@@ -86,7 +86,7 @@ Each `build*` helper returns `{ instructions: IInstruction[] }`. You provide sig
 
 ### PDA Helpers
 
-`getMultiDelegatePDA`, `getDelegationPDA`, `getPlanPDA`, `getSubscriptionPDA`, `getEventAuthorityPDA`
+`getSubscriptionAuthorityPDA`, `getDelegationPDA`, `getPlanPDA`, `getSubscriptionPDA`, `getEventAuthorityPDA`
 
 ### Types
 

@@ -1,5 +1,5 @@
 ################################################################
-# Manage multi_delegator deployment through Crypto Infrastructure as Code
+# Manage subscriptions deployment through Crypto Infrastructure as Code
 ################################################################
 
 addon "svm" {
@@ -7,13 +7,13 @@ addon "svm" {
     network_id = input.network_id
 }
 
-action "deploy_multi_delegator" "svm::deploy_program" {
-    description = "Deploy multi_delegator program"
+action "deploy_subscriptions" "svm::deploy_program" {
+    description = "Deploy subscriptions program"
     program = svm::get_program_from_native_project(
-        "multi_delegator",
-        "keys/multi_delegator-keypair.json",
+        "subscriptions",
+        "keys/subscriptions-keypair.json",
         null,
-        "target/deploy/multi_delegator.so"
+        "target/deploy/subscriptions.so"
     )
     authority = signer.authority
     payer = signer.payer

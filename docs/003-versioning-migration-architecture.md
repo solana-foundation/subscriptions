@@ -94,7 +94,7 @@ common `Header` where:
 - Bytes 99--106: `init_id`
 
 The version check reads `data[VERSION_OFFSET]` (byte 1), not byte 0.
-`MultiDelegate` and `Plan` accounts have their own layouts but also store a discriminator at
+`SubscriptionAuthority` and `Plan` accounts have their own layouts but also store a discriminator at
 byte 0; versioning currently applies only to delegation accounts that use the shared `Header`.
 
 ## Instruction Integration

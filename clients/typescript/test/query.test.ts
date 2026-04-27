@@ -8,7 +8,7 @@ import {
   ONE_HOUR_IN_SECONDS,
 } from './setup.ts';
 
-describe('MultiDelegator Query Tests', () => {
+describe('Subscriptions Query Tests', () => {
   test('get delegations for wallet', async () => {
     const testSuite = await initTestSuite();
 
@@ -18,7 +18,7 @@ describe('MultiDelegator Query Tests', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await testSuite.client.initMultiDelegate({
+    await testSuite.client.initSubscriptionAuthority({
       owner: testSuite.payerKeypair,
       tokenMint: testSuite.tokenMint,
       userAta,

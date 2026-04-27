@@ -1,6 +1,6 @@
 ---
-name: multi_delegator
-id: multidelegator
+name: subscriptions
+id: subscriptions
 runbooks:
   - name: deployment
     description: Deploy programs

@@ -3,12 +3,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { formatTransactionError } from '@/lib/transactionErrors';
 
-const STORAGE_KEY = 'multidelegator-ui-recent-transactions-v1';
+const STORAGE_KEY = 'subscriptions-ui-recent-transactions-v1';
 const MAX_RECENT_TRANSACTIONS = 20;
 
 export interface RecentTransactionValues {
     delegatee?: string;
-    multiDelegate?: string;
+    subscriptionAuthority?: string;
     delegationPda?: string;
     mint?: string;
     planPda?: string;

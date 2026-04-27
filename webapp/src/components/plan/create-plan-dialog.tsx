@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useMultiDelegatorMutations } from '@/hooks/use-multi-delegator'
+import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations'
 import { useUsdcMint } from '@/hooks/use-token-config'
 import { cn, USDC_MULTIPLIER } from '@/lib/utils'
 import { getBlockTimestamp } from '@/hooks/use-time-travel'
@@ -42,7 +42,7 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
   const [destinations, setDestinations] = useState<string[]>([])
   const [pullers, setPullers] = useState<string[]>([])
 
-  const { createPlan } = useMultiDelegatorMutations()
+  const { createPlan } = useSubscriptionsMutations()
   const usdcMint = useUsdcMint()
   const { url: rpcUrl } = useClusterConfig()
   const [blockTime, setBlockTime] = useState<number | undefined>()

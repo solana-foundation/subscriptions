@@ -1,5 +1,5 @@
 {
-  "name": "multi-delegator-api",
+  "name": "subscriptions-api",
   "type": "module",
   "private": true,
   "scripts": {

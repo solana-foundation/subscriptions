@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { MULTI_DELEGATOR_ERROR__PLAN_TERMS_MISMATCH } from '../src/generated/errors/multiDelegator.ts';
+import { SUBSCRIPTIONS_ERROR__PLAN_TERMS_MISMATCH } from '../src/generated/errors/subscriptions.ts';
 import {
   fetchMaybePlan,
   fetchMaybeSubscriptionDelegation,
@@ -38,7 +38,7 @@ describe('Subscription Lifecycle', () => {
       subscriber.address,
       DEFAULT_TEST_BALANCE,
     );
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: subscriber,
       tokenMint: t.tokenMint,
       userAta: subscriberAta,
@@ -149,7 +149,7 @@ describe('Subscription Lifecycle', () => {
       subscriber.address,
       DEFAULT_TEST_BALANCE,
     );
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: subscriber,
       tokenMint: t.tokenMint,
       userAta: subscriberAta,
@@ -211,7 +211,7 @@ describe('Subscription Lifecycle', () => {
       subscriber.address,
       DEFAULT_TEST_BALANCE,
     );
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: subscriber,
       tokenMint: t.tokenMint,
       userAta: subscriberAta,
@@ -276,7 +276,7 @@ describe('Subscription Lifecycle', () => {
         receiverAta: merchantAta,
         tokenProgram: t.tokenProgram,
       }),
-      MULTI_DELEGATOR_ERROR__PLAN_TERMS_MISMATCH,
+      SUBSCRIPTIONS_ERROR__PLAN_TERMS_MISMATCH,
     );
 
     // 6. Subscriber cancels (immediate expiry, no grace period)

@@ -1,16 +1,16 @@
 import { describe, expect, test } from 'vitest';
 import {
-  fetchMaybeMultiDelegate,
-  fetchMultiDelegate,
+  fetchMaybeSubscriptionAuthority,
   fetchRecurringDelegation,
+  fetchSubscriptionAuthority,
 } from '../src/generated/index.ts';
 import {
-  buildCloseMultiDelegate,
+  buildCloseSubscriptionAuthority,
   buildCreateRecurringDelegation,
-  buildInitMultiDelegate,
+  buildInitSubscriptionAuthority,
   buildRevokeDelegation,
 } from '../src/instructions/delegation.ts';
-import { getDelegationPDA, getMultiDelegatePDA } from '../src/pdas.ts';
+import { getDelegationPDA, getSubscriptionAuthorityPDA } from '../src/pdas.ts';
 import { addressAsSigner } from '../src/wallet.ts';
 import {
   DEFAULT_TEST_BALANCE,
@@ -32,8 +32,8 @@ describe.each(getWalletProviders())('Recurring Delegation Lifecycle ($name)', ({
       DEFAULT_TEST_BALANCE,
     );
 
-    // 1. Init multi-delegate
-    const { instructions: initIxs } = await buildInitMultiDelegate({
+    // 1. Init subscription-authority
+    const { instructions: initIxs } = await buildInitSubscriptionAuthority({
       owner: addressAsSigner(wallet.address),
       tokenMint: t.tokenMint,
       userAta,
@@ -41,16 +41,16 @@ describe.each(getWalletProviders())('Recurring Delegation Lifecycle ($name)', ({
     });
     await wallet.sendInstructions(initIxs);
 
-    const [multiDelegatePda] = await getMultiDelegatePDA(
+    const [subscriptionAuthorityPda] = await getSubscriptionAuthorityPDA(
       wallet.address,
       t.tokenMint,
     );
 
-    const multiDelegateAccount = await fetchMultiDelegate(
+    const subscriptionAuthorityAccount = await fetchSubscriptionAuthority(
       t.rpc,
-      multiDelegatePda,
+      subscriptionAuthorityPda,
     );
-    expect(multiDelegateAccount.data.user).toBe(wallet.address);
+    expect(subscriptionAuthorityAccount.data.user).toBe(wallet.address);
 
     // 2. Create recurring delegation
     const delegatee = await t.createFundedKeypair();
@@ -74,7 +74,7 @@ describe.each(getWalletProviders())('Recurring Delegation Lifecycle ($name)', ({
     await wallet.sendInstructions(createIxs);
 
     const [delegationPda] = await getDelegationPDA(
-      multiDelegatePda,
+      subscriptionAuthorityPda,
       wallet.address,
       delegatee.address,
       nonce,
@@ -130,14 +130,17 @@ describe.each(getWalletProviders())('Recurring Delegation Lifecycle ($name)', ({
       fetchRecurringDelegation(t.rpc, delegationPda),
     ).rejects.toThrow();
 
-    // 5. Close multi-delegate
-    const { instructions: closeIxs } = await buildCloseMultiDelegate({
+    // 5. Close subscription-authority
+    const { instructions: closeIxs } = await buildCloseSubscriptionAuthority({
       user: addressAsSigner(wallet.address),
       tokenMint: t.tokenMint,
     });
     await wallet.sendInstructions(closeIxs);
 
-    const accountAfter = await fetchMaybeMultiDelegate(t.rpc, multiDelegatePda);
+    const accountAfter = await fetchMaybeSubscriptionAuthority(
+      t.rpc,
+      subscriptionAuthorityPda,
+    );
     expect(accountAfter.exists).toBe(false);
   });
 });

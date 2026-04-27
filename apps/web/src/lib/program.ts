@@ -2,10 +2,10 @@
 
 import type { Address } from '@solana/kit';
 import { PublicKey } from '@solana/web3.js';
-import { PROGRAM_ID as CLIENT_PROGRAM_ID } from '@multidelegator/client';
+import { PROGRAM_ID as CLIENT_PROGRAM_ID } from '@subscriptions/client';
 
 export const TOKEN_2022_PROGRAM_ID = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb' as Address;
-export const PROGRAM_ID_STORAGE_KEY = 'multidelegator-program-id';
+export const PROGRAM_ID_STORAGE_KEY = 'subscriptions-program-id';
 
 export function getDefaultProgramAddress(): Address {
     return (process.env.NEXT_PUBLIC_PROGRAM_ID ?? CLIENT_PROGRAM_ID) as Address;

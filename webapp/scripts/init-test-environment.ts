@@ -11,7 +11,7 @@ import { readConfig, addToken, clearConfig, setProgramAddress } from './config-m
 import { createMockUsdc } from './helpers'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const KEYPAIR_PATH = join(__dirname, '../../keys/multi_delegator-keypair.json')
+const KEYPAIR_PATH = join(__dirname, '../../keys/subscriptions-keypair.json')
 
 function getProgramId(): string {
   return execFileSync('solana-keygen', ['pubkey', KEYPAIR_PATH], { encoding: 'utf-8' }).trim()

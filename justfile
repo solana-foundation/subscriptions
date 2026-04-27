@@ -1,16 +1,16 @@
-# Multi Delegator - Solana program build automation
+# Subscriptions - Solana program build automation
 # https://github.com/casey/just
 
 # Use bash for all recipes
 set shell := ["bash", "-uc"]
 
 # Variables
-program_dir := "programs/multi_delegator"
+program_dir := "programs/subscriptions"
 ts_client_dir := "clients/typescript"
 webapp_dir := "webapp"
-deploy_key := "keys/multi_delegator-keypair.json"
-target_deploy_key := "target/deploy/multi_delegator-keypair.json"
-idl_file := program_dir / "idl/multi_delegator.json"
+deploy_key := "keys/subscriptions-keypair.json"
+target_deploy_key := "target/deploy/subscriptions-keypair.json"
+idl_file := program_dir / "idl/subscriptions.json"
 
 # List available recipes
 default:
@@ -55,7 +55,7 @@ prepare-deploy-keys:
     if [[ ! -f "{{deploy_key}}" ]]; then
         echo "Error: {{deploy_key}} not found."
         echo "This keypair defines the program identity. Do not generate a random one."
-        echo "Restore it from git history: git show <commit>^:keys/multi_delegator-keypair.json > {{deploy_key}}"
+        echo "Restore it from git history: git show <commit>^:keys/subscriptions-keypair.json > {{deploy_key}}"
         exit 1
     fi
 
@@ -133,7 +133,7 @@ test: test-program test-client
 
 # Run E2E tests against the dev UI (requires PLAYRIGHT_WALLET and PLAYWRIGHT_TOKEN_MINT in .env)
 e2e-test:
-    pnpm --filter @multidelegator/web test:e2e
+    pnpm --filter @subscriptions/web test:e2e
 
 # Run Rust program tests
 test-program:
@@ -267,7 +267,7 @@ clean:
 # Check formatting without fixing
 fmt-check:
     @echo "Checking Rust formatting..."
-    @cargo fmt -p multi-delegator --check
+    @cargo fmt -p subscriptions --check
     @echo "Checking TypeScript formatting..."
     @cd {{ts_client_dir}} && pnpm run format:check
     @echo "✓ Format check passed"
@@ -275,7 +275,7 @@ fmt-check:
 # Auto-format all code
 fmt:
     @echo "Formatting Rust..."
-    @cargo fmt -p multi-delegator
+    @cargo fmt -p subscriptions
     @echo "Formatting TypeScript..."
     @cd {{ts_client_dir}} && pnpm run format
     @echo "✓ Code formatted"
@@ -283,7 +283,7 @@ fmt:
 # Lint with auto-fix
 lint:
     @echo "Linting Rust..."
-    @cargo clippy --workspace --exclude multidelegator-client --all-targets --no-deps --fix -- -D warnings
+    @cargo clippy --workspace --exclude subscriptions-client --all-targets --no-deps --fix -- -D warnings
     @echo "Linting TypeScript..."
     @cd {{ts_client_dir}} && pnpm run lint
     @echo "✓ Code linted"
@@ -291,10 +291,49 @@ lint:
 # Check linting without fixing
 lint-check:
     @echo "Checking Rust lint..."
-    @cargo clippy --workspace --exclude multidelegator-client --all-targets --no-deps -- -D warnings
+    @cargo clippy --workspace --exclude subscriptions-client --all-targets --no-deps -- -D warnings
     @echo "Checking TypeScript lint..."
     @cd {{ts_client_dir}} && pnpm run lint:check
     @echo "✓ Lint check passed"
 
 # Run all code quality checks
 check: fmt-check lint-check
+
+# ============================================
+# IDL Deployment (uses Program Metadata Program)
+# ============================================
+
+[private]
+check-program-metadata:
+    @command -v program-metadata >/dev/null 2>&1 || { echo "Error: program-metadata not installed. See https://github.com/solana-program/program-metadata"; exit 1; }
+
+# Deploy IDL to devnet
+deploy-idl-devnet: check-program-metadata
+    program-metadata write idl $(solana-keygen pubkey "{{deploy_key}}") {{idl_file}} \
+        --keypair {{deploy_key}} \
+        --rpc https://api.devnet.solana.com
+
+# Deploy IDL to mainnet
+deploy-idl-mainnet: check-program-metadata
+    program-metadata write idl $(solana-keygen pubkey "{{deploy_key}}") {{idl_file}} \
+        --keypair {{deploy_key}} \
+        --rpc https://api.mainnet-beta.solana.com
+
+# ============================================
+# Build Verification (uses solana-verify CLI)
+# ============================================
+
+[private]
+check-solana-verify:
+    @command -v solana-verify >/dev/null 2>&1 || { echo "Error: solana-verify not installed. Run: cargo install solana-verify"; exit 1; }
+
+# Verify mainnet deployment against repo (remote build via OtterSec).
+# Note: Remote verification (--remote) only works on mainnet.
+verify-mainnet: check-solana-verify
+    solana-verify verify-from-repo \
+        https://github.com/solana-program/multi-delegator \
+        --program-id $(solana-keygen pubkey "{{deploy_key}}") \
+        --library-name subscriptions \
+        --mount-path programs/subscriptions \
+        --remote \
+        -um

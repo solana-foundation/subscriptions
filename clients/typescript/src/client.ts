@@ -6,12 +6,12 @@ import {
 } from './accounts/delegations.js';
 import { fetchPlansForOwner } from './accounts/plans.js';
 import type { PlanStatus } from './generated/index.js';
-import { fetchMaybeMultiDelegate } from './generated/index.js';
+import { fetchMaybeSubscriptionAuthority } from './generated/index.js';
 import {
-  buildCloseMultiDelegate,
+  buildCloseSubscriptionAuthority,
   buildCreateFixedDelegation,
   buildCreateRecurringDelegation,
-  buildInitMultiDelegate,
+  buildInitSubscriptionAuthority,
   buildRevokeDelegation,
   buildRevokeSubscription,
 } from './instructions/delegation.js';
@@ -29,7 +29,7 @@ import {
   buildTransferRecurring,
   buildTransferSubscription,
 } from './instructions/transfer.js';
-import { getMultiDelegatePDA } from './pdas.js';
+import { getSubscriptionAuthorityPDA } from './pdas.js';
 import type { SolanaClient, TransactionResult } from './types/common.js';
 import type { Delegation } from './types/delegation.js';
 import type { PlanWithAddress } from './types/plan.js';
@@ -38,7 +38,7 @@ import type { PlanWithAddress } from './types/plan.js';
  * High-level client that composes instruction builders and transaction sending.
  * For lower-level control, use the build* instruction builders and fetch* account fetchers directly.
  */
-export class MultiDelegatorClient {
+export class SubscriptionsClient {
   private readonly client: SolanaClient;
   constructor(client: SolanaClient) {
     this.client = client;
@@ -62,19 +62,19 @@ export class MultiDelegatorClient {
     return this.client.sendAndConfirmTransaction(signedTransaction);
   }
 
-  /** Initialize a MultiDelegate PDA for the owner's token account.
+  /** Initialize a SubscriptionAuthority PDA for the owner's token account.
    *
    * When `payer` is supplied, the sponsor funds rent and is also used as the
    * transaction fee payer so the owner spends zero SOL.
    */
-  async initMultiDelegate(params: {
+  async initSubscriptionAuthority(params: {
     owner: TransactionSigner;
     tokenMint: Address;
     userAta: Address;
     tokenProgram: Address;
     payer?: TransactionSigner;
   }): Promise<TransactionResult> {
-    const { instructions } = await buildInitMultiDelegate(params);
+    const { instructions } = await buildInitSubscriptionAuthority(params);
     const signature = await this.buildAndSendTransaction(
       instructions,
       params.payer ?? params.owner,
@@ -83,18 +83,18 @@ export class MultiDelegatorClient {
   }
 
   /**
-   * Close a MultiDelegate PDA, returning rent to the recorded payer.
+   * Close a SubscriptionAuthority PDA, returning rent to the recorded payer.
    *
-   * When the MultiDelegate was sponsor-funded (stored `payer` differs from
+   * When the SubscriptionAuthority was sponsor-funded (stored `payer` differs from
    * `user`), pass `receiver` set to the sponsor's address so the program can
    * route rent back to them. Caller is responsible for fetching the on-chain
-   * MultiDelegate to determine whether `receiver` is required.
+   * SubscriptionAuthority to determine whether `receiver` is required.
    *
    * Closing invalidates all existing delegations on re-initialization
    * (init_id mismatch). This can serve as an emergency kill switch to
    * immediately cut off all delegatees in a single transaction.
    */
-  async closeMultiDelegate(params: {
+  async closeSubscriptionAuthority(params: {
     user: TransactionSigner;
     tokenMint: Address;
     receiver?: Address;
@@ -113,7 +113,7 @@ export class MultiDelegatorClient {
       console.warn('Could not check active delegations before closing:', e);
     }
 
-    const { instructions } = await buildCloseMultiDelegate(params);
+    const { instructions } = await buildCloseSubscriptionAuthority(params);
     const signature = await this.buildAndSendTransaction(
       instructions,
       params.user,
@@ -260,13 +260,13 @@ export class MultiDelegatorClient {
     return { signature };
   }
 
-  /** Check if the MultiDelegate PDA is initialized for a user and token mint. */
-  async isMultiDelegateInitialized(
+  /** Check if the SubscriptionAuthority PDA is initialized for a user and token mint. */
+  async isSubscriptionAuthorityInitialized(
     user: Address,
     tokenMint: Address,
   ): Promise<{ initialized: boolean; pda: Address }> {
-    const [pda] = await getMultiDelegatePDA(user, tokenMint);
-    const account = await fetchMaybeMultiDelegate(this.client.rpc, pda);
+    const [pda] = await getSubscriptionAuthorityPDA(user, tokenMint);
+    const account = await fetchMaybeSubscriptionAuthority(this.client.rpc, pda);
     return { initialized: account.exists, pda };
   }
 
@@ -373,7 +373,7 @@ export class MultiDelegatorClient {
 
   /**
    * Returns a summary of active delegations and subscriptions for a wallet.
-   * Useful for checking outstanding commitments before closing a MultiDelegate.
+   * Useful for checking outstanding commitments before closing a SubscriptionAuthority.
    */
   async getActiveDelegationSummary(wallet: Address): Promise<{
     fixed: number;

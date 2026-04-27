@@ -8,7 +8,7 @@ const GILL_CODAMA_MODULE_MAP = {
 };
 
 export default {
-  idl: './programs/multi_delegator/idl/multi_delegator.json',
+  idl: './programs/subscriptions/idl/subscriptions.json',
   before: [
     './codama-visitors.mjs#addEventAuthorityPda',
     './codama-visitors.mjs#setEventAuthorityAndSelfProgramDefaults',
@@ -31,7 +31,7 @@ export default {
     rust: {
       from: '@codama/renderers-rust',
       args: [
-        './clients/rust/src/generated',
+        './clients/rust',
         {
           crateFolder: 'clients/rust',
           formatCode: true,

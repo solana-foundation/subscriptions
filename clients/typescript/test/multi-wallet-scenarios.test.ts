@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'vitest';
 import {
-  MULTI_DELEGATOR_ERROR__INVALID_MULTI_DELEGATE_PDA,
-  MULTI_DELEGATOR_ERROR__SUBSCRIPTION_CANCELLED,
-} from '../src/generated/errors/multiDelegator.ts';
+  SUBSCRIPTIONS_ERROR__INVALID_SUBSCRIPTION_AUTHORITY_PDA,
+  SUBSCRIPTIONS_ERROR__SUBSCRIPTION_CANCELLED,
+} from '../src/generated/errors/subscriptions.ts';
 import { fetchSubscriptionDelegation } from '../src/generated/index.ts';
-import { getDelegationPDA, getMultiDelegatePDA } from '../src/pdas.ts';
+import { getDelegationPDA, getSubscriptionAuthorityPDA } from '../src/pdas.ts';
 import {
   DEFAULT_TEST_BALANCE,
   expectProgramError,
@@ -37,7 +37,7 @@ describe('Multi-Wallet Scenarios', () => {
     );
 
     for (let i = 0; i < 3; i++) {
-      await t.client.initMultiDelegate({
+      await t.client.initSubscriptionAuthority({
         owner: subscribers[i],
         tokenMint: t.tokenMint,
         userAta: subscriberAtas[i],
@@ -104,7 +104,7 @@ describe('Multi-Wallet Scenarios', () => {
         receiverAta: merchantAta,
         tokenProgram: t.tokenProgram,
       }),
-      MULTI_DELEGATOR_ERROR__SUBSCRIPTION_CANCELLED,
+      SUBSCRIPTIONS_ERROR__SUBSCRIPTION_CANCELLED,
     );
 
     const { signature: sigA } = await t.client.transferSubscription({
@@ -164,7 +164,7 @@ describe('Multi-Wallet Scenarios', () => {
       subscriber.address,
       DEFAULT_TEST_BALANCE,
     );
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: subscriber,
       tokenMint: t.tokenMint,
       userAta: subscriberAta,
@@ -196,7 +196,7 @@ describe('Multi-Wallet Scenarios', () => {
     });
     expect(chargeSig).toBeDefined();
 
-    await t.client.closeMultiDelegate({
+    await t.client.closeSubscriptionAuthority({
       user: subscriber,
       tokenMint: t.tokenMint,
     });
@@ -212,10 +212,10 @@ describe('Multi-Wallet Scenarios', () => {
         receiverAta: merchantAta,
         tokenProgram: t.tokenProgram,
       }),
-      MULTI_DELEGATOR_ERROR__INVALID_MULTI_DELEGATE_PDA,
+      SUBSCRIPTIONS_ERROR__INVALID_SUBSCRIPTION_AUTHORITY_PDA,
     );
 
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: subscriber,
       tokenMint: t.tokenMint,
       userAta: subscriberAta,
@@ -239,7 +239,10 @@ describe('Multi-Wallet Scenarios', () => {
       expiryTs: currentTs + 3600n,
     });
 
-    const [mdPda] = await getMultiDelegatePDA(subscriber.address, t.tokenMint);
+    const [mdPda] = await getSubscriptionAuthorityPDA(
+      subscriber.address,
+      t.tokenMint,
+    );
     const [delegPda] = await getDelegationPDA(
       mdPda,
       subscriber.address,
@@ -276,13 +279,13 @@ describe('Multi-Wallet Scenarios', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: t.payerKeypair,
       tokenMint: t.tokenMint,
       userAta: userAtaA,
       tokenProgram: t.tokenProgram,
     });
-    await t.client.initMultiDelegate({
+    await t.client.initSubscriptionAuthority({
       owner: t.payerKeypair,
       tokenMint: mintB,
       userAta: userAtaB,
@@ -321,11 +324,14 @@ describe('Multi-Wallet Scenarios', () => {
       expiryTs: currentTs + 3600n,
     });
 
-    const [mdPdaA] = await getMultiDelegatePDA(
+    const [mdPdaA] = await getSubscriptionAuthorityPDA(
       t.payerKeypair.address,
       t.tokenMint,
     );
-    const [mdPdaB] = await getMultiDelegatePDA(t.payerKeypair.address, mintB);
+    const [mdPdaB] = await getSubscriptionAuthorityPDA(
+      t.payerKeypair.address,
+      mintB,
+    );
     const [delegPdaA] = await getDelegationPDA(
       mdPdaA,
       t.payerKeypair.address,
@@ -339,7 +345,7 @@ describe('Multi-Wallet Scenarios', () => {
       0n,
     );
 
-    await t.client.closeMultiDelegate({
+    await t.client.closeSubscriptionAuthority({
       user: t.payerKeypair,
       tokenMint: t.tokenMint,
     });
@@ -355,7 +361,7 @@ describe('Multi-Wallet Scenarios', () => {
         receiverAta: delegateeAtaA,
         tokenProgram: t.tokenProgram,
       }),
-      MULTI_DELEGATOR_ERROR__INVALID_MULTI_DELEGATE_PDA,
+      SUBSCRIPTIONS_ERROR__INVALID_SUBSCRIPTION_AUTHORITY_PDA,
     );
 
     const { signature } = await t.client.transferFixed({

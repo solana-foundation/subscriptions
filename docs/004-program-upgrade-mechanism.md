@@ -45,7 +45,7 @@ solana-verify build
 ### 2. Hash the local build
 
 ```bash
-solana-verify get-executable-hash target/deploy/multi_delegator.so
+solana-verify get-executable-hash target/deploy/subscriptions.so
 ```
 
 ### 3. Hash the on-chain buffer
@@ -67,7 +67,7 @@ After an upgrade, anyone can verify the on-chain program matches the public sour
 ```bash
 solana-verify verify-from-repo \
     --program-id <PROGRAM_ID> \
-    --url https://github.com/solana-program/multi-delegator
+    --url https://github.com/solana-program/subscriptions
 ```
 
 ## References
