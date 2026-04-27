@@ -8,7 +8,7 @@ use crate::{
         TransferData,
     },
     state::RecurringDelegation,
-    AccountCheck, SubscriptionAuthorityAccount, SubscriptionsError, ProgramAccount, SignerAccount,
+    AccountCheck, ProgramAccount, SignerAccount, SubscriptionAuthorityAccount, SubscriptionsError,
     TokenAccountInterface, TokenProgramInterface, WritableAccount,
 };
 use pinocchio::{
@@ -569,7 +569,8 @@ mod tests {
         );
         let fee_payer = init_wallet(&mut litesvm, 10_000_000_000);
 
-        let (subscription_authority_pda, _) = get_subscription_authority_pda(&alice.pubkey(), &mint);
+        let (subscription_authority_pda, _) =
+            get_subscription_authority_pda(&alice.pubkey(), &mint);
         let delegator_ata =
             get_associated_token_address_with_program_id(&alice.pubkey(), &mint, &TOKEN_PROGRAM_ID);
         let receiver_ata =
@@ -649,7 +650,8 @@ mod tests {
         );
         let fee_payer = init_wallet(&mut litesvm, 10_000_000_000);
 
-        let (subscription_authority_pda, _) = get_subscription_authority_pda(&alice.pubkey(), &mint);
+        let (subscription_authority_pda, _) =
+            get_subscription_authority_pda(&alice.pubkey(), &mint);
         let delegator_ata =
             get_associated_token_address_with_program_id(&alice.pubkey(), &mint, &TOKEN_PROGRAM_ID);
         let receiver_ata =
@@ -756,14 +758,22 @@ mod tests {
         let expiry_ts: i64 = current_ts() + days(1) as i64;
         let nonce = 0;
 
-        let (mut litesvm, alice, bob, delegation_pda, mint, alice_ata, bob_ata, subscription_authority_pda) =
-            setup_recurring_delegation(
-                amount_per_period,
-                period_length_s,
-                start_ts,
-                expiry_ts,
-                nonce,
-            );
+        let (
+            mut litesvm,
+            alice,
+            bob,
+            delegation_pda,
+            mint,
+            alice_ata,
+            bob_ata,
+            subscription_authority_pda,
+        ) = setup_recurring_delegation(
+            amount_per_period,
+            period_length_s,
+            start_ts,
+            expiry_ts,
+            nonce,
+        );
 
         assert_eq!(get_ata_balance(&litesvm, &bob_ata), 0);
 

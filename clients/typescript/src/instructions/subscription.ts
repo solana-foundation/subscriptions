@@ -9,8 +9,8 @@ import {
   getSubscribeInstructionAsync,
 } from '../generated/index.js';
 import {
-  getSubscriptionAuthorityPDA,
   getPlanPDA,
+  getSubscriptionAuthorityPDA,
   getSubscriptionPDA,
 } from '../pdas.js';
 

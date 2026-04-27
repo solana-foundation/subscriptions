@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import {
   fetchMaybeSubscriptionAuthority,
-  fetchSubscriptionAuthority,
   fetchRecurringDelegation,
+  fetchSubscriptionAuthority,
 } from '../src/generated/index.ts';
 import {
   buildCloseSubscriptionAuthority,
@@ -137,7 +137,10 @@ describe.each(getWalletProviders())('Recurring Delegation Lifecycle ($name)', ({
     });
     await wallet.sendInstructions(closeIxs);
 
-    const accountAfter = await fetchMaybeSubscriptionAuthority(t.rpc, subscriptionAuthorityPda);
+    const accountAfter = await fetchMaybeSubscriptionAuthority(
+      t.rpc,
+      subscriptionAuthorityPda,
+    );
     expect(accountAfter.exists).toBe(false);
   });
 });

@@ -1,12 +1,17 @@
 use solana_pubkey::Pubkey;
 
 use crate::{
-    tests::constants::PROGRAM_ID, SubscriptionAuthority, Plan, SubscriptionDelegation, DELEGATE_BASE_SEED,
+    tests::constants::PROGRAM_ID, Plan, SubscriptionAuthority, SubscriptionDelegation,
+    DELEGATE_BASE_SEED,
 };
 
 pub fn get_subscription_authority_pda(user: &Pubkey, token_mint: &Pubkey) -> (Pubkey, u8) {
     Pubkey::find_program_address(
-        &[SubscriptionAuthority::SEED, user.as_ref(), token_mint.as_ref()],
+        &[
+            SubscriptionAuthority::SEED,
+            user.as_ref(),
+            token_mint.as_ref(),
+        ],
         &PROGRAM_ID,
     )
 }

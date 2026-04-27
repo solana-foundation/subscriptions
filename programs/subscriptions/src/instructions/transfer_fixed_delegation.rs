@@ -13,7 +13,7 @@ use crate::{
         transfer_with_delegate, validate_fixed_transfer, Delegation, TransferAccounts, TransferData,
     },
     state::FixedDelegation,
-    AccountCheck, SubscriptionAuthorityAccount, SubscriptionsError, ProgramAccount, SignerAccount,
+    AccountCheck, ProgramAccount, SignerAccount, SubscriptionAuthorityAccount, SubscriptionsError,
     TokenAccountInterface, TokenProgramInterface, WritableAccount,
 };
 
@@ -166,7 +166,8 @@ mod tests {
             constants::{MINT_DECIMALS, TOKEN_PROGRAM_ID},
             utils::{
                 current_ts, days, get_ata_balance, init_ata, init_mint,
-                initialize_subscription_authority_action, setup, CreateDelegation, TransferDelegation,
+                initialize_subscription_authority_action, setup, CreateDelegation,
+                TransferDelegation,
             },
         },
         SubscriptionsError,
@@ -431,7 +432,8 @@ mod tests {
             setup_fixed_delegation(amount, expiry_ts, nonce);
         let fee_payer = init_wallet(&mut litesvm, 10_000_000_000);
 
-        let (subscription_authority_pda, _) = get_subscription_authority_pda(&alice.pubkey(), &mint);
+        let (subscription_authority_pda, _) =
+            get_subscription_authority_pda(&alice.pubkey(), &mint);
         let delegator_ata =
             get_associated_token_address_with_program_id(&alice.pubkey(), &mint, &TOKEN_PROGRAM_ID);
         let receiver_ata =
@@ -505,7 +507,8 @@ mod tests {
             setup_fixed_delegation(amount, expiry_ts, nonce);
         let fee_payer = init_wallet(&mut litesvm, 10_000_000_000);
 
-        let (subscription_authority_pda, _) = get_subscription_authority_pda(&alice.pubkey(), &mint);
+        let (subscription_authority_pda, _) =
+            get_subscription_authority_pda(&alice.pubkey(), &mint);
         let delegator_ata =
             get_associated_token_address_with_program_id(&alice.pubkey(), &mint, &TOKEN_PROGRAM_ID);
         let receiver_ata =
@@ -622,7 +625,9 @@ mod tests {
 
     #[test]
     fn test_fixed_transfer_stale_subscription_authority() {
-        use crate::tests::utils::{move_clock_forward, CloseSubscriptionAuthority, RevokeDelegation};
+        use crate::tests::utils::{
+            move_clock_forward, CloseSubscriptionAuthority, RevokeDelegation,
+        };
 
         let amount: u64 = 50_000_000;
         let expiry_ts: i64 = current_ts() + days(1) as i64;

@@ -10,9 +10,9 @@ use pinocchio_token_2022::instructions::Approve as Approve2022;
 
 use crate::{
     check_token_account_mint, check_token_account_owner, constants::TOKEN_2022_PROGRAM_ID,
-    AccountCheck, MintInterface, SubscriptionAuthority, SubscriptionsError, ProgramAccount,
-    ProgramAccountInit, SignerAccount, SystemAccount, TokenAccountInterface, TokenProgramInterface,
-    WritableAccount,
+    AccountCheck, MintInterface, ProgramAccount, ProgramAccountInit, SignerAccount,
+    SubscriptionAuthority, SubscriptionsError, SystemAccount, TokenAccountInterface,
+    TokenProgramInterface, WritableAccount,
 };
 
 /// Validated accounts for the [`InitSubscriptionAuthority`](crate::SubscriptionsInstruction::InitSubscriptionAuthority) instruction.
@@ -167,7 +167,8 @@ mod tests {
                 MINT_DECIMALS, SYSTEM_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID,
             },
             utils::{
-                fetch_account, init_ata, init_mint, init_wallet, initialize_subscription_authority_action,
+                fetch_account, init_ata, init_mint, init_wallet,
+                initialize_subscription_authority_action,
                 initialize_subscription_authority_action_with_sponsor, setup,
             },
         },
@@ -188,7 +189,8 @@ mod tests {
         );
         let user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
 
-        let (res, subscription_authority_pda, bump) = initialize_subscription_authority_action(litesvm, user, mint);
+        let (res, subscription_authority_pda, bump) =
+            initialize_subscription_authority_action(litesvm, user, mint);
         res.assert_ok();
 
         let account = litesvm.get_account(&subscription_authority_pda).unwrap();
@@ -198,10 +200,19 @@ mod tests {
             subscription_authority.discriminator,
             AccountDiscriminator::SubscriptionAuthority as u8
         );
-        assert_eq!(subscription_authority.user.to_bytes(), user.pubkey().to_bytes());
-        assert_eq!(subscription_authority.token_mint.to_bytes(), mint.to_bytes());
+        assert_eq!(
+            subscription_authority.user.to_bytes(),
+            user.pubkey().to_bytes()
+        );
+        assert_eq!(
+            subscription_authority.token_mint.to_bytes(),
+            mint.to_bytes()
+        );
         // Default payer is the user when no sponsor is supplied.
-        assert_eq!(subscription_authority.payer.to_bytes(), user.pubkey().to_bytes());
+        assert_eq!(
+            subscription_authority.payer.to_bytes(),
+            user.pubkey().to_bytes()
+        );
         assert_eq!(subscription_authority.bump, bump);
         assert!(subscription_authority.init_id >= 0);
 
@@ -231,7 +242,12 @@ mod tests {
         let sponsor_balance_before = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
 
         let (res, subscription_authority_pda, _bump) =
-            initialize_subscription_authority_action_with_sponsor(litesvm, user, mint, Some(&sponsor));
+            initialize_subscription_authority_action_with_sponsor(
+                litesvm,
+                user,
+                mint,
+                Some(&sponsor),
+            );
         res.assert_ok();
 
         let account = litesvm.get_account(&subscription_authority_pda).unwrap();
@@ -305,7 +321,8 @@ mod tests {
         );
         let user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
 
-        let (res, subscription_authority_pda, bump) = initialize_subscription_authority_action(litesvm, user, mint);
+        let (res, subscription_authority_pda, bump) =
+            initialize_subscription_authority_action(litesvm, user, mint);
 
         match expected_error {
             Some(err) => res.assert_err(err),
@@ -319,8 +336,14 @@ mod tests {
                     subscription_authority.discriminator,
                     AccountDiscriminator::SubscriptionAuthority as u8
                 );
-                assert_eq!(subscription_authority.user.to_bytes(), user.pubkey().to_bytes());
-                assert_eq!(subscription_authority.token_mint.to_bytes(), mint.to_bytes());
+                assert_eq!(
+                    subscription_authority.user.to_bytes(),
+                    user.pubkey().to_bytes()
+                );
+                assert_eq!(
+                    subscription_authority.token_mint.to_bytes(),
+                    mint.to_bytes()
+                );
                 assert_eq!(subscription_authority.bump, bump);
                 assert!(subscription_authority.init_id >= 0);
 
@@ -342,8 +365,8 @@ mod tests {
         use crate::{
             instructions::initialize_subscription_authority,
             tests::{
-                constants::PROGRAM_ID, constants::SYSTEM_PROGRAM_ID, pda::get_subscription_authority_pda,
-                utils::build_and_send_transaction,
+                constants::PROGRAM_ID, constants::SYSTEM_PROGRAM_ID,
+                pda::get_subscription_authority_pda, utils::build_and_send_transaction,
             },
         };
 
@@ -359,7 +382,8 @@ mod tests {
         );
         let user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
 
-        let (subscription_authority_pda, _bump) = get_subscription_authority_pda(&user.pubkey(), &mint);
+        let (subscription_authority_pda, _bump) =
+            get_subscription_authority_pda(&user.pubkey(), &mint);
 
         let fake_token_program = user.pubkey();
 
@@ -425,8 +449,14 @@ mod tests {
             subscription_authority.discriminator,
             AccountDiscriminator::SubscriptionAuthority as u8
         );
-        assert_eq!(subscription_authority.user.to_bytes(), user.pubkey().to_bytes());
-        assert_eq!(subscription_authority.token_mint.to_bytes(), mint.to_bytes());
+        assert_eq!(
+            subscription_authority.user.to_bytes(),
+            user.pubkey().to_bytes()
+        );
+        assert_eq!(
+            subscription_authority.token_mint.to_bytes(),
+            mint.to_bytes()
+        );
         assert_eq!(subscription_authority.bump, bump);
         assert!(subscription_authority.init_id >= 0);
 
@@ -479,8 +509,14 @@ mod tests {
             subscription_authority.discriminator,
             AccountDiscriminator::SubscriptionAuthority as u8
         );
-        assert_eq!(subscription_authority.user.to_bytes(), user.pubkey().to_bytes());
-        assert_eq!(subscription_authority.token_mint.to_bytes(), mint.to_bytes());
+        assert_eq!(
+            subscription_authority.user.to_bytes(),
+            user.pubkey().to_bytes()
+        );
+        assert_eq!(
+            subscription_authority.token_mint.to_bytes(),
+            mint.to_bytes()
+        );
         assert_eq!(subscription_authority.bump, bump);
 
         let ata_account = fetch_account::<spl_token_2022::state::Account>(litesvm, &user_ata);
@@ -616,8 +652,8 @@ mod tests {
         use crate::{
             instructions::initialize_subscription_authority,
             tests::{
-                constants::PROGRAM_ID, constants::TOKEN_PROGRAM_ID, pda::get_subscription_authority_pda,
-                utils::build_and_send_transaction,
+                constants::PROGRAM_ID, constants::TOKEN_PROGRAM_ID,
+                pda::get_subscription_authority_pda, utils::build_and_send_transaction,
             },
         };
 
@@ -633,7 +669,8 @@ mod tests {
         );
         let user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
 
-        let (subscription_authority_pda, _bump) = get_subscription_authority_pda(&user.pubkey(), &mint);
+        let (subscription_authority_pda, _bump) =
+            get_subscription_authority_pda(&user.pubkey(), &mint);
 
         // Random pubkey that is NOT a signer in this transaction.
         let extra_account = Pubkey::new_unique();

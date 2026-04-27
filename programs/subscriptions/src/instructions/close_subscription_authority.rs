@@ -1,8 +1,8 @@
 use pinocchio::{error::ProgramError, AccountView, ProgramResult};
 
 use crate::{
-    AccountCheck, AccountClose, SubscriptionAuthority, SubscriptionsError, ProgramAccount, SignerAccount,
-    WritableAccount,
+    AccountCheck, AccountClose, ProgramAccount, SignerAccount, SubscriptionAuthority,
+    SubscriptionsError, WritableAccount,
 };
 
 /// Validated accounts for the [`CloseSubscriptionAuthority`](crate::SubscriptionsInstruction::CloseSubscriptionAuthority) instruction.
@@ -95,7 +95,8 @@ mod tests {
             constants::{MINT_DECIMALS, TOKEN_PROGRAM_ID},
             utils::{
                 init_ata, init_mint, init_wallet, initialize_subscription_authority_action,
-                initialize_subscription_authority_action_with_sponsor, setup, CloseSubscriptionAuthority,
+                initialize_subscription_authority_action_with_sponsor, setup,
+                CloseSubscriptionAuthority,
             },
         },
         SubscriptionAuthority, SubscriptionsError,
@@ -115,7 +116,8 @@ mod tests {
         );
         let _user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
 
-        let (res, subscription_authority_pda, _bump) = initialize_subscription_authority_action(litesvm, user, mint);
+        let (res, subscription_authority_pda, _bump) =
+            initialize_subscription_authority_action(litesvm, user, mint);
         res.assert_ok();
 
         let account_before = litesvm.get_account(&subscription_authority_pda);
@@ -151,7 +153,8 @@ mod tests {
         );
         let _user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
 
-        let (res, subscription_authority_pda, _bump) = initialize_subscription_authority_action(litesvm, user, mint);
+        let (res, subscription_authority_pda, _bump) =
+            initialize_subscription_authority_action(litesvm, user, mint);
         res.assert_ok();
 
         let attacker = init_wallet(litesvm, 1_000_000_000);
@@ -194,7 +197,8 @@ mod tests {
         );
         let _user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
 
-        let (res, subscription_authority_pda, _) = initialize_subscription_authority_action(litesvm, user, mint);
+        let (res, subscription_authority_pda, _) =
+            initialize_subscription_authority_action(litesvm, user, mint);
         res.assert_ok();
 
         for (idx, _name, is_signer) in &writable {
@@ -247,7 +251,8 @@ mod tests {
         );
         let _user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
 
-        let (res, subscription_authority_pda, _) = initialize_subscription_authority_action(litesvm, user, mint);
+        let (res, subscription_authority_pda, _) =
+            initialize_subscription_authority_action(litesvm, user, mint);
         res.assert_ok();
 
         for (idx, _name, is_writable) in &signers {
@@ -291,7 +296,12 @@ mod tests {
         let _user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
 
         let (res, subscription_authority_pda, _bump) =
-            initialize_subscription_authority_action_with_sponsor(litesvm, user, mint, Some(&sponsor));
+            initialize_subscription_authority_action_with_sponsor(
+                litesvm,
+                user,
+                mint,
+                Some(&sponsor),
+            );
         res.assert_ok();
 
         // Stored payer should be the sponsor.
@@ -379,13 +389,23 @@ mod tests {
 
         // Sponsor A inits.
         let (res, subscription_authority_pda, _) =
-            initialize_subscription_authority_action_with_sponsor(litesvm, user, mint, Some(&sponsor_a));
+            initialize_subscription_authority_action_with_sponsor(
+                litesvm,
+                user,
+                mint,
+                Some(&sponsor_a),
+            );
         res.assert_ok();
 
         // Sponsor B re-runs init.
-        initialize_subscription_authority_action_with_sponsor(litesvm, user, mint, Some(&sponsor_b))
-            .0
-            .assert_ok();
+        initialize_subscription_authority_action_with_sponsor(
+            litesvm,
+            user,
+            mint,
+            Some(&sponsor_b),
+        )
+        .0
+        .assert_ok();
 
         // Stored payer must remain sponsor A.
         let account = litesvm.get_account(&subscription_authority_pda).unwrap();
@@ -407,7 +427,8 @@ mod tests {
         );
         let _user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
 
-        let (res, subscription_authority_pda, _bump) = initialize_subscription_authority_action(litesvm, user, mint);
+        let (res, subscription_authority_pda, _bump) =
+            initialize_subscription_authority_action(litesvm, user, mint);
         res.assert_ok();
 
         let res = CloseSubscriptionAuthority::new(litesvm, user, mint).execute();

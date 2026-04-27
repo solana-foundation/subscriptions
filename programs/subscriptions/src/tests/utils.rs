@@ -35,15 +35,17 @@ use crate::{
     instructions::update_plan::UpdatePlanData,
     instructions::{
         cancel_subscription, close_subscription_authority, create_fixed_delegation, create_plan,
-        create_recurring_delegation, delete_plan, initialize_subscription_authority, revoke_delegation,
-        subscribe, transfer_fixed_delegation, transfer_recurring_delegation, transfer_subscription,
-        update_plan,
+        create_recurring_delegation, delete_plan, initialize_subscription_authority,
+        revoke_delegation, subscribe, transfer_fixed_delegation, transfer_recurring_delegation,
+        transfer_subscription, update_plan,
     },
     state::common::PlanStatus,
     tests::{
         constants::{PROGRAM_ID, SYSTEM_PROGRAM_ID},
         cu_tracker::record_transaction,
-        pda::{get_delegation_pda, get_subscription_authority_pda, get_plan_pda, get_subscription_pda},
+        pda::{
+            get_delegation_pda, get_plan_pda, get_subscription_authority_pda, get_subscription_pda,
+        },
     },
 };
 
@@ -389,7 +391,8 @@ impl<'a> CreateDelegation<'a> {
     }
 
     fn execute(self, discriminator: u8, data: Vec<u8>) -> (TransactionResult, Pubkey) {
-        let (subscription_authority_pda, _) = get_subscription_authority_pda(&self.delegator.pubkey(), &self.mint);
+        let (subscription_authority_pda, _) =
+            get_subscription_authority_pda(&self.delegator.pubkey(), &self.mint);
         let (derived_pda, _) = get_delegation_pda(
             &subscription_authority_pda,
             &self.delegator.pubkey(),
@@ -481,7 +484,8 @@ impl<'a> TransferDelegation<'a> {
     #[allow(clippy::result_large_err)]
     fn execute(self, discriminator: u8) -> TransactionResult {
         let token_program = self.litesvm.get_account(&self.mint).unwrap().owner;
-        let (subscription_authority_pda, _) = get_subscription_authority_pda(&self.delegator, &self.mint);
+        let (subscription_authority_pda, _) =
+            get_subscription_authority_pda(&self.delegator, &self.mint);
         let delegator_ata = get_associated_token_address_with_program_id(
             &self.delegator,
             &self.mint,
@@ -572,7 +576,8 @@ impl<'a> RevokeDelegation<'a> {
 
     #[allow(clippy::result_large_err)]
     pub fn execute(self) -> TransactionResult {
-        let (subscription_authority_pda, _) = get_subscription_authority_pda(&self.delegator.pubkey(), &self.mint);
+        let (subscription_authority_pda, _) =
+            get_subscription_authority_pda(&self.delegator.pubkey(), &self.mint);
         let (derived_pda, _) = get_delegation_pda(
             &subscription_authority_pda,
             &self.delegator.pubkey(),
@@ -1063,7 +1068,8 @@ impl<'a> TransferSubscription<'a> {
     #[allow(clippy::result_large_err)]
     pub fn execute(self) -> TransactionResult {
         let token_program = self.litesvm.get_account(&self.mint).unwrap().owner;
-        let (subscription_authority_pda, _) = get_subscription_authority_pda(&self.delegator, &self.mint);
+        let (subscription_authority_pda, _) =
+            get_subscription_authority_pda(&self.delegator, &self.mint);
         let delegator_ata = get_associated_token_address_with_program_id(
             &self.delegator,
             &self.mint,
@@ -1146,7 +1152,8 @@ impl<'a> Subscribe<'a> {
 
     #[allow(clippy::result_large_err)]
     pub fn execute(self) -> TransactionResult {
-        let (subscription_authority_pda, _) = get_subscription_authority_pda(&self.subscriber.pubkey(), &self.mint);
+        let (subscription_authority_pda, _) =
+            get_subscription_authority_pda(&self.subscriber.pubkey(), &self.mint);
         let (subscription_pda, _) = get_subscription_pda(&self.plan_pda, &self.subscriber.pubkey());
 
         let event_authority = Pubkey::new_from_array(event_authority_pda::ID.to_bytes());

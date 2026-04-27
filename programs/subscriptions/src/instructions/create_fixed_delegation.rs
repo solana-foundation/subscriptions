@@ -98,8 +98,8 @@ mod tests {
             pda::get_delegation_pda,
             utils::{
                 current_ts, days, get_ata_balance, init_ata, init_mint, init_wallet,
-                initialize_subscription_authority_action, move_clock_forward, setup, CreateDelegation,
-                RevokeDelegation, TransferDelegation,
+                initialize_subscription_authority_action, move_clock_forward, setup,
+                CreateDelegation, RevokeDelegation, TransferDelegation,
             },
         },
         AccountDiscriminator, FixedDelegation, SubscriptionsError,
@@ -388,7 +388,8 @@ mod tests {
         );
         let _user_ata = init_ata(litesvm, mint, payer.pubkey(), 1_000_000);
 
-        let (_, subscription_authority_pda, _) = initialize_subscription_authority_action(litesvm, payer, mint);
+        let (_, subscription_authority_pda, _) =
+            initialize_subscription_authority_action(litesvm, payer, mint);
 
         let delegatee = Pubkey::new_unique();
 

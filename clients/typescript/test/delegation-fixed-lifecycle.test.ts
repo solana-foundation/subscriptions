@@ -126,7 +126,10 @@ describe.each(getWalletProviders())('Fixed Delegation Lifecycle ($name)', ({
     });
     await wallet.sendInstructions(closeIxs);
 
-    const accountAfter = await fetchMaybeSubscriptionAuthority(t.rpc, subscriptionAuthorityPda);
+    const accountAfter = await fetchMaybeSubscriptionAuthority(
+      t.rpc,
+      subscriptionAuthorityPda,
+    );
     expect(accountAfter.exists).toBe(false);
 
     const balanceAfter = await t.rpc.getBalance(wallet.address).send();

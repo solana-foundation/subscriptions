@@ -138,7 +138,10 @@ pub enum SubscriptionsInstruction {
         writable,
         docs = "The fixed delegation PDA to transfer from"
     ))]
-    #[codama(account(name = "subscription_authority", docs = "The subscription-authority PDA"))]
+    #[codama(account(
+        name = "subscription_authority",
+        docs = "The subscription-authority PDA"
+    ))]
     #[codama(account(
         name = "delegator_ata",
         writable,
@@ -164,7 +167,10 @@ pub enum SubscriptionsInstruction {
         writable,
         docs = "The recurring delegation PDA to transfer from"
     ))]
-    #[codama(account(name = "subscription_authority", docs = "The subscription-authority PDA"))]
+    #[codama(account(
+        name = "subscription_authority",
+        docs = "The subscription-authority PDA"
+    ))]
     #[codama(account(
         name = "delegator_ata",
         writable,
@@ -237,7 +243,10 @@ pub enum SubscriptionsInstruction {
         docs = "The subscription delegation PDA"
     ))]
     #[codama(account(name = "plan_pda", docs = "The plan PDA"))]
-    #[codama(account(name = "subscription_authority", docs = "The subscription-authority PDA"))]
+    #[codama(account(
+        name = "subscription_authority",
+        docs = "The subscription-authority PDA"
+    ))]
     #[codama(account(
         name = "delegator_ata",
         writable,

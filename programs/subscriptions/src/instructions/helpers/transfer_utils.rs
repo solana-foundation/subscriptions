@@ -27,10 +27,7 @@ pub fn check_token_account_owner(
 }
 
 /// Verifies that the token account's mint field matches `expected`.
-pub fn check_token_account_mint(
-    data: &[u8],
-    expected: &Address,
-) -> Result<(), SubscriptionsError> {
+pub fn check_token_account_mint(data: &[u8], expected: &Address) -> Result<(), SubscriptionsError> {
     if data.len() < TOKEN_ACCOUNT_MINT_END {
         return Err(SubscriptionsError::InvalidAccountData);
     }

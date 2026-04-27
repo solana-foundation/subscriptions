@@ -239,7 +239,10 @@ describe('Multi-Wallet Scenarios', () => {
       expiryTs: currentTs + 3600n,
     });
 
-    const [mdPda] = await getSubscriptionAuthorityPDA(subscriber.address, t.tokenMint);
+    const [mdPda] = await getSubscriptionAuthorityPDA(
+      subscriber.address,
+      t.tokenMint,
+    );
     const [delegPda] = await getDelegationPDA(
       mdPda,
       subscriber.address,
@@ -325,7 +328,10 @@ describe('Multi-Wallet Scenarios', () => {
       t.payerKeypair.address,
       t.tokenMint,
     );
-    const [mdPdaB] = await getSubscriptionAuthorityPDA(t.payerKeypair.address, mintB);
+    const [mdPdaB] = await getSubscriptionAuthorityPDA(
+      t.payerKeypair.address,
+      mintB,
+    );
     const [delegPdaA] = await getDelegationPDA(
       mdPdaA,
       t.payerKeypair.address,

@@ -12,7 +12,7 @@ use crate::{
         transfer_with_delegate, validate_recurring_transfer, TransferAccounts, TransferData,
     },
     state::{plan::Plan, subscription_delegation::SubscriptionDelegation},
-    AccountCheck, SubscriptionAuthorityAccount, SubscriptionsError, ProgramAccount, SignerAccount,
+    AccountCheck, ProgramAccount, SignerAccount, SubscriptionAuthorityAccount, SubscriptionsError,
     TokenAccountInterface, TokenProgramInterface, WritableAccount,
 };
 
@@ -220,12 +220,12 @@ mod tests {
         tests::{
             asserts::TransactionResultExt,
             constants::{MINT_DECIMALS, PROGRAM_ID, TOKEN_PROGRAM_ID},
-            pda::{get_subscription_authority_pda, get_plan_pda},
+            pda::{get_plan_pda, get_subscription_authority_pda},
             utils::{
                 build_and_send_transaction, current_ts, days, get_ata_balance, hours, init_ata,
-                init_mint, init_wallet, initialize_subscription_authority_action, move_clock_forward, setup,
-                CancelSubscription, CreatePlan, CreateSubscription, DeletePlan,
-                TransferSubscription, UpdatePlan,
+                init_mint, init_wallet, initialize_subscription_authority_action,
+                move_clock_forward, setup, CancelSubscription, CreatePlan, CreateSubscription,
+                DeletePlan, TransferSubscription, UpdatePlan,
             },
         },
         SubscriptionsError,
@@ -905,7 +905,8 @@ mod tests {
             setup_plan_and_subscription(amount_per_period, period_hours, end_ts, vec![], vec![]);
         let fee_payer = init_wallet(&mut litesvm, 10_000_000_000);
 
-        let (subscription_authority_pda, _) = get_subscription_authority_pda(&alice.pubkey(), &mint);
+        let (subscription_authority_pda, _) =
+            get_subscription_authority_pda(&alice.pubkey(), &mint);
         let delegator_ata =
             get_associated_token_address_with_program_id(&alice.pubkey(), &mint, &TOKEN_PROGRAM_ID);
         let receiver_ata = get_associated_token_address_with_program_id(
@@ -971,7 +972,8 @@ mod tests {
             setup_plan_and_subscription(amount_per_period, period_hours, end_ts, vec![], vec![]);
         let fee_payer = init_wallet(&mut litesvm, 10_000_000_000);
 
-        let (subscription_authority_pda, _) = get_subscription_authority_pda(&alice.pubkey(), &mint);
+        let (subscription_authority_pda, _) =
+            get_subscription_authority_pda(&alice.pubkey(), &mint);
         let delegator_ata =
             get_associated_token_address_with_program_id(&alice.pubkey(), &mint, &TOKEN_PROGRAM_ID);
         let receiver_ata = get_associated_token_address_with_program_id(

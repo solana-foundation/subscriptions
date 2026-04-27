@@ -31,7 +31,10 @@ export async function buildInitSubscriptionAuthority(params: {
   tokenProgram: Address;
   payer?: TransactionSigner;
   programAddress?: Address;
-}): Promise<{ instructions: Instruction[]; subscriptionAuthorityPda: Address }> {
+}): Promise<{
+  instructions: Instruction[];
+  subscriptionAuthorityPda: Address;
+}> {
   const { owner, tokenMint, userAta, tokenProgram, payer, programAddress } =
     params;
   const config = programAddress ? { programAddress } : undefined;

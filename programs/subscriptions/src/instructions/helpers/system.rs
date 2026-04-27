@@ -1,6 +1,7 @@
 use super::traits::AccountCheck;
 use crate::{
-    state::common::AccountDiscriminator, SubscriptionAuthority, SubscriptionsError, DISCRIMINATOR_OFFSET,
+    state::common::AccountDiscriminator, SubscriptionAuthority, SubscriptionsError,
+    DISCRIMINATOR_OFFSET,
 };
 use pinocchio::{error::ProgramError, AccountView};
 

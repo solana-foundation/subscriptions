@@ -1,6 +1,6 @@
 use crate::{
-    create_delegation_account, AccountDiscriminator, CreateDelegationAccounts, SubscriptionsError,
-    RecurringDelegation, DISCRIMINATOR_OFFSET,
+    create_delegation_account, AccountDiscriminator, CreateDelegationAccounts, RecurringDelegation,
+    SubscriptionsError, DISCRIMINATOR_OFFSET,
 };
 use codama::CodamaType;
 use core::mem::{size_of, transmute};
@@ -117,11 +117,12 @@ mod tests {
             asserts::TransactionResultExt,
             constants::{MINT_DECIMALS, TOKEN_PROGRAM_ID},
             utils::{
-                days, get_ata_balance, init_ata, init_mint, initialize_subscription_authority_action,
-                move_clock_forward, setup, CreateDelegation, TransferDelegation,
+                days, get_ata_balance, init_ata, init_mint,
+                initialize_subscription_authority_action, move_clock_forward, setup,
+                CreateDelegation, TransferDelegation,
             },
         },
-        AccountDiscriminator, SubscriptionsError, RecurringDelegation,
+        AccountDiscriminator, RecurringDelegation, SubscriptionsError,
     };
 
     #[test]

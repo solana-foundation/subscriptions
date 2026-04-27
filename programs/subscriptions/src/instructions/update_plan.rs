@@ -11,7 +11,7 @@ use crate::{
         common::{validate_plan_end_ts, PlanStatus},
         plan::Plan,
     },
-    AccountCheck, SubscriptionsError, ProgramAccount, SignerAccount, WritableAccount,
+    AccountCheck, ProgramAccount, SignerAccount, SubscriptionsError, WritableAccount,
 };
 
 /// Instruction data payload for updating a plan's mutable fields.

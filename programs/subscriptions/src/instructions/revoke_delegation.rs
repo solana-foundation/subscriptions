@@ -10,7 +10,7 @@ use crate::{
         common::AccountDiscriminator, fixed_delegation::FixedDelegation, plan::Plan,
         recurring_delegation::RecurringDelegation, subscription_delegation::SubscriptionDelegation,
     },
-    AccountCheck, AccountClose, Header, SubscriptionsError, ProgramAccount, SignerAccount,
+    AccountCheck, AccountClose, Header, ProgramAccount, SignerAccount, SubscriptionsError,
     WritableAccount, DELEGATEE_OFFSET, DELEGATOR_OFFSET, DISCRIMINATOR_OFFSET, PAYER_OFFSET,
 };
 
@@ -230,7 +230,7 @@ mod tests {
                 RevokeDelegation, RevokeSubscription,
             },
         },
-        AccountDiscriminator, FixedDelegation, SubscriptionsError, RecurringDelegation,
+        AccountDiscriminator, FixedDelegation, RecurringDelegation, SubscriptionsError,
     };
 
     #[test]

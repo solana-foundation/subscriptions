@@ -19,8 +19,8 @@ export * from './constants.js';
 export { parseProgramError } from './errors/map.js';
 // Errors
 export {
-  SubscriptionsSDKError,
   ProgramError,
+  SubscriptionsSDKError,
   ValidationError,
 } from './errors/types.js';
 // Re-export generated types and utilities for power users

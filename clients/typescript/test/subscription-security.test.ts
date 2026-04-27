@@ -21,7 +21,7 @@ import {
   PlanStatus,
 } from '../src/generated/index.ts';
 import { buildCloseSubscriptionAuthority } from '../src/instructions/delegation.ts';
-import { getSubscriptionAuthorityPDA, getPlanPDA } from '../src/pdas.ts';
+import { getPlanPDA, getSubscriptionAuthorityPDA } from '../src/pdas.ts';
 import { addressAsSigner } from '../src/wallet.ts';
 import {
   DEFAULT_TEST_BALANCE,
