@@ -31,8 +31,9 @@ runs:
   using: "composite"
   steps:
     - name: Setup Rust
-      uses: dtolnay/rust-toolchain@stable
+      uses: dtolnay/rust-toolchain@master
       with:
+        toolchain: '1.92'
         components: rustfmt, clippy
 
     - name: Rust cache
