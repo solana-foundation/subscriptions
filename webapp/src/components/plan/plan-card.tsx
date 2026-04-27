@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { ZERO_ADDRESS, PlanStatus } from '@subscriptions/client'
 import { cn, ellipsify, USDC_MULTIPLIER, fmtDate, fmtDateTime, formatPeriod, formatPeriodLabel } from '@/lib/utils'
-import { useSubscriptionsMutations } from '@/hooks/use-subscriptions'
+import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations'
 import { useSubscriptionAuthorityStatus } from '@/hooks/use-subscription-authority-status'
 import { useTimeTravel } from '@/hooks/use-time-travel'
 import { useWalletUi } from '@wallet-ui/react'

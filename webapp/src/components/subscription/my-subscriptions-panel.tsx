@@ -7,7 +7,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
 import { useMySubscriptions, type EnrichedSubscription } from '@/hooks/use-subscriptions'
-import { useSubscriptionsMutations } from '@/hooks/use-subscriptions'
+import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations'
 import { useSubscriptionAuthorityStatus } from '@/hooks/use-subscription-authority-status'
 import { useUsdcMintRaw } from '@/hooks/use-token-config'
 import { useTimeTravel } from '@/hooks/use-time-travel'

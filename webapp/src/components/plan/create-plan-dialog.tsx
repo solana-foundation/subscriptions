@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useSubscriptionsMutations } from '@/hooks/use-subscriptions'
+import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations'
 import { useUsdcMint } from '@/hooks/use-token-config'
 import { cn, USDC_MULTIPLIER } from '@/lib/utils'
 import { getBlockTimestamp } from '@/hooks/use-time-travel'

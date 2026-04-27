@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useSubscriptionsMutations } from '@/hooks/use-subscriptions'
+import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations'
 import { DELEGATION_KINDS, type DelegationKindId } from '@subscriptions/client'
 import { cn, USDC_MULTIPLIER, SECONDS_PER_DAY } from '@/lib/utils'
 import { getBlockTimestamp } from '@/hooks/use-time-travel'

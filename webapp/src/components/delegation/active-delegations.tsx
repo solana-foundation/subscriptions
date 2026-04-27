@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { useDelegations, useIncomingDelegations, type DelegationItem } from '@/hooks/use-delegations'
-import { useSubscriptionsMutations } from '@/hooks/use-subscriptions'
+import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations'
 import { useGetTokenAccountsQuery } from '@/components/account/account-data-access'
 import { useWalletUi } from '@wallet-ui/react'
 import { address } from 'gill'
