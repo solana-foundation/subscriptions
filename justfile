@@ -298,3 +298,42 @@ lint-check:
 
 # Run all code quality checks
 check: fmt-check lint-check
+
+# ============================================
+# IDL Deployment (uses Program Metadata Program)
+# ============================================
+
+[private]
+check-program-metadata:
+    @command -v program-metadata >/dev/null 2>&1 || { echo "Error: program-metadata not installed. See https://github.com/solana-program/program-metadata"; exit 1; }
+
+# Deploy IDL to devnet
+deploy-idl-devnet: check-program-metadata
+    program-metadata write idl $(solana-keygen pubkey "{{deploy_key}}") {{idl_file}} \
+        --keypair {{deploy_key}} \
+        --rpc https://api.devnet.solana.com
+
+# Deploy IDL to mainnet
+deploy-idl-mainnet: check-program-metadata
+    program-metadata write idl $(solana-keygen pubkey "{{deploy_key}}") {{idl_file}} \
+        --keypair {{deploy_key}} \
+        --rpc https://api.mainnet-beta.solana.com
+
+# ============================================
+# Build Verification (uses solana-verify CLI)
+# ============================================
+
+[private]
+check-solana-verify:
+    @command -v solana-verify >/dev/null 2>&1 || { echo "Error: solana-verify not installed. Run: cargo install solana-verify"; exit 1; }
+
+# Verify mainnet deployment against repo (remote build via OtterSec).
+# Note: Remote verification (--remote) only works on mainnet.
+verify-mainnet: check-solana-verify
+    solana-verify verify-from-repo \
+        https://github.com/solana-program/multi-delegator \
+        --program-id $(solana-keygen pubkey "{{deploy_key}}") \
+        --library-name subscriptions \
+        --mount-path programs/subscriptions \
+        --remote \
+        -um

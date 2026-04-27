@@ -5308,6 +5308,7 @@ dependencies = [
  "solana-keypair",
  "solana-message",
  "solana-pubkey",
+ "solana-security-txt",
  "solana-signer",
  "solana-transaction",
  "solana-transaction-error",
