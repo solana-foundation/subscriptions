@@ -32,6 +32,7 @@ export {
   buildCreateRecurringDelegation,
   buildInitMultiDelegate,
   buildRevokeDelegation,
+  buildRevokeSubscription,
 } from './instructions/delegation.js';
 export {
   buildCreatePlan,

@@ -129,7 +129,7 @@ pub fn process(accounts: &[AccountView], data: &SubscribeData) -> ProgramResult 
     ];
 
     ProgramAccount::init::<()>(
-        accounts_struct.subscriber,
+        accounts_struct.payer,
         accounts_struct.subscription_pda,
         &seeds,
         SubscriptionDelegation::LEN,
@@ -148,7 +148,7 @@ pub fn process(accounts: &[AccountView], data: &SubscribeData) -> ProgramResult 
             bump,
             accounts_struct.subscriber.address(),
             accounts_struct.plan_pda.address(),
-            accounts_struct.subscriber.address(),
+            accounts_struct.payer.address(),
             init_id,
         );
 
@@ -186,13 +186,15 @@ pub struct SubscribeAccounts<'a> {
     pub system_program: &'a AccountView,
     pub event_authority: &'a AccountView,
     pub self_program: &'a AccountView,
+    /// The account funding rent. Defaults to `subscriber` if no extra account is provided.
+    pub payer: &'a AccountView,
 }
 
 impl<'a> TryFrom<&'a [AccountView]> for SubscribeAccounts<'a> {
     type Error = ProgramError;
 
     fn try_from(accounts: &'a [AccountView]) -> Result<Self, Self::Error> {
-        let [subscriber, merchant, plan_pda, subscription_pda, multi_delegate_pda, system_program, event_authority, self_program] =
+        let [subscriber, merchant, plan_pda, subscription_pda, multi_delegate_pda, system_program, event_authority, self_program, rem @ ..] =
             accounts
         else {
             return Err(MultiDelegatorError::NotEnoughAccountKeys.into());
@@ -205,6 +207,14 @@ impl<'a> TryFrom<&'a [AccountView]> for SubscribeAccounts<'a> {
         MultiDelegateAccount::check(multi_delegate_pda)?;
         SystemAccount::check(system_program)?;
 
+        let payer = if let Some(payer) = rem.first() {
+            SignerAccount::check(payer)?;
+            WritableAccount::check(payer)?;
+            payer
+        } else {
+            subscriber
+        };
+
         Ok(Self {
             subscriber,
             merchant,
@@ -214,6 +224,7 @@ impl<'a> TryFrom<&'a [AccountView]> for SubscribeAccounts<'a> {
             system_program,
             event_authority,
             self_program,
+            payer,
         })
     }
 }
@@ -443,6 +454,44 @@ mod tests {
         .execute();
         // Should fail because multidelegate PDA doesn't exist (not owned by program)
         res.assert_err(MultiDelegatorError::InvalidMultiDelegatePda);
+    }
+
+    #[test]
+    fn subscribe_with_sponsor() {
+        use crate::tests::utils::init_wallet;
+
+        let end_ts = current_ts() + days(30) as i64;
+        let (mut litesvm, alice, merchant, mint, plan_pda, plan_bump) = setup_plan(1, end_ts);
+        let sponsor = init_wallet(&mut litesvm, 10_000_000_000);
+
+        let alice_balance_before = litesvm.get_account(&alice.pubkey()).unwrap().lamports;
+        let sponsor_balance_before = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
+
+        let res = Subscribe::new(
+            &mut litesvm,
+            &alice,
+            merchant.pubkey(),
+            plan_pda,
+            1,
+            plan_bump,
+            mint,
+        )
+        .payer(&sponsor)
+        .execute();
+        res.assert_ok();
+
+        // Subscriber must not be charged.
+        let alice_balance_after = litesvm.get_account(&alice.pubkey()).unwrap().lamports;
+        assert_eq!(alice_balance_after, alice_balance_before);
+        let sponsor_balance_after = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
+        assert!(sponsor_balance_after < sponsor_balance_before);
+
+        // header.payer should be sponsor.
+        let (subscription_pda, _) = get_subscription_pda(&plan_pda, &alice.pubkey());
+        let sub_account = litesvm.get_account(&subscription_pda).unwrap();
+        let sub = SubscriptionDelegation::load(&sub_account.data).unwrap();
+        assert_eq!(sub.header.payer.to_bytes(), sponsor.pubkey().to_bytes());
+        assert_eq!(sub.header.delegator.to_bytes(), alice.pubkey().to_bytes());
     }
 
     #[test]

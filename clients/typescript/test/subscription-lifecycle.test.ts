@@ -292,9 +292,10 @@ describe('Subscription Lifecycle', () => {
     expect(subAfterCancel.expiresAtTs).not.toBe(0n);
 
     // 7. Subscriber revokes delegation, getting rent back
-    const { signature: revokeSig } = await t.client.revokeDelegation({
+    const { signature: revokeSig } = await t.client.revokeSubscription({
       authority: subscriber,
-      delegationAccount: subscriptionPda,
+      subscriptionPda,
+      planPda,
     });
     expect(revokeSig).toBeDefined();
 

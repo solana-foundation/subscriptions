@@ -266,26 +266,46 @@ pub fn initialize_multidelegate_action(
     payer: &Keypair,
     mint: Pubkey,
 ) -> (TransactionResult, Pubkey, u8) {
+    initialize_multidelegate_action_with_sponsor(litesvm, payer, mint, None)
+}
+
+pub fn initialize_multidelegate_action_with_sponsor(
+    litesvm: &mut LiteSVM,
+    user: &Keypair,
+    mint: Pubkey,
+    sponsor: Option<&Keypair>,
+) -> (TransactionResult, Pubkey, u8) {
     let token_program = litesvm.get_account(&mint).unwrap().owner;
     let user_ata =
-        get_associated_token_address_with_program_id(&payer.pubkey(), &mint, &token_program);
-    let (multi_delegate_pda, bump) = get_multidelegate_pda(&payer.pubkey(), &mint);
+        get_associated_token_address_with_program_id(&user.pubkey(), &mint, &token_program);
+    let (multi_delegate_pda, bump) = get_multidelegate_pda(&user.pubkey(), &mint);
+
+    let mut accounts = vec![
+        AccountMeta::new(user.pubkey(), true),
+        AccountMeta::new(multi_delegate_pda, false),
+        AccountMeta::new_readonly(mint, false),
+        AccountMeta::new(user_ata, false),
+        AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+        AccountMeta::new_readonly(token_program, false),
+    ];
+
+    let mut signers: Vec<&Keypair> = vec![user];
+    let mut fee_payer = user.pubkey();
+
+    if let Some(sponsor) = sponsor {
+        accounts.push(AccountMeta::new(sponsor.pubkey(), true));
+        signers.push(sponsor);
+        fee_payer = sponsor.pubkey();
+    }
 
     let ix = Instruction {
         program_id: PROGRAM_ID,
-        accounts: vec![
-            AccountMeta::new(payer.pubkey(), true),
-            AccountMeta::new(multi_delegate_pda, false),
-            AccountMeta::new_readonly(mint, false),
-            AccountMeta::new(user_ata, false),
-            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
-            AccountMeta::new_readonly(token_program, false),
-        ],
+        accounts,
         data: vec![*initialize_multidelegate::DISCRIMINATOR],
     };
 
     (
-        build_and_send_transaction(litesvm, &[payer], &payer.pubkey(), &ix),
+        build_and_send_transaction(litesvm, &signers, &fee_payer, &ix),
         multi_delegate_pda,
         bump,
     )
@@ -587,6 +607,7 @@ pub struct CloseMultiDelegate<'a> {
     user: &'a Keypair,
     mint: Pubkey,
     custom_pda: Option<Pubkey>,
+    receiver: Option<Pubkey>,
 }
 
 impl<'a> CloseMultiDelegate<'a> {
@@ -596,6 +617,7 @@ impl<'a> CloseMultiDelegate<'a> {
             user,
             mint,
             custom_pda: None,
+            receiver: None,
         }
     }
 
@@ -604,15 +626,24 @@ impl<'a> CloseMultiDelegate<'a> {
         self
     }
 
+    pub fn receiver(mut self, receiver: Pubkey) -> Self {
+        self.receiver = Some(receiver);
+        self
+    }
+
     #[allow(clippy::result_large_err)]
     pub fn execute(self) -> TransactionResult {
         let (derived_pda, _) = get_multidelegate_pda(&self.user.pubkey(), &self.mint);
         let multi_delegate_pda = self.custom_pda.unwrap_or(derived_pda);
 
-        let accounts = vec![
+        let mut accounts = vec![
             AccountMeta::new(self.user.pubkey(), true),
             AccountMeta::new(multi_delegate_pda, false),
         ];
+
+        if let Some(receiver) = self.receiver {
+            accounts.push(AccountMeta::new(receiver, false));
+        }
 
         let ix = Instruction {
             program_id: PROGRAM_ID,
@@ -1083,6 +1114,7 @@ pub struct Subscribe<'a> {
     plan_id: u64,
     plan_bump: u8,
     mint: Pubkey,
+    payer: Option<&'a Keypair>,
 }
 
 impl<'a> Subscribe<'a> {
@@ -1103,7 +1135,13 @@ impl<'a> Subscribe<'a> {
             plan_id,
             plan_bump,
             mint,
+            payer: None,
         }
+    }
+
+    pub fn payer(mut self, payer: &'a Keypair) -> Self {
+        self.payer = Some(payer);
+        self
     }
 
     #[allow(clippy::result_large_err)]
@@ -1113,7 +1151,7 @@ impl<'a> Subscribe<'a> {
 
         let event_authority = Pubkey::new_from_array(event_authority_pda::ID.to_bytes());
 
-        let accounts = vec![
+        let mut accounts = vec![
             AccountMeta::new(self.subscriber.pubkey(), true),
             AccountMeta::new_readonly(self.merchant, false),
             AccountMeta::new_readonly(self.plan_pda, false),
@@ -1123,6 +1161,15 @@ impl<'a> Subscribe<'a> {
             AccountMeta::new_readonly(event_authority, false),
             AccountMeta::new_readonly(PROGRAM_ID, false),
         ];
+
+        let mut signers: Vec<&Keypair> = vec![self.subscriber];
+        let mut fee_payer = self.subscriber.pubkey();
+
+        if let Some(p) = self.payer {
+            accounts.push(AccountMeta::new(p.pubkey(), true));
+            signers.push(p);
+            fee_payer = p.pubkey();
+        }
 
         let data = [
             vec![*subscribe::DISCRIMINATOR],
@@ -1137,12 +1184,7 @@ impl<'a> Subscribe<'a> {
             data,
         };
 
-        build_and_send_transaction(
-            self.litesvm,
-            &[self.subscriber],
-            &self.subscriber.pubkey(),
-            &ix,
-        )
+        build_and_send_transaction(self.litesvm, &signers, &fee_payer, &ix)
     }
 }
 
@@ -1265,29 +1307,44 @@ pub fn setup_with_subscription() -> (
 
 pub struct RevokeSubscription<'a> {
     litesvm: &'a mut LiteSVM,
-    subscriber: &'a Keypair,
+    authority: &'a Keypair,
     subscription_pda: Pubkey,
+    plan_pda: Pubkey,
+    receiver: Option<Pubkey>,
 }
 
 impl<'a> RevokeSubscription<'a> {
     pub fn new(
         litesvm: &'a mut LiteSVM,
-        subscriber: &'a Keypair,
+        authority: &'a Keypair,
         subscription_pda: Pubkey,
+        plan_pda: Pubkey,
     ) -> Self {
         Self {
             litesvm,
-            subscriber,
+            authority,
             subscription_pda,
+            plan_pda,
+            receiver: None,
         }
+    }
+
+    pub fn receiver(mut self, receiver: Pubkey) -> Self {
+        self.receiver = Some(receiver);
+        self
     }
 
     #[allow(clippy::result_large_err)]
     pub fn execute(self) -> TransactionResult {
-        let accounts = vec![
-            AccountMeta::new(self.subscriber.pubkey(), true),
+        let mut accounts = vec![
+            AccountMeta::new(self.authority.pubkey(), true),
             AccountMeta::new(self.subscription_pda, false),
+            AccountMeta::new_readonly(self.plan_pda, false),
         ];
+
+        if let Some(receiver) = self.receiver {
+            accounts.push(AccountMeta::new(receiver, false));
+        }
 
         let ix = Instruction {
             program_id: PROGRAM_ID,
@@ -1297,8 +1354,8 @@ impl<'a> RevokeSubscription<'a> {
 
         build_and_send_transaction(
             self.litesvm,
-            &[self.subscriber],
-            &self.subscriber.pubkey(),
+            &[self.authority],
+            &self.authority.pubkey(),
             &ix,
         )
     }

@@ -1,4 +1,9 @@
-import type { Address, Instruction, TransactionSigner } from 'gill';
+import {
+  AccountRole,
+  type Address,
+  type Instruction,
+  type TransactionSigner,
+} from 'gill';
 import {
   getCancelSubscriptionInstructionAsync,
   getSubscribeInstructionAsync,
@@ -16,6 +21,9 @@ import {
  * @param params.merchant - The plan owner's address.
  * @param params.planId - Numeric identifier of the plan to subscribe to.
  * @param params.tokenMint - SPL token mint the plan uses.
+ * @param params.payer - Optional sponsor that funds the subscription PDA rent.
+ *   When provided, the sponsor is recorded as the subscription's `header.payer`
+ *   and receives rent on close. Defaults to `subscriber` when omitted.
  * @returns The instruction array and the derived `subscriptionPda`.
  */
 export async function buildSubscribe(params: {
@@ -23,9 +31,11 @@ export async function buildSubscribe(params: {
   merchant: Address;
   planId: number | bigint;
   tokenMint: Address;
+  payer?: TransactionSigner;
   programAddress?: Address;
 }): Promise<{ instructions: Instruction[]; subscriptionPda: Address }> {
-  const { subscriber, merchant, planId, tokenMint, programAddress } = params;
+  const { subscriber, merchant, planId, tokenMint, payer, programAddress } =
+    params;
   const config = programAddress ? { programAddress } : undefined;
 
   const [planPda, planBump] = await getPlanPDA(
@@ -55,6 +65,21 @@ export async function buildSubscribe(params: {
     },
     config,
   );
+
+  if (payer) {
+    const accounts = [
+      ...instruction.accounts,
+      {
+        address: payer.address,
+        role: AccountRole.WRITABLE_SIGNER,
+        signer: payer,
+      },
+    ];
+    return {
+      instructions: [{ ...instruction, accounts }],
+      subscriptionPda,
+    };
+  }
 
   return { instructions: [instruction], subscriptionPda };
 }

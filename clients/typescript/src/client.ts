@@ -13,6 +13,7 @@ import {
   buildCreateRecurringDelegation,
   buildInitMultiDelegate,
   buildRevokeDelegation,
+  buildRevokeSubscription,
 } from './instructions/delegation.js';
 import {
   buildCreatePlan,
@@ -61,23 +62,33 @@ export class MultiDelegatorClient {
     return this.client.sendAndConfirmTransaction(signedTransaction);
   }
 
-  /** Initialize a MultiDelegate PDA for the owner's token account. */
+  /** Initialize a MultiDelegate PDA for the owner's token account.
+   *
+   * When `payer` is supplied, the sponsor funds rent and is also used as the
+   * transaction fee payer so the owner spends zero SOL.
+   */
   async initMultiDelegate(params: {
     owner: TransactionSigner;
     tokenMint: Address;
     userAta: Address;
     tokenProgram: Address;
+    payer?: TransactionSigner;
   }): Promise<TransactionResult> {
     const { instructions } = await buildInitMultiDelegate(params);
     const signature = await this.buildAndSendTransaction(
       instructions,
-      params.owner,
+      params.payer ?? params.owner,
     );
     return { signature };
   }
 
   /**
-   * Close a MultiDelegate PDA, returning rent to the user.
+   * Close a MultiDelegate PDA, returning rent to the recorded payer.
+   *
+   * When the MultiDelegate was sponsor-funded (stored `payer` differs from
+   * `user`), pass `receiver` set to the sponsor's address so the program can
+   * route rent back to them. Caller is responsible for fetching the on-chain
+   * MultiDelegate to determine whether `receiver` is required.
    *
    * Closing invalidates all existing delegations on re-initialization
    * (init_id mismatch). This can serve as an emergency kill switch to
@@ -86,6 +97,7 @@ export class MultiDelegatorClient {
   async closeMultiDelegate(params: {
     user: TransactionSigner;
     tokenMint: Address;
+    receiver?: Address;
   }): Promise<TransactionResult> {
     try {
       const delegations = await this.getDelegationsForWallet(
@@ -109,7 +121,11 @@ export class MultiDelegatorClient {
     return { signature };
   }
 
-  /** Create a fixed (one-time) delegation. */
+  /** Create a fixed (one-time) delegation.
+   *
+   * When `payer` is supplied, the sponsor funds the delegation PDA rent and
+   * the transaction fee.
+   */
   async createFixedDelegation(params: {
     delegator: TransactionSigner;
     tokenMint: Address;
@@ -117,16 +133,21 @@ export class MultiDelegatorClient {
     nonce: number | bigint;
     amount: number | bigint;
     expiryTs: number | bigint;
+    payer?: TransactionSigner;
   }): Promise<TransactionResult> {
     const { instructions } = await buildCreateFixedDelegation(params);
     const signature = await this.buildAndSendTransaction(
       instructions,
-      params.delegator,
+      params.payer ?? params.delegator,
     );
     return { signature };
   }
 
-  /** Create a recurring delegation with periodic allowance. */
+  /** Create a recurring delegation with periodic allowance.
+   *
+   * When `payer` is supplied, the sponsor funds the delegation PDA rent and
+   * the transaction fee.
+   */
   async createRecurringDelegation(params: {
     delegator: TransactionSigner;
     tokenMint: Address;
@@ -136,22 +157,45 @@ export class MultiDelegatorClient {
     periodLengthS: number | bigint;
     startTs: number | bigint;
     expiryTs: number | bigint;
+    payer?: TransactionSigner;
   }): Promise<TransactionResult> {
     const { instructions } = await buildCreateRecurringDelegation(params);
     const signature = await this.buildAndSendTransaction(
       instructions,
-      params.delegator,
+      params.payer ?? params.delegator,
     );
     return { signature };
   }
 
-  /** Revoke (close) a delegation account, returning rent to the original payer. */
+  /** Revoke (close) a fixed or recurring delegation account, returning rent
+   * to the original payer. For subscription PDAs, use {@link revokeSubscription}.
+   */
   async revokeDelegation(params: {
     authority: TransactionSigner;
     delegationAccount: Address;
     receiver?: Address;
   }): Promise<TransactionResult> {
     const { instructions } = buildRevokeDelegation(params);
+    const signature = await this.buildAndSendTransaction(
+      instructions,
+      params.authority,
+    );
+    return { signature };
+  }
+
+  /** Revoke (close) a subscription PDA, returning rent to the original payer.
+   *
+   * `planPda` is required so the program can bind the subscription and detect
+   * plan-ended / plan-closed conditions for the sponsor path. Pass `receiver`
+   * when the recorded payer differs from the authority.
+   */
+  async revokeSubscription(params: {
+    authority: TransactionSigner;
+    subscriptionPda: Address;
+    planPda: Address;
+    receiver?: Address;
+  }): Promise<TransactionResult> {
+    const { instructions } = buildRevokeSubscription(params);
     const signature = await this.buildAndSendTransaction(
       instructions,
       params.authority,
@@ -263,17 +307,24 @@ export class MultiDelegatorClient {
     return { signature };
   }
 
-  /** Subscribe to a plan. */
+  /** Subscribe to a plan.
+   *
+   * When `payer` is supplied, the sponsor funds the subscription PDA rent and
+   * the transaction fee, so the subscriber spends zero SOL. The sponsor is
+   * also recorded as the subscription's `header.payer` and receives rent on
+   * close.
+   */
   async subscribe(params: {
     subscriber: TransactionSigner;
     merchant: Address;
     planId: number | bigint;
     tokenMint: Address;
+    payer?: TransactionSigner;
   }): Promise<TransactionResult & { subscriptionPda: Address }> {
     const { instructions, subscriptionPda } = await buildSubscribe(params);
     const signature = await this.buildAndSendTransaction(
       instructions,
-      params.subscriber,
+      params.payer ?? params.subscriber,
     );
     return { signature, subscriptionPda };
   }

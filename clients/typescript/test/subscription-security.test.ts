@@ -78,18 +78,20 @@ describe('Subscription Security', () => {
     expect(subAfterCancel.expiresAtTs).not.toBe(0n);
 
     await expectProgramError(
-      t.client.revokeDelegation({
+      t.client.revokeSubscription({
         authority: subscriber,
-        delegationAccount: subscriptionPda,
+        subscriptionPda,
+        planPda,
       }),
       MULTI_DELEGATOR_ERROR__SUBSCRIPTION_NOT_CANCELLED,
     );
 
     await t.timeTravel(Number(subAfterCancel.expiresAtTs) + 60);
 
-    const { signature } = await t.client.revokeDelegation({
+    const { signature } = await t.client.revokeSubscription({
       authority: subscriber,
-      delegationAccount: subscriptionPda,
+      subscriptionPda,
+      planPda,
     });
     expect(signature).toBeDefined();
   });
@@ -616,9 +618,10 @@ describe('Subscription Security', () => {
       .data;
     await t.timeTravel(Number(subData.expiresAtTs) + 60);
 
-    await t.client.revokeDelegation({
+    await t.client.revokeSubscription({
       authority: subscriber,
-      delegationAccount: subscriptionPda,
+      subscriptionPda,
+      planPda,
     });
 
     const subAfterRevoke = await fetchMaybeSubscriptionDelegation(
@@ -771,9 +774,10 @@ describe('Subscription Security', () => {
     ).data;
     expect(subAfterCancel.expiresAtTs).not.toBe(0n);
 
-    const { signature } = await t.client.revokeDelegation({
+    const { signature } = await t.client.revokeSubscription({
       authority: subscriber,
-      delegationAccount: subscriptionPda,
+      subscriptionPda,
+      planPda,
     });
     expect(signature).toBeDefined();
 
@@ -1198,9 +1202,10 @@ describe('Subscription Security', () => {
       .data;
     expect(subData.expiresAtTs).toBeLessThanOrEqual(endTs);
 
-    const { signature } = await t.client.revokeDelegation({
+    const { signature } = await t.client.revokeSubscription({
       authority: subscriber,
-      delegationAccount: subscriptionPda,
+      subscriptionPda,
+      planPda,
     });
     expect(signature).toBeDefined();
 
