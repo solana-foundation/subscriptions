@@ -37,7 +37,7 @@ pub use constants::*;
 
 pub mod tests;
 
-declare_id!("EPEUTog1kptYkthDJF6MuB1aM4aDAwHYwoF32Rzv5rqg");
+declare_id!("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44");
 
 #[cfg(not(feature = "no-entrypoint"))]
 use solana_security_txt::security_txt;

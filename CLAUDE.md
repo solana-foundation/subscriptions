@@ -91,7 +91,7 @@ clients/typescript/src/generated/  (auto-generated; wrapped by hand-written SDK 
 
 ### Program ID
 
-`EPEUTog1kptYkthDJF6MuB1aM4aDAwHYwoF32Rzv5rqg`
+`De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44`
 
 ## Audit Status
 

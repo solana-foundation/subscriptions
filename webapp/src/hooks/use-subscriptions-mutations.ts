@@ -11,6 +11,7 @@ import {
   buildCreateFixedDelegation,
   buildCreateRecurringDelegation,
   buildRevokeDelegation,
+  buildRevokeSubscription,
   buildTransferFixed,
   buildTransferRecurring,
   buildTransferSubscription,
@@ -19,9 +20,12 @@ import {
   buildDeletePlan,
   buildSubscribe,
   buildCancelSubscription,
+  fetchMaybeSubscriptionAuthority,
+  getSubscriptionAuthorityPDA,
   ZERO_ADDRESS,
   PlanStatus,
 } from "@subscriptions/client";
+import { createSolanaRpc } from "gill";
 import { useClusterConfig } from "@/hooks/use-cluster-config";
 import { useWalletUiSigner } from "../components/solana/use-wallet-ui-signer";
 import { useWalletTransactionSignAndSend } from "../components/solana/use-wallet-transaction-sign-and-send";
@@ -78,13 +82,23 @@ export function useSubscriptionsMutations() {
   });
 
   const closeSubscriptionAuthority = useMutation({
-    mutationFn: async ({ tokenMint }: { tokenMint: string }) => {
+    mutationFn: async ({ tokenMint, payer }: { tokenMint: string; payer?: string }) => {
       if (!signer) throw new Error("Wallet not connected");
       if (!progId) throw new Error("Program address not configured");
+
+      let storedPayer = payer;
+      if (!storedPayer) {
+        const rpc = createSolanaRpc(rpcUrl);
+        const [pda] = await getSubscriptionAuthorityPDA(signer.address, address(tokenMint), progId);
+        const maybe = await fetchMaybeSubscriptionAuthority(rpc, pda);
+        if (maybe.exists) storedPayer = maybe.data.payer;
+      }
+      const receiver = storedPayer && storedPayer !== signer.address ? address(storedPayer) : undefined;
 
       const { instructions } = await buildCloseSubscriptionAuthority({
         user: signer,
         tokenMint: address(tokenMint),
+        receiver,
         programAddress: progId,
       });
 
@@ -185,14 +199,19 @@ export function useSubscriptionsMutations() {
   const revokeDelegation = useMutation({
     mutationFn: async ({
       delegationAccount,
+      payer,
     }: {
       delegationAccount: string;
+      payer: string;
     }) => {
       if (!signer) throw new Error("Wallet not connected");
+
+      const receiver = payer !== signer.address ? address(payer) : undefined;
 
       const { instructions } = buildRevokeDelegation({
         authority: signer,
         delegationAccount: address(delegationAccount),
+        receiver,
         programAddress: progId,
       });
 
@@ -400,10 +419,16 @@ export function useSubscriptionsMutations() {
       merchant,
       planId,
       tokenMint,
+      expectedAmount,
+      expectedPeriodHours,
+      expectedCreatedAt,
     }: {
       merchant: string;
       planId: bigint;
       tokenMint: string;
+      expectedAmount: bigint;
+      expectedPeriodHours: bigint;
+      expectedCreatedAt: bigint;
     }) => {
       if (!signer) throw new Error("Wallet not connected");
       if (!progId) throw new Error("Program address not configured");
@@ -413,6 +438,9 @@ export function useSubscriptionsMutations() {
         merchant: address(merchant),
         planId,
         tokenMint: address(tokenMint),
+        expectedAmount,
+        expectedPeriodHours,
+        expectedCreatedAt,
         programAddress: progId,
       });
 
@@ -457,14 +485,22 @@ export function useSubscriptionsMutations() {
   const revokeSubscription = useMutation({
     mutationFn: async ({
       subscriptionPda,
+      planPda,
+      payer,
     }: {
       subscriptionPda: string;
+      planPda: string;
+      payer: string;
     }) => {
       if (!signer) throw new Error("Wallet not connected");
 
-      const { instructions } = buildRevokeDelegation({
+      const receiver = payer !== signer.address ? address(payer) : undefined;
+
+      const { instructions } = buildRevokeSubscription({
         authority: signer,
-        delegationAccount: address(subscriptionPda),
+        subscriptionPda: address(subscriptionPda),
+        planPda: address(planPda),
+        receiver,
         programAddress: progId,
       });
 
@@ -482,12 +518,16 @@ export function useSubscriptionsMutations() {
     mutationFn: async ({
       planPda,
       subscriptionPda,
+      payer,
     }: {
       planPda: string;
       subscriptionPda: string;
+      payer: string;
     }) => {
       if (!signer) throw new Error("Wallet not connected");
       if (!progId) throw new Error("Program address not configured");
+
+      const receiver = payer !== signer.address ? address(payer) : undefined;
 
       const { instructions: cancelIxs } = await buildCancelSubscription({
         subscriber: signer,
@@ -496,9 +536,11 @@ export function useSubscriptionsMutations() {
         programAddress: progId,
       });
 
-      const { instructions: revokeIxs } = buildRevokeDelegation({
+      const { instructions: revokeIxs } = buildRevokeSubscription({
         authority: signer,
-        delegationAccount: address(subscriptionPda),
+        subscriptionPda: address(subscriptionPda),
+        planPda: address(planPda),
+        receiver,
         programAddress: progId,
       });
 
@@ -685,34 +727,33 @@ export function useSubscriptionsMutations() {
   });
 
   const revokeMultipleDelegations = useMutation({
-    mutationFn: async ({ delegationAccounts, tokenMint }: { delegationAccounts: string[]; tokenMint: string }) => {
+    mutationFn: async ({
+      delegations,
+    }: {
+      delegations: Array<{ address: string; payer: string }>;
+    }) => {
       if (!signer) throw new Error("Wallet not connected");
       if (!progId) throw new Error("Program address not configured");
 
-      const revokeIxs = delegationAccounts.map((account) => {
+      const revokeIxs = delegations.map(({ address: account, payer }) => {
+        const receiver = payer !== signer.address ? address(payer) : undefined;
         const { instructions } = buildRevokeDelegation({
           authority: signer,
           delegationAccount: address(account),
+          receiver,
           programAddress: progId,
         });
         return instructions[0];
       });
 
-      const { instructions: closeIxs } = await buildCloseSubscriptionAuthority({
-        user: signer,
-        tokenMint: address(tokenMint),
-        programAddress: progId,
-      });
-
-      const allIxs = [...revokeIxs, ...closeIxs];
-      const batches = packInstructionBatches(allIxs, signer);
+      const batches = packInstructionBatches(revokeIxs, signer);
       const signatures: string[] = [];
 
       for (const batch of batches) {
         signatures.push(await signAndSend(batch, signer));
       }
 
-      return { signatures, revoked: delegationAccounts.length };
+      return { signatures, revoked: delegations.length };
     },
     onSuccess: (res) => {
       toast.onSuccess(res.signatures[0]);

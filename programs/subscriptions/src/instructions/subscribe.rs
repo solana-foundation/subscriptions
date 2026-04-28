@@ -8,6 +8,8 @@ use pinocchio::{
     AccountView, ProgramResult,
 };
 
+use pinocchio::Address;
+
 use crate::{
     event_engine::{self, EventSerialize},
     events::SubscriptionCreatedEvent,
@@ -32,6 +34,13 @@ pub struct SubscribeData {
     pub plan_id: u64,
     /// The plan PDA's bump seed (avoids an on-chain `find_program_address` call).
     pub plan_bump: u8,
+    /// Plan terms the subscriber consented to. The program rejects if the live
+    /// plan disagrees, preventing a stale signed subscribe from binding the
+    /// subscriber to terms different from what was displayed at signing time.
+    pub expected_mint: Address,
+    pub expected_amount: u64,
+    pub expected_period_hours: u64,
+    pub expected_created_at: i64,
 }
 
 impl SubscribeData {
@@ -85,6 +94,18 @@ pub fn process(accounts: &[AccountView], data: &SubscribeData) -> ProgramResult 
 
         if plan.data.end_ts != 0 && current_ts > plan.data.end_ts {
             return Err(SubscriptionsError::PlanExpired.into());
+        }
+
+        // Bind subscriber consent to the live plan terms.
+        let live_amount = plan.data.terms.amount;
+        let live_period_hours = plan.data.terms.period_hours;
+        let live_created_at = plan.data.terms.created_at;
+        if plan.data.mint != data.expected_mint
+            || live_amount != data.expected_amount
+            || live_period_hours != data.expected_period_hours
+            || live_created_at != data.expected_created_at
+        {
+            return Err(SubscriptionsError::PlanTermsMismatch.into());
         }
 
         plan_mint = plan.data.mint;
@@ -524,5 +545,64 @@ mod tests {
         )
         .execute();
         res.assert_err(SubscriptionsError::AlreadySubscribed);
+    }
+
+    #[test]
+    fn subscribe_rejects_stale_expected_terms() {
+        use crate::tests::{
+            constants::{PROGRAM_ID, SYSTEM_PROGRAM_ID},
+            pda::get_subscription_authority_pda,
+            utils::build_and_send_transaction,
+        };
+        use crate::{event_engine::event_authority_pda, instructions::subscribe};
+        use solana_instruction::{AccountMeta, Instruction};
+
+        let end_ts = current_ts() + days(30) as i64;
+        let (mut litesvm, alice, merchant, mint, plan_pda, plan_bump) = setup_plan(1, end_ts);
+
+        // Snapshot live terms, then submit subscribe with a stale `expected_amount`.
+        let plan_account = litesvm.get_account(&plan_pda).unwrap();
+        let plan = crate::state::Plan::load(&plan_account.data).unwrap();
+        let live_amount = plan.data.terms.amount;
+        let stale_amount = live_amount.wrapping_add(1);
+        let live_period_hours = plan.data.terms.period_hours;
+        let live_created_at = plan.data.terms.created_at;
+        let live_mint = plan.data.mint;
+
+        let (subscription_authority_pda, _) =
+            get_subscription_authority_pda(&alice.pubkey(), &mint);
+        let (subscription_pda, _) = get_subscription_pda(&plan_pda, &alice.pubkey());
+        let event_authority = Pubkey::new_from_array(event_authority_pda::ID.to_bytes());
+
+        let accounts = vec![
+            AccountMeta::new(alice.pubkey(), true),
+            AccountMeta::new_readonly(merchant.pubkey(), false),
+            AccountMeta::new_readonly(plan_pda, false),
+            AccountMeta::new(subscription_pda, false),
+            AccountMeta::new_readonly(subscription_authority_pda, false),
+            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+            AccountMeta::new_readonly(event_authority, false),
+            AccountMeta::new_readonly(PROGRAM_ID, false),
+        ];
+
+        let data = [
+            vec![*subscribe::DISCRIMINATOR],
+            1u64.to_le_bytes().to_vec(),
+            vec![plan_bump],
+            live_mint.as_ref().to_vec(),
+            stale_amount.to_le_bytes().to_vec(),
+            live_period_hours.to_le_bytes().to_vec(),
+            live_created_at.to_le_bytes().to_vec(),
+        ]
+        .concat();
+
+        let ix = Instruction {
+            program_id: PROGRAM_ID,
+            accounts,
+            data,
+        };
+
+        let res = build_and_send_transaction(&mut litesvm, &[&alice], &alice.pubkey(), &ix);
+        res.assert_err(SubscriptionsError::PlanTermsMismatch);
     }
 }

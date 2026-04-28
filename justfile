@@ -8,8 +8,6 @@ set shell := ["bash", "-uc"]
 program_dir := "programs/subscriptions"
 ts_client_dir := "clients/typescript"
 webapp_dir := "webapp"
-deploy_key := "keys/subscriptions-keypair.json"
-target_deploy_key := "target/deploy/subscriptions-keypair.json"
 idl_file := program_dir / "idl/subscriptions.json"
 
 # List available recipes
@@ -43,33 +41,7 @@ setup-hooks:
 
 # Print program ID from keypair
 program-id:
-    @solana-keygen pubkey "{{deploy_key}}"
-
-# Copy deployment keypair to build directory
-prepare-deploy-keys:
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    mkdir -p "target/deploy"
-
-    if [[ ! -f "{{deploy_key}}" ]]; then
-        echo "Error: {{deploy_key}} not found."
-        echo "This keypair defines the program identity. Do not generate a random one."
-        echo "Restore it from git history: git show <commit>^:keys/subscriptions-keypair.json > {{deploy_key}}"
-        exit 1
-    fi
-
-    PROG_ID=$(solana-keygen pubkey "{{deploy_key}}")
-    DECLARED_ID=$(sed -n 's/.*declare_id!("\([^"]*\)").*/\1/p' "{{program_dir}}/src/lib.rs")
-
-    if [[ "$DECLARED_ID" != "$PROG_ID" ]]; then
-        echo "Error: declare_id! ($DECLARED_ID) does not match keypair ($PROG_ID)"
-        echo "Update declare_id! in {{program_dir}}/src/lib.rs or restore the correct keypair."
-        exit 1
-    fi
-
-    cp "{{deploy_key}}" "{{target_deploy_key}}"
-    echo "✓ Deploy key ready (program: $PROG_ID)"
+    @sed -n 's/.*declare_id!("\([^"]*\)").*/\1/p' "{{program_dir}}/src/lib.rs"
 
 # ============================================
 # Build recipes
@@ -85,10 +57,10 @@ needs-rebuild target source:
     fi
 
 # Build everything (program + clients)
-build: prepare-deploy-keys build-program build-client
+build: build-program build-client
 
 # Compile Solana program to .so
-build-program: prepare-deploy-keys
+build-program:
     cd {{program_dir}} && cargo build-sbf
     @echo "✓ Program built"
 
@@ -163,11 +135,16 @@ ensure-surfpool:
         exit 0
     fi
 
-    PROG_ID=$(solana-keygen pubkey "{{deploy_key}}")
+    PROG_ID=$(sed -n 's/.*declare_id!("\([^"]*\)").*/\1/p' "{{program_dir}}/src/lib.rs")
+    if [[ -z "$PROG_ID" ]]; then
+        echo "Error: could not parse declare_id! from {{program_dir}}/src/lib.rs"
+        exit 1
+    fi
 
     echo "Starting surfpool validator..."
     mkdir -p .surfpool
     nohup surfpool start --ci --no-tui --block-production-mode transaction \
+        --runbook surfnet-setup \
         > /tmp/surfpool.log 2>&1 &
     echo $! > .surfpool/pid.txt
 
@@ -307,16 +284,24 @@ check: fmt-check lint-check
 check-program-metadata:
     @command -v program-metadata >/dev/null 2>&1 || { echo "Error: program-metadata not installed. See https://github.com/solana-program/program-metadata"; exit 1; }
 
-# Deploy IDL to devnet
+# Deploy IDL to devnet (requires PROGRAM_UPGRADE_AUTHORITY_KEYPAIR env var)
 deploy-idl-devnet: check-program-metadata
-    program-metadata write idl $(solana-keygen pubkey "{{deploy_key}}") {{idl_file}} \
-        --keypair {{deploy_key}} \
+    #!/usr/bin/env bash
+    set -euo pipefail
+    KP="${PROGRAM_UPGRADE_AUTHORITY_KEYPAIR:?Set PROGRAM_UPGRADE_AUTHORITY_KEYPAIR (e.g. via doppler run -- just deploy-idl-devnet)}"
+    PROG_ID=$(sed -n 's/.*declare_id!("\([^"]*\)").*/\1/p' "{{program_dir}}/src/lib.rs")
+    program-metadata write idl "$PROG_ID" {{idl_file}} \
+        --keypair "$KP" \
         --rpc https://api.devnet.solana.com
 
-# Deploy IDL to mainnet
+# Deploy IDL to mainnet (requires PROGRAM_UPGRADE_AUTHORITY_KEYPAIR env var)
 deploy-idl-mainnet: check-program-metadata
-    program-metadata write idl $(solana-keygen pubkey "{{deploy_key}}") {{idl_file}} \
-        --keypair {{deploy_key}} \
+    #!/usr/bin/env bash
+    set -euo pipefail
+    KP="${PROGRAM_UPGRADE_AUTHORITY_KEYPAIR:?Set PROGRAM_UPGRADE_AUTHORITY_KEYPAIR (e.g. via doppler run -- just deploy-idl-mainnet)}"
+    PROG_ID=$(sed -n 's/.*declare_id!("\([^"]*\)").*/\1/p' "{{program_dir}}/src/lib.rs")
+    program-metadata write idl "$PROG_ID" {{idl_file}} \
+        --keypair "$KP" \
         --rpc https://api.mainnet-beta.solana.com
 
 # ============================================
@@ -330,9 +315,12 @@ check-solana-verify:
 # Verify mainnet deployment against repo (remote build via OtterSec).
 # Note: Remote verification (--remote) only works on mainnet.
 verify-mainnet: check-solana-verify
+    #!/usr/bin/env bash
+    set -euo pipefail
+    PROG_ID=$(sed -n 's/.*declare_id!("\([^"]*\)").*/\1/p' "{{program_dir}}/src/lib.rs")
     solana-verify verify-from-repo \
         https://github.com/solana-program/multi-delegator \
-        --program-id $(solana-keygen pubkey "{{deploy_key}}") \
+        --program-id "$PROG_ID" \
         --library-name subscriptions \
         --mount-path programs/subscriptions \
         --remote \

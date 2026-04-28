@@ -4,18 +4,10 @@
  */
 
 import { createSolanaRpc, address } from 'gill'
-import { execFileSync } from 'child_process'
-import { join, dirname } from 'path'
-import { fileURLToPath } from 'url'
 import { readConfig, addToken, clearConfig, setProgramAddress } from './config-manager'
 import { createMockUsdc } from './helpers'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const KEYPAIR_PATH = join(__dirname, '../../keys/subscriptions-keypair.json')
-
-function getProgramId(): string {
-  return execFileSync('solana-keygen', ['pubkey', KEYPAIR_PATH], { encoding: 'utf-8' }).trim()
-}
+const PROGRAM_ID = 'De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44'
 
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8899'
 const NETWORK = process.env.NETWORK ?? 'localnet'
@@ -56,9 +48,8 @@ async function main() {
 
     console.log('Updating configuration...')
     await clearConfig(NETWORK)
-    const programId = getProgramId()
-    console.log('Program ID (from keypair):', programId)
-    await setProgramAddress(NETWORK, programId)
+    console.log('Program ID:', PROGRAM_ID)
+    await setProgramAddress(NETWORK, PROGRAM_ID)
 
     await addToken(NETWORK, {
       symbol: 'USDC',

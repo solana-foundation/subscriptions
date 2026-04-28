@@ -79,3 +79,10 @@ impl Header {
         self.init_id = init_id;
     }
 }
+
+pub const HEADER_LEN_V1: usize = 107;
+const _: () = assert!(Header::LEN == HEADER_LEN_V1);
+const _: () = assert!(INIT_ID_OFFSET == 99);
+const _: () = assert!(DELEGATOR_OFFSET == 3);
+const _: () = assert!(DELEGATEE_OFFSET == 35);
+const _: () = assert!(PAYER_OFFSET == 67);

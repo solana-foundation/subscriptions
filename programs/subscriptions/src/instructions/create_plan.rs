@@ -57,6 +57,9 @@ pub struct PlanData {
     pub metadata_uri: [u8; 128],
 }
 
+pub const PLAN_DATA_LEN_V1: usize = 456;
+const _: () = assert!(PlanData::LEN == PLAN_DATA_LEN_V1);
+
 impl PlanData {
     /// Serialized size in bytes.
     pub const LEN: usize = size_of::<PlanData>();

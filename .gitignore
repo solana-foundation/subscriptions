@@ -24,6 +24,8 @@ config.json
 # Environment secrets
 .env
 
+keys/
+
 # Playwright output
 apps/web/playwright-report/
 apps/web/test-results/

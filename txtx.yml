@@ -5,16 +5,22 @@ runbooks:
   - name: deployment
     description: Deploy programs
     location: runbooks/deployment
+  - name: surfnet-setup
+    description: Install program at canonical address on surfnet (no keypair required)
+    location: runbooks/surfnet-setup
 environments:
   localnet:
       network_id: localnet
       rpc_api_url: http://127.0.0.1:8899
+      program_keypair_path: ~/.config/solana/subscriptions-keypair.json
   devnet:
       network_id: devnet
       rpc_api_url: https://api.devnet.solana.com
       payer_keypair_json: ~/.config/solana/id.json
       authority_keypair_json: ~/.config/solana/id.json
+      program_keypair_path: ~/.config/solana/subscriptions-keypair.json
   mainnet:
       network_id: mainnet
       rpc_api_url: https://api.mainnet-beta.solana.com
       squads_vault_address: "<SQUADS_VAULT_ADDRESS>"
+      program_keypair_path: ~/.config/solana/subscriptions-keypair.json

@@ -1,0 +1,14 @@
+addon "svm" {
+    rpc_api_url = input.rpc_api_url
+    network_id = input.network_id
+}
+
+action "install_subscriptions" "svm::setup_surfnet" {
+    description = "Install subscriptions program at canonical address via direct account write"
+    rpc_api_url = input.rpc_api_url
+
+    deploy_program {
+        program_id = "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44"
+        binary_path = "target/deploy/subscriptions.so"
+    }
+}
