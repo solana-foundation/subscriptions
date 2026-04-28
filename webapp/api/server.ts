@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess, execFileSync } from 'child_process'
+import { spawn, type ChildProcess } from 'child_process'
 import { createServer } from 'node:http'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -23,17 +23,7 @@ const MAX_SOL_AIRDROP = 10
 const SO_PATH = join(__dirname, '../../target/deploy/subscriptions.so')
 const KEYPAIR_PATH = join(__dirname, '../../keys/subscriptions-keypair.json')
 
-let cachedKeypairAddress: string | null = null
-function getProgramAddressFromKeypair(): string {
-  if (cachedKeypairAddress) return cachedKeypairAddress
-  try {
-    cachedKeypairAddress = execFileSync('solana-keygen', ['pubkey', KEYPAIR_PATH], { encoding: 'utf-8' }).trim()
-    return cachedKeypairAddress
-  } catch {
-    log('error', 'Failed to read program address from keypair', { path: KEYPAIR_PATH })
-    throw new Error(`Cannot derive program address: keypair not found at ${KEYPAIR_PATH}. Run "just prepare-deploy-keys" first.`)
-  }
-}
+const PROGRAM_ADDRESS = 'De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44'
 
 interface TokenEntry {
   symbol: string
@@ -261,7 +251,7 @@ async function handlePrepareDeploy(body: {
     if (isUpgrade) {
       const config = await readConfig()
       const network = networkFromRpcUrl(rpcUrl ?? RPC_URL)
-      const programAddr = config.networks[network]?.programAddress ?? getProgramAddressFromKeypair()
+      const programAddr = config.networks[network]?.programAddress ?? PROGRAM_ADDRESS
       plan = await buildUpgradePlan(soBytes, programAddr)
     } else {
       const keypairJson = await readFile(KEYPAIR_PATH, 'utf-8')
@@ -328,7 +318,7 @@ async function handleStartValidator(): Promise<Response> {
 async function handleValidatorStatus(): Promise<Response> {
   let validatorRunning = false
   let programDeployed = false
-  const programAddress = getProgramAddressFromKeypair()
+  const programAddress = PROGRAM_ADDRESS
 
   try {
     const healthRes = await fetch('http://127.0.0.1:8899', {
@@ -429,7 +419,7 @@ async function handleCreateMockUsdc(): Promise<Response> {
         try {
           const cfg = await readConfig()
           if (!cfg.networks['localnet']) cfg.networks['localnet'] = { tokens: [] }
-          cfg.networks['localnet'].programAddress = cfg.networks['localnet'].programAddress ?? getProgramAddressFromKeypair()
+          cfg.networks['localnet'].programAddress = cfg.networks['localnet'].programAddress ?? PROGRAM_ADDRESS
           const tokens = cfg.networks['localnet'].tokens
           const usdcIdx = tokens.findIndex((t) => t.symbol === 'USDC')
           const usdcToken = { symbol: 'USDC', mint, decimals: 6 }
@@ -546,7 +536,7 @@ async function handleRequest(req: Request): Promise<Response> {
     if (!programAddr) {
       const config = await readConfig()
       const network = networkFromRpcUrl(rpcUrl)
-      programAddr = config.networks[network]?.programAddress ?? getProgramAddressFromKeypair()
+      programAddr = config.networks[network]?.programAddress ?? PROGRAM_ADDRESS
     }
     response = await handleProgramStatus(rpcUrl, programAddr)
   } else if (url.pathname === '/api/program/binary-info' && req.method === 'GET') {

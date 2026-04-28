@@ -11,7 +11,7 @@ action "deploy_subscriptions" "svm::deploy_program" {
     description = "Deploy subscriptions program"
     program = svm::get_program_from_native_project(
         "subscriptions",
-        "keys/subscriptions-keypair.json",
+        input.program_keypair_path,
         null,
         "target/deploy/subscriptions.so"
     )
