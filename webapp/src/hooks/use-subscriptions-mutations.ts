@@ -729,12 +729,8 @@ export function useSubscriptionsMutations() {
   const revokeMultipleDelegations = useMutation({
     mutationFn: async ({
       delegations,
-      tokenMint,
-      authorityPayer,
     }: {
       delegations: Array<{ address: string; payer: string }>;
-      tokenMint: string;
-      authorityPayer?: string;
     }) => {
       if (!signer) throw new Error("Wallet not connected");
       if (!progId) throw new Error("Program address not configured");
@@ -750,26 +746,7 @@ export function useSubscriptionsMutations() {
         return instructions[0];
       });
 
-      let storedAuthorityPayer = authorityPayer;
-      if (!storedAuthorityPayer) {
-        const rpc = createSolanaRpc(rpcUrl);
-        const [pda] = await getSubscriptionAuthorityPDA(signer.address, address(tokenMint), progId);
-        const maybe = await fetchMaybeSubscriptionAuthority(rpc, pda);
-        if (maybe.exists) storedAuthorityPayer = maybe.data.payer;
-      }
-      const closeReceiver = storedAuthorityPayer && storedAuthorityPayer !== signer.address
-        ? address(storedAuthorityPayer)
-        : undefined;
-
-      const { instructions: closeIxs } = await buildCloseSubscriptionAuthority({
-        user: signer,
-        tokenMint: address(tokenMint),
-        receiver: closeReceiver,
-        programAddress: progId,
-      });
-
-      const allIxs = [...revokeIxs, ...closeIxs];
-      const batches = packInstructionBatches(allIxs, signer);
+      const batches = packInstructionBatches(revokeIxs, signer);
       const signatures: string[] = [];
 
       for (const batch of batches) {
