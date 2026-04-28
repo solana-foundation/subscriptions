@@ -216,20 +216,18 @@ export class IntegrationTest {
   }
 
   async getValidatorTime(): Promise<bigint> {
-    // Surfpool occasionally returns a stale genesis-era blockTime briefly
-    // after startup; poll until blockTime is at or past wall time so
-    // computed expiry/start timestamps don't end up "in the past".
+    // Surfpool's transaction-mode validator can return a stale or null
+    // blockTime until the first tx is processed. Use blockTime when sane,
+    // otherwise fall back to wall time. Never time-travels so explicit
+    // timeTravel calls in tests are not disturbed.
+    const slot = await this.rpc.getSlot().send();
+    const blockTime = await this.rpc.getBlockTime(slot).send();
     const wall = BigInt(Math.floor(Date.now() / 1000));
-    for (let attempt = 0; attempt < 20; attempt++) {
-      const slot = await this.rpc.getSlot().send();
-      const blockTime = await this.rpc.getBlockTime(slot).send();
-      if (blockTime != null) {
-        const ts = BigInt(blockTime);
-        if (ts >= wall) return ts;
-      }
-      await new Promise((r) => setTimeout(r, 200));
+    if (blockTime != null) {
+      const ts = BigInt(blockTime);
+      if (ts + 60n >= wall) return ts;
     }
-    throw new Error('getValidatorTime: blockTime never caught up to wall time');
+    return wall;
   }
 
   async minPlanEndTs(periodHours: bigint): Promise<bigint> {
