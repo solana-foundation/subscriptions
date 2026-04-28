@@ -31,11 +31,25 @@ export async function buildSubscribe(params: {
   merchant: Address;
   planId: number | bigint;
   tokenMint: Address;
+  /** Plan terms the subscriber is consenting to. Caller must fetch from the
+   *  live plan; the program rejects if the on-chain plan disagrees at submit. */
+  expectedAmount: number | bigint;
+  expectedPeriodHours: number | bigint;
+  expectedCreatedAt: number | bigint;
   payer?: TransactionSigner;
   programAddress?: Address;
 }): Promise<{ instructions: Instruction[]; subscriptionPda: Address }> {
-  const { subscriber, merchant, planId, tokenMint, payer, programAddress } =
-    params;
+  const {
+    subscriber,
+    merchant,
+    planId,
+    tokenMint,
+    expectedAmount,
+    expectedPeriodHours,
+    expectedCreatedAt,
+    payer,
+    programAddress,
+  } = params;
   const config = programAddress ? { programAddress } : undefined;
 
   const [planPda, planBump] = await getPlanPDA(
@@ -61,7 +75,14 @@ export async function buildSubscribe(params: {
       planPda,
       subscriptionPda,
       subscriptionAuthorityPda,
-      subscribeData: { planId, planBump },
+      subscribeData: {
+        planId,
+        planBump,
+        expectedMint: tokenMint,
+        expectedAmount,
+        expectedPeriodHours,
+        expectedCreatedAt,
+      },
     },
     config,
   );

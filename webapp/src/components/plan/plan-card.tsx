@@ -463,6 +463,9 @@ function SubscribeDialog({ plan, meta, open, onOpenChange }: {
                 merchant: plan.owner,
                 planId: plan.data.planId,
                 tokenMint: plan.data.mint,
+                expectedAmount: plan.data.terms.amount,
+                expectedPeriodHours: plan.data.terms.periodHours,
+                expectedCreatedAt: plan.data.terms.createdAt,
               }, { onSuccess: () => onOpenChange(false) })}
               disabled={subscribe.isPending}
               className="bg-emerald-600 hover:bg-emerald-500 text-white"
