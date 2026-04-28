@@ -400,10 +400,16 @@ export function useSubscriptionsMutations() {
       merchant,
       planId,
       tokenMint,
+      expectedAmount,
+      expectedPeriodHours,
+      expectedCreatedAt,
     }: {
       merchant: string;
       planId: bigint;
       tokenMint: string;
+      expectedAmount: bigint;
+      expectedPeriodHours: bigint;
+      expectedCreatedAt: bigint;
     }) => {
       if (!signer) throw new Error("Wallet not connected");
       if (!progId) throw new Error("Program address not configured");
@@ -413,6 +419,9 @@ export function useSubscriptionsMutations() {
         merchant: address(merchant),
         planId,
         tokenMint: address(tokenMint),
+        expectedAmount,
+        expectedPeriodHours,
+        expectedCreatedAt,
         programAddress: progId,
       });
 
