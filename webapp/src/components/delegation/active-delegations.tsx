@@ -94,6 +94,7 @@ function RevokeDelegationButton({ delegation }: RevokeDelegationButtonProps) {
     try {
       await revokeDelegation.mutateAsync({
         delegationAccount: delegation.address,
+        payer: delegation.data.header.payer,
       })
       setOpen(false)
     } catch {
@@ -664,7 +665,7 @@ export function ActiveDelegations({ tokenMint, isApproved, subscriptionAuthority
   const handleRevokeAllStale = async () => {
     if (staleDelegations.length === 0) return
     await revokeMultipleDelegations.mutateAsync({
-      delegationAccounts: staleDelegations.map((d) => d.address),
+      delegations: staleDelegations.map((d) => ({ address: d.address, payer: d.data.header.payer })),
       tokenMint,
     })
     onInitSuccess?.()
