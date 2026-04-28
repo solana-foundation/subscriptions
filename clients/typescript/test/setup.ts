@@ -35,6 +35,9 @@ export const SURFPOOL_RPC_URL = `http://127.0.0.1:${SURFPOOL_PORT}`;
 export const DEFAULT_TEST_BALANCE = 1_000_000n;
 export const ONE_HOUR_IN_SECONDS = 3600;
 export const ONE_DAY_IN_SECONDS = 86400;
+const SYSVAR_CLOCK_ADDRESS =
+  'SysvarC1ock11111111111111111111111111111111' as Address;
+const SYSVAR_CLOCK_UNIX_TIMESTAMP_OFFSET = 32;
 
 type SolanaClient = ReturnType<typeof createSolanaClient>;
 export type SmartWalletName = 'swig' | 'squads';
@@ -147,6 +150,7 @@ export class IntegrationTest {
    */
   static async create(): Promise<IntegrationTest> {
     await isSurfnetRunning(); // Just verify surfpool is running
+
     const solanaClient = createSolanaClient({ urlOrMoniker: 'localnet' });
     const client = new SubscriptionsClient(solanaClient);
 
@@ -216,10 +220,9 @@ export class IntegrationTest {
   }
 
   async getValidatorTime(): Promise<bigint> {
-    // Surfpool's transaction-mode validator can return a stale or null
-    // blockTime until the first tx is processed. Use blockTime when sane,
-    // otherwise fall back to wall time. Never time-travels so explicit
-    // timeTravel calls in tests are not disturbed.
+    const clockTime = await getClockSysvarTime(this.rpc);
+    if (clockTime != null) return clockTime;
+
     const slot = await this.rpc.getSlot().send();
     const blockTime = await this.rpc.getBlockTime(slot).send();
     const wall = BigInt(Math.floor(Date.now() / 1000));
@@ -237,19 +240,7 @@ export class IntegrationTest {
   }
 
   async timeTravel(targetTimestampSec: number): Promise<void> {
-    const res = await fetch(SURFPOOL_RPC_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'surfnet_timeTravel',
-        params: [{ absoluteTimestamp: targetTimestampSec * 1000 }],
-      }),
-    });
-    if (!res.ok) throw new Error(`surfnet_timeTravel failed: ${res.status}`);
-    const data = (await res.json()) as { error?: { message: string } };
-    if (data.error) throw new Error(data.error.message);
+    await setSurfpoolClock(targetTimestampSec);
   }
 
   private smartWalletsInitialized = false;
@@ -313,6 +304,40 @@ export class IntegrationTest {
 // ============================================================================
 // Private Helper Functions
 // ============================================================================
+
+async function setSurfpoolClock(targetTimestampSec: number): Promise<void> {
+  const res = await fetch(SURFPOOL_RPC_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'surfnet_timeTravel',
+      params: [{ absoluteTimestamp: targetTimestampSec * 1000 }],
+    }),
+  });
+  if (!res.ok) throw new Error(`surfnet_timeTravel failed: ${res.status}`);
+  const data = (await res.json()) as { error?: { message: string } };
+  if (data.error) throw new Error(data.error.message);
+}
+
+async function getClockSysvarTime(
+  rpc: SolanaClient['rpc'],
+): Promise<bigint | null> {
+  const account = await rpc
+    .getAccountInfo(SYSVAR_CLOCK_ADDRESS, { encoding: 'base64' })
+    .send();
+  const encodedData = account.value?.data;
+  if (!Array.isArray(encodedData) || typeof encodedData[0] !== 'string') {
+    return null;
+  }
+
+  const clockData = Buffer.from(encodedData[0], 'base64');
+  if (clockData.length < SYSVAR_CLOCK_UNIX_TIMESTAMP_OFFSET + 8) {
+    return null;
+  }
+  return clockData.readBigInt64LE(SYSVAR_CLOCK_UNIX_TIMESTAMP_OFFSET);
+}
 
 /**
  * Checks that Surfpool is running and returns the RPC URL.
