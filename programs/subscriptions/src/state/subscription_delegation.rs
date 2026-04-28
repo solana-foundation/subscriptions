@@ -99,3 +99,6 @@ impl SubscriptionDelegation {
         Ok(())
     }
 }
+
+pub const SUBSCRIPTION_DELEGATION_LEN_V1: usize = 155;
+const _: () = assert!(SubscriptionDelegation::LEN == SUBSCRIPTION_DELEGATION_LEN_V1);
