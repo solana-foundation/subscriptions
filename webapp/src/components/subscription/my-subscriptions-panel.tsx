@@ -88,6 +88,8 @@ function RevokeSubscriptionDialog({ item, open, onOpenChange }: {
             variant="destructive"
             onClick={() => revokeSubscription.mutate({
               subscriptionPda: item.address,
+              planPda: item.subscription.header.delegatee,
+              payer: item.subscription.header.payer,
             }, { onSuccess: () => onOpenChange(false) })}
             disabled={!canRevoke || revokeSubscription.isPending}
           >
@@ -125,6 +127,7 @@ function CancelAndRevokeDialog({ item, isGhostPlan, open, onOpenChange }: {
             onClick={() => cancelAndRevokeSubscription.mutate({
               planPda: item.subscription.header.delegatee,
               subscriptionPda: item.address,
+              payer: item.subscription.header.payer,
             }, { onSuccess: () => onOpenChange(false) })}
             disabled={cancelAndRevokeSubscription.isPending}
           >
