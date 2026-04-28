@@ -666,7 +666,6 @@ export function ActiveDelegations({ tokenMint, isApproved, subscriptionAuthority
     if (staleDelegations.length === 0) return
     await revokeMultipleDelegations.mutateAsync({
       delegations: staleDelegations.map((d) => ({ address: d.address, payer: d.data.header.payer })),
-      tokenMint,
     })
     onInitSuccess?.()
   }
