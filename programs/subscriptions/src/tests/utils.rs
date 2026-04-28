@@ -1178,10 +1178,22 @@ impl<'a> Subscribe<'a> {
             fee_payer = p.pubkey();
         }
 
+        // Snapshot live plan terms to bind subscriber consent.
+        let plan_account = self.litesvm.get_account(&self.plan_pda).unwrap();
+        let plan = crate::state::Plan::load(&plan_account.data).unwrap();
+        let expected_amount = plan.data.terms.amount;
+        let expected_period_hours = plan.data.terms.period_hours;
+        let expected_created_at = plan.data.terms.created_at;
+        let expected_mint = plan.data.mint;
+
         let data = [
             vec![*subscribe::DISCRIMINATOR],
             self.plan_id.to_le_bytes().to_vec(),
             vec![self.plan_bump],
+            expected_mint.as_ref().to_vec(),
+            expected_amount.to_le_bytes().to_vec(),
+            expected_period_hours.to_le_bytes().to_vec(),
+            expected_created_at.to_le_bytes().to_vec(),
         ]
         .concat();
 
