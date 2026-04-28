@@ -17,6 +17,9 @@ export function Subscribe() {
     const [merchant, setMerchant] = useState('');
     const [planId, setPlanId] = useState('0');
     const [tokenMint, setTokenMint] = useState('');
+    const [expectedAmount, setExpectedAmount] = useState('0');
+    const [expectedPeriodHours, setExpectedPeriodHours] = useState('0');
+    const [expectedCreatedAt, setExpectedCreatedAt] = useState('0');
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -27,6 +30,9 @@ export function Subscribe() {
         const { instructions, subscriptionPda } = await buildSubscribe({
             subscriber: signer, merchant: merchant.trim() as Address,
             planId: BigInt(planId), tokenMint: tokenMint.trim() as Address,
+            expectedAmount: BigInt(expectedAmount),
+            expectedPeriodHours: BigInt(expectedPeriodHours),
+            expectedCreatedAt: BigInt(expectedCreatedAt),
             programAddress: getProgramAddress(),
         });
 
@@ -46,6 +52,12 @@ export function Subscribe() {
             <FormField label="Token Mint" value={tokenMint} onChange={setTokenMint}
                 autoFillValue={defaultMint} onAutoFill={setTokenMint}
                 placeholder="Mint address" required />
+            <FormField label="Expected Amount" value={expectedAmount} onChange={setExpectedAmount} type="number"
+                hint="Live plan terms.amount; binds subscriber consent" required />
+            <FormField label="Expected Period Hours" value={expectedPeriodHours} onChange={setExpectedPeriodHours} type="number"
+                hint="Live plan terms.periodHours" required />
+            <FormField label="Expected Created At" value={expectedCreatedAt} onChange={setExpectedCreatedAt} type="number"
+                hint="Live plan terms.createdAt (unix ts)" required />
             <SendButton sending={sending} />
             <TxResultDisplay signature={signature} error={error} />
         </form>
