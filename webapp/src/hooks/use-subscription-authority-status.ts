@@ -9,6 +9,7 @@ import { useProgramAddress } from '@/hooks/use-token-config'
 export interface SubscriptionAuthorityData {
   owner: string
   tokenMint: string
+  payer: string
   bump: number
   initId: bigint
 }
