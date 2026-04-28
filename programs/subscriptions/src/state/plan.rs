@@ -34,6 +34,9 @@ pub struct Plan {
     pub data: PlanData,
 }
 
+pub const PLAN_LEN_V1: usize = 491;
+const _: () = assert!(Plan::LEN == PLAN_LEN_V1);
+
 impl Plan {
     /// Total serialized size in bytes.
     pub const LEN: usize = size_of::<Self>();
