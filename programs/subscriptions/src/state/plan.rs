@@ -77,7 +77,8 @@ impl Plan {
         if *caller == self.owner {
             return Ok(());
         }
-        if self.data.pullers.contains(caller) {
+        let zero = Address::default();
+        if self.data.pullers.iter().any(|p| *p != zero && p == caller) {
             return Ok(());
         }
         Err(SubscriptionsError::Unauthorized.into())
@@ -87,12 +88,78 @@ impl Plan {
     ///
     /// If no destinations are configured (all zero), any receiver is valid.
     /// Otherwise the receiver must appear in the `destinations` whitelist.
+    /// Zero-padded slots are skipped so they cannot match a zero-owned receiver.
     pub fn check_destination(&self, receiver_owner: &Address) -> Result<(), ProgramError> {
         let zero = Address::default();
-        let has_destinations = self.data.destinations.iter().any(|d| *d != zero);
-        if has_destinations && !self.data.destinations.contains(receiver_owner) {
+        let mut configured = self.data.destinations.iter().filter(|d| **d != zero);
+        if configured.clone().next().is_some() && !configured.any(|d| d == receiver_owner) {
             return Err(SubscriptionsError::UnauthorizedDestination.into());
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use core::mem::transmute;
+
+    fn make_plan(destinations: [Address; 4], pullers: [Address; 4]) -> Plan {
+        let mut bytes = vec![0u8; Plan::LEN];
+        bytes[0] = AccountDiscriminator::Plan as u8;
+        let plan = unsafe { &mut *transmute::<*mut u8, *mut Plan>(bytes.as_mut_ptr()) };
+        plan.data.destinations = destinations;
+        plan.data.pullers = pullers;
+        unsafe { core::ptr::read(plan as *const Plan) }
+    }
+
+    fn addr(byte: u8) -> Address {
+        let mut a = [0u8; 32];
+        a[0] = byte;
+        Address::from(a)
+    }
+
+    #[test]
+    fn check_destination_rejects_zero_owned_receiver_with_partial_whitelist() {
+        let merchant = addr(1);
+        let plan = make_plan(
+            [
+                merchant,
+                Address::default(),
+                Address::default(),
+                Address::default(),
+            ],
+            [Address::default(); 4],
+        );
+
+        plan.check_destination(&merchant).unwrap();
+        assert!(plan.check_destination(&Address::default()).is_err());
+    }
+
+    #[test]
+    fn check_destination_open_when_all_zero() {
+        let plan = make_plan([Address::default(); 4], [Address::default(); 4]);
+        plan.check_destination(&addr(7)).unwrap();
+        plan.check_destination(&Address::default()).unwrap();
+    }
+
+    #[test]
+    fn can_pull_rejects_zero_caller_with_partial_whitelist() {
+        let owner = addr(2);
+        let puller = addr(3);
+        let mut plan = make_plan(
+            [Address::default(); 4],
+            [
+                puller,
+                Address::default(),
+                Address::default(),
+                Address::default(),
+            ],
+        );
+        plan.owner = owner;
+
+        plan.can_pull(&owner).unwrap();
+        plan.can_pull(&puller).unwrap();
+        assert!(plan.can_pull(&Address::default()).is_err());
     }
 }
