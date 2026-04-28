@@ -73,3 +73,6 @@ impl RecurringDelegation {
         Ok(unsafe { &*transmute::<*const u8, *const Self>(bytes.as_ptr()) })
     }
 }
+
+pub const RECURRING_DELEGATION_LEN_V1: usize = 147;
+const _: () = assert!(RecurringDelegation::LEN == RECURRING_DELEGATION_LEN_V1);

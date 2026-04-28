@@ -67,3 +67,6 @@ impl FixedDelegation {
         Ok(unsafe { &*transmute::<*const u8, *const Self>(bytes.as_ptr()) })
     }
 }
+
+pub const FIXED_DELEGATION_LEN_V1: usize = 123;
+const _: () = assert!(FixedDelegation::LEN == FIXED_DELEGATION_LEN_V1);
