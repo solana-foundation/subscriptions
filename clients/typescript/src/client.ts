@@ -6,7 +6,10 @@ import {
 } from './accounts/delegations.js';
 import { fetchPlansForOwner } from './accounts/plans.js';
 import type { PlanStatus } from './generated/index.js';
-import { fetchMaybeSubscriptionAuthority } from './generated/index.js';
+import {
+  fetchMaybeSubscriptionAuthority,
+  fetchPlan,
+} from './generated/index.js';
 import {
   buildCloseSubscriptionAuthority,
   buildCreateFixedDelegation,
@@ -29,7 +32,7 @@ import {
   buildTransferRecurring,
   buildTransferSubscription,
 } from './instructions/transfer.js';
-import { getSubscriptionAuthorityPDA } from './pdas.js';
+import { getPlanPDA, getSubscriptionAuthorityPDA } from './pdas.js';
 import type { SolanaClient, TransactionResult } from './types/common.js';
 import type { Delegation } from './types/delegation.js';
 import type { PlanWithAddress } from './types/plan.js';
@@ -319,9 +322,32 @@ export class SubscriptionsClient {
     merchant: Address;
     planId: number | bigint;
     tokenMint: Address;
+    /** Plan terms the subscriber consents to. If omitted, the live plan is
+     *  fetched and its current terms are used; the program still rejects on
+     *  mismatch at submit time. */
+    expectedAmount?: number | bigint;
+    expectedPeriodHours?: number | bigint;
+    expectedCreatedAt?: number | bigint;
     payer?: TransactionSigner;
   }): Promise<TransactionResult & { subscriptionPda: Address }> {
-    const { instructions, subscriptionPda } = await buildSubscribe(params);
+    let { expectedAmount, expectedPeriodHours, expectedCreatedAt } = params;
+    if (
+      expectedAmount === undefined ||
+      expectedPeriodHours === undefined ||
+      expectedCreatedAt === undefined
+    ) {
+      const [planPda] = await getPlanPDA(params.merchant, params.planId);
+      const plan = await fetchPlan(this.client.rpc, planPda);
+      expectedAmount ??= plan.data.data.terms.amount;
+      expectedPeriodHours ??= plan.data.data.terms.periodHours;
+      expectedCreatedAt ??= plan.data.data.terms.createdAt;
+    }
+    const { instructions, subscriptionPda } = await buildSubscribe({
+      ...params,
+      expectedAmount,
+      expectedPeriodHours,
+      expectedCreatedAt,
+    });
     const signature = await this.buildAndSendTransaction(
       instructions,
       params.payer ?? params.subscriber,
