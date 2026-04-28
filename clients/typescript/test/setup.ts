@@ -216,22 +216,20 @@ export class IntegrationTest {
   }
 
   async getValidatorTime(): Promise<bigint> {
-    // Surfpool can return a stale genesis-era blockTime briefly after startup,
-    // which makes computed expiry/start timestamps look "in the past" to the
-    // program. Poll until blockTime is within sight of wall clock.
-    const MIN_REASONABLE_TS = 1_700_000_000n;
+    // Surfpool occasionally returns a stale genesis-era blockTime briefly
+    // after startup; poll until blockTime is at or past wall time so
+    // computed expiry/start timestamps don't end up "in the past".
+    const wall = BigInt(Math.floor(Date.now() / 1000));
     for (let attempt = 0; attempt < 20; attempt++) {
       const slot = await this.rpc.getSlot().send();
       const blockTime = await this.rpc.getBlockTime(slot).send();
       if (blockTime != null) {
         const ts = BigInt(blockTime);
-        if (ts >= MIN_REASONABLE_TS) return ts;
+        if (ts >= wall) return ts;
       }
       await new Promise((r) => setTimeout(r, 200));
     }
-    throw new Error(
-      'getValidatorTime: blockTime never reached a reasonable epoch',
-    );
+    throw new Error('getValidatorTime: blockTime never caught up to wall time');
   }
 
   async minPlanEndTs(periodHours: bigint): Promise<bigint> {
