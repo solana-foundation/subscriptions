@@ -3,6 +3,13 @@ use pinocchio::ProgramResult;
 use crate::constants::TIME_DRIFT_ALLOWED_SECS;
 use crate::SubscriptionsError;
 
+/// Returns true when the delegation has expired past the drift tolerance window.
+/// Shared lifecycle gate used by transfer paths and sponsor revocation so both
+/// agree on when a finite-expiry delegation is unspendable.
+pub fn is_effectively_expired(expiry_ts: i64, current_ts: i64) -> bool {
+    expiry_ts != 0 && current_ts > expiry_ts.saturating_add(TIME_DRIFT_ALLOWED_SECS)
+}
+
 /// Validates a fixed transfer against the delegation's remaining allowance and expiry.
 ///
 /// Returns an error if:
@@ -18,7 +25,7 @@ pub fn validate_fixed_transfer(
     if transfer_amount == 0 {
         return Err(SubscriptionsError::InvalidAmount.into());
     }
-    if expiry_ts != 0 && current_ts > expiry_ts.saturating_add(TIME_DRIFT_ALLOWED_SECS) {
+    if is_effectively_expired(expiry_ts, current_ts) {
         return Err(SubscriptionsError::DelegationExpired.into());
     }
     if transfer_amount > remaining {
@@ -50,7 +57,7 @@ pub fn validate_recurring_transfer(
     if transfer_amount == 0 {
         return Err(SubscriptionsError::InvalidAmount.into());
     }
-    if expiry_ts != 0 && current_ts > expiry_ts.saturating_add(TIME_DRIFT_ALLOWED_SECS) {
+    if is_effectively_expired(expiry_ts, current_ts) {
         return Err(SubscriptionsError::DelegationExpired.into());
     }
 
