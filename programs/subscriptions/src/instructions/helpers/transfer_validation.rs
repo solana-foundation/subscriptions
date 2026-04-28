@@ -71,10 +71,13 @@ pub fn validate_recurring_transfer(
         let increment = periods_passed
             .checked_mul(period_length)
             .ok_or(SubscriptionsError::ArithmeticOverflow)?;
-        *current_period_start_ts = current_period_start_ts
+        let candidate_start = current_period_start_ts
             .checked_add(increment)
             .ok_or(SubscriptionsError::ArithmeticOverflow)?;
-        *amount_pulled_in_period = 0;
+        if expiry_ts == 0 || candidate_start < expiry_ts {
+            *current_period_start_ts = candidate_start;
+            *amount_pulled_in_period = 0;
+        }
     }
 
     let available = amount_per_period

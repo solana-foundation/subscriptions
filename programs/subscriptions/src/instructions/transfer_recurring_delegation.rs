@@ -1028,6 +1028,39 @@ mod tests {
     }
 
     #[test]
+    fn test_recurring_rollover_blocked_at_expiry_boundary() {
+        let amount_per_period: u64 = 1_000_000;
+        let period_length_s: u64 = 1;
+        let start_ts: i64 = current_ts();
+        let expiry_ts: i64 = start_ts + period_length_s as i64;
+        let nonce = 0;
+
+        let (mut litesvm, alice, bob, delegation_pda, mint, _, bob_ata, _) =
+            setup_recurring_delegation(
+                amount_per_period,
+                period_length_s,
+                start_ts,
+                expiry_ts,
+                nonce,
+            );
+
+        TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
+            .amount(amount_per_period)
+            .recurring()
+            .assert_ok();
+        assert_eq!(get_ata_balance(&litesvm, &bob_ata), amount_per_period);
+
+        move_clock_forward(&mut litesvm, period_length_s);
+
+        let result =
+            TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
+                .amount(amount_per_period)
+                .recurring();
+        result.assert_err(SubscriptionsError::AmountExceedsPeriodLimit);
+        assert_eq!(get_ata_balance(&litesvm, &bob_ata), amount_per_period);
+    }
+
+    #[test]
     fn test_recurring_transfer_past_drift_window() {
         let amount_per_period: u64 = 50_000_000;
         let period_length_s: u64 = hours(1);
