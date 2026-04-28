@@ -6,6 +6,7 @@ use pinocchio::{
 
 use crate::{
     check_and_update_version,
+    helpers::is_effectively_expired,
     state::{
         common::AccountDiscriminator, fixed_delegation::FixedDelegation, plan::Plan,
         recurring_delegation::RecurringDelegation, subscription_delegation::SubscriptionDelegation,
@@ -148,11 +149,8 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
                         }
                         _ => RecurringDelegation::load_with_min_size(&data)?.expiry_ts,
                     };
-                    if expiry_ts == 0 {
-                        return Err(SubscriptionsError::Unauthorized.into());
-                    }
                     let current_ts = Clock::get()?.unix_timestamp;
-                    if expiry_ts > current_ts {
+                    if !is_effectively_expired(expiry_ts, current_ts) {
                         return Err(SubscriptionsError::Unauthorized.into());
                     }
                 }
@@ -973,6 +971,53 @@ mod tests {
             .signer(&sponsor)
             .execute()
             .assert_err(SubscriptionsError::Unauthorized);
+    }
+
+    #[test]
+    fn sponsor_cannot_revoke_within_drift_window() {
+        let (litesvm, user) = &mut setup();
+        let delegator = user;
+        let sponsor = init_wallet(litesvm, 10_000_000_000);
+
+        let mint = init_mint(
+            litesvm,
+            TOKEN_PROGRAM_ID,
+            MINT_DECIMALS,
+            1_000_000_000,
+            Some(delegator.pubkey()),
+            &[],
+        );
+        let _user_ata = init_ata(litesvm, mint, delegator.pubkey(), 1_000_000);
+
+        initialize_subscription_authority_action(litesvm, delegator, mint)
+            .0
+            .assert_ok();
+
+        let delegatee = Pubkey::new_unique();
+        let nonce: u64 = 0;
+        let expiry_ts = current_ts() + 100;
+
+        let (res, _) = CreateDelegation::new(litesvm, delegator, mint, delegatee)
+            .payer(&sponsor)
+            .nonce(nonce)
+            .fixed(100, expiry_ts);
+        res.assert_ok();
+
+        // 110s after creation: past expiry but still within 120s drift window.
+        move_clock_forward(litesvm, 110);
+
+        RevokeDelegation::new(litesvm, delegator, mint, delegatee, nonce)
+            .signer(&sponsor)
+            .execute()
+            .assert_err(SubscriptionsError::Unauthorized);
+
+        // Past the drift window: sponsor can revoke.
+        move_clock_forward(litesvm, 121);
+
+        RevokeDelegation::new(litesvm, delegator, mint, delegatee, nonce)
+            .signer(&sponsor)
+            .execute()
+            .assert_ok();
     }
 
     #[test]
