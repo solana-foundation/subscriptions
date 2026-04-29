@@ -8,7 +8,7 @@ set shell := ["bash", "-uc"]
 program_dir := "program"
 ts_client_dir := "clients/typescript"
 webapp_dir := "webapp"
-idl_file := program_dir / "idl/subscriptions.json"
+idl_file := "idl/subscriptions.json"
 
 # List available recipes
 default:

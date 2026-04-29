@@ -51,7 +51,7 @@ subscriptions/
 │   │   ├── errors.rs              # Error codes
 │   │   ├── constants.rs           # Program constants
 │   │   └── tests/                 # Rust unit tests (LiteSVM)
-│   └── idl/                       # Generated IDL (subscriptions.json)
+├── idl/                           # Generated IDL (subscriptions.json)
 ├── clients/
 │   ├── typescript/                # TypeScript SDK + integration tests
 │   └── rust/                      # Rust generated client
@@ -152,7 +152,7 @@ The `justfile` is the main entrypoint for day-to-day development.
 |---|---|
 | `just build` | Build program + generate IDL + generate clients + build TypeScript client |
 | `just build-program` | Compile the SBF program (`.so`) |
-| `just generate-idl` | Regenerate `program/idl/subscriptions.json` |
+| `just generate-idl` | Regenerate `idl/subscriptions.json` |
 | `just generate-clients` | Regenerate TypeScript and Rust clients from IDL via Codama |
 | `just build-client` | Build `clients/typescript` into `clients/typescript/dist` |
 

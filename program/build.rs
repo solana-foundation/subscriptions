@@ -27,7 +27,8 @@ fn generate_idl() -> Result<(), Box<dyn std::error::Error>> {
     formatted_json.push('\n');
 
     // Write IDL file to idl directory.
-    let idl_dir = Path::new(&manifest_dir).join("idl");
+    let project_root = Path::new(&manifest_dir).parent().unwrap();
+    let idl_dir = project_root.join("idl");
     fs::create_dir_all(&idl_dir)?;
     let idl_path = idl_dir.join("subscriptions.json");
     fs::write(&idl_path, formatted_json)?;
