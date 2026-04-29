@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { address, type Instruction } from "gill";
+import { toast as sonnerToast } from "sonner";
+import { address, createSolanaRpc, type Instruction } from "gill";
 import {
   findAssociatedTokenPda,
   TOKEN_2022_PROGRAM_ADDRESS,
@@ -25,14 +26,20 @@ import {
   ZERO_ADDRESS,
   PlanStatus,
 } from "@subscriptions/client";
-import { createSolanaRpc } from "gill";
 import { useClusterConfig } from "@/hooks/use-cluster-config";
 import { useWalletUiSigner } from "../components/solana/use-wallet-ui-signer";
 import { useWalletTransactionSignAndSend } from "../components/solana/use-wallet-transaction-sign-and-send";
 import { useTransactionToast } from "../components/use-transaction-toast";
 import { invalidateWithDelay } from "@/lib/utils";
 import { createAllPlanPaymentCollectionResult, type ConfirmedPlanTransfer } from "@/lib/collect-all-results";
-import { packInstructionBatches, packInstructionBatchesWithItems } from "@/lib/tx-packer";
+import { packInstructionBatches } from "@/lib/tx-packer";
+import {
+  filterPayableSubscribers,
+  sendBatchedSubscriberInstructions,
+  type CollectableSubscriber,
+  type SubscriberPaymentFailure,
+  type SubscriberTransfer,
+} from "@/lib/collect-utils";
 import { getBlockTimestamp } from "@/hooks/use-time-travel";
 import { useProgramAddress } from "@/hooks/use-token-config";
 
@@ -572,6 +579,7 @@ export function useSubscriptionsMutations() {
 
       const mintAddr = address(mint);
       const planPda = address(planAddress);
+      const rpc = createSolanaRpc(rpcUrl);
 
       const firstDest = destinations.find((d) => d !== ZERO_ADDRESS);
       const receiverOwner = firstDest ? address(firstDest) : signer.address;
@@ -589,8 +597,16 @@ export function useSubscriptionsMutations() {
         tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
       });
 
-      const transferIxs = await Promise.all(
-        subscribers.map(async (sub) => {
+      const { payable, failures: preflightFailures } = await filterPayableSubscribers({
+        rpc,
+        subscribers,
+        mint: mintAddr,
+        tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+        programAddress: progId,
+      });
+
+      const transferEntries: SubscriberTransfer[] = await Promise.all(
+        payable.map(async (sub) => {
           const { instructions } = await buildTransferSubscription({
             caller: signer,
             delegator: address(sub.delegator),
@@ -602,42 +618,49 @@ export function useSubscriptionsMutations() {
             tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
             programAddress: progId,
           });
-          return instructions[0];
+          return { subscriber: sub, instruction: instructions[0] };
         })
       );
 
       const signatures: string[] = [];
       const transfers: Array<{ subscriptionAddress: string; amount: bigint; signature: string }> = [];
+      const failures: SubscriberPaymentFailure[] = [...preflightFailures];
       let collected = 0;
-      const batches = packInstructionBatches(transferIxs, signer, [createAtaIx]);
 
-      for (let b = 0; b < batches.length; b++) {
-        try {
-          const signature = await signAndSend(batches[b], signer);
-          const batchTransferCount = batches[b].length - (b === 0 ? 1 : 0);
-          signatures.push(signature);
-          transfers.push(
-            ...subscribers.slice(collected, collected + batchTransferCount).map((sub) => ({
-              subscriptionAddress: sub.subscriptionAddress,
-              amount: sub.amount,
-              signature,
-            })),
-          );
-          collected += batchTransferCount;
-        } catch (err) {
-          if (collected === 0) throw err;
-          console.warn(
-            `Batch failed after collecting ${collected}/${subscribers.length}:`,
-            err instanceof Error ? err.message : err,
-          );
-          return { signatures, collected, partial: true, transfers };
-        }
+      if (transferEntries.length > 0) {
+        signatures.push(await signAndSend([createAtaIx], signer));
+        const result = await sendBatchedSubscriberInstructions({
+          transfers: transferEntries,
+          feePayer: signer,
+          sendInstructions: (instructions) => signAndSend(instructions, signer),
+        });
+        signatures.push(...result.signatures);
+        failures.push(...result.failures);
+        collected = result.collected;
+        transfers.push(
+          ...result.confirmed.map(({ subscriber, signature }) => ({
+            subscriptionAddress: subscriber.subscriptionAddress,
+            amount: subscriber.amount,
+            signature,
+          })),
+        );
       }
 
-      return { signatures, collected, partial: false, transfers };
+      return {
+        signatures,
+        collected,
+        total: subscribers.length,
+        partial: failures.length > 0,
+        failures,
+        transfers,
+      };
     },
     onSuccess: (res) => {
-      toast.onSuccess(res.signatures[0]);
+      if (res.signatures[0]) toast.onSuccess(res.signatures[0]);
+      if (res.failures.length > 0) {
+        sonnerToast.warning(`Skipped ${res.failures.length} unpayable subscriber payment${res.failures.length === 1 ? "" : "s"}`);
+        console.warn(`Skipped ${res.failures.length} unpayable subscriber payments`, res.failures);
+      }
       invalidateWithDelay(queryClient, [
         ["subscriberCounts"],
         ["get-token-accounts"],
@@ -660,17 +683,13 @@ export function useSubscriptionsMutations() {
       if (!signer) throw new Error("Wallet not connected");
       if (!progId) throw new Error("Program address not configured");
 
-      type PendingTransferInstruction = {
-        planAddress: string;
-        subscriptionAddress: string;
-        delegator: string;
-        amount: bigint;
-        instruction: Instruction;
-      };
+      type PlanTransferSubscriber = CollectableSubscriber & { planAddress: string };
 
+      const rpc = createSolanaRpc(rpcUrl);
       const ataIxs: Instruction[] = [];
-      const pendingTransfers: PendingTransferInstruction[] = [];
+      const transferEntries: SubscriberTransfer<PlanTransferSubscriber>[] = [];
       const seenAtas = new Set<string>();
+      const preflightFailures: SubscriberPaymentFailure<PlanTransferSubscriber>[] = [];
       const planTotals = plans.map((plan) => ({
         planAddress: plan.planAddress,
         total: plan.subscribers.length,
@@ -679,6 +698,20 @@ export function useSubscriptionsMutations() {
       for (const plan of plans) {
         const mintAddr = address(plan.mint);
         const planPda = address(plan.planAddress);
+        const subscribersWithPlan = plan.subscribers.map((sub) => ({
+          ...sub,
+          planAddress: plan.planAddress,
+        }));
+        const { payable, failures } = await filterPayableSubscribers({
+          rpc,
+          subscribers: subscribersWithPlan,
+          mint: mintAddr,
+          tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+          programAddress: progId,
+        });
+        preflightFailures.push(...failures);
+        if (payable.length === 0) continue;
+
         const firstDest = plan.destinations.find((d) => d !== ZERO_ADDRESS);
         const receiverOwner = firstDest ? address(firstDest) : signer.address;
         const [receiverAta] = await findAssociatedTokenPda({
@@ -701,7 +734,7 @@ export function useSubscriptionsMutations() {
           );
         }
 
-        for (const sub of plan.subscribers) {
+        for (const sub of payable) {
           const { instructions } = await buildTransferSubscription({
             caller: signer,
             delegator: address(sub.delegator),
@@ -713,58 +746,55 @@ export function useSubscriptionsMutations() {
             tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
             programAddress: progId,
           });
-          pendingTransfers.push({
-            planAddress: plan.planAddress,
-            subscriptionAddress: sub.subscriptionAddress,
-            delegator: sub.delegator,
-            amount: sub.amount,
-            instruction: instructions[0],
-          });
+          transferEntries.push({ subscriber: sub, instruction: instructions[0] });
         }
       }
 
       const signatures: string[] = [];
       const confirmedTransfers: ConfirmedPlanTransfer[] = [];
-      const batches = packInstructionBatchesWithItems(pendingTransfers, signer, ataIxs);
+      const failures: SubscriberPaymentFailure<PlanTransferSubscriber>[] = [...preflightFailures];
 
-      for (let b = 0; b < batches.length; b++) {
-        try {
-          const signature = await signAndSend(batches[b].instructions, signer);
-          signatures.push(signature);
-          confirmedTransfers.push(
-            ...batches[b].items.map((transfer) => ({
-              planAddress: transfer.planAddress,
-              subscriptionAddress: transfer.subscriptionAddress,
-              delegator: transfer.delegator,
-              amount: transfer.amount,
-              batchIndex: b,
-              signature,
-            })),
-          );
-        } catch (err) {
-          if (confirmedTransfers.length === 0) throw err;
-          console.warn(
-            `Batch failed after collecting ${confirmedTransfers.length}/${pendingTransfers.length}:`,
-            err instanceof Error ? err.message : err,
-          );
-          return createAllPlanPaymentCollectionResult(
-            planTotals,
-            confirmedTransfers,
-            signatures,
-            true,
-          );
+      if (transferEntries.length > 0) {
+        const ataBatches = packInstructionBatches(ataIxs, signer);
+        for (const batch of ataBatches) {
+          signatures.push(await signAndSend(batch, signer));
         }
+
+        const result = await sendBatchedSubscriberInstructions({
+          transfers: transferEntries,
+          feePayer: signer,
+          sendInstructions: (instructions) => signAndSend(instructions, signer),
+        });
+        signatures.push(...result.signatures);
+        failures.push(...result.failures);
+        confirmedTransfers.push(
+          ...result.confirmed.map(({ subscriber, signature }) => ({
+            planAddress: subscriber.planAddress,
+            subscriptionAddress: subscriber.subscriptionAddress,
+            delegator: subscriber.delegator,
+            amount: subscriber.amount,
+            batchIndex: signatures.indexOf(signature),
+            signature,
+          })),
+        );
       }
 
-      return createAllPlanPaymentCollectionResult(
-        planTotals,
-        confirmedTransfers,
-        signatures,
-        false,
-      );
+      return {
+        ...createAllPlanPaymentCollectionResult(
+          planTotals,
+          confirmedTransfers,
+          signatures,
+          failures.length > 0,
+        ),
+        failures,
+      };
     },
     onSuccess: (res) => {
       if (res.signatures[0]) toast.onSuccess(res.signatures[0]);
+      if (res.failures.length > 0) {
+        sonnerToast.warning(`Skipped ${res.failures.length} unpayable subscriber payment${res.failures.length === 1 ? "" : "s"}`);
+        console.warn(`Skipped ${res.failures.length} unpayable subscriber payments`, res.failures);
+      }
       invalidateWithDelay(queryClient, [
         ["subscriberCounts"],
         ["get-token-accounts"],
