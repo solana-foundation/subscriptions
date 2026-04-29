@@ -58,13 +58,13 @@ subscriptions/
 ├── webapp/                        # Demo UI (React) + local API server
 │   ├── src/                       # React app (routes, components, hooks)
 │   ├── api/                       # Node.js API server (faucet, deploy, config)
+│   ├── patches/                   # pnpm patch overrides for webapp deps
 │   └── scripts/                   # Environment init, mock USDC minting
 ├── scripts/                       # Shell scripts (validator, webapp launcher)
 ├── docs/                          # Architecture Decision Records
 ├── runbooks/                      # Surfpool deployment runbooks
 ├── .github/                       # CI workflows and shared setup action
 ├── .githooks/                     # Git hooks (pre-push: fmt + lint checks)
-├── patches/                       # pnpm patch overrides
 ├── keys/                          # Program keypair (gitignored)
 ├── justfile                       # Build/test/dev task runner
 ├── codama.js                      # Codama client generation config
