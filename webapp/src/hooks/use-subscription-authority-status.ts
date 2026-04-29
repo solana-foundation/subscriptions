@@ -7,7 +7,7 @@ import { useClusterConfig } from '@/hooks/use-cluster-config'
 import { useProgramAddress } from '@/hooks/use-token-config'
 
 export interface SubscriptionAuthorityData {
-  owner: string
+  user: string
   tokenMint: string
   payer: string
   bump: number
