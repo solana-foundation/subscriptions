@@ -9,13 +9,10 @@ import {
   SUBSCRIPTIONS_ERROR__UNAUTHORIZED,
 } from '../src/generated/errors/subscriptions.ts';
 import {
-  buildCloseSubscriptionAuthority,
-  buildCreateFixedDelegation,
-  buildCreateRecurringDelegation,
-  buildRevokeDelegation,
-} from '../src/instructions/delegation.ts';
-import { getDelegationPDA, getSubscriptionAuthorityPDA } from '../src/pdas.ts';
-import { addressAsSigner } from '../src/wallet.ts';
+  findFixedDelegationPda,
+  findRecurringDelegationPda,
+  findSubscriptionAuthorityPda,
+} from '../src/generated/index.ts';
 import {
   DEFAULT_TEST_BALANCE,
   expectProgramError,
@@ -34,17 +31,19 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initSubscriptionAuthority({
-      owner: t.payerKeypair,
-      tokenMint: t.tokenMint,
-      userAta,
-      tokenProgram: t.tokenProgram,
-    });
+    await t.client.subscriptions.instructions
+      .initSubscriptionAuthority({
+        owner: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        userAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
 
-    const [subscriptionAuthorityPda] = await getSubscriptionAuthorityPDA(
-      t.payerKeypair.address,
-      t.tokenMint,
-    );
+    const [subscriptionAuthorityPda] = await findSubscriptionAuthorityPda({
+      user: t.payerKeypair.address,
+      tokenMint: t.tokenMint,
+    });
 
     const delegatee = await t.createFundedKeypair();
     const delegateeAta = await t.createAtaWithBalance(
@@ -55,48 +54,26 @@ describe('Delegation Security', () => {
 
     const currentTs = await t.getValidatorTime();
 
-    await t.client.createFixedDelegation({
-      delegator: t.payerKeypair,
-      tokenMint: t.tokenMint,
+    await t.client.subscriptions.instructions
+      .createFixedDelegation({
+        delegator: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        delegatee: delegatee.address,
+        nonce: 0n,
+        amount: 500_000n,
+        expiryTs: currentTs + BigInt(ONE_HOUR_IN_SECONDS),
+      })
+      .sendTransaction();
+
+    const [oldDelegationPda] = await findFixedDelegationPda({
+      subscriptionAuthority: subscriptionAuthorityPda,
+      delegator: t.payerKeypair.address,
       delegatee: delegatee.address,
       nonce: 0n,
-      amount: 500_000n,
-      expiryTs: currentTs + BigInt(ONE_HOUR_IN_SECONDS),
     });
 
-    const [oldDelegationPda] = await getDelegationPDA(
-      subscriptionAuthorityPda,
-      t.payerKeypair.address,
-      delegatee.address,
-      0n,
-    );
-
-    await t.client.transferFixed({
-      delegatee,
-      delegator: t.payerKeypair.address,
-      delegatorAta: userAta,
-      tokenMint: t.tokenMint,
-      delegationPda: oldDelegationPda,
-      amount: 50_000n,
-      receiverAta: delegateeAta,
-      tokenProgram: t.tokenProgram,
-    });
-
-    const { instructions: closeIxs } = await buildCloseSubscriptionAuthority({
-      user: addressAsSigner(t.payerKeypair.address),
-      tokenMint: t.tokenMint,
-    });
-    await t.payer.sendInstructions(closeIxs);
-
-    await t.client.initSubscriptionAuthority({
-      owner: t.payerKeypair,
-      tokenMint: t.tokenMint,
-      userAta,
-      tokenProgram: t.tokenProgram,
-    });
-
-    await expectProgramError(
-      t.client.transferFixed({
+    await t.client.subscriptions.instructions
+      .transferFixed({
         delegatee,
         delegator: t.payerKeypair.address,
         delegatorAta: userAta,
@@ -105,36 +82,71 @@ describe('Delegation Security', () => {
         amount: 50_000n,
         receiverAta: delegateeAta,
         tokenProgram: t.tokenProgram,
-      }),
+      })
+      .sendTransaction();
+
+    await t.client.subscriptions.instructions
+      .closeSubscriptionAuthority({
+        user: t.payerKeypair,
+        tokenMint: t.tokenMint,
+      })
+      .sendTransaction();
+
+    await t.client.subscriptions.instructions
+      .initSubscriptionAuthority({
+        owner: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        userAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
+
+    await expectProgramError(
+      t.client.subscriptions.instructions
+        .transferFixed({
+          delegatee,
+          delegator: t.payerKeypair.address,
+          delegatorAta: userAta,
+          tokenMint: t.tokenMint,
+          delegationPda: oldDelegationPda,
+          amount: 50_000n,
+          receiverAta: delegateeAta,
+          tokenProgram: t.tokenProgram,
+        })
+        .sendTransaction(),
       SUBSCRIPTIONS_ERROR__STALE_SUBSCRIPTION_AUTHORITY,
     );
 
-    await t.client.createFixedDelegation({
-      delegator: t.payerKeypair,
-      tokenMint: t.tokenMint,
+    await t.client.subscriptions.instructions
+      .createFixedDelegation({
+        delegator: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        delegatee: delegatee.address,
+        nonce: 1n,
+        amount: 500_000n,
+        expiryTs: currentTs + BigInt(ONE_HOUR_IN_SECONDS),
+      })
+      .sendTransaction();
+
+    const [newDelegationPda] = await findFixedDelegationPda({
+      subscriptionAuthority: subscriptionAuthorityPda,
+      delegator: t.payerKeypair.address,
       delegatee: delegatee.address,
       nonce: 1n,
-      amount: 500_000n,
-      expiryTs: currentTs + BigInt(ONE_HOUR_IN_SECONDS),
     });
 
-    const [newDelegationPda] = await getDelegationPDA(
-      subscriptionAuthorityPda,
-      t.payerKeypair.address,
-      delegatee.address,
-      1n,
-    );
-
-    const { signature } = await t.client.transferFixed({
-      delegatee,
-      delegator: t.payerKeypair.address,
-      delegatorAta: userAta,
-      tokenMint: t.tokenMint,
-      delegationPda: newDelegationPda,
-      amount: 50_000n,
-      receiverAta: delegateeAta,
-      tokenProgram: t.tokenProgram,
-    });
+    const signature = await t.client.subscriptions.instructions
+      .transferFixed({
+        delegatee,
+        delegator: t.payerKeypair.address,
+        delegatorAta: userAta,
+        tokenMint: t.tokenMint,
+        delegationPda: newDelegationPda,
+        amount: 50_000n,
+        receiverAta: delegateeAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
     expect(signature).toBeDefined();
   });
 
@@ -147,17 +159,19 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE * 2n,
     );
 
-    await t.client.initSubscriptionAuthority({
-      owner: t.payerKeypair,
-      tokenMint: t.tokenMint,
-      userAta,
-      tokenProgram: t.tokenProgram,
-    });
+    await t.client.subscriptions.instructions
+      .initSubscriptionAuthority({
+        owner: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        userAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
 
-    const [subscriptionAuthorityPda] = await getSubscriptionAuthorityPDA(
-      t.payerKeypair.address,
-      t.tokenMint,
-    );
+    const [subscriptionAuthorityPda] = await findSubscriptionAuthorityPda({
+      user: t.payerKeypair.address,
+      tokenMint: t.tokenMint,
+    });
 
     const delegatee1 = await t.createFundedKeypair();
     const delegatee1Ata = await t.createAtaWithBalance(
@@ -174,69 +188,45 @@ describe('Delegation Security', () => {
 
     const currentTs = await t.getValidatorTime();
 
-    await t.client.createFixedDelegation({
-      delegator: t.payerKeypair,
-      tokenMint: t.tokenMint,
+    await t.client.subscriptions.instructions
+      .createFixedDelegation({
+        delegator: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        delegatee: delegatee1.address,
+        nonce: 0n,
+        amount: 500_000n,
+        expiryTs: currentTs + BigInt(ONE_HOUR_IN_SECONDS),
+      })
+      .sendTransaction();
+
+    await t.client.subscriptions.instructions
+      .createRecurringDelegation({
+        delegator: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        delegatee: delegatee2.address,
+        nonce: 0n,
+        amountPerPeriod: 100_000n,
+        periodLengthS: BigInt(ONE_DAY_IN_SECONDS),
+        startTs: currentTs,
+        expiryTs: currentTs + BigInt(ONE_DAY_IN_SECONDS * 30),
+      })
+      .sendTransaction();
+
+    const [fixedPda] = await findFixedDelegationPda({
+      subscriptionAuthority: subscriptionAuthorityPda,
+      delegator: t.payerKeypair.address,
       delegatee: delegatee1.address,
       nonce: 0n,
-      amount: 500_000n,
-      expiryTs: currentTs + BigInt(ONE_HOUR_IN_SECONDS),
     });
-
-    await t.client.createRecurringDelegation({
-      delegator: t.payerKeypair,
-      tokenMint: t.tokenMint,
+    const [recurringPda] = await findFixedDelegationPda({
+      subscriptionAuthority: subscriptionAuthorityPda,
+      delegator: t.payerKeypair.address,
       delegatee: delegatee2.address,
       nonce: 0n,
-      amountPerPeriod: 100_000n,
-      periodLengthS: BigInt(ONE_DAY_IN_SECONDS),
-      startTs: currentTs,
-      expiryTs: currentTs + BigInt(ONE_DAY_IN_SECONDS * 30),
     });
 
-    const [fixedPda] = await getDelegationPDA(
-      subscriptionAuthorityPda,
-      t.payerKeypair.address,
-      delegatee1.address,
-      0n,
-    );
-    const [recurringPda] = await getDelegationPDA(
-      subscriptionAuthorityPda,
-      t.payerKeypair.address,
-      delegatee2.address,
-      0n,
-    );
-
-    await t.client.transferFixed({
-      delegatee: delegatee1,
-      delegator: t.payerKeypair.address,
-      delegatorAta: userAta,
-      tokenMint: t.tokenMint,
-      delegationPda: fixedPda,
-      amount: 50_000n,
-      receiverAta: delegatee1Ata,
-      tokenProgram: t.tokenProgram,
-    });
-
-    await t.client.transferRecurring({
-      delegatee: delegatee2,
-      delegator: t.payerKeypair.address,
-      delegatorAta: userAta,
-      tokenMint: t.tokenMint,
-      delegationPda: recurringPda,
-      amount: 50_000n,
-      receiverAta: delegatee2Ata,
-      tokenProgram: t.tokenProgram,
-    });
-
-    const { instructions: closeIxs } = await buildCloseSubscriptionAuthority({
-      user: addressAsSigner(t.payerKeypair.address),
-      tokenMint: t.tokenMint,
-    });
-    await t.payer.sendInstructions(closeIxs);
-
-    await expectProgramError(
-      t.client.transferFixed({
+    await t.client.subscriptions.instructions
+      .transferFixed({
         delegatee: delegatee1,
         delegator: t.payerKeypair.address,
         delegatorAta: userAta,
@@ -245,12 +235,11 @@ describe('Delegation Security', () => {
         amount: 50_000n,
         receiverAta: delegatee1Ata,
         tokenProgram: t.tokenProgram,
-      }),
-      SUBSCRIPTIONS_ERROR__INVALID_SUBSCRIPTION_AUTHORITY_PDA,
-    );
+      })
+      .sendTransaction();
 
-    await expectProgramError(
-      t.client.transferRecurring({
+    await t.client.subscriptions.instructions
+      .transferRecurring({
         delegatee: delegatee2,
         delegator: t.payerKeypair.address,
         delegatorAta: userAta,
@@ -259,7 +248,45 @@ describe('Delegation Security', () => {
         amount: 50_000n,
         receiverAta: delegatee2Ata,
         tokenProgram: t.tokenProgram,
-      }),
+      })
+      .sendTransaction();
+
+    await t.client.subscriptions.instructions
+      .closeSubscriptionAuthority({
+        user: t.payerKeypair,
+        tokenMint: t.tokenMint,
+      })
+      .sendTransaction();
+
+    await expectProgramError(
+      t.client.subscriptions.instructions
+        .transferFixed({
+          delegatee: delegatee1,
+          delegator: t.payerKeypair.address,
+          delegatorAta: userAta,
+          tokenMint: t.tokenMint,
+          delegationPda: fixedPda,
+          amount: 50_000n,
+          receiverAta: delegatee1Ata,
+          tokenProgram: t.tokenProgram,
+        })
+        .sendTransaction(),
+      SUBSCRIPTIONS_ERROR__INVALID_SUBSCRIPTION_AUTHORITY_PDA,
+    );
+
+    await expectProgramError(
+      t.client.subscriptions.instructions
+        .transferRecurring({
+          delegatee: delegatee2,
+          delegator: t.payerKeypair.address,
+          delegatorAta: userAta,
+          tokenMint: t.tokenMint,
+          delegationPda: recurringPda,
+          amount: 50_000n,
+          receiverAta: delegatee2Ata,
+          tokenProgram: t.tokenProgram,
+        })
+        .sendTransaction(),
       SUBSCRIPTIONS_ERROR__INVALID_SUBSCRIPTION_AUTHORITY_PDA,
     );
   });
@@ -273,12 +300,14 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initSubscriptionAuthority({
-      owner: t.payerKeypair,
-      tokenMint: t.tokenMint,
-      userAta,
-      tokenProgram: t.tokenProgram,
-    });
+    await t.client.subscriptions.instructions
+      .initSubscriptionAuthority({
+        owner: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        userAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
 
     const delegatee = await t.createFundedKeypair();
     const delegateeAta = await t.createAtaWithBalance(
@@ -290,42 +319,30 @@ describe('Delegation Security', () => {
     const currentTs = await t.getValidatorTime();
     const expiryTs = currentTs + BigInt(ONE_HOUR_IN_SECONDS);
 
-    await t.client.createFixedDelegation({
-      delegator: t.payerKeypair,
+    await t.client.subscriptions.instructions
+      .createFixedDelegation({
+        delegator: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        delegatee: delegatee.address,
+        nonce: 0n,
+        amount: 500_000n,
+        expiryTs,
+      })
+      .sendTransaction();
+
+    const [subscriptionAuthorityPda] = await findSubscriptionAuthorityPda({
+      user: t.payerKeypair.address,
       tokenMint: t.tokenMint,
+    });
+    const [delegationPda] = await findFixedDelegationPda({
+      subscriptionAuthority: subscriptionAuthorityPda,
+      delegator: t.payerKeypair.address,
       delegatee: delegatee.address,
       nonce: 0n,
-      amount: 500_000n,
-      expiryTs,
     });
 
-    const [subscriptionAuthorityPda] = await getSubscriptionAuthorityPDA(
-      t.payerKeypair.address,
-      t.tokenMint,
-    );
-    const [delegationPda] = await getDelegationPDA(
-      subscriptionAuthorityPda,
-      t.payerKeypair.address,
-      delegatee.address,
-      0n,
-    );
-
-    const { signature } = await t.client.transferFixed({
-      delegatee,
-      delegator: t.payerKeypair.address,
-      delegatorAta: userAta,
-      tokenMint: t.tokenMint,
-      delegationPda,
-      amount: 50_000n,
-      receiverAta: delegateeAta,
-      tokenProgram: t.tokenProgram,
-    });
-    expect(signature).toBeDefined();
-
-    await t.timeTravel(Number(expiryTs) + 200);
-
-    await expectProgramError(
-      t.client.transferFixed({
+    const signature = await t.client.subscriptions.instructions
+      .transferFixed({
         delegatee,
         delegator: t.payerKeypair.address,
         delegatorAta: userAta,
@@ -334,7 +351,25 @@ describe('Delegation Security', () => {
         amount: 50_000n,
         receiverAta: delegateeAta,
         tokenProgram: t.tokenProgram,
-      }),
+      })
+      .sendTransaction();
+    expect(signature).toBeDefined();
+
+    await t.timeTravel(Number(expiryTs) + 200);
+
+    await expectProgramError(
+      t.client.subscriptions.instructions
+        .transferFixed({
+          delegatee,
+          delegator: t.payerKeypair.address,
+          delegatorAta: userAta,
+          tokenMint: t.tokenMint,
+          delegationPda,
+          amount: 50_000n,
+          receiverAta: delegateeAta,
+          tokenProgram: t.tokenProgram,
+        })
+        .sendTransaction(),
       SUBSCRIPTIONS_ERROR__DELEGATION_EXPIRED,
     );
   });
@@ -348,12 +383,14 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initSubscriptionAuthority({
-      owner: t.payerKeypair,
-      tokenMint: t.tokenMint,
-      userAta,
-      tokenProgram: t.tokenProgram,
-    });
+    await t.client.subscriptions.instructions
+      .initSubscriptionAuthority({
+        owner: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        userAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
 
     const delegatee = await t.createFundedKeypair();
     const delegateeAta = await t.createAtaWithBalance(
@@ -365,44 +402,32 @@ describe('Delegation Security', () => {
     const currentTs = await t.getValidatorTime();
     const expiryTs = currentTs + BigInt(ONE_HOUR_IN_SECONDS);
 
-    await t.client.createRecurringDelegation({
-      delegator: t.payerKeypair,
+    await t.client.subscriptions.instructions
+      .createRecurringDelegation({
+        delegator: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        delegatee: delegatee.address,
+        nonce: 0n,
+        amountPerPeriod: 100_000n,
+        periodLengthS: BigInt(ONE_HOUR_IN_SECONDS),
+        startTs: currentTs,
+        expiryTs,
+      })
+      .sendTransaction();
+
+    const [subscriptionAuthorityPda] = await findSubscriptionAuthorityPda({
+      user: t.payerKeypair.address,
       tokenMint: t.tokenMint,
+    });
+    const [delegationPda] = await findFixedDelegationPda({
+      subscriptionAuthority: subscriptionAuthorityPda,
+      delegator: t.payerKeypair.address,
       delegatee: delegatee.address,
       nonce: 0n,
-      amountPerPeriod: 100_000n,
-      periodLengthS: BigInt(ONE_HOUR_IN_SECONDS),
-      startTs: currentTs,
-      expiryTs,
     });
 
-    const [subscriptionAuthorityPda] = await getSubscriptionAuthorityPDA(
-      t.payerKeypair.address,
-      t.tokenMint,
-    );
-    const [delegationPda] = await getDelegationPDA(
-      subscriptionAuthorityPda,
-      t.payerKeypair.address,
-      delegatee.address,
-      0n,
-    );
-
-    const { signature } = await t.client.transferRecurring({
-      delegatee,
-      delegator: t.payerKeypair.address,
-      delegatorAta: userAta,
-      tokenMint: t.tokenMint,
-      delegationPda,
-      amount: 50_000n,
-      receiverAta: delegateeAta,
-      tokenProgram: t.tokenProgram,
-    });
-    expect(signature).toBeDefined();
-
-    await t.timeTravel(Number(expiryTs) + 200);
-
-    await expectProgramError(
-      t.client.transferRecurring({
+    const signature = await t.client.subscriptions.instructions
+      .transferRecurring({
         delegatee,
         delegator: t.payerKeypair.address,
         delegatorAta: userAta,
@@ -411,7 +436,25 @@ describe('Delegation Security', () => {
         amount: 50_000n,
         receiverAta: delegateeAta,
         tokenProgram: t.tokenProgram,
-      }),
+      })
+      .sendTransaction();
+    expect(signature).toBeDefined();
+
+    await t.timeTravel(Number(expiryTs) + 200);
+
+    await expectProgramError(
+      t.client.subscriptions.instructions
+        .transferRecurring({
+          delegatee,
+          delegator: t.payerKeypair.address,
+          delegatorAta: userAta,
+          tokenMint: t.tokenMint,
+          delegationPda,
+          amount: 50_000n,
+          receiverAta: delegateeAta,
+          tokenProgram: t.tokenProgram,
+        })
+        .sendTransaction(),
       SUBSCRIPTIONS_ERROR__DELEGATION_EXPIRED,
     );
   });
@@ -425,12 +468,14 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initSubscriptionAuthority({
-      owner: t.payerKeypair,
-      tokenMint: t.tokenMint,
-      userAta,
-      tokenProgram: t.tokenProgram,
-    });
+    await t.client.subscriptions.instructions
+      .initSubscriptionAuthority({
+        owner: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        userAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
 
     const legitimateDelegatee = await t.createFundedKeypair();
     const attacker = await t.createFundedKeypair();
@@ -442,37 +487,41 @@ describe('Delegation Security', () => {
 
     const currentTs = await t.getValidatorTime();
 
-    await t.client.createFixedDelegation({
-      delegator: t.payerKeypair,
+    await t.client.subscriptions.instructions
+      .createFixedDelegation({
+        delegator: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        delegatee: legitimateDelegatee.address,
+        nonce: 0n,
+        amount: 500_000n,
+        expiryTs: currentTs + BigInt(ONE_HOUR_IN_SECONDS),
+      })
+      .sendTransaction();
+
+    const [subscriptionAuthorityPda] = await findSubscriptionAuthorityPda({
+      user: t.payerKeypair.address,
       tokenMint: t.tokenMint,
+    });
+    const [delegationPda] = await findFixedDelegationPda({
+      subscriptionAuthority: subscriptionAuthorityPda,
+      delegator: t.payerKeypair.address,
       delegatee: legitimateDelegatee.address,
       nonce: 0n,
-      amount: 500_000n,
-      expiryTs: currentTs + BigInt(ONE_HOUR_IN_SECONDS),
     });
 
-    const [subscriptionAuthorityPda] = await getSubscriptionAuthorityPDA(
-      t.payerKeypair.address,
-      t.tokenMint,
-    );
-    const [delegationPda] = await getDelegationPDA(
-      subscriptionAuthorityPda,
-      t.payerKeypair.address,
-      legitimateDelegatee.address,
-      0n,
-    );
-
     await expectProgramError(
-      t.client.transferFixed({
-        delegatee: attacker,
-        delegator: t.payerKeypair.address,
-        delegatorAta: userAta,
-        tokenMint: t.tokenMint,
-        delegationPda,
-        amount: 50_000n,
-        receiverAta: attackerAta,
-        tokenProgram: t.tokenProgram,
-      }),
+      t.client.subscriptions.instructions
+        .transferFixed({
+          delegatee: attacker,
+          delegator: t.payerKeypair.address,
+          delegatorAta: userAta,
+          tokenMint: t.tokenMint,
+          delegationPda,
+          amount: 50_000n,
+          receiverAta: attackerAta,
+          tokenProgram: t.tokenProgram,
+        })
+        .sendTransaction(),
       SUBSCRIPTIONS_ERROR__UNAUTHORIZED,
     );
 
@@ -481,16 +530,18 @@ describe('Delegation Security', () => {
       legitimateDelegatee.address,
       0n,
     );
-    const { signature } = await t.client.transferFixed({
-      delegatee: legitimateDelegatee,
-      delegator: t.payerKeypair.address,
-      delegatorAta: userAta,
-      tokenMint: t.tokenMint,
-      delegationPda,
-      amount: 50_000n,
-      receiverAta: legitimateAta,
-      tokenProgram: t.tokenProgram,
-    });
+    const signature = await t.client.subscriptions.instructions
+      .transferFixed({
+        delegatee: legitimateDelegatee,
+        delegator: t.payerKeypair.address,
+        delegatorAta: userAta,
+        tokenMint: t.tokenMint,
+        delegationPda,
+        amount: 50_000n,
+        receiverAta: legitimateAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
     expect(signature).toBeDefined();
   });
 
@@ -503,12 +554,14 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initSubscriptionAuthority({
-      owner: t.payerKeypair,
-      tokenMint: t.tokenMint,
-      userAta,
-      tokenProgram: t.tokenProgram,
-    });
+    await t.client.subscriptions.instructions
+      .initSubscriptionAuthority({
+        owner: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        userAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
 
     const legitimateDelegatee = await t.createFundedKeypair();
     const attacker = await t.createFundedKeypair();
@@ -520,39 +573,43 @@ describe('Delegation Security', () => {
 
     const currentTs = await t.getValidatorTime();
 
-    await t.client.createRecurringDelegation({
-      delegator: t.payerKeypair,
+    await t.client.subscriptions.instructions
+      .createRecurringDelegation({
+        delegator: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        delegatee: legitimateDelegatee.address,
+        nonce: 0n,
+        amountPerPeriod: 100_000n,
+        periodLengthS: BigInt(ONE_DAY_IN_SECONDS),
+        startTs: currentTs,
+        expiryTs: currentTs + BigInt(ONE_DAY_IN_SECONDS * 30),
+      })
+      .sendTransaction();
+
+    const [subscriptionAuthorityPda] = await findSubscriptionAuthorityPda({
+      user: t.payerKeypair.address,
       tokenMint: t.tokenMint,
+    });
+    const [delegationPda] = await findFixedDelegationPda({
+      subscriptionAuthority: subscriptionAuthorityPda,
+      delegator: t.payerKeypair.address,
       delegatee: legitimateDelegatee.address,
       nonce: 0n,
-      amountPerPeriod: 100_000n,
-      periodLengthS: BigInt(ONE_DAY_IN_SECONDS),
-      startTs: currentTs,
-      expiryTs: currentTs + BigInt(ONE_DAY_IN_SECONDS * 30),
     });
 
-    const [subscriptionAuthorityPda] = await getSubscriptionAuthorityPDA(
-      t.payerKeypair.address,
-      t.tokenMint,
-    );
-    const [delegationPda] = await getDelegationPDA(
-      subscriptionAuthorityPda,
-      t.payerKeypair.address,
-      legitimateDelegatee.address,
-      0n,
-    );
-
     await expectProgramError(
-      t.client.transferRecurring({
-        delegatee: attacker,
-        delegator: t.payerKeypair.address,
-        delegatorAta: userAta,
-        tokenMint: t.tokenMint,
-        delegationPda,
-        amount: 50_000n,
-        receiverAta: attackerAta,
-        tokenProgram: t.tokenProgram,
-      }),
+      t.client.subscriptions.instructions
+        .transferRecurring({
+          delegatee: attacker,
+          delegator: t.payerKeypair.address,
+          delegatorAta: userAta,
+          tokenMint: t.tokenMint,
+          delegationPda,
+          amount: 50_000n,
+          receiverAta: attackerAta,
+          tokenProgram: t.tokenProgram,
+        })
+        .sendTransaction(),
       SUBSCRIPTIONS_ERROR__UNAUTHORIZED,
     );
 
@@ -561,16 +618,18 @@ describe('Delegation Security', () => {
       legitimateDelegatee.address,
       0n,
     );
-    const { signature } = await t.client.transferRecurring({
-      delegatee: legitimateDelegatee,
-      delegator: t.payerKeypair.address,
-      delegatorAta: userAta,
-      tokenMint: t.tokenMint,
-      delegationPda,
-      amount: 50_000n,
-      receiverAta: legitimateAta,
-      tokenProgram: t.tokenProgram,
-    });
+    const signature = await t.client.subscriptions.instructions
+      .transferRecurring({
+        delegatee: legitimateDelegatee,
+        delegator: t.payerKeypair.address,
+        delegatorAta: userAta,
+        tokenMint: t.tokenMint,
+        delegationPda,
+        amount: 50_000n,
+        receiverAta: legitimateAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
     expect(signature).toBeDefined();
   });
 
@@ -583,12 +642,14 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initSubscriptionAuthority({
-      owner: t.payerKeypair,
-      tokenMint: t.tokenMint,
-      userAta,
-      tokenProgram: t.tokenProgram,
-    });
+    await t.client.subscriptions.instructions
+      .initSubscriptionAuthority({
+        owner: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        userAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
 
     const delegatee = await t.createFundedKeypair();
     const delegateeAta = await t.createAtaWithBalance(
@@ -601,54 +662,60 @@ describe('Delegation Security', () => {
     const periodS = BigInt(ONE_DAY_IN_SECONDS);
     const amountPerPeriod = 100_000n;
 
-    await t.client.createRecurringDelegation({
-      delegator: t.payerKeypair,
+    await t.client.subscriptions.instructions
+      .createRecurringDelegation({
+        delegator: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        delegatee: delegatee.address,
+        nonce: 0n,
+        amountPerPeriod,
+        periodLengthS: periodS,
+        startTs: currentTs,
+        expiryTs: currentTs + BigInt(ONE_DAY_IN_SECONDS * 30),
+      })
+      .sendTransaction();
+
+    const [subscriptionAuthorityPda] = await findSubscriptionAuthorityPda({
+      user: t.payerKeypair.address,
       tokenMint: t.tokenMint,
+    });
+    const [delegationPda] = await findFixedDelegationPda({
+      subscriptionAuthority: subscriptionAuthorityPda,
+      delegator: t.payerKeypair.address,
       delegatee: delegatee.address,
       nonce: 0n,
-      amountPerPeriod,
-      periodLengthS: periodS,
-      startTs: currentTs,
-      expiryTs: currentTs + BigInt(ONE_DAY_IN_SECONDS * 30),
     });
-
-    const [subscriptionAuthorityPda] = await getSubscriptionAuthorityPDA(
-      t.payerKeypair.address,
-      t.tokenMint,
-    );
-    const [delegationPda] = await getDelegationPDA(
-      subscriptionAuthorityPda,
-      t.payerKeypair.address,
-      delegatee.address,
-      0n,
-    );
 
     await t.timeTravel(Number(currentTs) + ONE_DAY_IN_SECONDS * 3 + 60);
 
     await expectProgramError(
-      t.client.transferRecurring({
+      t.client.subscriptions.instructions
+        .transferRecurring({
+          delegatee,
+          delegator: t.payerKeypair.address,
+          delegatorAta: userAta,
+          tokenMint: t.tokenMint,
+          delegationPda,
+          amount: amountPerPeriod * 3n,
+          receiverAta: delegateeAta,
+          tokenProgram: t.tokenProgram,
+        })
+        .sendTransaction(),
+      SUBSCRIPTIONS_ERROR__AMOUNT_EXCEEDS_PERIOD_LIMIT,
+    );
+
+    const signature = await t.client.subscriptions.instructions
+      .transferRecurring({
         delegatee,
         delegator: t.payerKeypair.address,
         delegatorAta: userAta,
         tokenMint: t.tokenMint,
         delegationPda,
-        amount: amountPerPeriod * 3n,
+        amount: amountPerPeriod,
         receiverAta: delegateeAta,
         tokenProgram: t.tokenProgram,
-      }),
-      SUBSCRIPTIONS_ERROR__AMOUNT_EXCEEDS_PERIOD_LIMIT,
-    );
-
-    const { signature } = await t.client.transferRecurring({
-      delegatee,
-      delegator: t.payerKeypair.address,
-      delegatorAta: userAta,
-      tokenMint: t.tokenMint,
-      delegationPda,
-      amount: amountPerPeriod,
-      receiverAta: delegateeAta,
-      tokenProgram: t.tokenProgram,
-    });
+      })
+      .sendTransaction();
     expect(signature).toBeDefined();
   });
 
@@ -661,12 +728,14 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initSubscriptionAuthority({
-      owner: t.payerKeypair,
-      tokenMint: t.tokenMint,
-      userAta,
-      tokenProgram: t.tokenProgram,
-    });
+    await t.client.subscriptions.instructions
+      .initSubscriptionAuthority({
+        owner: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        userAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
 
     const delegatee = await t.createFundedKeypair();
     const delegateeAta = await t.createAtaWithBalance(
@@ -678,63 +747,71 @@ describe('Delegation Security', () => {
     const currentTs = await t.getValidatorTime();
     const amountPerPeriod = 100_000n;
 
-    await t.client.createRecurringDelegation({
-      delegator: t.payerKeypair,
+    await t.client.subscriptions.instructions
+      .createRecurringDelegation({
+        delegator: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        delegatee: delegatee.address,
+        nonce: 0n,
+        amountPerPeriod,
+        periodLengthS: BigInt(ONE_DAY_IN_SECONDS),
+        startTs: currentTs,
+        expiryTs: currentTs + BigInt(ONE_DAY_IN_SECONDS * 30),
+      })
+      .sendTransaction();
+
+    const [subscriptionAuthorityPda] = await findSubscriptionAuthorityPda({
+      user: t.payerKeypair.address,
       tokenMint: t.tokenMint,
+    });
+    const [delegationPda] = await findFixedDelegationPda({
+      subscriptionAuthority: subscriptionAuthorityPda,
+      delegator: t.payerKeypair.address,
       delegatee: delegatee.address,
       nonce: 0n,
-      amountPerPeriod,
-      periodLengthS: BigInt(ONE_DAY_IN_SECONDS),
-      startTs: currentTs,
-      expiryTs: currentTs + BigInt(ONE_DAY_IN_SECONDS * 30),
     });
 
-    const [subscriptionAuthorityPda] = await getSubscriptionAuthorityPDA(
-      t.payerKeypair.address,
-      t.tokenMint,
-    );
-    const [delegationPda] = await getDelegationPDA(
-      subscriptionAuthorityPda,
-      t.payerKeypair.address,
-      delegatee.address,
-      0n,
-    );
-
-    await t.client.transferRecurring({
-      delegatee,
-      delegator: t.payerKeypair.address,
-      delegatorAta: userAta,
-      tokenMint: t.tokenMint,
-      delegationPda,
-      amount: 60_000n,
-      receiverAta: delegateeAta,
-      tokenProgram: t.tokenProgram,
-    });
-
-    await expectProgramError(
-      t.client.transferRecurring({
+    await t.client.subscriptions.instructions
+      .transferRecurring({
         delegatee,
         delegator: t.payerKeypair.address,
         delegatorAta: userAta,
         tokenMint: t.tokenMint,
         delegationPda,
-        amount: 50_000n,
+        amount: 60_000n,
         receiverAta: delegateeAta,
         tokenProgram: t.tokenProgram,
-      }),
+      })
+      .sendTransaction();
+
+    await expectProgramError(
+      t.client.subscriptions.instructions
+        .transferRecurring({
+          delegatee,
+          delegator: t.payerKeypair.address,
+          delegatorAta: userAta,
+          tokenMint: t.tokenMint,
+          delegationPda,
+          amount: 50_000n,
+          receiverAta: delegateeAta,
+          tokenProgram: t.tokenProgram,
+        })
+        .sendTransaction(),
       SUBSCRIPTIONS_ERROR__AMOUNT_EXCEEDS_PERIOD_LIMIT,
     );
 
-    const { signature } = await t.client.transferRecurring({
-      delegatee,
-      delegator: t.payerKeypair.address,
-      delegatorAta: userAta,
-      tokenMint: t.tokenMint,
-      delegationPda,
-      amount: 40_000n,
-      receiverAta: delegateeAta,
-      tokenProgram: t.tokenProgram,
-    });
+    const signature = await t.client.subscriptions.instructions
+      .transferRecurring({
+        delegatee,
+        delegator: t.payerKeypair.address,
+        delegatorAta: userAta,
+        tokenMint: t.tokenMint,
+        delegationPda,
+        amount: 40_000n,
+        receiverAta: delegateeAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
     expect(signature).toBeDefined();
   });
 
@@ -747,12 +824,14 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initSubscriptionAuthority({
-      owner: t.payerKeypair,
-      tokenMint: t.tokenMint,
-      userAta,
-      tokenProgram: t.tokenProgram,
-    });
+    await t.client.subscriptions.instructions
+      .initSubscriptionAuthority({
+        owner: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        userAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
 
     const delegatee = await t.createFundedKeypair();
     const delegateeAta = await t.createAtaWithBalance(
@@ -764,30 +843,50 @@ describe('Delegation Security', () => {
     const currentTs = await t.getValidatorTime();
     const startTs = currentTs + BigInt(ONE_HOUR_IN_SECONDS);
 
-    await t.client.createRecurringDelegation({
-      delegator: t.payerKeypair,
+    await t.client.subscriptions.instructions
+      .createRecurringDelegation({
+        delegator: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        delegatee: delegatee.address,
+        nonce: 0n,
+        amountPerPeriod: 100_000n,
+        periodLengthS: BigInt(ONE_DAY_IN_SECONDS),
+        startTs,
+        expiryTs: startTs + BigInt(ONE_DAY_IN_SECONDS * 30),
+      })
+      .sendTransaction();
+
+    const [subscriptionAuthorityPda] = await findSubscriptionAuthorityPda({
+      user: t.payerKeypair.address,
       tokenMint: t.tokenMint,
+    });
+    const [delegationPda] = await findFixedDelegationPda({
+      subscriptionAuthority: subscriptionAuthorityPda,
+      delegator: t.payerKeypair.address,
       delegatee: delegatee.address,
       nonce: 0n,
-      amountPerPeriod: 100_000n,
-      periodLengthS: BigInt(ONE_DAY_IN_SECONDS),
-      startTs,
-      expiryTs: startTs + BigInt(ONE_DAY_IN_SECONDS * 30),
     });
 
-    const [subscriptionAuthorityPda] = await getSubscriptionAuthorityPDA(
-      t.payerKeypair.address,
-      t.tokenMint,
-    );
-    const [delegationPda] = await getDelegationPDA(
-      subscriptionAuthorityPda,
-      t.payerKeypair.address,
-      delegatee.address,
-      0n,
+    await expectProgramError(
+      t.client.subscriptions.instructions
+        .transferRecurring({
+          delegatee,
+          delegator: t.payerKeypair.address,
+          delegatorAta: userAta,
+          tokenMint: t.tokenMint,
+          delegationPda,
+          amount: 50_000n,
+          receiverAta: delegateeAta,
+          tokenProgram: t.tokenProgram,
+        })
+        .sendTransaction(),
+      SUBSCRIPTIONS_ERROR__DELEGATION_NOT_STARTED,
     );
 
-    await expectProgramError(
-      t.client.transferRecurring({
+    await t.timeTravel(Number(startTs) + 60);
+
+    const signature = await t.client.subscriptions.instructions
+      .transferRecurring({
         delegatee,
         delegator: t.payerKeypair.address,
         delegatorAta: userAta,
@@ -796,22 +895,8 @@ describe('Delegation Security', () => {
         amount: 50_000n,
         receiverAta: delegateeAta,
         tokenProgram: t.tokenProgram,
-      }),
-      SUBSCRIPTIONS_ERROR__DELEGATION_NOT_STARTED,
-    );
-
-    await t.timeTravel(Number(startTs) + 60);
-
-    const { signature } = await t.client.transferRecurring({
-      delegatee,
-      delegator: t.payerKeypair.address,
-      delegatorAta: userAta,
-      tokenMint: t.tokenMint,
-      delegationPda,
-      amount: 50_000n,
-      receiverAta: delegateeAta,
-      tokenProgram: t.tokenProgram,
-    });
+      })
+      .sendTransaction();
     expect(signature).toBeDefined();
   });
 
@@ -824,36 +909,42 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initSubscriptionAuthority({
-      owner: t.payerKeypair,
-      tokenMint: t.tokenMint,
-      userAta,
-      tokenProgram: t.tokenProgram,
-    });
+    await t.client.subscriptions.instructions
+      .initSubscriptionAuthority({
+        owner: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        userAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
 
     const delegatee = await t.createFundedKeypair();
     const currentTs = await t.getValidatorTime();
 
-    await t.client.createFixedDelegation({
-      delegator: t.payerKeypair,
-      tokenMint: t.tokenMint,
-      delegatee: delegatee.address,
-      nonce: 0n,
-      amount: 500_000n,
-      expiryTs: currentTs + BigInt(ONE_HOUR_IN_SECONDS),
-    });
-
-    await expectProgramError(
-      t.client.createRecurringDelegation({
+    await t.client.subscriptions.instructions
+      .createFixedDelegation({
         delegator: t.payerKeypair,
         tokenMint: t.tokenMint,
         delegatee: delegatee.address,
         nonce: 0n,
-        amountPerPeriod: 100_000n,
-        periodLengthS: BigInt(ONE_DAY_IN_SECONDS),
-        startTs: currentTs,
-        expiryTs: currentTs + BigInt(ONE_DAY_IN_SECONDS * 30),
-      }),
+        amount: 500_000n,
+        expiryTs: currentTs + BigInt(ONE_HOUR_IN_SECONDS),
+      })
+      .sendTransaction();
+
+    await expectProgramError(
+      t.client.subscriptions.instructions
+        .createRecurringDelegation({
+          delegator: t.payerKeypair,
+          tokenMint: t.tokenMint,
+          delegatee: delegatee.address,
+          nonce: 0n,
+          amountPerPeriod: 100_000n,
+          periodLengthS: BigInt(ONE_DAY_IN_SECONDS),
+          startTs: currentTs,
+          expiryTs: currentTs + BigInt(ONE_DAY_IN_SECONDS * 30),
+        })
+        .sendTransaction(),
       SUBSCRIPTIONS_ERROR__DELEGATION_ALREADY_EXISTS,
     );
   });
@@ -868,17 +959,19 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initSubscriptionAuthority({
-      owner: subscriber,
-      tokenMint: t.tokenMint,
-      userAta: subscriberAta,
-      tokenProgram: t.tokenProgram,
-    });
+    await t.client.subscriptions.instructions
+      .initSubscriptionAuthority({
+        owner: subscriber,
+        tokenMint: t.tokenMint,
+        userAta: subscriberAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
 
-    const [subscriptionAuthorityPda] = await getSubscriptionAuthorityPDA(
-      subscriber.address,
-      t.tokenMint,
-    );
+    const [subscriptionAuthorityPda] = await findSubscriptionAuthorityPda({
+      user: subscriber.address,
+      tokenMint: t.tokenMint,
+    });
 
     const delegatee = await t.createFundedKeypair();
     const delegateeAta = await t.createAtaWithBalance(
@@ -888,33 +981,61 @@ describe('Delegation Security', () => {
     );
     const currentTs = await t.getValidatorTime();
 
-    await t.client.createFixedDelegation({
-      delegator: subscriber,
-      tokenMint: t.tokenMint,
+    await t.client.subscriptions.instructions
+      .createFixedDelegation({
+        delegator: subscriber,
+        tokenMint: t.tokenMint,
+        delegatee: delegatee.address,
+        nonce: 0n,
+        amount: 500_000n,
+        expiryTs: currentTs + BigInt(ONE_HOUR_IN_SECONDS),
+      })
+      .sendTransaction();
+
+    const [delegationPda] = await findFixedDelegationPda({
+      subscriptionAuthority: subscriptionAuthorityPda,
+      delegator: subscriber.address,
       delegatee: delegatee.address,
       nonce: 0n,
-      amount: 500_000n,
-      expiryTs: currentTs + BigInt(ONE_HOUR_IN_SECONDS),
     });
-
-    const [delegationPda] = await getDelegationPDA(
-      subscriptionAuthorityPda,
-      subscriber.address,
-      delegatee.address,
-      0n,
-    );
 
     const { getRevokeInstruction } = await import('@solana-program/token');
-    const revokeIx = getRevokeInstruction({
-      source: subscriberAta,
-      owner: subscriber,
-    });
-    await t.payer.sendInstructions([revokeIx]);
+    await t.client.sendTransaction(
+      getRevokeInstruction({
+        source: subscriberAta,
+        owner: subscriber,
+      }),
+    );
 
     // Fails at SPL Token program level (not a subscriptions error),
     // so we assert the generic rejection rather than a specific program error code
     await expect(
-      t.client.transferFixed({
+      t.client.subscriptions.instructions
+        .transferFixed({
+          delegatee,
+          delegator: subscriber.address,
+          delegatorAta: subscriberAta,
+          tokenMint: t.tokenMint,
+          delegationPda,
+          amount: 50_000n,
+          receiverAta: delegateeAta,
+          tokenProgram: t.tokenProgram,
+        })
+        .sendTransaction(),
+    ).rejects.toThrow(/(simulation failed|custom program error)/i);
+
+    const { getApproveInstruction } = await import('@solana-program/token');
+    await t.client.sendTransaction(
+      getApproveInstruction({
+        source: subscriberAta,
+        delegate: subscriptionAuthorityPda,
+        owner: subscriber,
+        amount: BigInt('18446744073709551615'),
+      }),
+    );
+
+    const signature = await t.client.subscriptions.instructions
+      .transferFixed({
         delegatee,
         delegator: subscriber.address,
         delegatorAta: subscriberAta,
@@ -923,28 +1044,8 @@ describe('Delegation Security', () => {
         amount: 50_000n,
         receiverAta: delegateeAta,
         tokenProgram: t.tokenProgram,
-      }),
-    ).rejects.toThrow(/simulation failed/i);
-
-    const { getApproveInstruction } = await import('@solana-program/token');
-    const approveIx = getApproveInstruction({
-      source: subscriberAta,
-      delegate: subscriptionAuthorityPda,
-      owner: subscriber,
-      amount: BigInt('18446744073709551615'),
-    });
-    await t.payer.sendInstructions([approveIx]);
-
-    const { signature } = await t.client.transferFixed({
-      delegatee,
-      delegator: subscriber.address,
-      delegatorAta: subscriberAta,
-      tokenMint: t.tokenMint,
-      delegationPda,
-      amount: 50_000n,
-      receiverAta: delegateeAta,
-      tokenProgram: t.tokenProgram,
-    });
+      })
+      .sendTransaction();
     expect(signature).toBeDefined();
   });
 
@@ -957,45 +1058,53 @@ describe('Delegation Security', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initSubscriptionAuthority({
-      owner: t.payerKeypair,
-      tokenMint: t.tokenMint,
-      userAta,
-      tokenProgram: t.tokenProgram,
-    });
+    await t.client.subscriptions.instructions
+      .initSubscriptionAuthority({
+        owner: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        userAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
 
     const delegatee = await t.createFundedKeypair();
     const currentTs = await t.getValidatorTime();
 
-    await t.client.createFixedDelegation({
-      delegator: t.payerKeypair,
-      tokenMint: t.tokenMint,
-      delegatee: delegatee.address,
-      nonce: 0n,
-      amount: 500_000n,
-      expiryTs: currentTs + BigInt(ONE_HOUR_IN_SECONDS),
-    });
-
-    await expectProgramError(
-      t.client.createFixedDelegation({
+    await t.client.subscriptions.instructions
+      .createFixedDelegation({
         delegator: t.payerKeypair,
         tokenMint: t.tokenMint,
         delegatee: delegatee.address,
         nonce: 0n,
         amount: 500_000n,
         expiryTs: currentTs + BigInt(ONE_HOUR_IN_SECONDS),
-      }),
+      })
+      .sendTransaction();
+
+    await expectProgramError(
+      t.client.subscriptions.instructions
+        .createFixedDelegation({
+          delegator: t.payerKeypair,
+          tokenMint: t.tokenMint,
+          delegatee: delegatee.address,
+          nonce: 0n,
+          amount: 500_000n,
+          expiryTs: currentTs + BigInt(ONE_HOUR_IN_SECONDS),
+        })
+        .sendTransaction(),
       SUBSCRIPTIONS_ERROR__DELEGATION_ALREADY_EXISTS,
     );
 
-    const { signature } = await t.client.createFixedDelegation({
-      delegator: t.payerKeypair,
-      tokenMint: t.tokenMint,
-      delegatee: delegatee.address,
-      nonce: 1n,
-      amount: 500_000n,
-      expiryTs: currentTs + BigInt(ONE_HOUR_IN_SECONDS),
-    });
+    const signature = await t.client.subscriptions.instructions
+      .createFixedDelegation({
+        delegator: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        delegatee: delegatee.address,
+        nonce: 1n,
+        amount: 500_000n,
+        expiryTs: currentTs + BigInt(ONE_HOUR_IN_SECONDS),
+      })
+      .sendTransaction();
     expect(signature).toBeDefined();
   });
 });
@@ -1012,19 +1121,31 @@ describe('Sponsor Revoke', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initSubscriptionAuthority({
-      owner: t.payerKeypair,
-      tokenMint: t.tokenMint,
-      userAta,
-      tokenProgram: t.tokenProgram,
-    });
+    await t.client.subscriptions.instructions
+      .initSubscriptionAuthority({
+        owner: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        userAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
 
     const delegatee = await t.createFundedKeypair();
     const currentTs = await t.getValidatorTime();
     const expiryTs = currentTs + BigInt(ONE_HOUR_IN_SECONDS);
 
-    const { instructions: createIxs, delegationPda } =
-      await buildCreateFixedDelegation({
+    const [subscriptionAuthority] = await findSubscriptionAuthorityPda({
+      user: t.payerKeypair.address,
+      tokenMint: t.tokenMint,
+    });
+    const [delegationPda] = await findFixedDelegationPda({
+      subscriptionAuthority,
+      delegator: t.payerKeypair.address,
+      delegatee: delegatee.address,
+      nonce: 0n,
+    });
+    await t.client.subscriptions.instructions
+      .createFixedDelegation({
         delegator: t.payerKeypair,
         tokenMint: t.tokenMint,
         delegatee: delegatee.address,
@@ -1032,16 +1153,16 @@ describe('Sponsor Revoke', () => {
         amount: 500_000n,
         expiryTs,
         payer: sponsor,
-      });
-    await t.payer.sendInstructions(createIxs);
+      })
+      .sendTransaction();
 
     await t.timeTravel(Number(expiryTs) + 200);
 
-    const { instructions: revokeIxs } = buildRevokeDelegation({
+    const revokeIx = t.client.subscriptions.instructions.revokeDelegation({
       authority: sponsor,
       delegationAccount: delegationPda,
     });
-    await sponsorWallet.sendInstructions(revokeIxs);
+    await sponsorWallet.sendInstructions([revokeIx]);
 
     const { fetchMaybeFixedDelegation } = await import(
       '../src/generated/index.ts'
@@ -1061,19 +1182,31 @@ describe('Sponsor Revoke', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initSubscriptionAuthority({
-      owner: t.payerKeypair,
-      tokenMint: t.tokenMint,
-      userAta,
-      tokenProgram: t.tokenProgram,
-    });
+    await t.client.subscriptions.instructions
+      .initSubscriptionAuthority({
+        owner: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        userAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
 
     const delegatee = await t.createFundedKeypair();
     const currentTs = await t.getValidatorTime();
     const expiryTs = currentTs + BigInt(2 * ONE_DAY_IN_SECONDS);
 
-    const { instructions: createIxs, delegationPda } =
-      await buildCreateRecurringDelegation({
+    const [subscriptionAuthority] = await findSubscriptionAuthorityPda({
+      user: t.payerKeypair.address,
+      tokenMint: t.tokenMint,
+    });
+    const [delegationPda] = await findRecurringDelegationPda({
+      subscriptionAuthority,
+      delegator: t.payerKeypair.address,
+      delegatee: delegatee.address,
+      nonce: 0n,
+    });
+    await t.client.subscriptions.instructions
+      .createRecurringDelegation({
         delegator: t.payerKeypair,
         tokenMint: t.tokenMint,
         delegatee: delegatee.address,
@@ -1083,16 +1216,16 @@ describe('Sponsor Revoke', () => {
         startTs: currentTs,
         expiryTs,
         payer: sponsor,
-      });
-    await t.payer.sendInstructions(createIxs);
+      })
+      .sendTransaction();
 
     await t.timeTravel(Number(expiryTs) + 200);
 
-    const { instructions: revokeIxs } = buildRevokeDelegation({
+    const revokeIx = t.client.subscriptions.instructions.revokeDelegation({
       authority: sponsor,
       delegationAccount: delegationPda,
     });
-    await sponsorWallet.sendInstructions(revokeIxs);
+    await sponsorWallet.sendInstructions([revokeIx]);
 
     const { fetchMaybeRecurringDelegation } = await import(
       '../src/generated/index.ts'
@@ -1111,19 +1244,31 @@ describe('Sponsor Revoke', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initSubscriptionAuthority({
-      owner: t.payerKeypair,
-      tokenMint: t.tokenMint,
-      userAta,
-      tokenProgram: t.tokenProgram,
-    });
+    await t.client.subscriptions.instructions
+      .initSubscriptionAuthority({
+        owner: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        userAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
 
     const delegatee = await t.createFundedKeypair();
     const currentTs = await t.getValidatorTime();
     const expiryTs = currentTs + BigInt(2 * ONE_HOUR_IN_SECONDS);
 
-    const { instructions: createIxs, delegationPda } =
-      await buildCreateFixedDelegation({
+    const [subscriptionAuthority] = await findSubscriptionAuthorityPda({
+      user: t.payerKeypair.address,
+      tokenMint: t.tokenMint,
+    });
+    const [delegationPda] = await findFixedDelegationPda({
+      subscriptionAuthority,
+      delegator: t.payerKeypair.address,
+      delegatee: delegatee.address,
+      nonce: 0n,
+    });
+    await t.client.subscriptions.instructions
+      .createFixedDelegation({
         delegator: t.payerKeypair,
         tokenMint: t.tokenMint,
         delegatee: delegatee.address,
@@ -1131,14 +1276,16 @@ describe('Sponsor Revoke', () => {
         amount: 500_000n,
         expiryTs,
         payer: sponsor,
-      });
-    await t.payer.sendInstructions(createIxs);
+      })
+      .sendTransaction();
 
     await expectProgramError(
-      t.client.revokeDelegation({
-        authority: sponsor,
-        delegationAccount: delegationPda,
-      }),
+      t.client.subscriptions.instructions
+        .revokeDelegation({
+          authority: sponsor,
+          delegationAccount: delegationPda,
+        })
+        .sendTransaction(),
       SUBSCRIPTIONS_ERROR__UNAUTHORIZED,
     );
   });
@@ -1153,17 +1300,29 @@ describe('Sponsor Revoke', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initSubscriptionAuthority({
-      owner: t.payerKeypair,
-      tokenMint: t.tokenMint,
-      userAta,
-      tokenProgram: t.tokenProgram,
-    });
+    await t.client.subscriptions.instructions
+      .initSubscriptionAuthority({
+        owner: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        userAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
 
     const delegatee = await t.createFundedKeypair();
 
-    const { instructions: createIxs, delegationPda } =
-      await buildCreateFixedDelegation({
+    const [subscriptionAuthority] = await findSubscriptionAuthorityPda({
+      user: t.payerKeypair.address,
+      tokenMint: t.tokenMint,
+    });
+    const [delegationPda] = await findFixedDelegationPda({
+      subscriptionAuthority,
+      delegator: t.payerKeypair.address,
+      delegatee: delegatee.address,
+      nonce: 0n,
+    });
+    await t.client.subscriptions.instructions
+      .createFixedDelegation({
         delegator: t.payerKeypair,
         tokenMint: t.tokenMint,
         delegatee: delegatee.address,
@@ -1171,14 +1330,16 @@ describe('Sponsor Revoke', () => {
         amount: 500_000n,
         expiryTs: 0n,
         payer: sponsor,
-      });
-    await t.payer.sendInstructions(createIxs);
+      })
+      .sendTransaction();
 
     await expectProgramError(
-      t.client.revokeDelegation({
-        authority: sponsor,
-        delegationAccount: delegationPda,
-      }),
+      t.client.subscriptions.instructions
+        .revokeDelegation({
+          authority: sponsor,
+          delegationAccount: delegationPda,
+        })
+        .sendTransaction(),
       SUBSCRIPTIONS_ERROR__UNAUTHORIZED,
     );
   });
@@ -1193,19 +1354,31 @@ describe('Sponsor Revoke', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initSubscriptionAuthority({
-      owner: t.payerKeypair,
-      tokenMint: t.tokenMint,
-      userAta,
-      tokenProgram: t.tokenProgram,
-    });
+    await t.client.subscriptions.instructions
+      .initSubscriptionAuthority({
+        owner: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        userAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
 
     const delegatee = await t.createFundedKeypair();
     const currentTs = await t.getValidatorTime();
     const expiryTs = currentTs + BigInt(2 * ONE_HOUR_IN_SECONDS);
 
-    const { instructions: createIxs, delegationPda } =
-      await buildCreateFixedDelegation({
+    const [subscriptionAuthority] = await findSubscriptionAuthorityPda({
+      user: t.payerKeypair.address,
+      tokenMint: t.tokenMint,
+    });
+    const [delegationPda] = await findFixedDelegationPda({
+      subscriptionAuthority,
+      delegator: t.payerKeypair.address,
+      delegatee: delegatee.address,
+      nonce: 0n,
+    });
+    await t.client.subscriptions.instructions
+      .createFixedDelegation({
         delegator: t.payerKeypair,
         tokenMint: t.tokenMint,
         delegatee: delegatee.address,
@@ -1213,15 +1386,16 @@ describe('Sponsor Revoke', () => {
         amount: 500_000n,
         expiryTs,
         payer: sponsor,
-      });
-    await t.payer.sendInstructions(createIxs);
+      })
+      .sendTransaction();
 
-    const { instructions: revokeIxs } = buildRevokeDelegation({
-      authority: t.payerKeypair,
-      delegationAccount: delegationPda,
-      receiver: sponsor.address,
-    });
-    await t.payer.sendInstructions(revokeIxs);
+    await t.client.subscriptions.instructions
+      .revokeDelegation({
+        authority: t.payerKeypair,
+        delegationAccount: delegationPda,
+        receiver: sponsor.address,
+      })
+      .sendTransaction();
 
     const { fetchMaybeFixedDelegation } = await import(
       '../src/generated/index.ts'
@@ -1241,19 +1415,31 @@ describe('Sponsor Revoke', () => {
       DEFAULT_TEST_BALANCE,
     );
 
-    await t.client.initSubscriptionAuthority({
-      owner: t.payerKeypair,
-      tokenMint: t.tokenMint,
-      userAta,
-      tokenProgram: t.tokenProgram,
-    });
+    await t.client.subscriptions.instructions
+      .initSubscriptionAuthority({
+        owner: t.payerKeypair,
+        tokenMint: t.tokenMint,
+        userAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
 
     const delegatee = await t.createFundedKeypair();
     const currentTs = await t.getValidatorTime();
     const expiryTs = currentTs + BigInt(ONE_HOUR_IN_SECONDS);
 
-    const { instructions: createIxs, delegationPda } =
-      await buildCreateFixedDelegation({
+    const [subscriptionAuthority] = await findSubscriptionAuthorityPda({
+      user: t.payerKeypair.address,
+      tokenMint: t.tokenMint,
+    });
+    const [delegationPda] = await findFixedDelegationPda({
+      subscriptionAuthority,
+      delegator: t.payerKeypair.address,
+      delegatee: delegatee.address,
+      nonce: 0n,
+    });
+    await t.client.subscriptions.instructions
+      .createFixedDelegation({
         delegator: t.payerKeypair,
         tokenMint: t.tokenMint,
         delegatee: delegatee.address,
@@ -1261,16 +1447,18 @@ describe('Sponsor Revoke', () => {
         amount: 500_000n,
         expiryTs,
         payer: sponsor,
-      });
-    await t.payer.sendInstructions(createIxs);
+      })
+      .sendTransaction();
 
     await t.timeTravel(Number(expiryTs) + 200);
 
     await expectProgramError(
-      t.client.revokeDelegation({
-        authority: attacker,
-        delegationAccount: delegationPda,
-      }),
+      t.client.subscriptions.instructions
+        .revokeDelegation({
+          authority: attacker,
+          delegationAccount: delegationPda,
+        })
+        .sendTransaction(),
       SUBSCRIPTIONS_ERROR__UNAUTHORIZED,
     );
   });

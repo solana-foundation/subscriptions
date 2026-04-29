@@ -3,7 +3,7 @@ import type {
   Base58EncodedBytes,
   GetProgramAccountsApi,
   Rpc,
-} from 'gill';
+} from '@solana/kit';
 import { DELEGATOR_OFFSET, SUBSCRIPTION_SIZE } from '../constants.js';
 import {
   decodeSubscriptionDelegation,

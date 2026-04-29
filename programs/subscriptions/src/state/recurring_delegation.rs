@@ -19,6 +19,11 @@ use crate::{
 /// **PDA seeds:** `["delegation", subscription_authority, delegator, delegatee, nonce]`
 #[repr(C, packed)]
 #[derive(Debug, CodamaAccount)]
+#[codama(seed(type = string(utf8), value = "delegation"))]
+#[codama(seed(name = "subscriptionAuthority", type = public_key))]
+#[codama(seed(name = "delegator", type = public_key))]
+#[codama(seed(name = "delegatee", type = public_key))]
+#[codama(seed(name = "nonce", type = number(u64)))]
 pub struct RecurringDelegation {
     /// Common delegation header (discriminator, version, bump, delegator, delegatee, payer).
     pub header: Header,

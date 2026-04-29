@@ -2,7 +2,11 @@
 
 import { useState } from 'react';
 import type { Address } from '@solana/kit';
-import { buildCreateRecurringDelegation } from '@subscriptions/client';
+import {
+    findRecurringDelegationPda,
+    findSubscriptionAuthorityPda,
+    getCreateRecurringDelegationOverlayInstructionAsync,
+} from '@subscriptions/client';
 import { useWallet } from '@/contexts/WalletContext';
 import { useSavedValues } from '@/contexts/SavedValuesContext';
 import { getProgramAddress } from '@/lib/program';
@@ -28,21 +32,38 @@ export function CreateRecurringDelegation() {
         const signer = createSigner();
         if (!signer) return;
 
-        const { instructions, delegationPda } = await buildCreateRecurringDelegation({
+        const programAddress = getProgramAddress();
+        const mintAddress = mint.trim() as Address;
+        const delegateeAddress = delegatee.trim() as Address;
+        const nonceValue = BigInt(nonce);
+        const [subscriptionAuthority] = await findSubscriptionAuthorityPda(
+            { user: signer.address, tokenMint: mintAddress },
+            { programAddress },
+        );
+        const [delegationPda] = await findRecurringDelegationPda(
+            {
+                subscriptionAuthority,
+                delegator: signer.address,
+                delegatee: delegateeAddress,
+                nonce: nonceValue,
+            },
+            { programAddress },
+        );
+        const instruction = await getCreateRecurringDelegationOverlayInstructionAsync({
             delegator: signer,
-            tokenMint: mint.trim() as Address,
-            delegatee: delegatee.trim() as Address,
-            nonce: BigInt(nonce),
+            tokenMint: mintAddress,
+            delegatee: delegateeAddress,
+            nonce: nonceValue,
             amountPerPeriod: BigInt(amountPerPeriod),
             periodLengthS: BigInt(periodLengthS),
             startTs: BigInt(startTs),
             expiryTs: BigInt(expiryTs),
-            programAddress: getProgramAddress(),
+            programAddress,
         });
 
-        const sig = await send(instructions, {
+        const sig = await send([instruction], {
             action: 'CreateRecurringDelegation',
-            values: { mint: mint.trim(), delegatee: delegatee.trim(), delegationPda },
+            values: { mint: mintAddress, delegatee: delegateeAddress, delegationPda },
         });
         if (sig) {
             rememberMint(mint.trim());

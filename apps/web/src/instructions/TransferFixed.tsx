@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Address } from '@solana/kit';
-import { buildTransferFixed } from '@subscriptions/client';
+import { getTransferFixedOverlayInstructionAsync } from '@subscriptions/client';
 import { findAssociatedTokenPda } from '@solana-program/token';
 import { useWallet } from '@/contexts/WalletContext';
 import { useSavedValues } from '@/contexts/SavedValuesContext';
@@ -41,14 +41,14 @@ export function TransferFixed() {
             receiver = derived;
         }
 
-        const { instructions } = await buildTransferFixed({
+        const instruction = await getTransferFixedOverlayInstructionAsync({
             delegatee: signer, delegator: delegatorAddress, delegatorAta,
             tokenMint: mintAddress, delegationPda: delegationPda.trim() as Address,
             amount: BigInt(amount), receiverAta: receiver, tokenProgram,
             programAddress: getProgramAddress(),
         });
 
-        await send(instructions, {
+        await send([instruction], {
             action: 'TransferFixed',
             values: { delegationPda: delegationPda.trim(), mint: mintAddress, amount },
         });

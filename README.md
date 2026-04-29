@@ -153,7 +153,7 @@ The `justfile` is the main entrypoint for day-to-day development.
 | `just build` | Build program + generate IDL + generate clients + build TypeScript client |
 | `just build-program` | Compile the SBF program (`.so`) |
 | `just generate-idl` | Regenerate `programs/subscriptions/idl/subscriptions.json` |
-| `just generate-client` | Regenerate TypeScript and Rust clients from IDL via Codama |
+| `just generate-clients` | Regenerate TypeScript and Rust clients from IDL via Codama |
 | `just build-client` | Build `clients/typescript` into `clients/typescript/dist` |
 
 ### Test

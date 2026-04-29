@@ -1,10 +1,14 @@
 import {
-  createTransaction,
+  appendTransactionMessageInstructions,
   compileTransaction,
+  createTransactionMessage,
   getBase64EncodedWireTransaction,
+  pipe,
+  setTransactionMessageFeePayerSigner,
+  setTransactionMessageLifetimeUsingBlockhash,
   type Instruction,
   type TransactionSendingSigner,
-} from 'gill'
+} from '@solana/kit'
 
 const MAX_TX_BYTES = 1232
 
@@ -15,13 +19,16 @@ function base64ByteLength(b64: string): number {
 
 function txByteSize(instructions: Instruction[], feePayer: TransactionSendingSigner): number {
   try {
-    const tx = createTransaction({
-      feePayer,
-      version: 0,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      latestBlockhash: { blockhash: '11111111111111111111111111111111' as any, lastValidBlockHeight: 0n },
-      instructions,
-    })
+    const tx = pipe(
+      createTransactionMessage({ version: 0 }),
+      m => setTransactionMessageFeePayerSigner(feePayer, m),
+      m => setTransactionMessageLifetimeUsingBlockhash(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        { blockhash: '11111111111111111111111111111111' as any, lastValidBlockHeight: 0n },
+        m,
+      ),
+      m => appendTransactionMessageInstructions(instructions, m),
+    )
     return base64ByteLength(getBase64EncodedWireTransaction(compileTransaction(tx)))
   } catch {
     return MAX_TX_BYTES + 1

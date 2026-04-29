@@ -3,11 +3,14 @@ import type {
   Base58EncodedBytes,
   GetProgramAccountsApi,
   Rpc,
-} from 'gill';
+} from '@solana/kit';
 import { PLAN_OWNER_OFFSET, PLAN_SIZE } from '../constants.js';
-import { SUBSCRIPTIONS_PROGRAM_ADDRESS } from '../generated/index.js';
+import {
+  decodePlan,
+  SUBSCRIPTIONS_PROGRAM_ADDRESS,
+} from '../generated/index.js';
 import type { PlanWithAddress } from '../types/plan.js';
-import { decodePlanAccount } from './decode.js';
+import { toEncodedAccount } from './decode.js';
 
 /**
  * Fetches all plan accounts owned by a given address, filtered by account size.
@@ -38,11 +41,10 @@ export async function fetchPlansForOwner(
     })
     .send();
 
-  return response.map((account) =>
-    decodePlanAccount(
-      // biome-ignore lint/suspicious/noExplicitAny: RPC response shape
-      account as any,
-      progAddr,
-    ),
-  );
+  return response.map((account) => {
+    // biome-ignore lint/suspicious/noExplicitAny: RPC response shape
+    const encoded = toEncodedAccount(account as any, progAddr);
+    const { address, data } = decodePlan(encoded);
+    return { address, data };
+  });
 }

@@ -2,7 +2,11 @@
 
 import { useState } from 'react';
 import type { Address } from '@solana/kit';
-import { buildCreateFixedDelegation } from '@subscriptions/client';
+import {
+    findFixedDelegationPda,
+    findSubscriptionAuthorityPda,
+    getCreateFixedDelegationOverlayInstructionAsync,
+} from '@subscriptions/client';
 import { useWallet } from '@/contexts/WalletContext';
 import { useSavedValues } from '@/contexts/SavedValuesContext';
 import { getProgramAddress } from '@/lib/program';
@@ -26,19 +30,36 @@ export function CreateFixedDelegation() {
         const signer = createSigner();
         if (!signer) return;
 
-        const { instructions, delegationPda } = await buildCreateFixedDelegation({
+        const programAddress = getProgramAddress();
+        const mintAddress = mint.trim() as Address;
+        const delegateeAddress = delegatee.trim() as Address;
+        const nonceValue = BigInt(nonce);
+        const [subscriptionAuthority] = await findSubscriptionAuthorityPda(
+            { user: signer.address, tokenMint: mintAddress },
+            { programAddress },
+        );
+        const [delegationPda] = await findFixedDelegationPda(
+            {
+                subscriptionAuthority,
+                delegator: signer.address,
+                delegatee: delegateeAddress,
+                nonce: nonceValue,
+            },
+            { programAddress },
+        );
+        const instruction = await getCreateFixedDelegationOverlayInstructionAsync({
             delegator: signer,
-            tokenMint: mint.trim() as Address,
-            delegatee: delegatee.trim() as Address,
-            nonce: BigInt(nonce),
+            tokenMint: mintAddress,
+            delegatee: delegateeAddress,
+            nonce: nonceValue,
             amount: BigInt(amount),
             expiryTs: BigInt(expiryTs),
-            programAddress: getProgramAddress(),
+            programAddress,
         });
 
-        const sig = await send(instructions, {
+        const sig = await send([instruction], {
             action: 'CreateFixedDelegation',
-            values: { mint: mint.trim(), delegatee: delegatee.trim(), delegationPda },
+            values: { mint: mintAddress, delegatee: delegateeAddress, delegationPda },
         });
         if (sig) {
             rememberMint(mint.trim());

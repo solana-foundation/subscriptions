@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useWalletUi } from '@wallet-ui/react'
-import { createSolanaRpc, address } from 'gill'
-import type { Address } from 'gill'
+import { createSolanaRpc, address } from '@solana/kit'
+import type { Address } from '@solana/kit'
 import {
   SUBSCRIPTION_SIZE,
   DELEGATEE_OFFSET,

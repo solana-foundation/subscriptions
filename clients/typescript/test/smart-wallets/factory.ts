@@ -1,5 +1,5 @@
+import type { Address } from '@solana/kit';
 import { Connection, Keypair } from '@solana/web3.js';
-import type { Address } from 'gill';
 import type { SmartWallet } from './SmartWallet.ts';
 import { createSquadsWallet } from './squadsWallet.ts';
 import { createSwigWallet } from './swigWallet.ts';
@@ -14,7 +14,7 @@ type CreateSmartWalletsConfig = {
 
 /**
  * Adapter-layer helper that isolates web3.js-only wallet SDK requirements.
- * Callers can remain on kit/gill abstractions and plain Address values.
+ * Callers can remain on kit abstractions and plain Address values.
  */
 export async function createSmartWallets(
   config: CreateSmartWalletsConfig,

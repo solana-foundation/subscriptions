@@ -2,7 +2,10 @@
 
 import { useState } from 'react';
 import type { Address } from '@solana/kit';
-import { buildInitSubscriptionAuthority } from '@subscriptions/client';
+import {
+    findSubscriptionAuthorityPda,
+    getInitSubscriptionAuthorityOverlayInstructionAsync,
+} from '@subscriptions/client';
 import { findAssociatedTokenPda } from '@solana-program/token';
 import { useWallet } from '@/contexts/WalletContext';
 import { useSavedValues } from '@/contexts/SavedValuesContext';
@@ -26,6 +29,7 @@ export function InitSubscriptionAuthority() {
 
         const mintAddress = mint.trim() as Address;
         const tokenProgram = TOKEN_2022_PROGRAM_ID;
+        const programAddress = getProgramAddress();
 
         let ataAddress: Address;
         if (userAta.trim()) {
@@ -35,12 +39,16 @@ export function InitSubscriptionAuthority() {
             ataAddress = derived;
         }
 
-        const { instructions, subscriptionAuthorityPda } = await buildInitSubscriptionAuthority({
+        const [subscriptionAuthorityPda] = await findSubscriptionAuthorityPda(
+            { user: signer.address, tokenMint: mintAddress },
+            { programAddress },
+        );
+        const instruction = await getInitSubscriptionAuthorityOverlayInstructionAsync({
             owner: signer, tokenMint: mintAddress, userAta: ataAddress,
-            tokenProgram, programAddress: getProgramAddress(),
+            tokenProgram, programAddress,
         });
 
-        const sig = await send(instructions, {
+        const sig = await send([instruction], {
             action: 'InitSubscriptionAuthority',
             values: { mint: mintAddress, subscriptionAuthority: subscriptionAuthorityPda },
         });

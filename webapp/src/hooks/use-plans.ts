@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useWalletUi } from '@wallet-ui/react'
-import { createSolanaRpc, address } from 'gill'
+import { createSolanaRpc, address } from '@solana/kit'
 import { fetchPlansForOwner } from '@subscriptions/client'
 import type { PlanData } from '@subscriptions/client'
 import { useClusterConfig } from '@/hooks/use-cluster-config'

@@ -1,19 +1,26 @@
 import { useMutation } from '@tanstack/react-query'
 import {
-  createTransaction,
+  appendTransactionMessageInstructions,
+  createSignerFromKeyPair,
+  createTransactionMessage,
+  generateKeyPair,
+  pipe,
+  setTransactionMessageFeePayerSigner,
+  setTransactionMessageLifetimeUsingBlockhash,
   signAndSendTransactionMessageWithSigners,
-  generateExtractableKeyPairSigner,
   type TransactionSendingSigner,
   type Address,
-} from 'gill'
+} from '@solana/kit'
 import {
   TOKEN_2022_PROGRAM_ADDRESS,
   getInitializeMint2Instruction,
   getMintSize,
   getMintToInstruction,
+} from '@solana-program/token-2022'
+import {
   findAssociatedTokenPda,
   getCreateAssociatedTokenIdempotentInstruction,
-} from 'gill/programs/token'
+} from '@solana-program/token'
 import { useWalletUiSigner } from '@/components/solana/use-wallet-ui-signer'
 import { useRpc } from '@/hooks/use-rpc'
 import { useTransactionToast } from '@/components/use-transaction-toast'
@@ -29,7 +36,7 @@ export function useCreateToken() {
       if (!walletSigner) throw new Error('Wallet not connected')
       const signer = walletSigner as TransactionSendingSigner
 
-      const mintKp = await generateExtractableKeyPairSigner()
+      const mintKp = await createSignerFromKeyPair(await generateKeyPair())
       const mintSize = getMintSize()
       const rentLamports = await rpc.getMinimumBalanceForRentExemption(BigInt(mintSize)).send()
       const { value: latestBlockhash } = await rpc.getLatestBlockhash().send()
@@ -49,12 +56,12 @@ export function useCreateToken() {
         freezeAuthority: signer.address,
       })
 
-      const tx = createTransaction({
-        feePayer: signer,
-        version: 0,
-        latestBlockhash,
-        instructions: [createAccIx, initMintIx],
-      })
+      const tx = pipe(
+        createTransactionMessage({ version: 0 }),
+        m => setTransactionMessageFeePayerSigner(signer, m),
+        m => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
+        m => appendTransactionMessageInstructions([createAccIx, initMintIx], m),
+      )
 
       await signAndSendTransactionMessageWithSigners(tx)
 
@@ -94,12 +101,12 @@ export function useCreateToken() {
         amount,
       })
 
-      const tx = createTransaction({
-        feePayer: signer,
-        version: 0,
-        latestBlockhash,
-        instructions: [createAtaIx, mintToIx],
-      })
+      const tx = pipe(
+        createTransactionMessage({ version: 0 }),
+        m => setTransactionMessageFeePayerSigner(signer, m),
+        m => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
+        m => appendTransactionMessageInstructions([createAtaIx, mintToIx], m),
+      )
 
       await signAndSendTransactionMessageWithSigners(tx)
       return { ata }

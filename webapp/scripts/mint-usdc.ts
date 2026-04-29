@@ -3,7 +3,7 @@
  * Usage: tsx scripts/mint-usdc.ts <recipient-address> <amount>
  */
 
-import { address } from 'gill'
+import { address } from '@solana/kit'
 import { getUsdcMint } from './config-manager'
 import { mintMockUsdc } from './helpers'
 

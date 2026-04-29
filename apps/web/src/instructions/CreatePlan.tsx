@@ -2,7 +2,10 @@
 
 import { useState } from 'react';
 import type { Address } from '@solana/kit';
-import { buildCreatePlan } from '@subscriptions/client';
+import {
+    findPlanPda,
+    getCreatePlanOverlayInstructionAsync,
+} from '@subscriptions/client';
 import { useWallet } from '@/contexts/WalletContext';
 import { useSavedValues } from '@/contexts/SavedValuesContext';
 import { getProgramAddress, TOKEN_2022_PROGRAM_ID } from '@/lib/program';
@@ -33,15 +36,21 @@ export function CreatePlan() {
         const signer = createSigner();
         if (!signer) return;
 
-        const { instructions, planPda } = await buildCreatePlan({
-            owner: signer, planId: BigInt(planId), mint: mint.trim() as Address,
+        const programAddress = getProgramAddress();
+        const planIdValue = BigInt(planId);
+        const [planPda] = await findPlanPda(
+            { owner: signer.address, planId: planIdValue },
+            { programAddress },
+        );
+        const instruction = await getCreatePlanOverlayInstructionAsync({
+            owner: signer, planId: planIdValue, mint: mint.trim() as Address,
             amount: BigInt(amount), periodHours: BigInt(periodHours),
             endTs: BigInt(endTs), destinations: parseAddressList(destinations),
             pullers: parseAddressList(pullers), metadataUri: metadataUri.trim(),
-            tokenProgram: TOKEN_2022_PROGRAM_ID, programAddress: getProgramAddress(),
+            tokenProgram: TOKEN_2022_PROGRAM_ID, programAddress,
         });
 
-        const sig = await send(instructions, { action: 'CreatePlan', values: { mint: mint.trim(), planPda } });
+        const sig = await send([instruction], { action: 'CreatePlan', values: { mint: mint.trim(), planPda } });
         if (sig) {
             rememberMint(mint.trim());
             rememberPlan(planPda);

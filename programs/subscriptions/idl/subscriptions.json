@@ -50,7 +50,11 @@
           "kind": "structTypeNode"
         },
         "kind": "accountNode",
-        "name": "fixedDelegation"
+        "name": "fixedDelegation",
+        "pda": {
+          "kind": "pdaLinkNode",
+          "name": "fixedDelegation"
+        }
       },
       {
         "data": {
@@ -101,7 +105,11 @@
           "kind": "structTypeNode"
         },
         "kind": "accountNode",
-        "name": "plan"
+        "name": "plan",
+        "pda": {
+          "kind": "pdaLinkNode",
+          "name": "plan"
+        }
       },
       {
         "data": {
@@ -177,7 +185,11 @@
           "kind": "structTypeNode"
         },
         "kind": "accountNode",
-        "name": "recurringDelegation"
+        "name": "recurringDelegation",
+        "pda": {
+          "kind": "pdaLinkNode",
+          "name": "recurringDelegation"
+        }
       },
       {
         "data": {
@@ -234,7 +246,11 @@
           "kind": "structTypeNode"
         },
         "kind": "accountNode",
-        "name": "subscriptionAuthority"
+        "name": "subscriptionAuthority",
+        "pda": {
+          "kind": "pdaLinkNode",
+          "name": "subscriptionAuthority"
+        }
       },
       {
         "data": {
@@ -286,7 +302,23 @@
           "kind": "structTypeNode"
         },
         "kind": "accountNode",
-        "name": "subscriptionDelegation"
+        "name": "subscriptionDelegation",
+        "pda": {
+          "kind": "pdaLinkNode",
+          "name": "subscriptionDelegation"
+        }
+      },
+      {
+        "data": {
+          "fields": [],
+          "kind": "structTypeNode"
+        },
+        "kind": "accountNode",
+        "name": "eventAuthority",
+        "pda": {
+          "kind": "pdaLinkNode",
+          "name": "eventAuthority"
+        }
       }
     ],
     "definedTypes": [
@@ -1221,6 +1253,31 @@
             "name": "owner"
           },
           {
+            "defaultValue": {
+              "kind": "pdaValueNode",
+              "pda": {
+                "kind": "pdaLinkNode",
+                "name": "subscriptionAuthority"
+              },
+              "seeds": [
+                {
+                  "kind": "pdaSeedValueNode",
+                  "name": "user",
+                  "value": {
+                    "kind": "accountValueNode",
+                    "name": "owner"
+                  }
+                },
+                {
+                  "kind": "pdaSeedValueNode",
+                  "name": "tokenMint",
+                  "value": {
+                    "kind": "accountValueNode",
+                    "name": "tokenMint"
+                  }
+                }
+              ]
+            },
             "docs": [
               "The subscription_authority PDA that will be the delegate instance for this token"
             ],
@@ -1572,6 +1629,10 @@
             "name": "delegatee"
           },
           {
+            "defaultValue": {
+              "kind": "publicKeyValueNode",
+              "publicKey": "3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7"
+            },
             "docs": [
               "The event authority PDA"
             ],
@@ -1581,6 +1642,10 @@
             "name": "eventAuthority"
           },
           {
+            "defaultValue": {
+              "kind": "publicKeyValueNode",
+              "publicKey": "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44"
+            },
             "docs": [
               "This program (for self-CPI)"
             ],
@@ -1681,6 +1746,10 @@
             "name": "delegatee"
           },
           {
+            "defaultValue": {
+              "kind": "publicKeyValueNode",
+              "publicKey": "3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7"
+            },
             "docs": [
               "The event authority PDA"
             ],
@@ -1690,6 +1759,10 @@
             "name": "eventAuthority"
           },
           {
+            "defaultValue": {
+              "kind": "publicKeyValueNode",
+              "publicKey": "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44"
+            },
             "docs": [
               "This program (for self-CPI)"
             ],
@@ -2038,6 +2111,10 @@
             "name": "tokenProgram"
           },
           {
+            "defaultValue": {
+              "kind": "publicKeyValueNode",
+              "publicKey": "3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7"
+            },
             "docs": [
               "The event authority PDA"
             ],
@@ -2047,6 +2124,10 @@
             "name": "eventAuthority"
           },
           {
+            "defaultValue": {
+              "kind": "publicKeyValueNode",
+              "publicKey": "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44"
+            },
             "docs": [
               "This program (for self-CPI)"
             ],
@@ -2120,6 +2201,31 @@
             "name": "planPda"
           },
           {
+            "defaultValue": {
+              "kind": "pdaValueNode",
+              "pda": {
+                "kind": "pdaLinkNode",
+                "name": "subscriptionDelegation"
+              },
+              "seeds": [
+                {
+                  "kind": "pdaSeedValueNode",
+                  "name": "planPda",
+                  "value": {
+                    "kind": "accountValueNode",
+                    "name": "planPda"
+                  }
+                },
+                {
+                  "kind": "pdaSeedValueNode",
+                  "name": "subscriber",
+                  "value": {
+                    "kind": "accountValueNode",
+                    "name": "subscriber"
+                  }
+                }
+              ]
+            },
             "docs": [
               "The subscription PDA being created"
             ],
@@ -2151,6 +2257,10 @@
             "name": "systemProgram"
           },
           {
+            "defaultValue": {
+              "kind": "publicKeyValueNode",
+              "publicKey": "3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7"
+            },
             "docs": [
               "The event authority PDA"
             ],
@@ -2160,6 +2270,10 @@
             "name": "eventAuthority"
           },
           {
+            "defaultValue": {
+              "kind": "publicKeyValueNode",
+              "publicKey": "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44"
+            },
             "docs": [
               "This program (for self-CPI)"
             ],
@@ -2224,6 +2338,31 @@
             "name": "planPda"
           },
           {
+            "defaultValue": {
+              "kind": "pdaValueNode",
+              "pda": {
+                "kind": "pdaLinkNode",
+                "name": "subscriptionDelegation"
+              },
+              "seeds": [
+                {
+                  "kind": "pdaSeedValueNode",
+                  "name": "planPda",
+                  "value": {
+                    "kind": "accountValueNode",
+                    "name": "planPda"
+                  }
+                },
+                {
+                  "kind": "pdaSeedValueNode",
+                  "name": "subscriber",
+                  "value": {
+                    "kind": "accountValueNode",
+                    "name": "subscriber"
+                  }
+                }
+              ]
+            },
             "docs": [
               "The subscription PDA being cancelled"
             ],
@@ -2233,6 +2372,10 @@
             "name": "subscriptionPda"
           },
           {
+            "defaultValue": {
+              "kind": "publicKeyValueNode",
+              "publicKey": "3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7"
+            },
             "docs": [
               "The event authority PDA"
             ],
@@ -2242,6 +2385,10 @@
             "name": "eventAuthority"
           },
           {
+            "defaultValue": {
+              "kind": "publicKeyValueNode",
+              "publicKey": "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44"
+            },
             "docs": [
               "This program (for self-CPI)"
             ],
@@ -2276,49 +2423,218 @@
         ],
         "kind": "instructionNode",
         "name": "cancelSubscription"
-      },
-      {
-        "accounts": [
-          {
-            "docs": [
-              "The event authority PDA"
-            ],
-            "isSigner": true,
-            "isWritable": false,
-            "kind": "instructionAccountNode",
-            "name": "eventAuthority"
-          }
-        ],
-        "arguments": [
-          {
-            "defaultValue": {
-              "kind": "numberValueNode",
-              "number": 228
-            },
-            "defaultValueStrategy": "omitted",
-            "kind": "instructionArgumentNode",
-            "name": "discriminator",
-            "type": {
-              "endian": "le",
-              "format": "u8",
-              "kind": "numberTypeNode"
-            }
-          }
-        ],
-        "discriminators": [
-          {
-            "kind": "fieldDiscriminatorNode",
-            "name": "discriminator",
-            "offset": 0
-          }
-        ],
-        "kind": "instructionNode",
-        "name": "emitEvent"
       }
     ],
     "kind": "programNode",
     "name": "subscriptions",
-    "pdas": [],
+    "pdas": [
+      {
+        "kind": "pdaNode",
+        "name": "fixedDelegation",
+        "seeds": [
+          {
+            "kind": "constantPdaSeedNode",
+            "type": {
+              "encoding": "utf8",
+              "kind": "stringTypeNode"
+            },
+            "value": {
+              "kind": "stringValueNode",
+              "string": "delegation"
+            }
+          },
+          {
+            "kind": "variablePdaSeedNode",
+            "name": "subscriptionAuthority",
+            "type": {
+              "kind": "publicKeyTypeNode"
+            }
+          },
+          {
+            "kind": "variablePdaSeedNode",
+            "name": "delegator",
+            "type": {
+              "kind": "publicKeyTypeNode"
+            }
+          },
+          {
+            "kind": "variablePdaSeedNode",
+            "name": "delegatee",
+            "type": {
+              "kind": "publicKeyTypeNode"
+            }
+          },
+          {
+            "kind": "variablePdaSeedNode",
+            "name": "nonce",
+            "type": {
+              "endian": "le",
+              "format": "u64",
+              "kind": "numberTypeNode"
+            }
+          }
+        ]
+      },
+      {
+        "kind": "pdaNode",
+        "name": "plan",
+        "seeds": [
+          {
+            "kind": "constantPdaSeedNode",
+            "type": {
+              "encoding": "utf8",
+              "kind": "stringTypeNode"
+            },
+            "value": {
+              "kind": "stringValueNode",
+              "string": "plan"
+            }
+          },
+          {
+            "kind": "variablePdaSeedNode",
+            "name": "owner",
+            "type": {
+              "kind": "publicKeyTypeNode"
+            }
+          },
+          {
+            "kind": "variablePdaSeedNode",
+            "name": "planId",
+            "type": {
+              "endian": "le",
+              "format": "u64",
+              "kind": "numberTypeNode"
+            }
+          }
+        ]
+      },
+      {
+        "kind": "pdaNode",
+        "name": "recurringDelegation",
+        "seeds": [
+          {
+            "kind": "constantPdaSeedNode",
+            "type": {
+              "encoding": "utf8",
+              "kind": "stringTypeNode"
+            },
+            "value": {
+              "kind": "stringValueNode",
+              "string": "delegation"
+            }
+          },
+          {
+            "kind": "variablePdaSeedNode",
+            "name": "subscriptionAuthority",
+            "type": {
+              "kind": "publicKeyTypeNode"
+            }
+          },
+          {
+            "kind": "variablePdaSeedNode",
+            "name": "delegator",
+            "type": {
+              "kind": "publicKeyTypeNode"
+            }
+          },
+          {
+            "kind": "variablePdaSeedNode",
+            "name": "delegatee",
+            "type": {
+              "kind": "publicKeyTypeNode"
+            }
+          },
+          {
+            "kind": "variablePdaSeedNode",
+            "name": "nonce",
+            "type": {
+              "endian": "le",
+              "format": "u64",
+              "kind": "numberTypeNode"
+            }
+          }
+        ]
+      },
+      {
+        "kind": "pdaNode",
+        "name": "subscriptionAuthority",
+        "seeds": [
+          {
+            "kind": "constantPdaSeedNode",
+            "type": {
+              "encoding": "utf8",
+              "kind": "stringTypeNode"
+            },
+            "value": {
+              "kind": "stringValueNode",
+              "string": "SubscriptionAuthority"
+            }
+          },
+          {
+            "kind": "variablePdaSeedNode",
+            "name": "user",
+            "type": {
+              "kind": "publicKeyTypeNode"
+            }
+          },
+          {
+            "kind": "variablePdaSeedNode",
+            "name": "tokenMint",
+            "type": {
+              "kind": "publicKeyTypeNode"
+            }
+          }
+        ]
+      },
+      {
+        "kind": "pdaNode",
+        "name": "subscriptionDelegation",
+        "seeds": [
+          {
+            "kind": "constantPdaSeedNode",
+            "type": {
+              "encoding": "utf8",
+              "kind": "stringTypeNode"
+            },
+            "value": {
+              "kind": "stringValueNode",
+              "string": "subscription"
+            }
+          },
+          {
+            "kind": "variablePdaSeedNode",
+            "name": "planPda",
+            "type": {
+              "kind": "publicKeyTypeNode"
+            }
+          },
+          {
+            "kind": "variablePdaSeedNode",
+            "name": "subscriber",
+            "type": {
+              "kind": "publicKeyTypeNode"
+            }
+          }
+        ]
+      },
+      {
+        "kind": "pdaNode",
+        "name": "eventAuthority",
+        "seeds": [
+          {
+            "kind": "constantPdaSeedNode",
+            "type": {
+              "encoding": "utf8",
+              "kind": "stringTypeNode"
+            },
+            "value": {
+              "kind": "stringValueNode",
+              "string": "event_authority"
+            }
+          }
+        ]
+      }
+    ],
     "publicKey": "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44",
     "version": "0.1.0"
   },

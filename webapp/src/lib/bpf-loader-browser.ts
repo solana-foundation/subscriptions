@@ -7,7 +7,7 @@ import {
   getAddressEncoder,
   getProgramDerivedAddress,
   addSignersToInstruction,
-} from 'gill'
+} from '@solana/kit'
 
 export const BPF_LOADER_UPGRADEABLE = address('BPFLoaderUpgradeab1e11111111111111111111111')
 export const SYSTEM_PROGRAM = address('11111111111111111111111111111111')

@@ -4,6 +4,8 @@ import {
   fetchMaybePlan,
   fetchMaybeSubscriptionDelegation,
   fetchSubscriptionDelegation,
+  findPlanPda,
+  findSubscriptionDelegationPda,
   PlanStatus,
 } from '../src/generated/index.ts';
 import {
@@ -19,17 +21,23 @@ describe('Subscription Lifecycle', () => {
     const periodHours = 1n;
 
     // 1. Merchant creates a plan
-    const { planPda } = await t.client.createPlan({
-      owner: t.payerKeypair,
+    const [planPda] = await findPlanPda({
+      owner: t.payerKeypair.address,
       planId: 1n,
-      mint: t.tokenMint,
-      amount: planAmount,
-      periodHours,
-      endTs: 0n,
-      destinations: [],
-      pullers: [],
-      metadataUri: 'https://example.com/plan.json',
     });
+    await t.client.subscriptions.instructions
+      .createPlan({
+        owner: t.payerKeypair,
+        planId: 1n,
+        mint: t.tokenMint,
+        amount: planAmount,
+        periodHours,
+        endTs: 0n,
+        destinations: [],
+        pullers: [],
+        metadataUri: 'https://example.com/plan.json',
+      })
+      .sendTransaction();
 
     // 2. Subscriber sets up and subscribes
     const subscriber = await t.createFundedKeypair();
@@ -38,19 +46,32 @@ describe('Subscription Lifecycle', () => {
       subscriber.address,
       DEFAULT_TEST_BALANCE,
     );
-    await t.client.initSubscriptionAuthority({
-      owner: subscriber,
-      tokenMint: t.tokenMint,
-      userAta: subscriberAta,
-      tokenProgram: t.tokenProgram,
-    });
+    await t.client.subscriptions.instructions
+      .initSubscriptionAuthority({
+        owner: subscriber,
+        tokenMint: t.tokenMint,
+        userAta: subscriberAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
 
-    const { subscriptionPda } = await t.client.subscribe({
-      subscriber,
-      merchant: t.payerKeypair.address,
-      planId: 1n,
-      tokenMint: t.tokenMint,
+    const [subscriptionPda] = await findSubscriptionDelegationPda({
+      planPda: (
+        await findPlanPda({
+          owner: t.payerKeypair.address,
+          planId: 1n,
+        })
+      )[0],
+      subscriber: subscriber.address,
     });
+    await t.client.subscriptions.instructions
+      .subscribe({
+        subscriber,
+        merchant: t.payerKeypair.address,
+        planId: 1n,
+        tokenMint: t.tokenMint,
+      })
+      .sendTransaction();
 
     // Verify subscription state
     const subAfterSubscribe = (
@@ -68,16 +89,18 @@ describe('Subscription Lifecycle', () => {
     );
 
     const pullAmount = 200_000n;
-    await t.client.transferSubscription({
-      caller: t.payerKeypair,
-      delegator: subscriber.address,
-      tokenMint: t.tokenMint,
-      subscriptionPda,
-      planPda,
-      amount: pullAmount,
-      receiverAta: merchantAta,
-      tokenProgram: t.tokenProgram,
-    });
+    await t.client.subscriptions.instructions
+      .transferSubscription({
+        caller: t.payerKeypair,
+        delegator: subscriber.address,
+        tokenMint: t.tokenMint,
+        subscriptionPda,
+        planPda,
+        amount: pullAmount,
+        receiverAta: merchantAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
 
     const merchantBalance = await t.rpc
       .getTokenAccountBalance(merchantAta)
@@ -90,11 +113,13 @@ describe('Subscription Lifecycle', () => {
     expect(subAfterPull.amountPulledInPeriod).toBe(pullAmount);
 
     // 4. Subscriber cancels
-    await t.client.cancelSubscription({
-      subscriber,
-      planPda,
-      subscriptionPda,
-    });
+    await t.client.subscriptions.instructions
+      .cancelSubscription({
+        subscriber,
+        planPda,
+        subscriptionPda,
+      })
+      .sendTransaction();
 
     const subAfterCancel = (
       await fetchSubscriptionDelegation(t.rpc, subscriptionPda)
@@ -104,21 +129,25 @@ describe('Subscription Lifecycle', () => {
     // 5. Merchant sunsets the plan
     const endTs = await t.minPlanEndTs(periodHours);
 
-    await t.client.updatePlan({
-      owner: t.payerKeypair,
-      planPda,
-      status: PlanStatus.Sunset,
-      endTs,
-      metadataUri: 'https://example.com/plan.json',
-    });
+    await t.client.subscriptions.instructions
+      .updatePlan({
+        owner: t.payerKeypair,
+        planPda,
+        status: PlanStatus.Sunset,
+        endTs,
+        metadataUri: 'https://example.com/plan.json',
+      })
+      .sendTransaction();
 
     // 6. Time-travel past endTs, then delete the plan
     await t.timeTravel(Number(endTs) + 60);
 
-    const { signature: deleteSig } = await t.client.deletePlan({
-      owner: t.payerKeypair,
-      planPda,
-    });
+    const deleteSig = await t.client.subscriptions.instructions
+      .deletePlan({
+        owner: t.payerKeypair,
+        planPda,
+      })
+      .sendTransaction();
     expect(deleteSig).toBeDefined();
 
     const planAfterDelete = await fetchMaybePlan(t.rpc, planPda);
@@ -130,17 +159,23 @@ describe('Subscription Lifecycle', () => {
     const puller = await t.createFundedKeypair();
 
     // 1. Merchant creates plan with a whitelisted puller
-    const { planPda } = await t.client.createPlan({
-      owner: t.payerKeypair,
+    const [planPda] = await findPlanPda({
+      owner: t.payerKeypair.address,
       planId: 1n,
-      mint: t.tokenMint,
-      amount: 1_000_000n,
-      periodHours: 1n,
-      endTs: 0n,
-      destinations: [],
-      pullers: [puller.address],
-      metadataUri: 'https://example.com/plan.json',
     });
+    await t.client.subscriptions.instructions
+      .createPlan({
+        owner: t.payerKeypair,
+        planId: 1n,
+        mint: t.tokenMint,
+        amount: 1_000_000n,
+        periodHours: 1n,
+        endTs: 0n,
+        destinations: [],
+        pullers: [puller.address],
+        metadataUri: 'https://example.com/plan.json',
+      })
+      .sendTransaction();
 
     // 2. Subscriber subscribes
     const subscriber = await t.createFundedKeypair();
@@ -149,19 +184,32 @@ describe('Subscription Lifecycle', () => {
       subscriber.address,
       DEFAULT_TEST_BALANCE,
     );
-    await t.client.initSubscriptionAuthority({
-      owner: subscriber,
-      tokenMint: t.tokenMint,
-      userAta: subscriberAta,
-      tokenProgram: t.tokenProgram,
-    });
+    await t.client.subscriptions.instructions
+      .initSubscriptionAuthority({
+        owner: subscriber,
+        tokenMint: t.tokenMint,
+        userAta: subscriberAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
 
-    const { subscriptionPda } = await t.client.subscribe({
-      subscriber,
-      merchant: t.payerKeypair.address,
-      planId: 1n,
-      tokenMint: t.tokenMint,
+    const [subscriptionPda] = await findSubscriptionDelegationPda({
+      planPda: (
+        await findPlanPda({
+          owner: t.payerKeypair.address,
+          planId: 1n,
+        })
+      )[0],
+      subscriber: subscriber.address,
     });
+    await t.client.subscriptions.instructions
+      .subscribe({
+        subscriber,
+        merchant: t.payerKeypair.address,
+        planId: 1n,
+        tokenMint: t.tokenMint,
+      })
+      .sendTransaction();
 
     // 3. Puller (not the merchant) pulls funds
     const pullerAta = await t.createAtaWithBalance(
@@ -171,16 +219,18 @@ describe('Subscription Lifecycle', () => {
     );
 
     const pullAmount = 100_000n;
-    const { signature } = await t.client.transferSubscription({
-      caller: puller,
-      delegator: subscriber.address,
-      tokenMint: t.tokenMint,
-      subscriptionPda,
-      planPda,
-      amount: pullAmount,
-      receiverAta: pullerAta,
-      tokenProgram: t.tokenProgram,
-    });
+    const signature = await t.client.subscriptions.instructions
+      .transferSubscription({
+        caller: puller,
+        delegator: subscriber.address,
+        tokenMint: t.tokenMint,
+        subscriptionPda,
+        planPda,
+        amount: pullAmount,
+        receiverAta: pullerAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
 
     expect(signature).toBeDefined();
 
@@ -192,17 +242,23 @@ describe('Subscription Lifecycle', () => {
     const t = await initTestSuite();
 
     // 1. Merchant creates plan
-    const { planPda } = await t.client.createPlan({
-      owner: t.payerKeypair,
+    const [planPda] = await findPlanPda({
+      owner: t.payerKeypair.address,
       planId: 10n,
-      mint: t.tokenMint,
-      amount: 500_000n,
-      periodHours: 1n,
-      endTs: 0n,
-      destinations: [],
-      pullers: [],
-      metadataUri: 'https://example.com/plan.json',
     });
+    await t.client.subscriptions.instructions
+      .createPlan({
+        owner: t.payerKeypair,
+        planId: 10n,
+        mint: t.tokenMint,
+        amount: 500_000n,
+        periodHours: 1n,
+        endTs: 0n,
+        destinations: [],
+        pullers: [],
+        metadataUri: 'https://example.com/plan.json',
+      })
+      .sendTransaction();
 
     // 2. Subscriber subscribes
     const subscriber = await t.createFundedKeypair();
@@ -211,50 +267,73 @@ describe('Subscription Lifecycle', () => {
       subscriber.address,
       DEFAULT_TEST_BALANCE,
     );
-    await t.client.initSubscriptionAuthority({
-      owner: subscriber,
-      tokenMint: t.tokenMint,
-      userAta: subscriberAta,
-      tokenProgram: t.tokenProgram,
-    });
+    await t.client.subscriptions.instructions
+      .initSubscriptionAuthority({
+        owner: subscriber,
+        tokenMint: t.tokenMint,
+        userAta: subscriberAta,
+        tokenProgram: t.tokenProgram,
+      })
+      .sendTransaction();
 
-    const { subscriptionPda } = await t.client.subscribe({
-      subscriber,
-      merchant: t.payerKeypair.address,
-      planId: 10n,
-      tokenMint: t.tokenMint,
+    const [subscriptionPda] = await findSubscriptionDelegationPda({
+      planPda: (
+        await findPlanPda({
+          owner: t.payerKeypair.address,
+          planId: 10n,
+        })
+      )[0],
+      subscriber: subscriber.address,
     });
+    await t.client.subscriptions.instructions
+      .subscribe({
+        subscriber,
+        merchant: t.payerKeypair.address,
+        planId: 10n,
+        tokenMint: t.tokenMint,
+      })
+      .sendTransaction();
 
     // 3. Merchant sunsets, expires, and deletes the plan
     const endTs = await t.minPlanEndTs(1n);
 
-    await t.client.updatePlan({
-      owner: t.payerKeypair,
-      planPda,
-      status: PlanStatus.Sunset,
-      endTs,
-      metadataUri: 'https://example.com/plan.json',
-    });
+    await t.client.subscriptions.instructions
+      .updatePlan({
+        owner: t.payerKeypair,
+        planPda,
+        status: PlanStatus.Sunset,
+        endTs,
+        metadataUri: 'https://example.com/plan.json',
+      })
+      .sendTransaction();
 
     await t.timeTravel(Number(endTs) + 5);
 
-    await t.client.deletePlan({
-      owner: t.payerKeypair,
-      planPda,
-    });
+    await t.client.subscriptions.instructions
+      .deletePlan({
+        owner: t.payerKeypair,
+        planPda,
+      })
+      .sendTransaction();
 
     // 4. Merchant recreates plan with same planId but different terms (ghost)
-    const { planPda: ghostPlanPda } = await t.client.createPlan({
-      owner: t.payerKeypair,
+    const [ghostPlanPda] = await findPlanPda({
+      owner: t.payerKeypair.address,
       planId: 10n,
-      mint: t.tokenMint,
-      amount: 999_000_000n,
-      periodHours: 720n,
-      endTs: 0n,
-      destinations: [],
-      pullers: [],
-      metadataUri: 'https://example.com/ghost.json',
     });
+    await t.client.subscriptions.instructions
+      .createPlan({
+        owner: t.payerKeypair,
+        planId: 10n,
+        mint: t.tokenMint,
+        amount: 999_000_000n,
+        periodHours: 720n,
+        endTs: 0n,
+        destinations: [],
+        pullers: [],
+        metadataUri: 'https://example.com/ghost.json',
+      })
+      .sendTransaction();
 
     expect(ghostPlanPda).toBe(planPda);
 
@@ -266,25 +345,29 @@ describe('Subscription Lifecycle', () => {
     );
 
     await expectProgramError(
-      t.client.transferSubscription({
-        caller: t.payerKeypair,
-        delegator: subscriber.address,
-        tokenMint: t.tokenMint,
-        subscriptionPda,
-        planPda,
-        amount: 100_000n,
-        receiverAta: merchantAta,
-        tokenProgram: t.tokenProgram,
-      }),
+      t.client.subscriptions.instructions
+        .transferSubscription({
+          caller: t.payerKeypair,
+          delegator: subscriber.address,
+          tokenMint: t.tokenMint,
+          subscriptionPda,
+          planPda,
+          amount: 100_000n,
+          receiverAta: merchantAta,
+          tokenProgram: t.tokenProgram,
+        })
+        .sendTransaction(),
       SUBSCRIPTIONS_ERROR__PLAN_TERMS_MISMATCH,
     );
 
     // 6. Subscriber cancels (immediate expiry, no grace period)
-    await t.client.cancelSubscription({
-      subscriber,
-      planPda,
-      subscriptionPda,
-    });
+    await t.client.subscriptions.instructions
+      .cancelSubscription({
+        subscriber,
+        planPda,
+        subscriptionPda,
+      })
+      .sendTransaction();
 
     const subAfterCancel = (
       await fetchSubscriptionDelegation(t.rpc, subscriptionPda)
@@ -292,11 +375,13 @@ describe('Subscription Lifecycle', () => {
     expect(subAfterCancel.expiresAtTs).not.toBe(0n);
 
     // 7. Subscriber revokes delegation, getting rent back
-    const { signature: revokeSig } = await t.client.revokeSubscription({
-      authority: subscriber,
-      subscriptionPda,
-      planPda,
-    });
+    const revokeSig = await t.client.subscriptions.instructions
+      .revokeSubscription({
+        authority: subscriber,
+        subscriptionPda,
+        planPda,
+      })
+      .sendTransaction();
     expect(revokeSig).toBeDefined();
 
     // Subscription account should be closed

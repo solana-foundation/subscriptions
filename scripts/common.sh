@@ -159,8 +159,11 @@ prepare_deploy_keys() {
     cp "$KEYPAIR_FILE" "target/deploy/subscriptions-keypair.json"
     echo -e "  ${GREEN}Deploy key copied${NC}"
   else
-    echo -e "  ${RED}Error: $KEYPAIR_FILE not found${NC}"
-    exit 1
+    # Post-rotation (#30) the canonical keypair lives only on the deploy
+    # authority's machine. Surfpool installs the program at the canonical
+    # address via the surfnet-setup runbook (no keypair required), so a
+    # missing keypair is fine for local webapp runs.
+    echo -e "  ${YELLOW}$KEYPAIR_FILE not found; skipping (surfpool deploys via surfnet-setup)${NC}"
   fi
 }
 

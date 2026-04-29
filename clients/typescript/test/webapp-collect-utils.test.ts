@@ -1,4 +1,4 @@
-import { address, createNoopSigner, type Instruction } from 'gill';
+import { address, createNoopSigner, type Instruction } from '@solana/kit';
 import { describe, expect, test } from 'vitest';
 import {
   filterPayableSubscribers,

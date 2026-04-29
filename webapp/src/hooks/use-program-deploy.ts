@@ -2,19 +2,38 @@ import { useState, useCallback, useRef } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   address,
+  appendTransactionMessageInstructions,
   createKeyPairFromBytes,
   createSignerFromKeyPair,
+  createTransactionMessage,
   generateKeyPair,
-  createTransaction,
+  pipe,
+  setTransactionMessageFeePayerSigner,
+  setTransactionMessageLifetimeUsingBlockhash,
   signAndSendTransactionMessageWithSigners,
   signTransactionMessageWithSigners,
   compileTransaction,
   getBase64EncodedWireTransaction,
   getBase58Decoder,
   getAddressEncoder,
+  type Blockhash,
+  type Instruction,
+  type TransactionSigner,
   type TransactionSendingSigner,
   type KeyPairSigner,
-} from 'gill'
+} from '@solana/kit'
+
+const buildV0Tx = (
+  feePayer: TransactionSigner,
+  latestBlockhash: { blockhash: Blockhash; lastValidBlockHeight: bigint },
+  instructions: Instruction[],
+) =>
+  pipe(
+    createTransactionMessage({ version: 0 }),
+    m => setTransactionMessageFeePayerSigner(feePayer, m),
+    m => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
+    m => appendTransactionMessageInstructions(instructions, m),
+  )
 import { useClusterConfig } from '@/hooks/use-cluster-config'
 import { useRpc } from '@/hooks/use-rpc'
 import { useWalletUiSigner } from '@/components/solana/use-wallet-ui-signer'
@@ -122,12 +141,7 @@ export function useProgramDeploy() {
       const createAccIx = buildCreateAccountIx(signer, bufferKpSigner, rentLamports, bufferSize, BPF_LOADER_UPGRADEABLE)
       const initBufferIx = buildInitializeBufferIx(bufferKpSigner.address, bufferKpSigner.address)
 
-      const initTx = createTransaction({
-        feePayer: signer,
-        version: 0,
-        latestBlockhash,
-        instructions: [fundFeePayerIx, createAccIx, initBufferIx],
-      })
+      const initTx = buildV0Tx(signer, latestBlockhash, [fundFeePayerIx, createAccIx, initBufferIx])
       await signAndSendTransactionMessageWithSigners(initTx)
 
       setProgress({ phase: 'funding', current: 0, total: totalChunks, message: 'Waiting for confirmation...' })
@@ -142,12 +156,7 @@ export function useProgramDeploy() {
       if (fpBalance.value < feeBudget) {
         setProgress({ phase: 'funding', current: 0, total: totalChunks, message: 'Funding fee payer for resume (approve in wallet)...' })
         const { value: latestBlockhash } = await rpc.getLatestBlockhash().send()
-        const fundTx = createTransaction({
-          feePayer: signer,
-          version: 0,
-          latestBlockhash,
-          instructions: [buildTransferIx(signer, feePayerKp.address, feeBudget)],
-        })
+        const fundTx = buildV0Tx(signer, latestBlockhash, [buildTransferIx(signer, feePayerKp.address, feeBudget)])
         await signAndSendTransactionMessageWithSigners(fundTx)
         for (let attempt = 0; attempt < 30; attempt++) {
           const bal = await rpc.getBalance(feePayerKp.address).send()
@@ -188,12 +197,7 @@ export function useProgramDeploy() {
 
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          const writeTx = createTransaction({
-            feePayer: feePayerKp,
-            version: 0,
-            latestBlockhash: bh,
-            instructions: [writeIx],
-          })
+          const writeTx = buildV0Tx(feePayerKp, bh, [writeIx])
           const signedWriteTx = await signTransactionMessageWithSigners(writeTx)
           const wireWriteTx = getBase64EncodedWireTransaction(signedWriteTx)
           await rpc.sendTransaction(wireWriteTx, { encoding: 'base64' }).send()
@@ -214,12 +218,7 @@ export function useProgramDeploy() {
   ) {
     const authBh = (await rpc.getLatestBlockhash().send()).value
     const setAuthIx = buildSetAuthorityIx(bufferKpSigner.address, bufferKpSigner, signer.address)
-    const setAuthTx = createTransaction({
-      feePayer: feePayerKp,
-      version: 0,
-      latestBlockhash: authBh,
-      instructions: [setAuthIx],
-    })
+    const setAuthTx = buildV0Tx(feePayerKp, authBh, [setAuthIx])
     const signedSetAuthTx = await signTransactionMessageWithSigners(setAuthTx)
     const wireSetAuthTx = getBase64EncodedWireTransaction(signedSetAuthTx)
     await rpc.sendTransaction(wireSetAuthTx, { encoding: 'base64' }).send()
@@ -251,24 +250,14 @@ export function useProgramDeploy() {
     let finalTx
     if (isUpgrade) {
       const upgradeIx = buildUpgradeIx(programDataPDA, programAddr, bufferKpSigner.address, signer.address, signer)
-      finalTx = createTransaction({
-        feePayer: signer,
-        version: 0,
-        latestBlockhash: freshBlockhash,
-        instructions: [upgradeIx],
-      })
+      finalTx = buildV0Tx(signer, freshBlockhash, [upgradeIx])
     } else {
       if (!plan.programKeypair) throw new Error('Program keypair required for initial deploy')
       const programKpSigner = await createKeypairSigner(new Uint8Array(plan.programKeypair))
       const programRent = await rpc.getMinimumBalanceForRentExemption(36n).send()
       const createProgramIx = buildCreateAccountIx(signer, programKpSigner, programRent, 36, BPF_LOADER_UPGRADEABLE)
       const deployIx = buildDeployIx(signer, programDataPDA, programKpSigner, bufferKpSigner.address, signer, plan.soSize * 2)
-      finalTx = createTransaction({
-        feePayer: signer,
-        version: 0,
-        latestBlockhash: freshBlockhash,
-        instructions: [createProgramIx, deployIx],
-      })
+      finalTx = buildV0Tx(signer, freshBlockhash, [createProgramIx, deployIx])
     }
 
     try {
@@ -297,9 +286,7 @@ export function useProgramDeploy() {
       if (fpBal.value > 5000n) {
         const reclaimBh = (await rpc.getLatestBlockhash().send()).value
         const reclaimIx = buildTransferIx(feePayerKp, signer.address, fpBal.value - 5000n)
-        const reclaimTx = createTransaction({
-          feePayer: feePayerKp, version: 0, latestBlockhash: reclaimBh, instructions: [reclaimIx],
-        })
+        const reclaimTx = buildV0Tx(feePayerKp, reclaimBh, [reclaimIx])
         const signedReclaim = await signTransactionMessageWithSigners(reclaimTx)
         await rpc.sendTransaction(getBase64EncodedWireTransaction(signedReclaim), { encoding: 'base64' }).send()
       }
@@ -317,12 +304,7 @@ export function useProgramDeploy() {
       const { value: latestBlockhash } = await rpc.getLatestBlockhash().send()
 
       const closeIx = buildCloseBufferIx(bufferKp.address, signer.address, bufferKp)
-      const closeTx = createTransaction({
-        feePayer: signer,
-        version: 0,
-        latestBlockhash,
-        instructions: [closeIx],
-      })
+      const closeTx = buildV0Tx(signer, latestBlockhash, [closeIx])
       await signAndSendTransactionMessageWithSigners(closeTx)
       bufferSignerRef.current = null
     },

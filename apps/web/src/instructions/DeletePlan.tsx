@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Address } from '@solana/kit';
-import { buildDeletePlan } from '@subscriptions/client';
+import { getDeletePlanOverlayInstruction } from '@subscriptions/client';
 import { useWallet } from '@/contexts/WalletContext';
 import { useSavedValues } from '@/contexts/SavedValuesContext';
 import { getProgramAddress } from '@/lib/program';
@@ -22,11 +22,11 @@ export function DeletePlan() {
         const signer = createSigner();
         if (!signer) return;
 
-        const { instructions } = buildDeletePlan({
+        const instruction = getDeletePlanOverlayInstruction({
             owner: signer, planPda: planPda.trim() as Address, programAddress: getProgramAddress(),
         });
 
-        await send(instructions, { action: 'DeletePlan', values: { planPda: planPda.trim() } });
+        await send([instruction], { action: 'DeletePlan', values: { planPda: planPda.trim() } });
     }
 
     return (

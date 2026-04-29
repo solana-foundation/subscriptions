@@ -1,8 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useWalletUi } from '@wallet-ui/react'
-import { createSolanaRpc, address } from 'gill'
-import { TOKEN_PROGRAM_ADDRESS, TOKEN_2022_PROGRAM_ADDRESS, findAssociatedTokenPda } from 'gill/programs/token'
-import { getSubscriptionAuthorityPDA, fetchMaybeSubscriptionAuthority } from '@subscriptions/client'
+import { createSolanaRpc, address } from '@solana/kit'
+import { TOKEN_PROGRAM_ADDRESS, findAssociatedTokenPda } from '@solana-program/token'
+import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022'
+import { findSubscriptionAuthorityPda, fetchMaybeSubscriptionAuthority } from '@subscriptions/client'
 import { useClusterConfig } from '@/hooks/use-cluster-config'
 import { useProgramAddress } from '@/hooks/use-token-config'
 
@@ -43,7 +44,10 @@ export function useSubscriptionAuthorityStatus(tokenMint: string | null) {
 
       const rpc = createSolanaRpc(clusterConfig.url)
       const progId = progAddr ? address(progAddr) : undefined
-      const [pda] = await getSubscriptionAuthorityPDA(address(account.address), address(tokenMint), progId)
+      const [pda] = await findSubscriptionAuthorityPda(
+        { user: address(account.address), tokenMint: address(tokenMint) },
+        { programAddress: progId },
+      )
       const subscriptionAuthority = await fetchMaybeSubscriptionAuthority(rpc, pda)
 
       const exists = subscriptionAuthority && 'exists' in subscriptionAuthority ? subscriptionAuthority.exists : false

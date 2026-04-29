@@ -21,7 +21,7 @@ import { useDelegations, useIncomingDelegations, type DelegationItem } from '@/h
 import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations'
 import { useGetTokenAccountsQuery } from '@/components/account/account-data-access'
 import { useWalletUi } from '@wallet-ui/react'
-import { address } from 'gill'
+import { address } from '@solana/kit'
 import { useMemo, useState } from 'react'
 import { USDC_MULTIPLIER, isExpired, invalidateWithDelay, recurringAvailable, fmtDateTime, fmtDateShort } from '@/lib/utils'
 import { useQuery, useQueryClient } from '@tanstack/react-query'

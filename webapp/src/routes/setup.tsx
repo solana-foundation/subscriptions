@@ -1,7 +1,16 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { useWalletUi, useWalletUiCluster } from '@wallet-ui/react'
-import { createTransaction, signAndSendTransactionMessageWithSigners, type Address, type TransactionSendingSigner } from 'gill'
+import {
+  appendTransactionMessageInstructions,
+  createTransactionMessage,
+  pipe,
+  setTransactionMessageFeePayerSigner,
+  setTransactionMessageLifetimeUsingBlockhash,
+  signAndSendTransactionMessageWithSigners,
+  type Address,
+  type TransactionSendingSigner,
+} from '@solana/kit'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Loader2, CheckCircle2, XCircle, Circle, Monitor, Globe, ArrowRight, ArrowLeft, Settings2, Shield, Terminal, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -354,7 +363,12 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
       const programDataPDA = await deriveProgramDataAddress(programAddr)
       const { value: latestBlockhash } = await rpc.getLatestBlockhash().send()
       const closeIx = buildCloseProgramIx(programDataPDA, signer.address, signer, programAddr)
-      const tx = createTransaction({ feePayer: signer, version: 0, latestBlockhash, instructions: [closeIx] })
+      const tx = pipe(
+        createTransactionMessage({ version: 0 }),
+        m => setTransactionMessageFeePayerSigner(signer, m),
+        m => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
+        m => appendTransactionMessageInstructions([closeIx], m),
+      )
       await signAndSendTransactionMessageWithSigners(tx)
     },
     onSuccess: () => {

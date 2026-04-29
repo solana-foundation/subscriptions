@@ -1,5 +1,5 @@
 import { spawn } from 'child_process'
-import { createSolanaRpc, type Address } from 'gill'
+import { createSolanaRpc, type Address } from '@solana/kit'
 
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8899'
 

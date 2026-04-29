@@ -39,3 +39,4 @@ clients/typescript/docs/
 # Vercel project config
 .vercel
 
+.claude/

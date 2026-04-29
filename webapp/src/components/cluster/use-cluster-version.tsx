@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { createSolanaRpc } from 'gill'
+import { createSolanaRpc } from '@solana/kit'
 import { useClusterConfig } from '@/hooks/use-cluster-config'
 
 export function useClusterVersion() {

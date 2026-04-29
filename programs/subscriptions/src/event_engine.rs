@@ -6,6 +6,7 @@
 
 use core::mem::size_of;
 
+use codama::CodamaAccount;
 use const_crypto::ed25519;
 use pinocchio::cpi::{invoke_signed, Seed, Signer};
 use pinocchio::error::ProgramError;
@@ -13,6 +14,11 @@ use pinocchio::instruction::{InstructionAccount, InstructionView};
 use pinocchio::{AccountView, Address, ProgramResult};
 
 use crate::errors::SubscriptionsError;
+
+/// Event authority PDA — no account data, only used for CPI event emission signing.
+#[derive(CodamaAccount)]
+#[codama(seed(type = string(utf8), value = "event_authority"))]
+pub struct EventAuthority;
 
 /// PDA seed for the event authority account.
 pub const EVENT_AUTHORITY_SEED: &[u8] = b"event_authority";

@@ -2,7 +2,11 @@
 
 import { useState } from 'react';
 import type { Address } from '@solana/kit';
-import { buildSubscribe } from '@subscriptions/client';
+import {
+    findPlanPda,
+    findSubscriptionDelegationPda,
+    getSubscribeOverlayInstructionAsync,
+} from '@subscriptions/client';
 import { useWallet } from '@/contexts/WalletContext';
 import { useSavedValues } from '@/contexts/SavedValuesContext';
 import { getProgramAddress } from '@/lib/program';
@@ -27,16 +31,27 @@ export function Subscribe() {
         const signer = createSigner();
         if (!signer) return;
 
-        const { instructions, subscriptionPda } = await buildSubscribe({
-            subscriber: signer, merchant: merchant.trim() as Address,
-            planId: BigInt(planId), tokenMint: tokenMint.trim() as Address,
+        const programAddress = getProgramAddress();
+        const merchantAddress = merchant.trim() as Address;
+        const planIdValue = BigInt(planId);
+        const [planPda] = await findPlanPda(
+            { owner: merchantAddress, planId: planIdValue },
+            { programAddress },
+        );
+        const [subscriptionPda] = await findSubscriptionDelegationPda(
+            { planPda, subscriber: signer.address },
+            { programAddress },
+        );
+        const instruction = await getSubscribeOverlayInstructionAsync({
+            subscriber: signer, merchant: merchantAddress,
+            planId: planIdValue, tokenMint: tokenMint.trim() as Address,
             expectedAmount: BigInt(expectedAmount),
             expectedPeriodHours: BigInt(expectedPeriodHours),
             expectedCreatedAt: BigInt(expectedCreatedAt),
-            programAddress: getProgramAddress(),
+            programAddress,
         });
 
-        const sig = await send(instructions, {
+        const sig = await send([instruction], {
             action: 'Subscribe',
             values: { mint: tokenMint.trim(), subscriptionPda },
         });

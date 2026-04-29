@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useWalletUi } from '@wallet-ui/react'
-import { createSolanaRpc, address } from 'gill'
+import { createSolanaRpc, address } from '@solana/kit'
 import {
   fetchDelegationsByDelegator,
   fetchDelegationsByDelegatee,

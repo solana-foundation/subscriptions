@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import type { Address, Instruction } from '@solana/kit';
 import { type Connection, type Keypair, PublicKey } from '@solana/web3.js';
 import {
   ActionsBuilder,
@@ -11,7 +12,6 @@ import {
   SolInstruction,
   Swig,
 } from '@swig-wallet/kit';
-import type { Address, Instruction } from 'gill';
 import nacl from 'tweetnacl';
 import type { SmartWallet } from './SmartWallet.ts';
 import { sendWeb3Instructions } from './utils.ts';

@@ -3,7 +3,7 @@ import type {
   Base58EncodedBytes,
   GetProgramAccountsApi,
   Rpc,
-} from 'gill';
+} from '@solana/kit';
 import { DELEGATEE_OFFSET, DELEGATOR_OFFSET } from '../constants.js';
 import { SUBSCRIPTIONS_PROGRAM_ADDRESS } from '../generated/index.js';
 import type { Delegation } from '../types/delegation.js';
