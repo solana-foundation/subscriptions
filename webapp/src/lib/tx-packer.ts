@@ -28,36 +28,57 @@ function txByteSize(instructions: Instruction[], feePayer: TransactionSendingSig
   }
 }
 
+export type InstructionBatch<T> = {
+  instructions: Instruction[]
+  items: T[]
+}
+
+export function packInstructionBatchesWithItems<T extends { instruction: Instruction }>(
+  items: T[],
+  feePayer: TransactionSendingSigner,
+  prefixIxs: Instruction[] = [],
+): InstructionBatch<T>[] {
+  if (items.length === 0) {
+    return prefixIxs.length > 0 ? [{ instructions: prefixIxs, items: [] }] : []
+  }
+
+  const batches: InstructionBatch<T>[] = []
+  let cursor = 0
+  let isFirst = true
+
+  while (cursor < items.length) {
+    const prefix = isFirst ? prefixIxs : []
+    let count = 0
+
+    for (let i = cursor; i < items.length; i++) {
+      const candidate = [
+        ...prefix,
+        ...items.slice(cursor, i + 1).map((item) => item.instruction),
+      ]
+      if (txByteSize(candidate, feePayer) > MAX_TX_BYTES) break
+      count = i - cursor + 1
+    }
+
+    const batchItems = items.slice(cursor, cursor + Math.max(count, 1))
+    batches.push({
+      instructions: [...prefix, ...batchItems.map((item) => item.instruction)],
+      items: batchItems,
+    })
+    cursor += batchItems.length
+    isFirst = false
+  }
+
+  return batches
+}
+
 export function packInstructionBatches(
   ixs: Instruction[],
   feePayer: TransactionSendingSigner,
   prefixIxs: Instruction[] = [],
 ): Instruction[][] {
-  if (ixs.length === 0) return prefixIxs.length > 0 ? [prefixIxs] : []
-
-  const batches: Instruction[][] = []
-  let cursor = 0
-  let isFirst = true
-
-  while (cursor < ixs.length) {
-    const prefix = isFirst ? prefixIxs : []
-    let count = 0
-
-    for (let i = cursor; i < ixs.length; i++) {
-      const candidate = [...prefix, ...ixs.slice(cursor, i + 1)]
-      if (txByteSize(candidate, feePayer) > MAX_TX_BYTES) break
-      count = i - cursor + 1
-    }
-
-    if (count === 0) {
-      batches.push([...prefix, ixs[cursor]])
-      cursor++
-    } else {
-      batches.push([...prefix, ...ixs.slice(cursor, cursor + count)])
-      cursor += count
-    }
-    isFirst = false
-  }
-
-  return batches
+  return packInstructionBatchesWithItems(
+    ixs.map((instruction) => ({ instruction })),
+    feePayer,
+    prefixIxs,
+  ).map((batch) => batch.instructions)
 }

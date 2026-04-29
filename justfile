@@ -190,6 +190,9 @@ kill-validator:
 webapp-run:
     ./scripts/start-webapp.sh
 
+webapp-test:
+    cd {{webapp_dir}} && node --experimental-strip-types --test test/*.test.ts
+
 # Kill all webapp processes and remove all generated state
 webapp-clean:
     #!/usr/bin/env bash

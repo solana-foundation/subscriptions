@@ -115,14 +115,17 @@ function CollectAllButton({
     setCollecting(true)
     setProgress('Fetching subscribers...')
 
+    const plans: Array<{
+      planAddress: string
+      subscribers: Array<{ subscriptionAddress: string; delegator: string; amount: bigint }>
+      mint: string
+      destinations: string[]
+    }> = []
+    let submittedPlans: typeof plans = []
+    const planDataByAddress = new Map(eligiblePlans.map((pd) => [pd.plan.address, pd]))
+
     try {
       const ts = await getBlockTimestamp(rpcUrl)
-      const plans: Array<{
-        planAddress: string
-        subscribers: Array<{ subscriptionAddress: string; delegator: string; amount: bigint }>
-        mint: string
-        destinations: string[]
-      }> = []
 
       for (const pd of eligiblePlans) {
         const subscribers = await fetchPlanSubscriptions(rpcUrl, pd.plan.address, progAddr!)
@@ -152,28 +155,33 @@ function CollectAllButton({
       const totalIxs = plans.reduce((sum, p) => sum + p.subscribers.length, 0)
       setProgress(`Batching ${totalIxs} transfers across ${plans.length} plans...`)
 
+      submittedPlans = plans
       const res = await collectAllPlanPayments.mutateAsync({ plans })
 
-      for (const pd of eligiblePlans) {
+      for (const plan of plans) {
+        const pd = planDataByAddress.get(plan.planAddress)
+        const planResult = res.plans[plan.planAddress]
+        if (!pd || !planResult) continue
+
         const meta = parsePlanMeta(pd.plan.data.metadataUri)
         const planName = meta.n || `Plan ${ellipsify(pd.plan.address)}`
-        const planTransfers = res.transfers
-          .filter((transfer) => transfer.planAddress === pd.plan.address)
+        const planTransfers = planResult.transfers
           .map(({ subscriptionAddress, amount, signature }) => ({
             subscriptionAddress,
             amount,
             signature,
           }))
-        const attempted = plans.find((plan) => plan.planAddress === pd.plan.address)?.subscribers.length ?? 0
-        if (attempted === 0) continue
         addCollectionRecord(createSuccessRecord(
-          pd.plan.address, planName, planTransfers, pd.currentSubscribers.length, attempted,
+          pd.plan.address, planName, planTransfers, pd.currentSubscribers.length, planResult.total,
         ))
       }
 
       toast.success(`Collected ${res.collected}/${res.total} payments`)
     } catch (err) {
-      for (const pd of eligiblePlans) {
+      for (const plan of submittedPlans) {
+        const pd = planDataByAddress.get(plan.planAddress)
+        if (!pd) continue
+
         const meta = parsePlanMeta(pd.plan.data.metadataUri)
         const planName = meta.n || `Plan ${ellipsify(pd.plan.address)}`
         addCollectionRecord(createFailureRecord(
