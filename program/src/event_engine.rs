@@ -148,15 +148,9 @@ pub fn emit_event(
     let signer_seeds: [Seed; 2] = [Seed::from(EVENT_AUTHORITY_SEED), Seed::from(&bump)];
     let signer = Signer::from(&signer_seeds);
 
-    let accounts = [InstructionAccount::readonly_signer(
-        event_authority.address(),
-    )];
+    let accounts = [InstructionAccount::readonly_signer(event_authority.address())];
 
-    let instruction = InstructionView {
-        program_id,
-        data: event_data,
-        accounts: &accounts,
-    };
+    let instruction = InstructionView { program_id, data: event_data, accounts: &accounts };
 
     invoke_signed::<2>(&instruction, &[event_authority, self_program], &[signer])
 }

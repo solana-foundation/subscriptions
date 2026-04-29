@@ -1,114 +1,111 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useWalletUi } from '@wallet-ui/react'
-import { createSolanaRpc, address } from '@solana/kit'
-import {
-  fetchDelegationsByDelegator,
-  fetchDelegationsByDelegatee,
-  type Delegation,
-} from '@subscriptions/client'
-import { useClusterConfig } from '@/hooks/use-cluster-config'
-import { useProgramAddress } from '@/hooks/use-token-config'
+import { address, createSolanaRpc } from '@solana/kit';
+import { type Delegation, fetchDelegationsByDelegatee, fetchDelegationsByDelegator } from '@subscriptions/client';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useWalletUi } from '@wallet-ui/react';
+
+import { useClusterConfig } from '@/hooks/use-cluster-config';
+import { useProgramAddress } from '@/hooks/use-token-config';
 
 export interface DelegationData {
-  header: {
-    delegator: string
-    delegatee: string
-    payer: string
-    version: number
-    initId: bigint
-  }
-  amount: bigint
-  amountPerPeriod: bigint
-  periodLengthS: bigint
-  expiryTs: bigint
-  amountPulledInPeriod: bigint
-  currentPeriodStartTs: bigint | null
+    amount: bigint;
+    amountPerPeriod: bigint;
+    amountPulledInPeriod: bigint;
+    currentPeriodStartTs: bigint | null;
+    expiryTs: bigint;
+    header: {
+        delegatee: string;
+        delegator: string;
+        initId: bigint;
+        payer: string;
+        version: number;
+    };
+    periodLengthS: bigint;
 }
 
 export interface DelegationItem {
-  address: string
-  type: 'Fixed' | 'Recurring'
-  data: DelegationData
+    address: string;
+    data: DelegationData;
+    type: 'Fixed' | 'Recurring';
 }
 
 export interface GroupedDelegations {
-  fixed: DelegationItem[]
-  recurring: DelegationItem[]
-  all: DelegationItem[]
+    all: DelegationItem[];
+    fixed: DelegationItem[];
+    recurring: DelegationItem[];
 }
 
-export type DelegationRole = 'delegator' | 'delegatee'
+export type DelegationRole = 'delegatee' | 'delegator';
 
 function toDelegationItem(d: Delegation): DelegationItem | null {
-  if (d.kind === 'fixed') {
-    return {
-      address: d.address,
-      type: 'Fixed',
-      data: { ...d.data, currentPeriodStartTs: null } as unknown as DelegationData,
+    if (d.kind === 'fixed') {
+        return {
+            address: d.address,
+            data: { ...d.data, currentPeriodStartTs: null } as unknown as DelegationData,
+            type: 'Fixed',
+        };
     }
-  }
-  if (d.kind === 'recurring') {
-    return {
-      address: d.address,
-      type: 'Recurring',
-      data: d.data as unknown as DelegationData,
+    if (d.kind === 'recurring') {
+        return {
+            address: d.address,
+            data: d.data as unknown as DelegationData,
+            type: 'Recurring',
+        };
     }
-  }
-  return null
+    return null;
 }
 
 async function fetchDelegationsByRole(
-  rpcUrl: string,
-  walletAddress: string,
-  role: DelegationRole,
-  progAddr: string,
+    rpcUrl: string,
+    walletAddress: string,
+    role: DelegationRole,
+    progAddr: string,
 ): Promise<GroupedDelegations> {
-  const rpc = createSolanaRpc(rpcUrl)
-  const fetchFn = role === 'delegator' ? fetchDelegationsByDelegator : fetchDelegationsByDelegatee
-  const delegations = await fetchFn(rpc, address(walletAddress), address(progAddr))
-  const all = delegations.map(toDelegationItem).filter((d): d is DelegationItem => d !== null)
+    const rpc = createSolanaRpc(rpcUrl);
+    const fetchFn = role === 'delegator' ? fetchDelegationsByDelegator : fetchDelegationsByDelegatee;
+    const delegations = await fetchFn(rpc, address(walletAddress), address(progAddr));
+    const all = delegations.map(toDelegationItem).filter((d): d is DelegationItem => d !== null);
 
-  return {
-    fixed: all.filter((d) => d.type === 'Fixed'),
-    recurring: all.filter((d) => d.type === 'Recurring'),
-    all,
-  }
+    return {
+        all,
+        fixed: all.filter(d => d.type === 'Fixed'),
+        recurring: all.filter(d => d.type === 'Recurring'),
+    };
 }
 
 function useDelegationsByRole(role: DelegationRole) {
-  const { account, cluster } = useWalletUi()
-  const clusterConfig = useClusterConfig()
-  const progAddr = useProgramAddress()
-  const queryClient = useQueryClient()
+    const { account, cluster } = useWalletUi();
+    const clusterConfig = useClusterConfig();
+    const progAddr = useProgramAddress();
+    const queryClient = useQueryClient();
 
-  const query = useQuery({
-    queryKey: ['delegations', role, account?.address, cluster.id],
-    queryFn: async (): Promise<GroupedDelegations> => {
-      if (!account?.address) {
-        return { fixed: [], recurring: [], all: [] }
-      }
-      return fetchDelegationsByRole(clusterConfig.url, account.address, role, progAddr!)
-    },
-    enabled: !!account?.address && !!progAddr,
-    staleTime: 15_000,
-    retry: 1,
-  })
+    const query = useQuery({
+        enabled: !!account?.address && !!progAddr,
+        queryFn: async (): Promise<GroupedDelegations> => {
+            if (!account?.address) {
+                return { all: [], fixed: [], recurring: [] };
+            }
+            return await fetchDelegationsByRole(clusterConfig.url, account.address, role, progAddr!);
+        },
+        queryKey: ['delegations', role, account?.address, cluster.id],
+        retry: 1,
+        staleTime: 15_000,
+    });
 
-  const refetch = async () => {
-    await queryClient.invalidateQueries({
-      queryKey: ['delegations', role, account?.address, cluster.id],
-    })
-    await query.refetch()
-  }
+    const refetch = async () => {
+        await queryClient.invalidateQueries({
+            queryKey: ['delegations', role, account?.address, cluster.id],
+        });
+        await query.refetch();
+    };
 
-  return {
-    ...query,
-    refetch,
-    fixed: query.data?.fixed ?? [],
-    recurring: query.data?.recurring ?? [],
-    all: query.data?.all ?? [],
-    isEmpty: (query.data?.all.length ?? 0) === 0,
-  }
+    return {
+        ...query,
+        all: query.data?.all ?? [],
+        fixed: query.data?.fixed ?? [],
+        isEmpty: (query.data?.all.length ?? 0) === 0,
+        recurring: query.data?.recurring ?? [],
+        refetch,
+    };
 }
 
 /**
@@ -116,7 +113,7 @@ function useDelegationsByRole(role: DelegationRole) {
  * These are delegations the user has created (outgoing).
  */
 export function useDelegations() {
-  return useDelegationsByRole('delegator')
+    return useDelegationsByRole('delegator');
 }
 
 /**
@@ -124,5 +121,5 @@ export function useDelegations() {
  * These are delegations others have created for the user (incoming).
  */
 export function useIncomingDelegations() {
-  return useDelegationsByRole('delegatee')
+    return useDelegationsByRole('delegatee');
 }

@@ -5,9 +5,8 @@ use core::mem::{size_of, transmute};
 use pinocchio::error::ProgramError;
 
 use crate::{
-    check_min_account_size, instructions::create_plan::PlanTerms,
-    state::common::AccountDiscriminator, state::header::DISCRIMINATOR_OFFSET, Header,
-    SubscriptionsError,
+    check_min_account_size, instructions::create_plan::PlanTerms, state::common::AccountDiscriminator,
+    state::header::DISCRIMINATOR_OFFSET, Header, SubscriptionsError,
 };
 
 /// A subscriber's delegation linked to a specific [`Plan`](super::plan::Plan).

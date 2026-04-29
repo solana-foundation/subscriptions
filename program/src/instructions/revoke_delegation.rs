@@ -11,8 +11,8 @@ use crate::{
         common::AccountDiscriminator, fixed_delegation::FixedDelegation, plan::Plan,
         recurring_delegation::RecurringDelegation, subscription_delegation::SubscriptionDelegation,
     },
-    AccountCheck, AccountClose, Header, ProgramAccount, SignerAccount, SubscriptionsError,
-    WritableAccount, DELEGATEE_OFFSET, DELEGATOR_OFFSET, DISCRIMINATOR_OFFSET, PAYER_OFFSET,
+    AccountCheck, AccountClose, Header, ProgramAccount, SignerAccount, SubscriptionsError, WritableAccount,
+    DELEGATEE_OFFSET, DELEGATOR_OFFSET, DISCRIMINATOR_OFFSET, PAYER_OFFSET,
 };
 
 /// Validated accounts for the [`RevokeDelegation`](crate::SubscriptionsInstruction::RevokeDelegation) instruction.
@@ -43,11 +43,7 @@ impl<'a> TryFrom<&'a [AccountView]> for RevokeDelegationAccounts<'a> {
         WritableAccount::check(delegation_account)?;
         ProgramAccount::check(delegation_account)?;
 
-        Ok(Self {
-            authority,
-            delegation_account,
-            rem,
-        })
+        Ok(Self { authority, delegation_account, rem })
     }
 }
 
@@ -93,10 +89,7 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
                 let current_ts = Clock::get()?.unix_timestamp;
 
                 // Subscription branch consumes `[plan_pda, receiver?]`.
-                let plan_pda = accounts
-                    .rem
-                    .first()
-                    .ok_or(SubscriptionsError::NotEnoughAccountKeys)?;
+                let plan_pda = accounts.rem.first().ok_or(SubscriptionsError::NotEnoughAccountKeys)?;
                 let receiver = accounts.rem.get(1);
 
                 // Bind the passed plan_pda to the subscription via header.delegatee.
@@ -112,16 +105,14 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
                     // ended naturally, or when the same plan_id was deleted and
                     // recreated with different terms — a "ghost" the
                     // subscription can no longer pull from.
-                    let sub_expired =
-                        subscription.expires_at_ts != 0 && subscription.expires_at_ts <= current_ts;
+                    let sub_expired = subscription.expires_at_ts != 0 && subscription.expires_at_ts <= current_ts;
                     let plan_closed = !plan_pda.owned_by(&crate::ID);
                     let plan_ended_or_recreated = if plan_closed {
                         false
                     } else {
                         let plan_data = plan_pda.try_borrow()?;
                         let plan = Plan::load(&plan_data)?;
-                        let terms_mismatch =
-                            subscription.check_plan_terms(&plan.data.terms).is_err();
+                        let terms_mismatch = subscription.check_plan_terms(&plan.data.terms).is_err();
                         let plan_ended = plan.data.end_ts != 0 && current_ts > plan.data.end_ts;
                         terms_mismatch || plan_ended
                     };
@@ -144,9 +135,7 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
                 // Sponsor can only revoke expired delegations
                 if is_sponsor {
                     let expiry_ts = match kind {
-                        AccountDiscriminator::FixedDelegation => {
-                            FixedDelegation::load_with_min_size(&data)?.expiry_ts
-                        }
+                        AccountDiscriminator::FixedDelegation => FixedDelegation::load_with_min_size(&data)?.expiry_ts,
                         _ => RecurringDelegation::load_with_min_size(&data)?.expiry_ts,
                     };
                     let current_ts = Clock::get()?.unix_timestamp;
@@ -169,17 +158,15 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
 /// Checks whether the caller is the sponsor (payer) rather than the delegator.
 /// Returns `Unauthorized` if the caller is neither.
 fn check_is_sponsor(data: &[u8], authority: &AccountView) -> Result<bool, ProgramError> {
-    let delegator_bytes: &[u8; 32] = data[DELEGATOR_OFFSET..DELEGATEE_OFFSET]
-        .try_into()
-        .map_err(|_| SubscriptionsError::InvalidHeaderData)?;
+    let delegator_bytes: &[u8; 32] =
+        data[DELEGATOR_OFFSET..DELEGATEE_OFFSET].try_into().map_err(|_| SubscriptionsError::InvalidHeaderData)?;
 
     if delegator_bytes == authority.address().as_ref() {
         return Ok(false);
     }
 
-    let payer_bytes: &[u8; 32] = data[PAYER_OFFSET..PAYER_OFFSET + 32]
-        .try_into()
-        .map_err(|_| SubscriptionsError::InvalidPayerData)?;
+    let payer_bytes: &[u8; 32] =
+        data[PAYER_OFFSET..PAYER_OFFSET + 32].try_into().map_err(|_| SubscriptionsError::InvalidPayerData)?;
 
     if payer_bytes == authority.address().as_ref() {
         return Ok(true);
@@ -196,9 +183,8 @@ fn resolve_destination<'a>(
     authority: &'a AccountView,
     receiver: Option<&'a AccountView>,
 ) -> Result<&'a AccountView, ProgramError> {
-    let payer_bytes: &[u8; 32] = data[PAYER_OFFSET..PAYER_OFFSET + 32]
-        .try_into()
-        .map_err(|_| SubscriptionsError::InvalidPayerData)?;
+    let payer_bytes: &[u8; 32] =
+        data[PAYER_OFFSET..PAYER_OFFSET + 32].try_into().map_err(|_| SubscriptionsError::InvalidPayerData)?;
 
     if payer_bytes == authority.address().as_ref() {
         Ok(authority)

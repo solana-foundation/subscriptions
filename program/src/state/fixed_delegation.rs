@@ -5,8 +5,8 @@ use core::mem::{size_of, transmute};
 use pinocchio::{error::ProgramError, Address};
 
 use crate::{
-    check_min_account_size, state::common::AccountDiscriminator,
-    state::header::DISCRIMINATOR_OFFSET, Header, SubscriptionsError,
+    check_min_account_size, state::common::AccountDiscriminator, state::header::DISCRIMINATOR_OFFSET, Header,
+    SubscriptionsError,
 };
 
 /// A fixed delegation that grants a one-time token transfer allowance.

@@ -1,8 +1,8 @@
 use pinocchio::{error::ProgramError, AccountView, ProgramResult};
 
 use crate::{
-    AccountCheck, AccountClose, ProgramAccount, SignerAccount, SubscriptionAuthority,
-    SubscriptionsError, WritableAccount,
+    AccountCheck, AccountClose, ProgramAccount, SignerAccount, SubscriptionAuthority, SubscriptionsError,
+    WritableAccount,
 };
 
 /// Validated accounts for the [`CloseSubscriptionAuthority`](crate::SubscriptionsInstruction::CloseSubscriptionAuthority) instruction.
@@ -27,11 +27,7 @@ impl<'a> TryFrom<&'a [AccountView]> for CloseSubscriptionAuthorityAccounts<'a> {
         WritableAccount::check(subscription_authority)?;
         ProgramAccount::check(subscription_authority)?;
 
-        Ok(Self {
-            user,
-            subscription_authority,
-            receiver: rem.first(),
-        })
+        Ok(Self { user, subscription_authority, receiver: rem.first() })
     }
 }
 
@@ -74,9 +70,7 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
         ProgramAccount::close(accounts.subscription_authority, accounts.user)
     } else {
         // Sponsor-funded — require a receiver matching the stored payer.
-        let receiver = accounts
-            .receiver
-            .ok_or(SubscriptionsError::NotEnoughAccountKeys)?;
+        let receiver = accounts.receiver.ok_or(SubscriptionsError::NotEnoughAccountKeys)?;
         WritableAccount::check(receiver)?;
         if *receiver.address() != stored_payer {
             return Err(SubscriptionsError::Unauthorized.into());

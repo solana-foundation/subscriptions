@@ -1,53 +1,53 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import tsconfigPaths from 'vite-tsconfig-paths'
-import { nodePolyfills } from 'vite-plugin-node-polyfills'
-import path from 'path'
+import react from '@vitejs/plugin-react';
+import path from 'path';
+import { defineConfig } from 'vite';
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
+import tsconfigPaths from 'vite-tsconfig-paths';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  server: {
-    proxy: {
-      '/rpc': {
-        target: 'http://localhost:8899',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/rpc/, ''),
-      },
+    build: {
+        rollupOptions: {
+            onwarn(warning, warn) {
+                // Suppress warnings about vite-plugin-node-polyfills/shims
+                if (warning.message?.includes('vite-plugin-node-polyfills/shims')) {
+                    return;
+                }
+                warn(warning);
+            },
+        },
     },
-  },
-  plugins: [
-    nodePolyfills({
-      globals: {
-        Buffer: true,
-        global: true,
-        process: true,
-      },
-    }),
-    react(),
-    tsconfigPaths(),
-  ],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-      "@idl": path.resolve(__dirname, "../idl/subscriptions.json"),
+    optimizeDeps: {
+        esbuildOptions: {
+            define: {
+                global: 'globalThis',
+            },
+        },
     },
-  },
-  build: {
-    rollupOptions: {
-      onwarn(warning, warn) {
-        // Suppress warnings about vite-plugin-node-polyfills/shims
-        if (warning.message?.includes('vite-plugin-node-polyfills/shims')) {
-          return
-        }
-        warn(warning)
-      },
+    plugins: [
+        nodePolyfills({
+            globals: {
+                Buffer: true,
+                global: true,
+                process: true,
+            },
+        }),
+        react(),
+        tsconfigPaths(),
+    ],
+    resolve: {
+        alias: {
+            '@': path.resolve(__dirname, './src'),
+            '@idl': path.resolve(__dirname, '../idl/subscriptions.json'),
+        },
     },
-  },
-  optimizeDeps: {
-    esbuildOptions: {
-      define: {
-        global: 'globalThis',
-      },
+    server: {
+        proxy: {
+            '/rpc': {
+                changeOrigin: true,
+                rewrite: path => path.replace(/^\/rpc/, ''),
+                target: 'http://localhost:8899',
+            },
+        },
     },
-  },
-})
+});

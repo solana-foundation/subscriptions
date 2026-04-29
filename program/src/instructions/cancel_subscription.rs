@@ -60,10 +60,9 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
                 expires_at_ts = current_ts;
             } else {
                 // Terms match — compute end of current period
-                let period_length_s =
-                    (subscription.terms.period_hours as i64)
-                        .checked_mul(3600)
-                        .ok_or::<ProgramError>(SubscriptionsError::ArithmeticOverflow.into())?;
+                let period_length_s = (subscription.terms.period_hours as i64)
+                    .checked_mul(3600)
+                    .ok_or::<ProgramError>(SubscriptionsError::ArithmeticOverflow.into())?;
                 let period_start = subscription.current_period_start_ts;
                 let elapsed = current_ts.saturating_sub(period_start);
                 let periods_elapsed = elapsed / period_length_s;
@@ -72,13 +71,7 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
                     .and_then(|p| p.checked_mul(period_length_s))
                     .and_then(|offset| period_start.checked_add(offset))
                     // Cap at plan end so subscriber can revoke as soon as the plan expires
-                    .map(|ts| {
-                        if plan.data.end_ts != 0 {
-                            ts.min(plan.data.end_ts)
-                        } else {
-                            ts
-                        }
-                    })
+                    .map(|ts| if plan.data.end_ts != 0 { ts.min(plan.data.end_ts) } else { ts })
                     .ok_or::<ProgramError>(SubscriptionsError::ArithmeticOverflow.into())?;
             }
         } else {
@@ -90,18 +83,9 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
     }
 
     // Emit SubscriptionCancelled event via self-CPI
-    let event = SubscriptionCancelledEvent::new(
-        plan_pda,
-        *accounts_struct.subscriber.address(),
-        expires_at_ts,
-    );
+    let event = SubscriptionCancelledEvent::new(plan_pda, *accounts_struct.subscriber.address(), expires_at_ts);
     let event_data = event.to_bytes();
-    event_engine::emit_event(
-        &crate::ID,
-        accounts_struct.event_authority,
-        accounts_struct.self_program,
-        &event_data,
-    )?;
+    event_engine::emit_event(&crate::ID, accounts_struct.event_authority, accounts_struct.self_program, &event_data)?;
 
     Ok(())
 }
@@ -119,8 +103,7 @@ impl<'a> TryFrom<&'a [AccountView]> for CancelSubscriptionAccounts<'a> {
     type Error = ProgramError;
 
     fn try_from(accounts: &'a [AccountView]) -> Result<Self, Self::Error> {
-        let [subscriber, plan_pda, subscription_pda, event_authority, self_program] = accounts
-        else {
+        let [subscriber, plan_pda, subscription_pda, event_authority, self_program] = accounts else {
             return Err(SubscriptionsError::NotEnoughAccountKeys.into());
         };
 
@@ -128,12 +111,6 @@ impl<'a> TryFrom<&'a [AccountView]> for CancelSubscriptionAccounts<'a> {
         ProgramAccount::check(subscription_pda)?;
         WritableAccount::check(subscription_pda)?;
 
-        Ok(Self {
-            subscriber,
-            plan_pda,
-            subscription_pda,
-            event_authority,
-            self_program,
-        })
+        Ok(Self { subscriber, plan_pda, subscription_pda, event_authority, self_program })
     }
 }

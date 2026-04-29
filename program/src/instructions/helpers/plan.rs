@@ -1,9 +1,8 @@
 use pinocchio::{cpi::Seed, error::ProgramError, AccountView};
 
 use crate::{
-    find_plan_pda, state::plan::Plan, AccountCheck, MintInterface, ProgramAccount,
-    ProgramAccountInit, SignerAccount, SubscriptionsError, SystemAccount, TokenProgramInterface,
-    WritableAccount,
+    find_plan_pda, state::plan::Plan, AccountCheck, MintInterface, ProgramAccount, ProgramAccountInit, SignerAccount,
+    SubscriptionsError, SystemAccount, TokenProgramInterface, WritableAccount,
 };
 
 /// Validated accounts for the [`CreatePlan`](crate::SubscriptionsInstruction::CreatePlan) instruction.
@@ -30,13 +29,7 @@ impl<'a> TryFrom<&'a [AccountView]> for CreatePlanAccounts<'a> {
         TokenProgramInterface::check(token_program)?;
         SystemAccount::check(system_program)?;
 
-        Ok(Self {
-            merchant,
-            plan_pda,
-            token_mint,
-            system_program,
-            token_program,
-        })
+        Ok(Self { merchant, plan_pda, token_mint, system_program, token_program })
     }
 }
 
@@ -44,10 +37,7 @@ impl<'a> TryFrom<&'a [AccountView]> for CreatePlanAccounts<'a> {
 ///
 /// Derives the expected PDA from the merchant address and `plan_id`, then
 /// creates the account via CPI. Returns the PDA bump on success.
-pub fn create_plan_account(
-    accounts: &CreatePlanAccounts,
-    plan_id: u64,
-) -> Result<u8, ProgramError> {
+pub fn create_plan_account(accounts: &CreatePlanAccounts, plan_id: u64) -> Result<u8, ProgramError> {
     if accounts.plan_pda.data_len() > 0 {
         return Err(SubscriptionsError::PlanAlreadyExists.into());
     }

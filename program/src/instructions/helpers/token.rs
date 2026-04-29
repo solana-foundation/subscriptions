@@ -18,13 +18,11 @@ use pinocchio_token::{
     ID as SPL_TOKEN_PROGRAM_ID,
 };
 
-use super::traits::{
-    AccountCheck, AssociatedTokenAccountCheck, AssociatedTokenAccountInit, MintInit, TokenInit,
-};
+use super::traits::{AccountCheck, AssociatedTokenAccountCheck, AssociatedTokenAccountInit, MintInit, TokenInit};
 use crate::{
     constants::{
-        TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET, TOKEN_2022_MINT_DISCRIMINATOR,
-        TOKEN_2022_PROGRAM_ID, TOKEN_2022_TOKEN_ACCOUNT_DISCRIMINATOR,
+        TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET, TOKEN_2022_MINT_DISCRIMINATOR, TOKEN_2022_PROGRAM_ID,
+        TOKEN_2022_TOKEN_ACCOUNT_DISCRIMINATOR,
     },
     SubscriptionsError,
 };
@@ -99,22 +97,9 @@ fn init_mint_helper(
 ) -> ProgramResult {
     let lamports = Rent::get()?.try_minimum_balance(Mint::LEN)?;
 
-    CreateAccount {
-        from: payer,
-        to: account,
-        lamports,
-        space: Mint::LEN as u64,
-        owner: owner_program_id,
-    }
-    .invoke()?;
+    CreateAccount { from: payer, to: account, lamports, space: Mint::LEN as u64, owner: owner_program_id }.invoke()?;
 
-    InitializeMint2 {
-        mint: account,
-        decimals,
-        mint_authority,
-        freeze_authority,
-    }
-    .invoke()
+    InitializeMint2 { mint: account, decimals, mint_authority, freeze_authority }.invoke()
 }
 
 fn init_token_helper(
@@ -126,21 +111,10 @@ fn init_token_helper(
 ) -> ProgramResult {
     let lamports = Rent::get()?.try_minimum_balance(TokenAccountState::LEN)?;
 
-    CreateAccount {
-        from: payer,
-        to: account,
-        lamports,
-        space: TokenAccountState::LEN as u64,
-        owner: owner_program_id,
-    }
-    .invoke()?;
+    CreateAccount { from: payer, to: account, lamports, space: TokenAccountState::LEN as u64, owner: owner_program_id }
+        .invoke()?;
 
-    InitializeAccount3 {
-        account,
-        mint,
-        owner,
-    }
-    .invoke()
+    InitializeAccount3 { account, mint, owner }.invoke()
 }
 
 // MintAccount (SPL Token)
@@ -170,14 +144,7 @@ impl MintInit for MintAccount {
         mint_authority: &Address,
         freeze_authority: Option<&Address>,
     ) -> ProgramResult {
-        init_mint_helper(
-            account,
-            payer,
-            decimals,
-            mint_authority,
-            freeze_authority,
-            &pinocchio_token::ID,
-        )
+        init_mint_helper(account, payer, decimals, mint_authority, freeze_authority, &pinocchio_token::ID)
     }
 
     fn init_if_needed(
@@ -214,12 +181,7 @@ impl AccountCheck for TokenAccount {
 }
 
 impl TokenInit for TokenAccount {
-    fn init(
-        account: &AccountView,
-        mint: &AccountView,
-        payer: &AccountView,
-        owner: &Address,
-    ) -> ProgramResult {
+    fn init(account: &AccountView, mint: &AccountView, payer: &AccountView, owner: &Address) -> ProgramResult {
         init_token_helper(account, mint, payer, owner, &pinocchio_token::ID)
     }
 
@@ -316,8 +278,7 @@ impl AccountCheck for TokenAccount2022Account {
 
         let data = account.try_borrow()?;
 
-        if data[TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET].ne(&TOKEN_2022_TOKEN_ACCOUNT_DISCRIMINATOR)
-        {
+        if data[TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET].ne(&TOKEN_2022_TOKEN_ACCOUNT_DISCRIMINATOR) {
             return Err(SubscriptionsError::InvalidToken2022TokenAccountData.into());
         }
 
@@ -326,19 +287,8 @@ impl AccountCheck for TokenAccount2022Account {
 }
 
 impl TokenInit for TokenAccount2022Account {
-    fn init(
-        account: &AccountView,
-        mint: &AccountView,
-        payer: &AccountView,
-        owner: &Address,
-    ) -> ProgramResult {
-        init_token_helper(
-            account,
-            mint,
-            payer,
-            owner,
-            &crate::constants::TOKEN_2022_PROGRAM_ID,
-        )
+    fn init(account: &AccountView, mint: &AccountView, payer: &AccountView, owner: &Address) -> ProgramResult {
+        init_token_helper(account, mint, payer, owner, &crate::constants::TOKEN_2022_PROGRAM_ID)
     }
 
     fn init_if_needed(
@@ -359,9 +309,7 @@ pub struct TokenProgramInterface;
 
 impl TokenProgramInterface {
     pub fn check(account: &AccountView) -> Result<(), ProgramError> {
-        if account.address().ne(&SPL_TOKEN_PROGRAM_ID)
-            && account.address().ne(&TOKEN_2022_PROGRAM_ID)
-        {
+        if account.address().ne(&SPL_TOKEN_PROGRAM_ID) && account.address().ne(&TOKEN_2022_PROGRAM_ID) {
             return Err(SubscriptionsError::InvalidTokenProgram.into());
         }
         Ok(())
@@ -382,10 +330,7 @@ impl AccountCheck for MintInterface {
 }
 
 impl MintInterface {
-    pub fn check_with_program(
-        account: &AccountView,
-        token_program: &AccountView,
-    ) -> Result<(), ProgramError> {
+    pub fn check_with_program(account: &AccountView, token_program: &AccountView) -> Result<(), ProgramError> {
         Self::check(account)?;
 
         if !account.owned_by(token_program.address()) {
@@ -410,10 +355,7 @@ impl AccountCheck for TokenAccountInterface {
 }
 
 impl TokenAccountInterface {
-    pub fn check_with_program(
-        account: &AccountView,
-        token_program: &AccountView,
-    ) -> Result<(), ProgramError> {
+    pub fn check_with_program(account: &AccountView, token_program: &AccountView) -> Result<(), ProgramError> {
         Self::check(account)?;
 
         if !account.owned_by(token_program.address()) {
@@ -454,12 +396,7 @@ impl AssociatedTokenAccount {
         TokenAccountInterface::check(account)?;
 
         let expected_pda = Address::create_program_address(
-            &[
-                authority.address().as_ref(),
-                token_program.address().as_ref(),
-                mint.address().as_ref(),
-                &[bump],
-            ],
+            &[authority.address().as_ref(), token_program.address().as_ref(), mint.address().as_ref(), &[bump]],
             &pinocchio_associated_token_account::ID,
         )
         .map_err(|_| SubscriptionsError::InvalidAssociatedTokenAccountDerivedAddress)?;
@@ -482,11 +419,7 @@ impl AssociatedTokenAccountCheck for AssociatedTokenAccount {
         TokenAccountInterface::check(account)?;
 
         if Address::find_program_address(
-            &[
-                authority.address().as_ref(),
-                token_program.address().as_ref(),
-                mint.address().as_ref(),
-            ],
+            &[authority.address().as_ref(), token_program.address().as_ref(), mint.address().as_ref()],
             &pinocchio_associated_token_account::ID,
         )
         .0
@@ -508,15 +441,7 @@ impl AssociatedTokenAccountInit for AssociatedTokenAccount {
         system_program: &AccountView,
         token_program: &AccountView,
     ) -> ProgramResult {
-        Create {
-            funding_account: payer,
-            account,
-            wallet: owner,
-            mint,
-            system_program,
-            token_program,
-        }
-        .invoke()
+        Create { funding_account: payer, account, wallet: owner, mint, system_program, token_program }.invoke()
     }
 
     fn init_if_needed(

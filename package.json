@@ -13,16 +13,36 @@
     }
   },
   "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "generate-idl": "cd program && GENERATE_IDL=1 cargo check",
-    "generate-clients": "tsx ./scripts/generate-clients.ts"
+    "generate-clients": "tsx ./scripts/generate-clients.ts",
+    "lint": "pnpm run generate-clients && pnpm --filter @subscriptions/client build && eslint .",
+    "lint:fix": "pnpm run generate-clients && pnpm --filter @subscriptions/client build && eslint . --fix"
   },
   "devDependencies": {
     "@codama/nodes-from-anchor": "^1.4.1",
     "@codama/renderers-js": "^2.2.0",
     "@codama/renderers-rust": "^1.2.9",
+    "@eslint/js": "^9.39.2",
+    "@solana/eslint-config-solana": "6.0.0",
+    "@solana/prettier-config-solana": "^0.0.6",
+    "@types/eslint": "^9.6.1",
+    "@types/eslint__js": "^9.14.0",
     "@types/node": "^25.0.10",
     "codama": "^1.6.0",
+    "eslint": "^9.39.2",
+    "eslint-plugin-jest": "^29.12.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "eslint-plugin-sort-keys-fix": "^1.1.2",
+    "eslint-plugin-typescript-sort-keys": "^3.3.0",
+    "globals": "^16.5.0",
+    "jest": "^30.0.0",
+    "prettier": "^3.6.2",
+    "ts-node": "^10.9.2",
     "tsx": "^4.20.5",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.54.0"
   }
 }

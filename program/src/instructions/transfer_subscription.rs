@@ -8,9 +8,7 @@ use crate::{
     check_and_update_version,
     event_engine::{self, EventSerialize},
     events::SubscriptionTransferEvent,
-    helpers::{
-        transfer_with_delegate, validate_recurring_transfer, TransferAccounts, TransferData,
-    },
+    helpers::{transfer_with_delegate, validate_recurring_transfer, TransferAccounts, TransferData},
     state::{plan::Plan, subscription_delegation::SubscriptionDelegation},
     AccountCheck, ProgramAccount, SignerAccount, SubscriptionAuthorityAccount, SubscriptionsError,
     TokenAccountInterface, TokenProgramInterface, WritableAccount,
@@ -149,12 +147,7 @@ pub fn process(accounts: &[AccountView], transfer_data: &TransferData) -> Progra
         receiver_owner,
     );
     let event_data = event.to_bytes();
-    event_engine::emit_event(
-        &crate::ID,
-        accounts_struct.event_authority,
-        accounts_struct.self_program,
-        &event_data,
-    )?;
+    event_engine::emit_event(&crate::ID, accounts_struct.event_authority, accounts_struct.self_program, &event_data)?;
 
     Ok(())
 }
@@ -193,10 +186,7 @@ impl<'a> TryFrom<&'a [AccountView]> for TransferSubscriptionAccounts<'a> {
         WritableAccount::check(receiver_ata)?;
         SignerAccount::check(caller)?;
         TokenProgramInterface::check(token_program)?;
-        TokenAccountInterface::check_accounts_with_program(
-            token_program,
-            &[delegator_ata, receiver_ata],
-        )?;
+        TokenAccountInterface::check_accounts_with_program(token_program, &[delegator_ata, receiver_ata])?;
 
         Ok(Self {
             subscription_pda,

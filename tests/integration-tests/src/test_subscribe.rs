@@ -5,8 +5,8 @@ use crate::{
         constants::{MINT_DECIMALS, TOKEN_PROGRAM_ID},
         pda::{get_plan_pda, get_subscription_pda},
         utils::{
-            current_ts, days, init_ata, init_mint, init_wallet,
-            initialize_subscription_authority_action, setup, CreatePlan, Subscribe,
+            current_ts, days, init_ata, init_mint, init_wallet, initialize_subscription_authority_action, setup,
+            CreatePlan, Subscribe,
         },
     },
     AccountDiscriminator, SubscriptionsError,
@@ -30,20 +30,11 @@ fn setup_plan(
     let merchant = Keypair::new();
     litesvm.airdrop(&merchant.pubkey(), 10_000_000_000).unwrap();
 
-    let mint = init_mint(
-        &mut litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(alice.pubkey()),
-        &[],
-    );
+    let mint = init_mint(&mut litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(alice.pubkey()), &[]);
     let _alice_ata = init_ata(&mut litesvm, mint, alice.pubkey(), 100_000_000);
 
     // Initialize subscription_authority for alice
-    initialize_subscription_authority_action(&mut litesvm, &alice, mint)
-        .0
-        .assert_ok();
+    initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
 
     // Create plan
     let (res, plan_pda) = CreatePlan::new(&mut litesvm, &merchant, mint)
@@ -64,16 +55,7 @@ fn subscribe_happy_path() {
     let end_ts = current_ts() + days(30) as i64;
     let (mut litesvm, alice, merchant, mint, plan_pda, plan_bump) = setup_plan(1, end_ts);
 
-    let res = Subscribe::new(
-        &mut litesvm,
-        &alice,
-        merchant.pubkey(),
-        plan_pda,
-        1,
-        plan_bump,
-        mint,
-    )
-    .execute();
+    let res = Subscribe::new(&mut litesvm, &alice, merchant.pubkey(), plan_pda, 1, plan_bump, mint).execute();
     res.assert_ok();
 
     // Verify subscription state
@@ -82,10 +64,7 @@ fn subscribe_happy_path() {
     assert_eq!(sub_account.data.len(), SubscriptionDelegation::LEN);
 
     let sub = SubscriptionDelegation::load(&sub_account.data).unwrap();
-    assert_eq!(
-        sub.header.discriminator,
-        AccountDiscriminator::SubscriptionDelegation as u8
-    );
+    assert_eq!(sub.header.discriminator, AccountDiscriminator::SubscriptionDelegation as u8);
     assert_eq!(sub.header.delegator.to_bytes(), alice.pubkey().to_bytes());
     assert_eq!(sub.header.delegatee.to_bytes(), plan_pda.to_bytes());
     assert_eq!(sub.header.payer.to_bytes(), alice.pubkey().to_bytes());
@@ -100,22 +79,9 @@ fn subscribe_plan_sunset_rejected() {
 
     // Sunset the plan
     use crate::{state::common::PlanStatus, tests::utils::UpdatePlan};
-    UpdatePlan::new(&mut litesvm, &merchant, plan_pda)
-        .status(PlanStatus::Sunset)
-        .end_ts(end_ts)
-        .execute()
-        .assert_ok();
+    UpdatePlan::new(&mut litesvm, &merchant, plan_pda).status(PlanStatus::Sunset).end_ts(end_ts).execute().assert_ok();
 
-    let res = Subscribe::new(
-        &mut litesvm,
-        &alice,
-        merchant.pubkey(),
-        plan_pda,
-        1,
-        plan_bump,
-        mint,
-    )
-    .execute();
+    let res = Subscribe::new(&mut litesvm, &alice, merchant.pubkey(), plan_pda, 1, plan_bump, mint).execute();
     res.assert_err(SubscriptionsError::PlanSunset);
 }
 
@@ -128,16 +94,7 @@ fn subscribe_plan_expired_rejected() {
     use crate::tests::utils::move_clock_forward;
     move_clock_forward(&mut litesvm, days(3));
 
-    let res = Subscribe::new(
-        &mut litesvm,
-        &alice,
-        merchant.pubkey(),
-        plan_pda,
-        1,
-        plan_bump,
-        mint,
-    )
-    .execute();
+    let res = Subscribe::new(&mut litesvm, &alice, merchant.pubkey(), plan_pda, 1, plan_bump, mint).execute();
     res.assert_err(SubscriptionsError::PlanExpired);
 }
 
@@ -147,29 +104,11 @@ fn subscribe_mint_mismatch_rejected() {
     let (mut litesvm, alice, merchant, _mint, plan_pda, plan_bump) = setup_plan(1, end_ts);
 
     // Create a different mint and subscription_authority for it
-    let other_mint = init_mint(
-        &mut litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(alice.pubkey()),
-        &[],
-    );
+    let other_mint = init_mint(&mut litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(alice.pubkey()), &[]);
     let _other_ata = init_ata(&mut litesvm, other_mint, alice.pubkey(), 100_000_000);
-    initialize_subscription_authority_action(&mut litesvm, &alice, other_mint)
-        .0
-        .assert_ok();
+    initialize_subscription_authority_action(&mut litesvm, &alice, other_mint).0.assert_ok();
 
-    let res = Subscribe::new(
-        &mut litesvm,
-        &alice,
-        merchant.pubkey(),
-        plan_pda,
-        1,
-        plan_bump,
-        other_mint,
-    )
-    .execute();
+    let res = Subscribe::new(&mut litesvm, &alice, merchant.pubkey(), plan_pda, 1, plan_bump, other_mint).execute();
     res.assert_err(SubscriptionsError::MintMismatch);
 }
 
@@ -181,22 +120,11 @@ fn subscribe_non_subscriber_subscription_authority_rejected() {
     // Create another user with their own subscription_authority
     let bob = init_wallet(&mut litesvm, 10_000_000_000);
     let _bob_ata = init_ata(&mut litesvm, mint, bob.pubkey(), 100_000_000);
-    initialize_subscription_authority_action(&mut litesvm, &bob, mint)
-        .0
-        .assert_ok();
+    initialize_subscription_authority_action(&mut litesvm, &bob, mint).0.assert_ok();
 
     // Try to subscribe using bob's keys but alice's subscription_authority would be wrong
     // Actually bob subscribes normally, this should succeed
-    let res = Subscribe::new(
-        &mut litesvm,
-        &bob,
-        merchant.pubkey(),
-        plan_pda,
-        1,
-        plan_bump,
-        mint,
-    )
-    .execute();
+    let res = Subscribe::new(&mut litesvm, &bob, merchant.pubkey(), plan_pda, 1, plan_bump, mint).execute();
     res.assert_ok();
 }
 
@@ -209,16 +137,7 @@ fn subscribe_no_subscription_authority_rejected() {
     let charlie = init_wallet(&mut litesvm, 10_000_000_000);
     let _charlie_ata = init_ata(&mut litesvm, mint, charlie.pubkey(), 100_000_000);
 
-    let res = Subscribe::new(
-        &mut litesvm,
-        &charlie,
-        merchant.pubkey(),
-        plan_pda,
-        1,
-        plan_bump,
-        mint,
-    )
-    .execute();
+    let res = Subscribe::new(&mut litesvm, &charlie, merchant.pubkey(), plan_pda, 1, plan_bump, mint).execute();
     // Should fail because subscription_authority PDA doesn't exist (not owned by program)
     res.assert_err(SubscriptionsError::InvalidSubscriptionAuthorityPda);
 }
@@ -234,17 +153,8 @@ fn subscribe_with_sponsor() {
     let alice_balance_before = litesvm.get_account(&alice.pubkey()).unwrap().lamports;
     let sponsor_balance_before = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
 
-    let res = Subscribe::new(
-        &mut litesvm,
-        &alice,
-        merchant.pubkey(),
-        plan_pda,
-        1,
-        plan_bump,
-        mint,
-    )
-    .payer(&sponsor)
-    .execute();
+    let res =
+        Subscribe::new(&mut litesvm, &alice, merchant.pubkey(), plan_pda, 1, plan_bump, mint).payer(&sponsor).execute();
     res.assert_ok();
 
     // Subscriber must not be charged.
@@ -267,29 +177,10 @@ fn subscribe_duplicate_rejected() {
     let (mut litesvm, alice, merchant, mint, plan_pda, plan_bump) = setup_plan(1, end_ts);
 
     // First subscription should succeed
-    Subscribe::new(
-        &mut litesvm,
-        &alice,
-        merchant.pubkey(),
-        plan_pda,
-        1,
-        plan_bump,
-        mint,
-    )
-    .execute()
-    .assert_ok();
+    Subscribe::new(&mut litesvm, &alice, merchant.pubkey(), plan_pda, 1, plan_bump, mint).execute().assert_ok();
 
     // Second subscription to same plan should fail (PDA already exists)
-    let res = Subscribe::new(
-        &mut litesvm,
-        &alice,
-        merchant.pubkey(),
-        plan_pda,
-        1,
-        plan_bump,
-        mint,
-    )
-    .execute();
+    let res = Subscribe::new(&mut litesvm, &alice, merchant.pubkey(), plan_pda, 1, plan_bump, mint).execute();
     res.assert_err(SubscriptionsError::AlreadySubscribed);
 }
 
@@ -341,11 +232,7 @@ fn subscribe_rejects_stale_expected_terms() {
     ]
     .concat();
 
-    let ix = Instruction {
-        program_id: PROGRAM_ID,
-        accounts,
-        data,
-    };
+    let ix = Instruction { program_id: PROGRAM_ID, accounts, data };
 
     let res = build_and_send_transaction(&mut litesvm, &[&alice], &alice.pubkey(), &ix);
     res.assert_err(SubscriptionsError::PlanTermsMismatch);

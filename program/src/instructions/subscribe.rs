@@ -19,8 +19,8 @@ use crate::{
         subscription_authority::SubscriptionAuthority,
         subscription_delegation::SubscriptionDelegation,
     },
-    verify_plan_pda, AccountCheck, ProgramAccount, ProgramAccountInit, SignerAccount,
-    SubscriptionAuthorityAccount, SubscriptionsError, SystemAccount, WritableAccount,
+    verify_plan_pda, AccountCheck, ProgramAccount, ProgramAccountInit, SignerAccount, SubscriptionAuthorityAccount,
+    SubscriptionsError, SystemAccount, WritableAccount,
 };
 
 /// Instruction discriminator byte for `Subscribe`.
@@ -68,11 +68,7 @@ pub fn process(accounts: &[AccountView], data: &SubscribeData) -> ProgramResult 
     let current_ts = Clock::get()?.unix_timestamp;
 
     // Validate plan PDA derivation
-    let expected_plan_pda = verify_plan_pda(
-        accounts_struct.merchant.address(),
-        data.plan_id,
-        data.plan_bump,
-    )?;
+    let expected_plan_pda = verify_plan_pda(accounts_struct.merchant.address(), data.plan_id, data.plan_bump)?;
     if expected_plan_pda != *accounts_struct.plan_pda.address() {
         return Err(SubscriptionsError::InvalidPlanPda.into());
     }
@@ -126,10 +122,8 @@ pub fn process(accounts: &[AccountView], data: &SubscribeData) -> ProgramResult 
     }
 
     // Derive and verify subscription PDA
-    let (expected_pda, bump) = find_subscription_pda(
-        accounts_struct.plan_pda.address(),
-        accounts_struct.subscriber.address(),
-    );
+    let (expected_pda, bump) =
+        find_subscription_pda(accounts_struct.plan_pda.address(), accounts_struct.subscriber.address());
 
     if expected_pda != *accounts_struct.subscription_pda.address() {
         return Err(SubscriptionsError::InvalidSubscriptionPda.into());
@@ -187,12 +181,7 @@ pub fn process(accounts: &[AccountView], data: &SubscribeData) -> ProgramResult 
         current_ts,
     );
     let event_data = event.to_bytes();
-    event_engine::emit_event(
-        &crate::ID,
-        accounts_struct.event_authority,
-        accounts_struct.self_program,
-        &event_data,
-    )?;
+    event_engine::emit_event(&crate::ID, accounts_struct.event_authority, accounts_struct.self_program, &event_data)?;
 
     Ok(())
 }

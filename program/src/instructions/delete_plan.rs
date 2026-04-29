@@ -5,8 +5,7 @@ use pinocchio::{
 };
 
 use crate::{
-    state::plan::Plan, AccountCheck, AccountClose, ProgramAccount, SignerAccount,
-    SubscriptionsError, WritableAccount,
+    state::plan::Plan, AccountCheck, AccountClose, ProgramAccount, SignerAccount, SubscriptionsError, WritableAccount,
 };
 
 /// Validated accounts for the [`DeletePlan`](crate::SubscriptionsInstruction::DeletePlan) instruction.

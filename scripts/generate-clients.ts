@@ -42,8 +42,8 @@ cargoToml.restore();
 
 void codama.accept(
     renderJavaScriptVisitor(typescriptClientsDir, {
-        generatedFolder: 'src/generated',
         deleteFolderBeforeRendering: true,
         formatCode: true,
+        generatedFolder: 'src/generated',
     }),
 );

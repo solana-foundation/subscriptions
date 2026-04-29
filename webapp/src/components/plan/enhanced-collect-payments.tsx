@@ -1,582 +1,594 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback } from 'react';
+import { DollarSign, Users, ClipboardPen, Loader2, Clock, Star, Banknote, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { ExplorerLink } from '@/components/cluster/cluster-ui';
+import { HistoryEntry } from '@/components/plan/collect-payments-panel';
+import { useAllPlanSubscribers, type PlanSubscriberData } from '@/hooks/use-plan-subscribers';
+import { useQueryClient } from '@tanstack/react-query';
+import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations';
+import { useClusterConfig } from '@/hooks/use-cluster-config';
+import { useProgramAddress } from '@/hooks/use-token-config';
+import { fetchPlanSubscriptions } from '@/hooks/use-subscriptions';
+import { getBlockTimestamp } from '@/hooks/use-time-travel';
+import { computeEligibleSubscribers, hasMatchingPlanTerms } from '@/lib/collect-utils';
 import {
-  DollarSign, Users, ClipboardPen, Loader2, Clock, Star, Banknote, RefreshCw,
-} from 'lucide-react'
-import { toast } from 'sonner'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
-import { ExplorerLink } from '@/components/cluster/cluster-ui'
-import { HistoryEntry } from '@/components/plan/collect-payments-panel'
-import { useAllPlanSubscribers, type PlanSubscriberData } from '@/hooks/use-plan-subscribers'
-import { useQueryClient } from '@tanstack/react-query'
-import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations'
-import { useClusterConfig } from '@/hooks/use-cluster-config'
-import { useProgramAddress } from '@/hooks/use-token-config'
-import { fetchPlanSubscriptions } from '@/hooks/use-subscriptions'
-import { getBlockTimestamp } from '@/hooks/use-time-travel'
-import { computeEligibleSubscribers, hasMatchingPlanTerms } from '@/lib/collect-utils'
-import { getCollectionHistory, addCollectionRecord, createSuccessRecord, createFailureRecord, clearCollectionHistory } from '@/lib/collection-history'
-import { parsePlanMeta, ICON_MAP } from '@/lib/plan-constants'
-import { USDC_MULTIPLIER, ellipsify, fmtDateShort } from '@/lib/utils'
+    getCollectionHistory,
+    addCollectionRecord,
+    createSuccessRecord,
+    createFailureRecord,
+    clearCollectionHistory,
+} from '@/lib/collection-history';
+import { parsePlanMeta, ICON_MAP } from '@/lib/plan-constants';
+import { USDC_MULTIPLIER, ellipsify, fmtDateShort } from '@/lib/utils';
 
 function CollectSummaryCards({
-  totalPending,
-  activeSubscribers,
-  cancelledCount,
-  plansWithPending,
-  totalPlans,
+    totalPending,
+    activeSubscribers,
+    cancelledCount,
+    plansWithPending,
+    totalPlans,
 }: {
-  totalPending: number
-  activeSubscribers: number
-  cancelledCount: number
-  plansWithPending: number
-  totalPlans: number
+    totalPending: number;
+    activeSubscribers: number;
+    cancelledCount: number;
+    plansWithPending: number;
+    totalPlans: number;
 }) {
-  const cards = [
-    {
-      icon: DollarSign,
-      title: 'Total Pending',
-      row1Label: 'Amount',
-      row1Value: `$${totalPending.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC`,
-      row2Label: 'Across',
-      row2Value: `${activeSubscribers + cancelledCount} subscribers`,
-    },
-    {
-      icon: Users,
-      title: 'Active Subscribers',
-      row1Label: 'Active',
-      row1Value: `${activeSubscribers}`,
-      row2Label: 'Cancelled',
-      row2Value: `${cancelledCount}`,
-    },
-    {
-      icon: ClipboardPen,
-      title: 'Plans Collecting',
-      row1Label: 'With pending',
-      row1Value: `${plansWithPending}`,
-      row2Label: 'Total plans',
-      row2Value: `${totalPlans}`,
-    },
-  ]
+    const cards = [
+        {
+            icon: DollarSign,
+            title: 'Total Pending',
+            row1Label: 'Amount',
+            row1Value: `$${totalPending.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC`,
+            row2Label: 'Across',
+            row2Value: `${activeSubscribers + cancelledCount} subscribers`,
+        },
+        {
+            icon: Users,
+            title: 'Active Subscribers',
+            row1Label: 'Active',
+            row1Value: `${activeSubscribers}`,
+            row2Label: 'Cancelled',
+            row2Value: `${cancelledCount}`,
+        },
+        {
+            icon: ClipboardPen,
+            title: 'Plans Collecting',
+            row1Label: 'With pending',
+            row1Value: `${plansWithPending}`,
+            row2Label: 'Total plans',
+            row2Value: `${totalPlans}`,
+        },
+    ];
 
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-      {cards.map((card) => (
-        <div
-          key={card.title}
-          className="flex flex-col relative overflow-hidden border border-emerald-500/20 bg-[#12291d]/80 backdrop-blur-xl rounded-2xl shadow-[0_0_15px_rgba(16,185,129,0.1)] transition-all hover:border-emerald-500/40 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)]"
-        >
-          <div className="p-5 flex-grow">
-            <div className="flex items-center gap-2 mb-6">
-              <card.icon className="h-5 w-5 text-emerald-400" />
-              <h3 className="text-[17px] font-semibold text-white tracking-tight">{card.title}</h3>
-            </div>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-400">{card.row1Label}</span>
-                <span className="font-bold text-white text-base">{card.row1Value}</span>
-              </div>
-              <div className="h-px w-full bg-white/5" />
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-400">{card.row2Label}</span>
-                <span className="font-bold text-white text-base">{card.row2Value}</span>
-              </div>
-            </div>
-          </div>
+    return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+            {cards.map(card => (
+                <div
+                    key={card.title}
+                    className="flex flex-col relative overflow-hidden border border-emerald-500/20 bg-[#12291d]/80 backdrop-blur-xl rounded-2xl shadow-[0_0_15px_rgba(16,185,129,0.1)] transition-all hover:border-emerald-500/40 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)]"
+                >
+                    <div className="p-5 flex-grow">
+                        <div className="flex items-center gap-2 mb-6">
+                            <card.icon className="h-5 w-5 text-emerald-400" />
+                            <h3 className="text-[17px] font-semibold text-white tracking-tight">{card.title}</h3>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-gray-400">{card.row1Label}</span>
+                                <span className="font-bold text-white text-base">{card.row1Value}</span>
+                            </div>
+                            <div className="h-px w-full bg-white/5" />
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-gray-400">{card.row2Label}</span>
+                                <span className="font-bold text-white text-base">{card.row2Value}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ))}
         </div>
-      ))}
-    </div>
-  )
+    );
 }
 
 function CollectAllButton({
-  plansData,
-  totalPendingUsd,
-  onComplete,
+    plansData,
+    totalPendingUsd,
+    onComplete,
 }: {
-  plansData: PlanSubscriberData[]
-  totalPendingUsd: number
-  onComplete?: () => void
+    plansData: PlanSubscriberData[];
+    totalPendingUsd: number;
+    onComplete?: () => void;
 }) {
-  const [collecting, setCollecting] = useState(false)
-  const [progress, setProgress] = useState('')
-  const { url: rpcUrl } = useClusterConfig()
-  const progAddr = useProgramAddress()
-  const { collectAllPlanPayments } = useSubscriptionsMutations()
+    const [collecting, setCollecting] = useState(false);
+    const [progress, setProgress] = useState('');
+    const { url: rpcUrl } = useClusterConfig();
+    const progAddr = useProgramAddress();
+    const { collectAllPlanPayments } = useSubscriptionsMutations();
 
-  const eligiblePlans = useMemo(
-    () => plansData.filter((p) => p.eligible.length > 0),
-    [plansData],
-  )
+    const eligiblePlans = useMemo(() => plansData.filter(p => p.eligible.length > 0), [plansData]);
 
-  const handleCollectAll = useCallback(async () => {
-    setCollecting(true)
-    setProgress('Fetching subscribers...')
+    const handleCollectAll = useCallback(async () => {
+        setCollecting(true);
+        setProgress('Fetching subscribers...');
 
-    const plans: Array<{
-      planAddress: string
-      subscribers: Array<{ subscriptionAddress: string; delegator: string; amount: bigint }>
-      mint: string
-      destinations: string[]
-    }> = []
-    let submittedPlans: typeof plans = []
-    const planDataByAddress = new Map(eligiblePlans.map((pd) => [pd.plan.address, pd]))
+        const plans: Array<{
+            planAddress: string;
+            subscribers: Array<{ subscriptionAddress: string; delegator: string; amount: bigint }>;
+            mint: string;
+            destinations: string[];
+        }> = [];
+        let submittedPlans: typeof plans = [];
+        const planDataByAddress = new Map(eligiblePlans.map(pd => [pd.plan.address, pd]));
 
-    try {
-      const ts = await getBlockTimestamp(rpcUrl)
+        try {
+            const ts = await getBlockTimestamp(rpcUrl);
 
-      for (const pd of eligiblePlans) {
-        const subscribers = await fetchPlanSubscriptions(rpcUrl, pd.plan.address, progAddr!)
-        const eligible = computeEligibleSubscribers(
-          subscribers, pd.plan.data.terms, ts,
-        )
-        if (eligible.length === 0) continue
-        plans.push({
-          planAddress: pd.plan.address,
-          subscribers: eligible.map((e) => ({
-            subscriptionAddress: e.subscriptionAddress,
-            delegator: e.delegator,
-            amount: e.collectAmount,
-          })),
-          mint: pd.plan.data.mint,
-          destinations: pd.plan.data.destinations,
-        })
-      }
+            for (const pd of eligiblePlans) {
+                const subscribers = await fetchPlanSubscriptions(rpcUrl, pd.plan.address, progAddr!);
+                const eligible = computeEligibleSubscribers(subscribers, pd.plan.data.terms, ts);
+                if (eligible.length === 0) continue;
+                plans.push({
+                    planAddress: pd.plan.address,
+                    subscribers: eligible.map(e => ({
+                        subscriptionAddress: e.subscriptionAddress,
+                        delegator: e.delegator,
+                        amount: e.collectAmount,
+                    })),
+                    mint: pd.plan.data.mint,
+                    destinations: pd.plan.data.destinations,
+                });
+            }
 
-      if (plans.length === 0) {
-        toast.info('No eligible subscribers found')
-        setCollecting(false)
-        setProgress('')
-        return
-      }
+            if (plans.length === 0) {
+                toast.info('No eligible subscribers found');
+                setCollecting(false);
+                setProgress('');
+                return;
+            }
 
-      const totalIxs = plans.reduce((sum, p) => sum + p.subscribers.length, 0)
-      setProgress(`Batching ${totalIxs} transfers across ${plans.length} plans...`)
+            const totalIxs = plans.reduce((sum, p) => sum + p.subscribers.length, 0);
+            setProgress(`Batching ${totalIxs} transfers across ${plans.length} plans...`);
 
-      submittedPlans = plans
-      const res = await collectAllPlanPayments.mutateAsync({ plans })
+            submittedPlans = plans;
+            const res = await collectAllPlanPayments.mutateAsync({ plans });
 
-      for (const plan of plans) {
-        const pd = planDataByAddress.get(plan.planAddress)
-        const planResult = res.plans[plan.planAddress]
-        if (!pd || !planResult) continue
+            for (const plan of plans) {
+                const pd = planDataByAddress.get(plan.planAddress);
+                const planResult = res.plans[plan.planAddress];
+                if (!pd || !planResult) continue;
 
-        const meta = parsePlanMeta(pd.plan.data.metadataUri)
-        const planName = meta.n || `Plan ${ellipsify(pd.plan.address)}`
-        const planTransfers = planResult.transfers
-          .map(({ subscriptionAddress, amount, signature }) => ({
-            subscriptionAddress,
-            amount,
-            signature,
-          }))
-        addCollectionRecord(createSuccessRecord(
-          pd.plan.address, planName, planTransfers, pd.currentSubscribers.length, planResult.total,
-        ))
-      }
+                const meta = parsePlanMeta(pd.plan.data.metadataUri);
+                const planName = meta.n || `Plan ${ellipsify(pd.plan.address)}`;
+                const planTransfers = planResult.transfers.map(({ subscriptionAddress, amount, signature }) => ({
+                    subscriptionAddress,
+                    amount,
+                    signature,
+                }));
+                addCollectionRecord(
+                    createSuccessRecord(
+                        pd.plan.address,
+                        planName,
+                        planTransfers,
+                        pd.currentSubscribers.length,
+                        planResult.total,
+                    ),
+                );
+            }
 
-      toast.success(`Collected ${res.collected}/${res.total} payments`)
-    } catch (err) {
-      for (const plan of submittedPlans) {
-        const pd = planDataByAddress.get(plan.planAddress)
-        if (!pd) continue
+            toast.success(`Collected ${res.collected}/${res.total} payments`);
+        } catch (err) {
+            for (const plan of submittedPlans) {
+                const pd = planDataByAddress.get(plan.planAddress);
+                if (!pd) continue;
 
-        const meta = parsePlanMeta(pd.plan.data.metadataUri)
-        const planName = meta.n || `Plan ${ellipsify(pd.plan.address)}`
-        addCollectionRecord(createFailureRecord(
-          pd.plan.address, planName, pd.currentSubscribers.length, err,
-        ))
-      }
-      toast.error('Failed to collect payments')
-    }
+                const meta = parsePlanMeta(pd.plan.data.metadataUri);
+                const planName = meta.n || `Plan ${ellipsify(pd.plan.address)}`;
+                addCollectionRecord(createFailureRecord(pd.plan.address, planName, pd.currentSubscribers.length, err));
+            }
+            toast.error('Failed to collect payments');
+        }
 
-    onComplete?.()
-    setCollecting(false)
-    setProgress('')
-  }, [eligiblePlans, rpcUrl, progAddr, collectAllPlanPayments, onComplete])
+        onComplete?.();
+        setCollecting(false);
+        setProgress('');
+    }, [eligiblePlans, rpcUrl, progAddr, collectAllPlanPayments, onComplete]);
 
-  return (
-    <Button
-      className="bg-emerald-600 hover:bg-emerald-500 text-white"
-      disabled={eligiblePlans.length === 0 || collecting}
-      onClick={handleCollectAll}
-    >
-      {collecting ? (
-        <>
-          <Loader2 className="h-4 w-4 animate-spin" />
-          {progress}
-        </>
-      ) : (
-        `Collect All Pending ($${totalPendingUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`
-      )}
-    </Button>
-  )
+    return (
+        <Button
+            className="bg-emerald-600 hover:bg-emerald-500 text-white"
+            disabled={eligiblePlans.length === 0 || collecting}
+            onClick={handleCollectAll}
+        >
+            {collecting ? (
+                <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {progress}
+                </>
+            ) : (
+                `Collect All Pending ($${totalPendingUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`
+            )}
+        </Button>
+    );
 }
 
 function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData; blockTs: number }) {
-  const [view, setView] = useState<'subscribers' | 'history'>('subscribers')
-  const [expanded, setExpanded] = useState(true)
-  const [isCollecting, setIsCollecting] = useState(false)
-  const [historyVersion, setHistoryVersion] = useState(0)
-  const { url: rpcUrl } = useClusterConfig()
-  const progAddr = useProgramAddress()
-  const { collectSubscriptionPayments } = useSubscriptionsMutations()
+    const [view, setView] = useState<'subscribers' | 'history'>('subscribers');
+    const [expanded, setExpanded] = useState(true);
+    const [isCollecting, setIsCollecting] = useState(false);
+    const [historyVersion, setHistoryVersion] = useState(0);
+    const { url: rpcUrl } = useClusterConfig();
+    const progAddr = useProgramAddress();
+    const { collectSubscriptionPayments } = useSubscriptionsMutations();
 
-  const { plan, subscribers, currentSubscribers, staleSubscribers, eligible } = planData
-  const meta = useMemo(() => parsePlanMeta(plan.data.metadataUri), [plan.data.metadataUri])
-  const planName = meta.n || `Plan ${ellipsify(plan.address)}`
-  const PlanIcon = (meta.i && ICON_MAP[meta.i]) || Star
-  const amountUsd = Number(plan.data.terms.amount) / USDC_MULTIPLIER
-  const pendingUsd = Number(planData.totalPending) / USDC_MULTIPLIER
-  const staleSubscriberAddresses = useMemo(
-    () => new Set(staleSubscribers.map((sub) => sub.subscriptionAddress)),
-    [staleSubscribers],
-  )
+    const { plan, subscribers, currentSubscribers, staleSubscribers, eligible } = planData;
+    const meta = useMemo(() => parsePlanMeta(plan.data.metadataUri), [plan.data.metadataUri]);
+    const planName = meta.n || `Plan ${ellipsify(plan.address)}`;
+    const PlanIcon = (meta.i && ICON_MAP[meta.i]) || Star;
+    const amountUsd = Number(plan.data.terms.amount) / USDC_MULTIPLIER;
+    const pendingUsd = Number(planData.totalPending) / USDC_MULTIPLIER;
+    const staleSubscriberAddresses = useMemo(
+        () => new Set(staleSubscribers.map(sub => sub.subscriptionAddress)),
+        [staleSubscribers],
+    );
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const history = useMemo(() => getCollectionHistory(plan.address), [plan.address, historyVersion])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const history = useMemo(() => getCollectionHistory(plan.address), [plan.address, historyVersion]);
 
-  const handleCollect = useCallback(async () => {
-    setIsCollecting(true)
-    try {
-      const subs = await fetchPlanSubscriptions(rpcUrl, plan.address, progAddr!)
-      const ts = await getBlockTimestamp(rpcUrl)
-      const elig = computeEligibleSubscribers(subs, plan.data.terms, ts)
-      const currentSubscriberCount = subs.filter((sub) =>
-        hasMatchingPlanTerms(sub, plan.data.terms),
-      ).length
+    const handleCollect = useCallback(async () => {
+        setIsCollecting(true);
+        try {
+            const subs = await fetchPlanSubscriptions(rpcUrl, plan.address, progAddr!);
+            const ts = await getBlockTimestamp(rpcUrl);
+            const elig = computeEligibleSubscribers(subs, plan.data.terms, ts);
+            const currentSubscriberCount = subs.filter(sub => hasMatchingPlanTerms(sub, plan.data.terms)).length;
 
-      if (elig.length === 0) {
-        toast.info(
-          currentSubscriberCount === 0 && subs.length > 0
-            ? 'Only stale subscriptions found for this plan'
-            : 'All payments already collected this period',
-        )
-        setIsCollecting(false)
-        return
-      }
+            if (elig.length === 0) {
+                toast.info(
+                    currentSubscriberCount === 0 && subs.length > 0
+                        ? 'Only stale subscriptions found for this plan'
+                        : 'All payments already collected this period',
+                );
+                setIsCollecting(false);
+                return;
+            }
 
-      collectSubscriptionPayments.mutate(
-        {
-          planAddress: plan.address,
-          subscribers: elig.map((e) => ({
-            subscriptionAddress: e.subscriptionAddress,
-            delegator: e.delegator,
-            amount: e.collectAmount,
-          })),
-          mint: plan.data.mint,
-          destinations: plan.data.destinations,
-        },
-        {
-          onSuccess: (res) => {
-            addCollectionRecord(createSuccessRecord(
-              plan.address, planName, res.transfers, currentSubscriberCount, elig.length,
-            ))
-            setHistoryVersion((v) => v + 1)
-            setIsCollecting(false)
-          },
-          onError: (error) => {
-            addCollectionRecord(createFailureRecord(
-              plan.address, planName, currentSubscriberCount, error,
-            ))
-            setHistoryVersion((v) => v + 1)
-            setIsCollecting(false)
-          },
-        },
-      )
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to collect')
-      setIsCollecting(false)
-    }
-  }, [rpcUrl, progAddr, plan, planName, collectSubscriptionPayments])
+            collectSubscriptionPayments.mutate(
+                {
+                    planAddress: plan.address,
+                    subscribers: elig.map(e => ({
+                        subscriptionAddress: e.subscriptionAddress,
+                        delegator: e.delegator,
+                        amount: e.collectAmount,
+                    })),
+                    mint: plan.data.mint,
+                    destinations: plan.data.destinations,
+                },
+                {
+                    onSuccess: res => {
+                        addCollectionRecord(
+                            createSuccessRecord(
+                                plan.address,
+                                planName,
+                                res.transfers,
+                                currentSubscriberCount,
+                                elig.length,
+                            ),
+                        );
+                        setHistoryVersion(v => v + 1);
+                        setIsCollecting(false);
+                    },
+                    onError: error => {
+                        addCollectionRecord(createFailureRecord(plan.address, planName, currentSubscriberCount, error));
+                        setHistoryVersion(v => v + 1);
+                        setIsCollecting(false);
+                    },
+                },
+            );
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Failed to collect');
+            setIsCollecting(false);
+        }
+    }, [rpcUrl, progAddr, plan, planName, collectSubscriptionPayments]);
 
-  const periodHoursSec = Number(plan.data.terms.periodHours) * 3600
+    const periodHoursSec = Number(plan.data.terms.periodHours) * 3600;
 
-  return (
-    <div className="border border-emerald-500/15 bg-slate-900/60 rounded-xl overflow-hidden">
-      <button
-        className="w-full p-4 flex items-center justify-between cursor-pointer hover:bg-slate-800/30 transition-colors"
-        onClick={() => setExpanded(!expanded)}
-      >
-        <div className="flex items-center gap-3">
-          <PlanIcon className="h-5 w-5 text-emerald-400" />
-          <div className="text-left">
-            <p className="text-white font-medium">{planName}</p>
-            <p className="text-sm text-slate-400">
-              ${amountUsd.toFixed(2)}/period &middot; {eligible.length}/{currentSubscribers.length} eligible
-              {staleSubscribers.length > 0 && ` / ${staleSubscribers.length} stale`}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          {pendingUsd > 0 && (
-            <span className="text-emerald-400 font-medium text-sm">
-              ${pendingUsd.toFixed(2)} pending
-            </span>
-          )}
-          <Button
-            className="bg-emerald-600 hover:bg-emerald-500 text-white"
-            size="sm"
-            disabled={isCollecting || eligible.length === 0}
-            onClick={(e) => { e.stopPropagation(); handleCollect() }}
-          >
-            {isCollecting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              `Collect $${pendingUsd.toFixed(2)}`
-            )}
-          </Button>
-        </div>
-      </button>
-
-      {expanded && (
-        <div className="border-t border-emerald-500/10">
-          <div className="flex gap-1 p-2 border-b border-emerald-500/10">
-            <Button
-              variant={view === 'subscribers' ? 'default' : 'ghost'}
-              size="sm"
-              className={view === 'subscribers' ? 'bg-emerald-600 hover:bg-emerald-500' : ''}
-              onClick={() => setView('subscribers')}
+    return (
+        <div className="border border-emerald-500/15 bg-slate-900/60 rounded-xl overflow-hidden">
+            <button
+                className="w-full p-4 flex items-center justify-between cursor-pointer hover:bg-slate-800/30 transition-colors"
+                onClick={() => setExpanded(!expanded)}
             >
-              Subscribers
-            </Button>
-            <Button
-              variant={view === 'history' ? 'default' : 'ghost'}
-              size="sm"
-              className={view === 'history' ? 'bg-emerald-600 hover:bg-emerald-500' : ''}
-              onClick={() => setView('history')}
-            >
-              History
-            </Button>
-          </div>
+                <div className="flex items-center gap-3">
+                    <PlanIcon className="h-5 w-5 text-emerald-400" />
+                    <div className="text-left">
+                        <p className="text-white font-medium">{planName}</p>
+                        <p className="text-sm text-slate-400">
+                            ${amountUsd.toFixed(2)}/period &middot; {eligible.length}/{currentSubscribers.length}{' '}
+                            eligible
+                            {staleSubscribers.length > 0 && ` / ${staleSubscribers.length} stale`}
+                        </p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-3">
+                    {pendingUsd > 0 && (
+                        <span className="text-emerald-400 font-medium text-sm">${pendingUsd.toFixed(2)} pending</span>
+                    )}
+                    <Button
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                        size="sm"
+                        disabled={isCollecting || eligible.length === 0}
+                        onClick={e => {
+                            e.stopPropagation();
+                            handleCollect();
+                        }}
+                    >
+                        {isCollecting ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                            `Collect $${pendingUsd.toFixed(2)}`
+                        )}
+                    </Button>
+                </div>
+            </button>
 
-          <div className="p-3">
-            {view === 'subscribers' ? (
-              subscribers.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-4">No subscribers</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-emerald-500/10 hover:bg-transparent">
-                      <TableHead className="text-slate-400">Subscriber</TableHead>
-                      <TableHead className="text-slate-400">Status</TableHead>
-                      <TableHead className="text-slate-400">Period</TableHead>
-                      <TableHead className="text-slate-400 text-right">Collectible</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {subscribers.map((sub) => {
-                      const isActive = sub.expiresAtTs === 0n
-                      const isCancelled = sub.expiresAtTs !== 0n && blockTs < Number(sub.expiresAtTs)
-                      const periodEnd = Number(sub.currentPeriodStartTs) + periodHoursSec
-                      const eligEntry = eligible.find((e) => e.subscriptionAddress === sub.subscriptionAddress)
-                      const isStale = staleSubscriberAddresses.has(sub.subscriptionAddress)
-                      const collectibleUsd = eligEntry
-                        ? Number(eligEntry.collectAmount) / USDC_MULTIPLIER
-                        : null
+            {expanded && (
+                <div className="border-t border-emerald-500/10">
+                    <div className="flex gap-1 p-2 border-b border-emerald-500/10">
+                        <Button
+                            variant={view === 'subscribers' ? 'default' : 'ghost'}
+                            size="sm"
+                            className={view === 'subscribers' ? 'bg-emerald-600 hover:bg-emerald-500' : ''}
+                            onClick={() => setView('subscribers')}
+                        >
+                            Subscribers
+                        </Button>
+                        <Button
+                            variant={view === 'history' ? 'default' : 'ghost'}
+                            size="sm"
+                            className={view === 'history' ? 'bg-emerald-600 hover:bg-emerald-500' : ''}
+                            onClick={() => setView('history')}
+                        >
+                            History
+                        </Button>
+                    </div>
 
-                      return (
-                        <TableRow key={sub.subscriptionAddress} className="border-emerald-500/10">
-                          <TableCell>
-                            <ExplorerLink
-                              address={sub.delegator}
-                              label={ellipsify(sub.delegator)}
-                              className="text-emerald-400 hover:text-emerald-300 text-xs font-mono"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            {isStale ? (
-                              <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
-                                Stale Terms
-                              </Badge>
-                            ) : isActive ? (
-                              <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
-                                Active
-                              </Badge>
-                            ) : isCancelled ? (
-                              <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
-                                Cancelled
-                              </Badge>
+                    <div className="p-3">
+                        {view === 'subscribers' ? (
+                            subscribers.length === 0 ? (
+                                <p className="text-sm text-slate-400 text-center py-4">No subscribers</p>
                             ) : (
-                              <Badge className="bg-slate-500/20 text-slate-400 border-slate-500/30">
-                                Expired
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-slate-300 text-xs">
-                            {fmtDateShort(Number(sub.currentPeriodStartTs))} - {fmtDateShort(periodEnd)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {isStale ? (
-                              <span className="text-amber-400">Excluded</span>
-                            ) : collectibleUsd !== null ? (
-                              <span className="text-emerald-400 font-medium">
-                                ${collectibleUsd.toFixed(2)}
-                              </span>
-                            ) : (
-                              <span className="text-slate-500">Collected</span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-              )
-            ) : history.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-4">No collection history</p>
-            ) : (
-              <div className="space-y-2">
-                {history.slice(0, 10).map((record) => (
-                  <HistoryEntry key={record.id} record={record} />
-                ))}
-              </div>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="border-emerald-500/10 hover:bg-transparent">
+                                            <TableHead className="text-slate-400">Subscriber</TableHead>
+                                            <TableHead className="text-slate-400">Status</TableHead>
+                                            <TableHead className="text-slate-400">Period</TableHead>
+                                            <TableHead className="text-slate-400 text-right">Collectible</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {subscribers.map(sub => {
+                                            const isActive = sub.expiresAtTs === 0n;
+                                            const isCancelled =
+                                                sub.expiresAtTs !== 0n && blockTs < Number(sub.expiresAtTs);
+                                            const periodEnd = Number(sub.currentPeriodStartTs) + periodHoursSec;
+                                            const eligEntry = eligible.find(
+                                                e => e.subscriptionAddress === sub.subscriptionAddress,
+                                            );
+                                            const isStale = staleSubscriberAddresses.has(sub.subscriptionAddress);
+                                            const collectibleUsd = eligEntry
+                                                ? Number(eligEntry.collectAmount) / USDC_MULTIPLIER
+                                                : null;
+
+                                            return (
+                                                <TableRow
+                                                    key={sub.subscriptionAddress}
+                                                    className="border-emerald-500/10"
+                                                >
+                                                    <TableCell>
+                                                        <ExplorerLink
+                                                            address={sub.delegator}
+                                                            label={ellipsify(sub.delegator)}
+                                                            className="text-emerald-400 hover:text-emerald-300 text-xs font-mono"
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {isStale ? (
+                                                            <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
+                                                                Stale Terms
+                                                            </Badge>
+                                                        ) : isActive ? (
+                                                            <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                                                                Active
+                                                            </Badge>
+                                                        ) : isCancelled ? (
+                                                            <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
+                                                                Cancelled
+                                                            </Badge>
+                                                        ) : (
+                                                            <Badge className="bg-slate-500/20 text-slate-400 border-slate-500/30">
+                                                                Expired
+                                                            </Badge>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-slate-300 text-xs">
+                                                        {fmtDateShort(Number(sub.currentPeriodStartTs))} -{' '}
+                                                        {fmtDateShort(periodEnd)}
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        {isStale ? (
+                                                            <span className="text-amber-400">Excluded</span>
+                                                        ) : collectibleUsd !== null ? (
+                                                            <span className="text-emerald-400 font-medium">
+                                                                ${collectibleUsd.toFixed(2)}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-slate-500">Collected</span>
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            )
+                        ) : history.length === 0 ? (
+                            <p className="text-sm text-slate-400 text-center py-4">No collection history</p>
+                        ) : (
+                            <div className="space-y-2">
+                                {history.slice(0, 10).map(record => (
+                                    <HistoryEntry key={record.id} record={record} />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
             )}
-          </div>
         </div>
-      )}
-    </div>
-  )
+    );
 }
 
 function RecentCollections({ version, onClear }: { version: number; onClear: () => void }) {
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const history = useMemo(() => getCollectionHistory(), [version])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const history = useMemo(() => getCollectionHistory(), [version]);
 
-  if (history.length === 0) {
+    if (history.length === 0) {
+        return (
+            <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 via-emerald-900/20 to-transparent">
+                <CardHeader className="pb-4">
+                    <div className="flex items-center gap-2">
+                        <Clock className="h-5 w-5 text-emerald-400" />
+                        <CardTitle>Recent Collections</CardTitle>
+                    </div>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground">
+                    <Banknote className="h-6 w-6" />
+                    <p className="text-sm">No collections yet</p>
+                </CardContent>
+            </Card>
+        );
+    }
+
     return (
-      <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 via-emerald-900/20 to-transparent">
-        <CardHeader className="pb-4">
-          <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-emerald-400" />
-            <CardTitle>Recent Collections</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground">
-          <Banknote className="h-6 w-6" />
-          <p className="text-sm">No collections yet</p>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  return (
-    <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 via-emerald-900/20 to-transparent">
-      <CardHeader className="pb-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-emerald-400" />
-            <CardTitle>Recent Collections</CardTitle>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => { clearCollectionHistory(); onClear() }}
-            className="text-xs text-muted-foreground hover:text-red-400"
-          >
-            Clear all
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {history.slice(0, 15).map((record) => (
-          <div key={record.id} className="flex items-center gap-2">
-            <Badge variant="outline" className="text-emerald-400 border-emerald-400/30 text-xs shrink-0">
-              {record.planName}
-            </Badge>
-            <div className="flex-1 min-w-0">
-              <HistoryEntry record={record} />
-            </div>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  )
+        <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 via-emerald-900/20 to-transparent">
+            <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Clock className="h-5 w-5 text-emerald-400" />
+                        <CardTitle>Recent Collections</CardTitle>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                            clearCollectionHistory();
+                            onClear();
+                        }}
+                        className="text-xs text-muted-foreground hover:text-red-400"
+                    >
+                        Clear all
+                    </Button>
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                {history.slice(0, 15).map(record => (
+                    <div key={record.id} className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-emerald-400 border-emerald-400/30 text-xs shrink-0">
+                            {record.planName}
+                        </Badge>
+                        <div className="flex-1 min-w-0">
+                            <HistoryEntry record={record} />
+                        </div>
+                    </div>
+                ))}
+            </CardContent>
+        </Card>
+    );
 }
 
 export function EnhancedCollectPayments() {
-  const { data, isLoading, allPlans, plansWithSubs, refetch } = useAllPlanSubscribers()
-  const queryClient = useQueryClient()
-  const [spinning, setSpinning] = useState(false)
-  const [historyVersion, setHistoryVersion] = useState(0)
+    const { data, isLoading, allPlans, plansWithSubs, refetch } = useAllPlanSubscribers();
+    const queryClient = useQueryClient();
+    const [spinning, setSpinning] = useState(false);
+    const [historyVersion, setHistoryVersion] = useState(0);
 
-  const handleRefresh = async () => {
-    setSpinning(true)
-    const minSpin = new Promise((r) => setTimeout(r, 600))
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['plans'] }),
-      queryClient.invalidateQueries({ queryKey: ['subscriberCounts'] }),
-      queryClient.invalidateQueries({ queryKey: ['allPlanSubscribers'] }),
-      refetch(),
-      minSpin,
-    ])
-    setHistoryVersion((v) => v + 1)
-    setSpinning(false)
-  }
+    const handleRefresh = async () => {
+        setSpinning(true);
+        const minSpin = new Promise(r => setTimeout(r, 600));
+        await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['plans'] }),
+            queryClient.invalidateQueries({ queryKey: ['subscriberCounts'] }),
+            queryClient.invalidateQueries({ queryKey: ['allPlanSubscribers'] }),
+            refetch(),
+            minSpin,
+        ]);
+        setHistoryVersion(v => v + 1);
+        setSpinning(false);
+    };
 
-  if (isLoading) {
+    if (isLoading) {
+        return (
+            <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 via-emerald-900/20 to-transparent">
+                <CardContent className="flex items-center justify-center py-12">
+                    <div className="animate-pulse text-muted-foreground">Loading plans...</div>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    if (!allPlans || allPlans.length === 0 || plansWithSubs.length === 0) {
+        return (
+            <div className="space-y-6">
+                <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 via-emerald-900/20 to-transparent">
+                    <CardContent className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground">
+                        <Banknote className="h-8 w-8" />
+                        <p className="text-sm">No plans with active subscribers</p>
+                    </CardContent>
+                </Card>
+                <RecentCollections version={historyVersion} onClear={() => setHistoryVersion(v => v + 1)} />
+            </div>
+        );
+    }
+
+    const totalPendingUsd = data ? Number(data.totalPendingAmount) / USDC_MULTIPLIER : 0;
+    const totalActive = data?.totalActiveSubscribers ?? 0;
+    const totalCancelled = data?.plans.reduce((sum, p) => sum + p.cancelledCount, 0) ?? 0;
+    const plansWithPending = data?.plansWithPending ?? 0;
+    const blockTs = data?.blockTimestamp ?? 0;
+
     return (
-      <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 via-emerald-900/20 to-transparent">
-        <CardContent className="flex items-center justify-center py-12">
-          <div className="animate-pulse text-muted-foreground">Loading plans...</div>
-        </CardContent>
-      </Card>
-    )
-  }
+        <div className="space-y-6">
+            <CollectSummaryCards
+                totalPending={totalPendingUsd}
+                activeSubscribers={totalActive}
+                cancelledCount={totalCancelled}
+                plansWithPending={plansWithPending}
+                totalPlans={allPlans.length}
+            />
 
-  if (!allPlans || allPlans.length === 0 || plansWithSubs.length === 0) {
-    return (
-      <div className="space-y-6">
-        <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 via-emerald-900/20 to-transparent">
-          <CardContent className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground">
-            <Banknote className="h-8 w-8" />
-            <p className="text-sm">No plans with active subscribers</p>
-          </CardContent>
-        </Card>
-        <RecentCollections version={historyVersion} onClear={() => setHistoryVersion((v) => v + 1)} />
-      </div>
-    )
-  }
+            <div className="flex items-center justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={spinning}>
+                    <RefreshCw className={`h-4 w-4 ${spinning ? 'animate-spin' : ''}`} />
+                </Button>
+                <CollectAllButton
+                    plansData={data?.plans ?? []}
+                    totalPendingUsd={totalPendingUsd}
+                    onComplete={() => setHistoryVersion(v => v + 1)}
+                />
+            </div>
 
-  const totalPendingUsd = data ? Number(data.totalPendingAmount) / USDC_MULTIPLIER : 0
-  const totalActive = data?.totalActiveSubscribers ?? 0
-  const totalCancelled = data?.plans.reduce((sum, p) => sum + p.cancelledCount, 0) ?? 0
-  const plansWithPending = data?.plansWithPending ?? 0
-  const blockTs = data?.blockTimestamp ?? 0
+            <div className="space-y-4">
+                {(data?.plans ?? []).map(pd => (
+                    <EnhancedPlanCard key={pd.plan.address} planData={pd} blockTs={blockTs} />
+                ))}
+            </div>
 
-  return (
-    <div className="space-y-6">
-      <CollectSummaryCards
-        totalPending={totalPendingUsd}
-        activeSubscribers={totalActive}
-        cancelledCount={totalCancelled}
-        plansWithPending={plansWithPending}
-        totalPlans={allPlans.length}
-      />
-
-      <div className="flex items-center justify-end gap-2">
-        <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={spinning}>
-          <RefreshCw className={`h-4 w-4 ${spinning ? 'animate-spin' : ''}`} />
-        </Button>
-        <CollectAllButton
-          plansData={data?.plans ?? []}
-          totalPendingUsd={totalPendingUsd}
-          onComplete={() => setHistoryVersion((v) => v + 1)}
-        />
-      </div>
-
-      <div className="space-y-4">
-        {(data?.plans ?? []).map((pd) => (
-          <EnhancedPlanCard
-            key={pd.plan.address}
-            planData={pd}
-            blockTs={blockTs}
-          />
-        ))}
-      </div>
-
-      <RecentCollections version={historyVersion} onClear={() => setHistoryVersion((v) => v + 1)} />
-    </div>
-  )
+            <RecentCollections version={historyVersion} onClear={() => setHistoryVersion(v => v + 1)} />
+        </div>
+    );
 }

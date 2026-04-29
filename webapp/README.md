@@ -6,9 +6,9 @@ Web interface for managing Solana token delegations (USDC). Connects to the Subs
 
 - **Wallet Connection** - Solana wallet integration (tested with Phantom) with real-time SOL and USDC balance display
 - **Create Delegations** - Three delegation types:
-  - **Fixed**: one-time total amount with an expiry date
-  - **Recurring**: per-period amount with configurable period length
-  - **Subscription**: plan-based recurring billing with merchant-defined terms
+    - **Fixed**: one-time total amount with an expiry date
+    - **Recurring**: per-period amount with configurable period length
+    - **Subscription**: plan-based recurring billing with merchant-defined terms
 - **View Delegations** - Separate tabs for outgoing (delegator) and incoming (delegatee) delegations, with active/expired filtering
 - **Revoke Delegations** - Cancel active outgoing delegations on-chain
 - **Transfer Under Delegation** - Delegatees can withdraw amounts within the delegation rules
@@ -18,12 +18,12 @@ Web interface for managing Solana token delegations (USDC). Connects to the Subs
 
 ## Scripts
 
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Start the Vite dev server with hot module replacement |
-| `npm run build` | Type-check with TypeScript and build for production |
-| `npm run lint` | Run ESLint across the project |
-| `npm run preview` | Preview the production build locally |
+| Script            | Description                                           |
+| ----------------- | ----------------------------------------------------- |
+| `npm run dev`     | Start the Vite dev server with hot module replacement |
+| `npm run build`   | Type-check with TypeScript and build for production   |
+| `npm run lint`    | Run ESLint across the project                         |
+| `npm run preview` | Preview the production build locally                  |
 
 From the project root, `just webapp-run` builds the program and clients, starts a local validator + API, and launches the webapp.
 

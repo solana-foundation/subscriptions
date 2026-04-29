@@ -125,12 +125,7 @@ impl TryFrom<u8> for PlanStatus {
 /// if the bump is invalid.
 pub fn verify_plan_pda(owner: &Address, plan_id: u64, bump: u8) -> Result<Address, ProgramError> {
     Address::create_program_address(
-        &[
-            crate::state::plan::Plan::SEED,
-            owner.as_ref(),
-            &plan_id.to_le_bytes(),
-            &[bump],
-        ],
+        &[crate::state::plan::Plan::SEED, owner.as_ref(), &plan_id.to_le_bytes(), &[bump]],
         &crate::ID,
     )
     .map_err(|_| SubscriptionsError::InvalidPlanPda.into())
@@ -138,22 +133,11 @@ pub fn verify_plan_pda(owner: &Address, plan_id: u64, bump: u8) -> Result<Addres
 
 /// Finds the canonical plan PDA and bump for the given owner and plan id.
 pub fn find_plan_pda(owner: &Address, plan_id: u64) -> (Address, u8) {
-    Address::find_program_address(
-        &[
-            crate::state::plan::Plan::SEED,
-            owner.as_ref(),
-            &plan_id.to_le_bytes(),
-        ],
-        &crate::ID,
-    )
+    Address::find_program_address(&[crate::state::plan::Plan::SEED, owner.as_ref(), &plan_id.to_le_bytes()], &crate::ID)
 }
 
 /// Rejects non-zero `end_ts` that falls within one billing period of `current_time`.
-pub fn validate_plan_end_ts(
-    end_ts: i64,
-    period_hours: u64,
-    current_time: i64,
-) -> Result<(), SubscriptionsError> {
+pub fn validate_plan_end_ts(end_ts: i64, period_hours: u64, current_time: i64) -> Result<(), SubscriptionsError> {
     if end_ts != 0 {
         let period_secs = (period_hours as i64) * 3600;
         if current_time + period_secs > end_ts {
@@ -166,11 +150,7 @@ pub fn validate_plan_end_ts(
 /// Finds the canonical subscription PDA and bump for a given plan and subscriber.
 pub fn find_subscription_pda(plan_pda: &Address, subscriber: &Address) -> (Address, u8) {
     Address::find_program_address(
-        &[
-            crate::state::subscription_delegation::SubscriptionDelegation::SEED,
-            plan_pda.as_ref(),
-            subscriber.as_ref(),
-        ],
+        &[crate::state::subscription_delegation::SubscriptionDelegation::SEED, plan_pda.as_ref(), subscriber.as_ref()],
         &crate::ID,
     )
 }

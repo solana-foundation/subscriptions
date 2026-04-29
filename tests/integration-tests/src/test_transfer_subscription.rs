@@ -8,10 +8,9 @@ use crate::{
         constants::{MINT_DECIMALS, PROGRAM_ID, TOKEN_PROGRAM_ID},
         pda::{get_plan_pda, get_subscription_authority_pda},
         utils::{
-            build_and_send_transaction, current_ts, days, get_ata_balance, hours, init_ata,
-            init_mint, init_wallet, initialize_subscription_authority_action, move_clock_forward,
-            setup, CancelSubscription, CreatePlan, CreateSubscription, DeletePlan,
-            TransferSubscription, UpdatePlan,
+            build_and_send_transaction, current_ts, days, get_ata_balance, hours, init_ata, init_mint, init_wallet,
+            initialize_subscription_authority_action, move_clock_forward, setup, CancelSubscription, CreatePlan,
+            CreateSubscription, DeletePlan, TransferSubscription, UpdatePlan,
         },
     },
     SubscriptionsError,
@@ -45,14 +44,7 @@ fn setup_plan_and_subscription(
     let merchant = Keypair::new();
     litesvm.airdrop(&merchant.pubkey(), 10_000_000_000).unwrap();
 
-    let mint = init_mint(
-        &mut litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(alice.pubkey()),
-        &[],
-    );
+    let mint = init_mint(&mut litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(alice.pubkey()), &[]);
     let alice_ata = init_ata(&mut litesvm, mint, alice.pubkey(), 100_000_000);
     let merchant_ata = init_ata(&mut litesvm, mint, merchant.pubkey(), 0);
 
@@ -72,30 +64,16 @@ fn setup_plan_and_subscription(
     res.assert_ok();
 
     // Manually inject subscription delegation (use LiteSVM clock, not system time)
-    let svm_ts = litesvm
-        .get_sysvar::<spl_associated_token_account::solana_program::clock::Clock>()
-        .unix_timestamp;
+    let svm_ts = litesvm.get_sysvar::<spl_associated_token_account::solana_program::clock::Clock>().unix_timestamp;
     let plan_account = litesvm.get_account(&plan_pda).unwrap();
     let plan = Plan::load(&plan_account.data).unwrap();
     let plan_terms = plan.data.terms;
     let subscription_pda =
-        CreateSubscription::new(&mut litesvm, plan_pda, alice.pubkey(), mint, svm_ts)
-            .terms(plan_terms)
-            .execute();
+        CreateSubscription::new(&mut litesvm, plan_pda, alice.pubkey(), mint, svm_ts).terms(plan_terms).execute();
 
     let (_, plan_bump) = get_plan_pda(&merchant.pubkey(), 1);
 
-    (
-        litesvm,
-        alice,
-        merchant,
-        mint,
-        plan_pda,
-        plan_bump,
-        subscription_pda,
-        alice_ata,
-        merchant_ata,
-    )
+    (litesvm, alice, merchant, mint, plan_pda, plan_bump, subscription_pda, alice_ata, merchant_ata)
 }
 
 #[test]
@@ -110,17 +88,10 @@ fn test_transfer_subscription_success() {
     assert_eq!(get_ata_balance(&litesvm, &merchant_ata), 0);
 
     let transfer_amount = 10_000_000u64;
-    TransferSubscription::new(
-        &mut litesvm,
-        &merchant,
-        alice.pubkey(),
-        mint,
-        subscription_pda,
-        plan_pda,
-    )
-    .amount(transfer_amount)
-    .execute()
-    .assert_ok();
+    TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(transfer_amount)
+        .execute()
+        .assert_ok();
 
     assert_eq!(get_ata_balance(&litesvm, &merchant_ata), 10_000_000);
 
@@ -140,29 +111,16 @@ fn test_transfer_subscription_puller_authorized() {
     let puller = Keypair::new();
 
     let (mut litesvm, alice, _merchant, mint, plan_pda, _, subscription_pda, _, merchant_ata) =
-        setup_plan_and_subscription(
-            amount_per_period,
-            period_hours,
-            end_ts,
-            vec![],
-            vec![puller.pubkey()],
-        );
+        setup_plan_and_subscription(amount_per_period, period_hours, end_ts, vec![], vec![puller.pubkey()]);
 
     litesvm.airdrop(&puller.pubkey(), 10_000_000_000).unwrap();
 
     let transfer_amount = 10_000_000u64;
-    TransferSubscription::new(
-        &mut litesvm,
-        &puller,
-        alice.pubkey(),
-        mint,
-        subscription_pda,
-        plan_pda,
-    )
-    .amount(transfer_amount)
-    .to(merchant_ata)
-    .execute()
-    .assert_ok();
+    TransferSubscription::new(&mut litesvm, &puller, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(transfer_amount)
+        .to(merchant_ata)
+        .execute()
+        .assert_ok();
 
     assert_eq!(get_ata_balance(&litesvm, &merchant_ata), 10_000_000);
 }
@@ -177,22 +135,14 @@ fn test_transfer_subscription_unauthorized_caller() {
         setup_plan_and_subscription(amount_per_period, period_hours, end_ts, vec![], vec![]);
 
     let random_signer = Keypair::new();
-    litesvm
-        .airdrop(&random_signer.pubkey(), 10_000_000_000)
-        .unwrap();
+    litesvm.airdrop(&random_signer.pubkey(), 10_000_000_000).unwrap();
 
     let transfer_amount = 10_000_000u64;
-    let result = TransferSubscription::new(
-        &mut litesvm,
-        &random_signer,
-        alice.pubkey(),
-        mint,
-        subscription_pda,
-        plan_pda,
-    )
-    .amount(transfer_amount)
-    .to(merchant_ata)
-    .execute();
+    let result =
+        TransferSubscription::new(&mut litesvm, &random_signer, alice.pubkey(), mint, subscription_pda, plan_pda)
+            .amount(transfer_amount)
+            .to(merchant_ata)
+            .execute();
 
     result.assert_err(SubscriptionsError::Unauthorized);
 }
@@ -207,32 +157,18 @@ fn test_transfer_subscription_multiple_pulls_within_period() {
         setup_plan_and_subscription(amount_per_period, period_hours, end_ts, vec![], vec![]);
 
     // First pull
-    TransferSubscription::new(
-        &mut litesvm,
-        &merchant,
-        alice.pubkey(),
-        mint,
-        subscription_pda,
-        plan_pda,
-    )
-    .amount(20_000_000)
-    .execute()
-    .assert_ok();
+    TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(20_000_000)
+        .execute()
+        .assert_ok();
 
     assert_eq!(get_ata_balance(&litesvm, &merchant_ata), 20_000_000);
 
     // Second pull
-    TransferSubscription::new(
-        &mut litesvm,
-        &merchant,
-        alice.pubkey(),
-        mint,
-        subscription_pda,
-        plan_pda,
-    )
-    .amount(20_000_000)
-    .execute()
-    .assert_ok();
+    TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(20_000_000)
+        .execute()
+        .assert_ok();
 
     assert_eq!(get_ata_balance(&litesvm, &merchant_ata), 40_000_000);
 
@@ -252,16 +188,9 @@ fn test_transfer_subscription_exceeds_period_limit() {
     let (mut litesvm, alice, merchant, mint, plan_pda, _, subscription_pda, _, merchant_ata) =
         setup_plan_and_subscription(amount_per_period, period_hours, end_ts, vec![], vec![]);
 
-    let result = TransferSubscription::new(
-        &mut litesvm,
-        &merchant,
-        alice.pubkey(),
-        mint,
-        subscription_pda,
-        plan_pda,
-    )
-    .amount(60_000_000)
-    .execute();
+    let result = TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(60_000_000)
+        .execute();
 
     result.assert_err(SubscriptionsError::AmountExceedsPeriodLimit);
     assert_eq!(get_ata_balance(&litesvm, &merchant_ata), 0);
@@ -277,17 +206,10 @@ fn test_transfer_subscription_period_rollover() {
         setup_plan_and_subscription(amount_per_period, period_hours, end_ts, vec![], vec![]);
 
     // Pull full period
-    TransferSubscription::new(
-        &mut litesvm,
-        &merchant,
-        alice.pubkey(),
-        mint,
-        subscription_pda,
-        plan_pda,
-    )
-    .amount(50_000_000)
-    .execute()
-    .assert_ok();
+    TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(50_000_000)
+        .execute()
+        .assert_ok();
 
     assert_eq!(get_ata_balance(&litesvm, &merchant_ata), 50_000_000);
 
@@ -295,17 +217,10 @@ fn test_transfer_subscription_period_rollover() {
     move_clock_forward(&mut litesvm, hours(1));
 
     // Pull again in new period
-    TransferSubscription::new(
-        &mut litesvm,
-        &merchant,
-        alice.pubkey(),
-        mint,
-        subscription_pda,
-        plan_pda,
-    )
-    .amount(30_000_000)
-    .execute()
-    .assert_ok();
+    TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(30_000_000)
+        .execute()
+        .assert_ok();
 
     assert_eq!(get_ata_balance(&litesvm, &merchant_ata), 80_000_000);
 
@@ -328,16 +243,9 @@ fn test_transfer_subscription_plan_expired() {
     // Move past plan expiry
     move_clock_forward(&mut litesvm, days(3));
 
-    let result = TransferSubscription::new(
-        &mut litesvm,
-        &merchant,
-        alice.pubkey(),
-        mint,
-        subscription_pda,
-        plan_pda,
-    )
-    .amount(10_000_000)
-    .execute();
+    let result = TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(10_000_000)
+        .execute();
 
     result.assert_err(SubscriptionsError::PlanExpired);
 }
@@ -357,23 +265,15 @@ fn test_transfer_subscription_subscription_cancelled() {
     let plan_account = litesvm.get_account(&plan_pda).unwrap();
     let plan = Plan::load(&plan_account.data).unwrap();
     let plan_terms = plan.data.terms;
-    let subscription_pda =
-        CreateSubscription::new(&mut litesvm, plan_pda, alice.pubkey(), mint, period_start)
-            .terms(plan_terms)
-            .expires_at_ts(expires_at)
-            .execute();
+    let subscription_pda = CreateSubscription::new(&mut litesvm, plan_pda, alice.pubkey(), mint, period_start)
+        .terms(plan_terms)
+        .expires_at_ts(expires_at)
+        .execute();
 
     // Current time is past expires_at_ts
-    let result = TransferSubscription::new(
-        &mut litesvm,
-        &merchant,
-        alice.pubkey(),
-        mint,
-        subscription_pda,
-        plan_pda,
-    )
-    .amount(10_000_000)
-    .execute();
+    let result = TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(10_000_000)
+        .execute();
 
     result.assert_err(SubscriptionsError::SubscriptionCancelled);
 }
@@ -384,35 +284,17 @@ fn test_transfer_subscription_cancelled_allows_current_period() {
     let period_hours = 1u64;
     let end_ts = current_ts() + days(30) as i64;
 
-    let (
-        mut litesvm,
-        alice,
-        merchant,
-        mint,
-        plan_pda,
-        _plan_bump,
-        subscription_pda,
-        _,
-        merchant_ata,
-    ) = setup_plan_and_subscription(amount_per_period, period_hours, end_ts, vec![], vec![]);
+    let (mut litesvm, alice, merchant, mint, plan_pda, _plan_bump, subscription_pda, _, merchant_ata) =
+        setup_plan_and_subscription(amount_per_period, period_hours, end_ts, vec![], vec![]);
 
     // Cancel the subscription (sets expires_at_ts = end of current period)
-    CancelSubscription::new(&mut litesvm, &alice, plan_pda, subscription_pda)
-        .execute()
-        .assert_ok();
+    CancelSubscription::new(&mut litesvm, &alice, plan_pda, subscription_pda).execute().assert_ok();
 
     // Pull within the same period should still succeed
-    TransferSubscription::new(
-        &mut litesvm,
-        &merchant,
-        alice.pubkey(),
-        mint,
-        subscription_pda,
-        plan_pda,
-    )
-    .amount(10_000_000)
-    .execute()
-    .assert_ok();
+    TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(10_000_000)
+        .execute()
+        .assert_ok();
 
     assert_eq!(get_ata_balance(&litesvm, &merchant_ata), 10_000_000);
 }
@@ -427,24 +309,15 @@ fn test_transfer_subscription_cancelled_blocks_next_period() {
         setup_plan_and_subscription(amount_per_period, period_hours, end_ts, vec![], vec![]);
 
     // Cancel the subscription
-    CancelSubscription::new(&mut litesvm, &alice, plan_pda, subscription_pda)
-        .execute()
-        .assert_ok();
+    CancelSubscription::new(&mut litesvm, &alice, plan_pda, subscription_pda).execute().assert_ok();
 
     // Move clock past the period boundary
     move_clock_forward(&mut litesvm, hours(1));
 
     // Pull should now fail
-    let result = TransferSubscription::new(
-        &mut litesvm,
-        &merchant,
-        alice.pubkey(),
-        mint,
-        subscription_pda,
-        plan_pda,
-    )
-    .amount(10_000_000)
-    .execute();
+    let result = TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(10_000_000)
+        .execute();
 
     result.assert_err(SubscriptionsError::SubscriptionCancelled);
 }
@@ -458,28 +331,15 @@ fn test_transfer_subscription_destination_valid() {
     let dest_wallet = Keypair::new();
 
     let (mut litesvm, alice, merchant, mint, plan_pda, _, subscription_pda, _, _) =
-        setup_plan_and_subscription(
-            amount_per_period,
-            period_hours,
-            end_ts,
-            vec![dest_wallet.pubkey()],
-            vec![],
-        );
+        setup_plan_and_subscription(amount_per_period, period_hours, end_ts, vec![dest_wallet.pubkey()], vec![]);
 
     let dest_ata = init_ata(&mut litesvm, mint, dest_wallet.pubkey(), 0);
 
-    TransferSubscription::new(
-        &mut litesvm,
-        &merchant,
-        alice.pubkey(),
-        mint,
-        subscription_pda,
-        plan_pda,
-    )
-    .amount(10_000_000)
-    .to(dest_ata)
-    .execute()
-    .assert_ok();
+    TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(10_000_000)
+        .to(dest_ata)
+        .execute()
+        .assert_ok();
 
     assert_eq!(get_ata_balance(&litesvm, &dest_ata), 10_000_000);
 }
@@ -493,28 +353,15 @@ fn test_transfer_subscription_destination_invalid() {
     let dest_wallet = Keypair::new();
 
     let (mut litesvm, alice, merchant, mint, plan_pda, _, subscription_pda, _, _) =
-        setup_plan_and_subscription(
-            amount_per_period,
-            period_hours,
-            end_ts,
-            vec![dest_wallet.pubkey()],
-            vec![],
-        );
+        setup_plan_and_subscription(amount_per_period, period_hours, end_ts, vec![dest_wallet.pubkey()], vec![]);
 
     // Send to merchant instead of whitelisted dest
     let merchant_ata = init_ata(&mut litesvm, mint, merchant.pubkey(), 0);
 
-    let result = TransferSubscription::new(
-        &mut litesvm,
-        &merchant,
-        alice.pubkey(),
-        mint,
-        subscription_pda,
-        plan_pda,
-    )
-    .amount(10_000_000)
-    .to(merchant_ata)
-    .execute();
+    let result = TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(10_000_000)
+        .to(merchant_ata)
+        .execute();
 
     result.assert_err(SubscriptionsError::UnauthorizedDestination);
 }
@@ -532,18 +379,11 @@ fn test_transfer_subscription_no_destinations_any_receiver() {
     let charlie = Keypair::new();
     let charlie_ata = init_ata(&mut litesvm, mint, charlie.pubkey(), 0);
 
-    TransferSubscription::new(
-        &mut litesvm,
-        &merchant,
-        alice.pubkey(),
-        mint,
-        subscription_pda,
-        plan_pda,
-    )
-    .amount(10_000_000)
-    .to(charlie_ata)
-    .execute()
-    .assert_ok();
+    TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(10_000_000)
+        .to(charlie_ata)
+        .execute()
+        .assert_ok();
 
     assert_eq!(get_ata_balance(&litesvm, &charlie_ata), 10_000_000);
 }
@@ -570,10 +410,9 @@ fn test_transfer_subscription_wrong_subscription_for_plan() {
     let plan2_account = litesvm.get_account(&plan_pda_2).unwrap();
     let plan2 = Plan::load(&plan2_account.data).unwrap();
     let plan2_terms = plan2.data.terms;
-    let subscription_for_plan2 =
-        CreateSubscription::new(&mut litesvm, plan_pda_2, alice.pubkey(), mint, current_ts())
-            .terms(plan2_terms)
-            .execute();
+    let subscription_for_plan2 = CreateSubscription::new(&mut litesvm, plan_pda_2, alice.pubkey(), mint, current_ts())
+        .terms(plan2_terms)
+        .execute();
 
     // Try to use subscription for plan 2 with plan 1
     let result = TransferSubscription::new(
@@ -599,16 +438,9 @@ fn test_transfer_subscription_zero_amount() {
     let (mut litesvm, alice, merchant, mint, plan_pda, _, subscription_pda, _, _) =
         setup_plan_and_subscription(amount_per_period, period_hours, end_ts, vec![], vec![]);
 
-    let result = TransferSubscription::new(
-        &mut litesvm,
-        &merchant,
-        alice.pubkey(),
-        mint,
-        subscription_pda,
-        plan_pda,
-    )
-    .amount(0)
-    .execute();
+    let result = TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(0)
+        .execute();
 
     result.assert_err(SubscriptionsError::InvalidAmount);
 }
@@ -631,17 +463,10 @@ fn test_transfer_subscription_sunset_allows_transfer() {
     plan_account.data[34] = 0; // PlanStatus::Sunset
     litesvm.set_account(plan_pda, plan_account).unwrap();
 
-    TransferSubscription::new(
-        &mut litesvm,
-        &merchant,
-        alice.pubkey(),
-        mint,
-        subscription_pda,
-        plan_pda,
-    )
-    .amount(10_000_000)
-    .execute()
-    .assert_ok();
+    TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(10_000_000)
+        .execute()
+        .assert_ok();
 
     assert_eq!(get_ata_balance(&litesvm, &merchant_ata), 10_000_000);
 }
@@ -663,16 +488,9 @@ fn test_transfer_subscription_plan_closed() {
     plan_account.owner = solana_pubkey::Pubkey::default(); // system program
     litesvm.set_account(plan_pda, plan_account).unwrap();
 
-    let result = TransferSubscription::new(
-        &mut litesvm,
-        &merchant,
-        alice.pubkey(),
-        mint,
-        subscription_pda,
-        plan_pda,
-    )
-    .amount(10_000_000)
-    .execute();
+    let result = TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(10_000_000)
+        .execute();
 
     result.assert_err(SubscriptionsError::PlanClosed);
 }
@@ -692,10 +510,8 @@ fn writable_accounts_must_be_writable() {
     let fee_payer = init_wallet(&mut litesvm, 10_000_000_000);
 
     let (subscription_authority_pda, _) = get_subscription_authority_pda(&alice.pubkey(), &mint);
-    let delegator_ata =
-        get_associated_token_address_with_program_id(&alice.pubkey(), &mint, &TOKEN_PROGRAM_ID);
-    let receiver_ata =
-        get_associated_token_address_with_program_id(&merchant.pubkey(), &mint, &TOKEN_PROGRAM_ID);
+    let delegator_ata = get_associated_token_address_with_program_id(&alice.pubkey(), &mint, &TOKEN_PROGRAM_ID);
+    let receiver_ata = get_associated_token_address_with_program_id(&merchant.pubkey(), &mint, &TOKEN_PROGRAM_ID);
 
     let event_authority = Pubkey::new_from_array(event_authority_pda::ID.to_bytes());
 
@@ -724,18 +540,9 @@ fn writable_accounts_must_be_writable() {
         ]
         .concat();
 
-        let ix = Instruction {
-            program_id: PROGRAM_ID,
-            accounts,
-            data,
-        };
+        let ix = Instruction { program_id: PROGRAM_ID, accounts, data };
 
-        let res = build_and_send_transaction(
-            &mut litesvm,
-            &[&fee_payer, &merchant],
-            &fee_payer.pubkey(),
-            &ix,
-        );
+        let res = build_and_send_transaction(&mut litesvm, &[&fee_payer, &merchant], &fee_payer.pubkey(), &ix);
         res.assert_err(SubscriptionsError::AccountNotWritable);
     }
 }
@@ -755,10 +562,8 @@ fn signer_accounts_must_be_signers() {
     let fee_payer = init_wallet(&mut litesvm, 10_000_000_000);
 
     let (subscription_authority_pda, _) = get_subscription_authority_pda(&alice.pubkey(), &mint);
-    let delegator_ata =
-        get_associated_token_address_with_program_id(&alice.pubkey(), &mint, &TOKEN_PROGRAM_ID);
-    let receiver_ata =
-        get_associated_token_address_with_program_id(&merchant.pubkey(), &mint, &TOKEN_PROGRAM_ID);
+    let delegator_ata = get_associated_token_address_with_program_id(&alice.pubkey(), &mint, &TOKEN_PROGRAM_ID);
+    let receiver_ata = get_associated_token_address_with_program_id(&merchant.pubkey(), &mint, &TOKEN_PROGRAM_ID);
 
     let event_authority = Pubkey::new_from_array(event_authority_pda::ID.to_bytes());
 
@@ -776,11 +581,8 @@ fn signer_accounts_must_be_signers() {
         ];
 
         let pubkey = accounts[*idx].pubkey;
-        accounts[*idx] = if *is_writable {
-            AccountMeta::new(pubkey, false)
-        } else {
-            AccountMeta::new_readonly(pubkey, false)
-        };
+        accounts[*idx] =
+            if *is_writable { AccountMeta::new(pubkey, false) } else { AccountMeta::new_readonly(pubkey, false) };
 
         let transfer_amount: u64 = 10_000_000;
         let data = [
@@ -791,11 +593,7 @@ fn signer_accounts_must_be_signers() {
         ]
         .concat();
 
-        let ix = Instruction {
-            program_id: PROGRAM_ID,
-            accounts,
-            data,
-        };
+        let ix = Instruction { program_id: PROGRAM_ID, accounts, data };
 
         let res = build_and_send_transaction(&mut litesvm, &[&fee_payer], &fee_payer.pubkey(), &ix);
         res.assert_err(SubscriptionsError::NotSigner);
@@ -817,16 +615,9 @@ fn test_subscription_transfer_version_mismatch() {
     account.data[VERSION_OFFSET] = 0;
     litesvm.set_account(subscription_pda, account).unwrap();
 
-    let result = TransferSubscription::new(
-        &mut litesvm,
-        &merchant,
-        alice.pubkey(),
-        mint,
-        subscription_pda,
-        plan_pda,
-    )
-    .amount(10_000_000)
-    .execute();
+    let result = TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(10_000_000)
+        .execute();
 
     result.assert_err(SubscriptionsError::MigrationRequired);
     assert_eq!(get_ata_balance(&litesvm, &merchant_ata), 0);
@@ -843,26 +634,15 @@ fn test_subscription_transfer_stale_subscription_authority() {
     let (mut litesvm, alice, merchant, mint, plan_pda, _, subscription_pda, _, merchant_ata) =
         setup_plan_and_subscription(amount_per_period, period_hours, end_ts, vec![], vec![]);
 
-    CloseSubscriptionAuthority::new(&mut litesvm, &alice, mint)
-        .execute()
-        .assert_ok();
+    CloseSubscriptionAuthority::new(&mut litesvm, &alice, mint).execute().assert_ok();
 
     move_clock_forward(&mut litesvm, 2);
 
-    initialize_subscription_authority_action(&mut litesvm, &alice, mint)
-        .0
-        .assert_ok();
+    initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
 
-    let result = TransferSubscription::new(
-        &mut litesvm,
-        &merchant,
-        alice.pubkey(),
-        mint,
-        subscription_pda,
-        plan_pda,
-    )
-    .amount(10_000_000)
-    .execute();
+    let result = TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(10_000_000)
+        .execute();
 
     result.assert_err(SubscriptionsError::StaleSubscriptionAuthority);
     assert_eq!(get_ata_balance(&litesvm, &merchant_ata), 0);
@@ -879,17 +659,11 @@ fn test_transfer_subscription_ghost_plan_rejected() {
     let (mut litesvm, alice, merchant, mint, plan_pda, _, subscription_pda, _, _) =
         setup_plan_and_subscription(amount_per_period, period_hours, end_ts, vec![], vec![]);
 
-    UpdatePlan::new(&mut litesvm, &merchant, plan_pda)
-        .status(PlanStatus::Sunset)
-        .end_ts(end_ts)
-        .execute()
-        .assert_ok();
+    UpdatePlan::new(&mut litesvm, &merchant, plan_pda).status(PlanStatus::Sunset).end_ts(end_ts).execute().assert_ok();
 
     move_clock_forward(&mut litesvm, days(3));
 
-    DeletePlan::new(&mut litesvm, &merchant, plan_pda)
-        .execute()
-        .assert_ok();
+    DeletePlan::new(&mut litesvm, &merchant, plan_pda).execute().assert_ok();
 
     let new_end_ts = current_ts() + days(60) as i64;
     let (res, new_plan_pda) = CreatePlan::new(&mut litesvm, &merchant, mint)
@@ -901,16 +675,9 @@ fn test_transfer_subscription_ghost_plan_rejected() {
     res.assert_ok();
     assert_eq!(plan_pda, new_plan_pda);
 
-    let result = TransferSubscription::new(
-        &mut litesvm,
-        &merchant,
-        alice.pubkey(),
-        mint,
-        subscription_pda,
-        plan_pda,
-    )
-    .amount(10_000_000)
-    .execute();
+    let result = TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(10_000_000)
+        .execute();
 
     result.assert_err(SubscriptionsError::PlanTermsMismatch);
 }

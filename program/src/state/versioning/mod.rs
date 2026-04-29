@@ -46,12 +46,7 @@ pub fn check_and_update_version(data: &mut [u8]) -> Result<(), ProgramError> {
 /// ```ignore
 /// 1 => { v1_to_v2::lazy_update(data)?; v = 2; }
 /// ```
-#[allow(
-    clippy::while_immutable_condition,
-    clippy::match_single_binding,
-    clippy::never_loop,
-    unused_mut
-)]
+#[allow(clippy::while_immutable_condition, clippy::match_single_binding, clippy::never_loop, unused_mut)]
 fn try_lazy_update(data: &mut [u8], from_version: u8) -> Result<(), ProgramError> {
     let mut v = from_version;
     while v < CURRENT_VERSION {

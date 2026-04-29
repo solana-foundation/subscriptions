@@ -1,11 +1,9 @@
 use pinocchio::error::ProgramError;
 
-use crate::event_engine::{
-    EventDiscriminators, EventSerialize, EVENT_DISCRIMINATOR_LEN, EVENT_IX_TAG_LE,
-};
+use crate::event_engine::{EventDiscriminators, EventSerialize, EVENT_DISCRIMINATOR_LEN, EVENT_IX_TAG_LE};
 use crate::events::{
-    Event, FixedTransferEvent, RecurringTransferEvent, SubscriptionCancelledEvent,
-    SubscriptionCreatedEvent, SubscriptionTransferEvent,
+    Event, FixedTransferEvent, RecurringTransferEvent, SubscriptionCancelledEvent, SubscriptionCreatedEvent,
+    SubscriptionTransferEvent,
 };
 use crate::SubscriptionsError;
 
@@ -25,20 +23,16 @@ pub fn decode_event<'a>(data: &'a [u8]) -> Result<Event<'a>, ProgramError> {
         .map_err(|_| ProgramError::from(SubscriptionsError::InvalidEventDiscriminator))?;
 
     match disc {
-        EventDiscriminators::SubscriptionCreated => Ok(Event::SubscriptionCreated(
-            SubscriptionCreatedEvent::load(payload)?,
-        )),
-        EventDiscriminators::SubscriptionCancelled => Ok(Event::SubscriptionCancelled(
-            SubscriptionCancelledEvent::load(payload)?,
-        )),
-        EventDiscriminators::SubscriptionTransfer => Ok(Event::SubscriptionTransfer(
-            SubscriptionTransferEvent::load(payload)?,
-        )),
-        EventDiscriminators::FixedTransfer => {
-            Ok(Event::FixedTransfer(FixedTransferEvent::load(payload)?))
+        EventDiscriminators::SubscriptionCreated => {
+            Ok(Event::SubscriptionCreated(SubscriptionCreatedEvent::load(payload)?))
         }
-        EventDiscriminators::RecurringTransfer => Ok(Event::RecurringTransfer(
-            RecurringTransferEvent::load(payload)?,
-        )),
+        EventDiscriminators::SubscriptionCancelled => {
+            Ok(Event::SubscriptionCancelled(SubscriptionCancelledEvent::load(payload)?))
+        }
+        EventDiscriminators::SubscriptionTransfer => {
+            Ok(Event::SubscriptionTransfer(SubscriptionTransferEvent::load(payload)?))
+        }
+        EventDiscriminators::FixedTransfer => Ok(Event::FixedTransfer(FixedTransferEvent::load(payload)?)),
+        EventDiscriminators::RecurringTransfer => Ok(Event::RecurringTransfer(RecurringTransferEvent::load(payload)?)),
     }
 }

@@ -1,159 +1,143 @@
 import {
-  type Address,
-  type IInstruction,
-  type IAccountMeta,
-  address,
-  getAddressEncoder,
-  getProgramDerivedAddress,
-} from '@solana/kit'
+    type Address,
+    type IInstruction,
+    type IAccountMeta,
+    address,
+    getAddressEncoder,
+    getProgramDerivedAddress,
+} from '@solana/kit';
 
-export const BPF_LOADER_UPGRADEABLE = address('BPFLoaderUpgradeab1e11111111111111111111111')
-export const SYSTEM_PROGRAM = address('11111111111111111111111111111111')
-export const SYSVAR_RENT = address('SysvarRent111111111111111111111111111111111')
-export const SYSVAR_CLOCK = address('SysvarC1ock11111111111111111111111111111111')
-export const CHUNK_SIZE = 900
+export const BPF_LOADER_UPGRADEABLE = address('BPFLoaderUpgradeab1e11111111111111111111111');
+export const SYSTEM_PROGRAM = address('11111111111111111111111111111111');
+export const SYSVAR_RENT = address('SysvarRent111111111111111111111111111111111');
+export const SYSVAR_CLOCK = address('SysvarC1ock11111111111111111111111111111111');
+export const CHUNK_SIZE = 900;
 
 function u32LE(value: number): Uint8Array {
-  const buf = new Uint8Array(4)
-  const view = new DataView(buf.buffer)
-  view.setUint32(0, value, true)
-  return buf
+    const buf = new Uint8Array(4);
+    const view = new DataView(buf.buffer);
+    view.setUint32(0, value, true);
+    return buf;
 }
 
 function u64LE(value: number | bigint): Uint8Array {
-  const buf = new Uint8Array(8)
-  const view = new DataView(buf.buffer)
-  view.setBigUint64(0, BigInt(value), true)
-  return buf
+    const buf = new Uint8Array(8);
+    const view = new DataView(buf.buffer);
+    view.setBigUint64(0, BigInt(value), true);
+    return buf;
 }
 
-const AccountRole = { READONLY: 0, WRITABLE: 1, SIGNER: 2, WRITABLE_SIGNER: 3 } as const
+const AccountRole = { READONLY: 0, WRITABLE: 1, SIGNER: 2, WRITABLE_SIGNER: 3 } as const;
 
 function writable(addr: Address): IAccountMeta {
-  return { address: addr, role: AccountRole.WRITABLE }
+    return { address: addr, role: AccountRole.WRITABLE };
 }
 
 function writableSigner(addr: Address): IAccountMeta {
-  return { address: addr, role: AccountRole.WRITABLE_SIGNER }
+    return { address: addr, role: AccountRole.WRITABLE_SIGNER };
 }
 
 function signer(addr: Address): IAccountMeta {
-  return { address: addr, role: AccountRole.SIGNER }
+    return { address: addr, role: AccountRole.SIGNER };
 }
 
 function readonly(addr: Address): IAccountMeta {
-  return { address: addr, role: AccountRole.READONLY }
+    return { address: addr, role: AccountRole.READONLY };
 }
 
-export function buildInitializeBufferIx(
-  buffer: Address,
-  authority: Address,
-): IInstruction {
-  return {
-    programAddress: BPF_LOADER_UPGRADEABLE,
-    accounts: [writable(buffer), readonly(authority)],
-    data: u32LE(0),
-  }
+export function buildInitializeBufferIx(buffer: Address, authority: Address): IInstruction {
+    return {
+        programAddress: BPF_LOADER_UPGRADEABLE,
+        accounts: [writable(buffer), readonly(authority)],
+        data: u32LE(0),
+    };
 }
 
-export function buildWriteIx(
-  buffer: Address,
-  authority: Address,
-  offset: number,
-  chunk: Uint8Array,
-): IInstruction {
-  const data = new Uint8Array(4 + 4 + 8 + chunk.length)
-  data.set(u32LE(1), 0)
-  data.set(u32LE(offset), 4)
-  data.set(u64LE(chunk.length), 8)
-  data.set(chunk, 16)
-  return {
-    programAddress: BPF_LOADER_UPGRADEABLE,
-    accounts: [writable(buffer), signer(authority)],
-    data,
-  }
+export function buildWriteIx(buffer: Address, authority: Address, offset: number, chunk: Uint8Array): IInstruction {
+    const data = new Uint8Array(4 + 4 + 8 + chunk.length);
+    data.set(u32LE(1), 0);
+    data.set(u32LE(offset), 4);
+    data.set(u64LE(chunk.length), 8);
+    data.set(chunk, 16);
+    return {
+        programAddress: BPF_LOADER_UPGRADEABLE,
+        accounts: [writable(buffer), signer(authority)],
+        data,
+    };
 }
 
 export function buildDeployIx(
-  payer: Address,
-  programDataPDA: Address,
-  program: Address,
-  buffer: Address,
-  authority: Address,
-  maxDataLen: number | bigint,
+    payer: Address,
+    programDataPDA: Address,
+    program: Address,
+    buffer: Address,
+    authority: Address,
+    maxDataLen: number | bigint,
 ): IInstruction {
-  const data = new Uint8Array(4 + 8)
-  data.set(u32LE(2), 0)
-  data.set(u64LE(maxDataLen), 4)
-  return {
-    programAddress: BPF_LOADER_UPGRADEABLE,
-    accounts: [
-      writableSigner(payer),
-      writable(programDataPDA),
-      writableSigner(program),
-      writable(buffer),
-      readonly(SYSVAR_RENT),
-      readonly(SYSVAR_CLOCK),
-      readonly(SYSTEM_PROGRAM),
-      signer(authority),
-    ],
-    data,
-  }
+    const data = new Uint8Array(4 + 8);
+    data.set(u32LE(2), 0);
+    data.set(u64LE(maxDataLen), 4);
+    return {
+        programAddress: BPF_LOADER_UPGRADEABLE,
+        accounts: [
+            writableSigner(payer),
+            writable(programDataPDA),
+            writableSigner(program),
+            writable(buffer),
+            readonly(SYSVAR_RENT),
+            readonly(SYSVAR_CLOCK),
+            readonly(SYSTEM_PROGRAM),
+            signer(authority),
+        ],
+        data,
+    };
 }
 
 export function buildUpgradeIx(
-  programDataPDA: Address,
-  program: Address,
-  buffer: Address,
-  spill: Address,
-  authority: Address,
+    programDataPDA: Address,
+    program: Address,
+    buffer: Address,
+    spill: Address,
+    authority: Address,
 ): IInstruction {
-  return {
-    programAddress: BPF_LOADER_UPGRADEABLE,
-    accounts: [
-      writable(programDataPDA),
-      writable(program),
-      writable(buffer),
-      writable(spill),
-      readonly(SYSVAR_RENT),
-      readonly(SYSVAR_CLOCK),
-      signer(authority),
-    ],
-    data: u32LE(3),
-  }
+    return {
+        programAddress: BPF_LOADER_UPGRADEABLE,
+        accounts: [
+            writable(programDataPDA),
+            writable(program),
+            writable(buffer),
+            writable(spill),
+            readonly(SYSVAR_RENT),
+            readonly(SYSVAR_CLOCK),
+            signer(authority),
+        ],
+        data: u32LE(3),
+    };
 }
 
-export function buildSetAuthorityIx(
-  account: Address,
-  currentAuth: Address,
-  newAuth: Address | null,
-): IInstruction {
-  const accounts = [writable(account), signer(currentAuth)]
-  if (newAuth) accounts.push(readonly(newAuth))
-  return {
-    programAddress: BPF_LOADER_UPGRADEABLE,
-    accounts,
-    data: u32LE(4),
-  }
+export function buildSetAuthorityIx(account: Address, currentAuth: Address, newAuth: Address | null): IInstruction {
+    const accounts = [writable(account), signer(currentAuth)];
+    if (newAuth) accounts.push(readonly(newAuth));
+    return {
+        programAddress: BPF_LOADER_UPGRADEABLE,
+        accounts,
+        data: u32LE(4),
+    };
 }
 
-export function buildCloseBufferIx(
-  buffer: Address,
-  recipient: Address,
-  authority: Address,
-): IInstruction {
-  return {
-    programAddress: BPF_LOADER_UPGRADEABLE,
-    accounts: [writable(buffer), writable(recipient), signer(authority)],
-    data: u32LE(5),
-  }
+export function buildCloseBufferIx(buffer: Address, recipient: Address, authority: Address): IInstruction {
+    return {
+        programAddress: BPF_LOADER_UPGRADEABLE,
+        accounts: [writable(buffer), writable(recipient), signer(authority)],
+        data: u32LE(5),
+    };
 }
 
 export async function deriveProgramDataAddress(programId: Address): Promise<Address> {
-  const pubkeyEncoder = getAddressEncoder()
-  const [pda] = await getProgramDerivedAddress({
-    programAddress: BPF_LOADER_UPGRADEABLE,
-    seeds: [pubkeyEncoder.encode(programId)],
-  })
-  return pda
+    const pubkeyEncoder = getAddressEncoder();
+    const [pda] = await getProgramDerivedAddress({
+        programAddress: BPF_LOADER_UPGRADEABLE,
+        seeds: [pubkeyEncoder.encode(programId)],
+    });
+    return pda;
 }

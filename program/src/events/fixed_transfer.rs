@@ -39,15 +39,7 @@ impl FixedTransferEvent {
         remaining_amount: u64,
         receiver: Address,
     ) -> Self {
-        Self {
-            delegation,
-            delegator,
-            delegatee,
-            mint,
-            amount,
-            remaining_amount,
-            receiver,
-        }
+        Self { delegation, delegator, delegatee, mint, amount, remaining_amount, receiver }
     }
 }
 

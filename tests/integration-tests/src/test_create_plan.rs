@@ -16,14 +16,7 @@ use crate::{
 #[test]
 fn create_plan_happy_path() {
     let (litesvm, merchant) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
     let dest = Pubkey::new_unique();
     let puller = Pubkey::new_unique();
     let end_ts = current_ts() + days(30) as i64;
@@ -69,14 +62,7 @@ fn create_plan_happy_path() {
 #[test]
 fn create_plan_no_expiry() {
     let (litesvm, merchant) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
     let dest = Pubkey::new_unique();
 
     let (res, plan_pda) = CreatePlan::new(litesvm, merchant, mint)
@@ -97,14 +83,7 @@ fn create_plan_no_expiry() {
 #[test]
 fn create_plan_period_hours_zero() {
     let (litesvm, merchant) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
     let dest = Pubkey::new_unique();
 
     let (res, _) = CreatePlan::new(litesvm, merchant, mint)
@@ -119,14 +98,7 @@ fn create_plan_period_hours_zero() {
 #[test]
 fn create_plan_period_hours_exceeds_max() {
     let (litesvm, merchant) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
     let dest = Pubkey::new_unique();
 
     let (res, _) = CreatePlan::new(litesvm, merchant, mint)
@@ -141,14 +113,7 @@ fn create_plan_period_hours_exceeds_max() {
 #[test]
 fn create_plan_amount_zero() {
     let (litesvm, merchant) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
     let dest = Pubkey::new_unique();
 
     let (res, _) = CreatePlan::new(litesvm, merchant, mint)
@@ -163,20 +128,9 @@ fn create_plan_amount_zero() {
 #[test]
 fn create_plan_no_destinations() {
     let (litesvm, merchant) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
 
-    let (res, plan_pda) = CreatePlan::new(litesvm, merchant, mint)
-        .plan_id(1)
-        .amount(1_000)
-        .period_hours(24)
-        .execute();
+    let (res, plan_pda) = CreatePlan::new(litesvm, merchant, mint).plan_id(1).amount(1_000).period_hours(24).execute();
     res.assert_ok();
 
     let account = litesvm.get_account(&plan_pda).unwrap();
@@ -190,14 +144,7 @@ fn create_plan_no_destinations() {
 #[test]
 fn create_plan_expired_end_ts() {
     let (litesvm, merchant) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
     let dest = Pubkey::new_unique();
 
     let (res, _) = CreatePlan::new(litesvm, merchant, mint)
@@ -213,14 +160,7 @@ fn create_plan_expired_end_ts() {
 #[test]
 fn create_plan_end_ts_before_first_period() {
     let (litesvm, merchant) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
     let dest = Pubkey::new_unique();
     let end_ts = current_ts() + days(1) as i64;
 
@@ -237,14 +177,7 @@ fn create_plan_end_ts_before_first_period() {
 #[test]
 fn create_plan_wrong_pda() {
     let (litesvm, merchant) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
     let dest = Pubkey::new_unique();
     let wrong_pda = Pubkey::new_unique();
 
@@ -273,14 +206,7 @@ fn create_plan_mint_mismatch_attack() {
 
     let (litesvm, merchant) = &mut setup();
 
-    let clean_mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let clean_mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
     let malicious_mint = Pubkey::new_unique();
     let dest = Pubkey::new_unique();
 
@@ -294,20 +220,15 @@ fn create_plan_mint_mismatch_attack() {
     let plan_data = PlanData {
         plan_id,
         mint: malicious_mint.to_bytes().into(),
-        terms: PlanTerms {
-            amount: 1_000,
-            period_hours: 24,
-            created_at: 0,
-        },
+        terms: PlanTerms { amount: 1_000, period_hours: 24, created_at: 0 },
         end_ts: 0,
         destinations,
         pullers: [zero_addr; MAX_PULLERS],
         metadata_uri: [0u8; 128],
     };
 
-    let plan_data_bytes = unsafe {
-        std::slice::from_raw_parts(&plan_data as *const PlanData as *const u8, PlanData::LEN)
-    };
+    let plan_data_bytes =
+        unsafe { std::slice::from_raw_parts(&plan_data as *const PlanData as *const u8, PlanData::LEN) };
     let mut data = vec![7u8];
     data.extend_from_slice(plan_data_bytes);
 
@@ -330,14 +251,7 @@ fn create_plan_mint_mismatch_attack() {
 #[test]
 fn create_plan_prefunded_pda() {
     let (litesvm, merchant) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
     let dest = Pubkey::new_unique();
     let plan_id: u64 = 42;
 
@@ -345,13 +259,7 @@ fn create_plan_prefunded_pda() {
     litesvm
         .set_account(
             plan_pda_addr,
-            Account {
-                lamports: 1_000,
-                data: vec![],
-                owner: Pubkey::default(),
-                executable: false,
-                rent_epoch: 0,
-            },
+            Account { lamports: 1_000, data: vec![], owner: Pubkey::default(), executable: false, rent_epoch: 0 },
         )
         .unwrap();
 
@@ -374,14 +282,7 @@ fn create_plan_prefunded_pda() {
 #[test]
 fn create_plan_duplicate_plan_id() {
     let (litesvm, merchant) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
     let dest = Pubkey::new_unique();
 
     let (res, _) = CreatePlan::new(litesvm, merchant, mint)

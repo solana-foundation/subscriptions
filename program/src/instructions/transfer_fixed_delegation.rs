@@ -9,9 +9,7 @@ use crate::{
     constants::{TOKEN_ACCOUNT_OWNER_END, TOKEN_ACCOUNT_OWNER_OFFSET},
     event_engine::{self, EventSerialize},
     events::FixedTransferEvent,
-    helpers::{
-        transfer_with_delegate, validate_fixed_transfer, Delegation, TransferAccounts, TransferData,
-    },
+    helpers::{transfer_with_delegate, validate_fixed_transfer, Delegation, TransferAccounts, TransferData},
     state::FixedDelegation,
     AccountCheck, ProgramAccount, SignerAccount, SubscriptionAuthorityAccount, SubscriptionsError,
     TokenAccountInterface, TokenProgramInterface, WritableAccount,
@@ -37,11 +35,7 @@ pub fn process(accounts: &[AccountView], transfer: &TransferData) -> ProgramResu
         let delegation = FixedDelegation::load_mut(&mut binding)?;
 
         // Fail fast: Check authorization first
-        Delegation::check(
-            &delegation.header,
-            &transfer.delegator,
-            accounts_struct.delegatee.address(),
-        )?;
+        Delegation::check(&delegation.header, &transfer.delegator, accounts_struct.delegatee.address())?;
         if delegation.subscription_authority != *accounts_struct.subscription_authority.address() {
             return Err(SubscriptionsError::InvalidDelegatePda.into());
         }
@@ -52,17 +46,10 @@ pub fn process(accounts: &[AccountView], transfer: &TransferData) -> ProgramResu
         delegatee_address = *accounts_struct.delegatee.address();
 
         let current_ts = Clock::get()?.unix_timestamp;
-        validate_fixed_transfer(
-            transfer.amount,
-            delegation.amount,
-            delegation.expiry_ts,
-            current_ts,
-        )?;
+        validate_fixed_transfer(transfer.amount, delegation.amount, delegation.expiry_ts, current_ts)?;
 
-        delegation.amount = delegation
-            .amount
-            .checked_sub(transfer.amount)
-            .ok_or(SubscriptionsError::ArithmeticUnderflow)?;
+        delegation.amount =
+            delegation.amount.checked_sub(transfer.amount).ok_or(SubscriptionsError::ArithmeticUnderflow)?;
 
         remaining_amount = delegation.amount;
         init_id = delegation.header.init_id;
@@ -76,8 +63,7 @@ pub fn process(accounts: &[AccountView], transfer: &TransferData) -> ProgramResu
             return Err(SubscriptionsError::InvalidAccountData.into());
         }
         let mut owner_bytes = [0u8; 32];
-        owner_bytes
-            .copy_from_slice(&receiver_data[TOKEN_ACCOUNT_OWNER_OFFSET..TOKEN_ACCOUNT_OWNER_END]);
+        owner_bytes.copy_from_slice(&receiver_data[TOKEN_ACCOUNT_OWNER_OFFSET..TOKEN_ACCOUNT_OWNER_END]);
         receiver_owner = Address::from(owner_bytes);
     }
 
@@ -105,12 +91,7 @@ pub fn process(accounts: &[AccountView], transfer: &TransferData) -> ProgramResu
         receiver_owner,
     );
     let event_data = event.to_bytes();
-    event_engine::emit_event(
-        &crate::ID,
-        accounts_struct.event_authority,
-        accounts_struct.self_program,
-        &event_data,
-    )?;
+    event_engine::emit_event(&crate::ID, accounts_struct.event_authority, accounts_struct.self_program, &event_data)?;
 
     Ok(())
 }
@@ -143,10 +124,7 @@ impl<'a> TryFrom<&'a [AccountView]> for FixedTransferAccounts<'a> {
         WritableAccount::check(receiver_ata)?;
         SubscriptionAuthorityAccount::check(subscription_authority)?;
         TokenProgramInterface::check(token_program)?;
-        TokenAccountInterface::check_accounts_with_program(
-            token_program,
-            &[delegator_ata, receiver_ata],
-        )?;
+        TokenAccountInterface::check_accounts_with_program(token_program, &[delegator_ata, receiver_ata])?;
         SignerAccount::check(delegatee)?;
 
         Ok(Self {

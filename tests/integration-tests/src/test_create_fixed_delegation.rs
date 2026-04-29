@@ -8,8 +8,8 @@ use crate::{
         pda::get_delegation_pda,
         utils::{
             current_ts, days, get_ata_balance, init_ata, init_mint, init_wallet,
-            initialize_subscription_authority_action, move_clock_forward, setup, CreateDelegation,
-            RevokeDelegation, TransferDelegation,
+            initialize_subscription_authority_action, move_clock_forward, setup, CreateDelegation, RevokeDelegation,
+            TransferDelegation,
         },
     },
     AccountDiscriminator, FixedDelegation, SubscriptionsError,
@@ -25,19 +25,10 @@ fn create_fixed_delegation_with_sponsor() {
     let expiry_ts: i64 = current_ts() + days(1) as i64;
     let nonce: u64 = 0;
 
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(delegator.pubkey()),
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(delegator.pubkey()), &[]);
     let _user_ata = init_ata(litesvm, mint, delegator.pubkey(), 1_000_000);
 
-    initialize_subscription_authority_action(litesvm, delegator, mint)
-        .0
-        .assert_ok();
+    initialize_subscription_authority_action(litesvm, delegator, mint).0.assert_ok();
 
     let delegatee = Pubkey::new_unique();
 
@@ -60,15 +51,10 @@ fn create_fixed_delegation_with_sponsor() {
     let delegation_rent = account.lamports;
     let delegation = FixedDelegation::load(&account.data).unwrap();
 
-    assert_eq!(
-        delegation.header.payer.to_bytes(),
-        sponsor.pubkey().to_bytes()
-    );
+    assert_eq!(delegation.header.payer.to_bytes(), sponsor.pubkey().to_bytes());
 
     // Now revoke and check refund
-    let res = RevokeDelegation::new(litesvm, delegator, mint, delegatee, nonce)
-        .receiver(sponsor.pubkey())
-        .execute();
+    let res = RevokeDelegation::new(litesvm, delegator, mint, delegatee, nonce).receiver(sponsor.pubkey()).execute();
     res.assert_ok();
 
     let sponsor_balance_final = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
@@ -88,25 +74,15 @@ fn create_fixed_delegation() {
     let expiry_ts: i64 = current_ts() + days(1) as i64;
     let nonce: u64 = 0;
 
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(payer.pubkey()),
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(payer.pubkey()), &[]);
     let _user_ata = init_ata(litesvm, mint, payer.pubkey(), 1_000_000);
 
-    initialize_subscription_authority_action(litesvm, payer, mint)
-        .0
-        .assert_ok();
+    initialize_subscription_authority_action(litesvm, payer, mint).0.assert_ok();
 
     let delegatee = Pubkey::new_unique();
 
-    let (res, delegation_pda) = CreateDelegation::new(litesvm, payer, mint, delegatee)
-        .nonce(nonce)
-        .fixed(amount, expiry_ts);
+    let (res, delegation_pda) =
+        CreateDelegation::new(litesvm, payer, mint, delegatee).nonce(nonce).fixed(amount, expiry_ts);
     res.assert_ok();
 
     let account = litesvm.get_account(&delegation_pda).unwrap();
@@ -117,10 +93,7 @@ fn create_fixed_delegation() {
     let del_expiry_s = delegation.expiry_ts;
     assert_eq!(header.delegator.to_bytes(), payer.pubkey().to_bytes());
     assert_eq!(header.delegatee.to_bytes(), delegatee.to_bytes());
-    assert_eq!(
-        header.discriminator,
-        AccountDiscriminator::FixedDelegation as u8
-    );
+    assert_eq!(header.discriminator, AccountDiscriminator::FixedDelegation as u8);
     assert_eq!(del_amount, amount);
     assert_eq!(del_expiry_s, expiry_ts);
 }
@@ -137,19 +110,10 @@ fn create_fixed_delegation_with_prefunded_pda() {
     let expiry_ts: i64 = current_ts() + days(1) as i64;
     let nonce: u64 = 0;
 
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(payer.pubkey()),
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(payer.pubkey()), &[]);
     let _user_ata = init_ata(litesvm, mint, payer.pubkey(), 1_000_000);
 
-    initialize_subscription_authority_action(litesvm, payer, mint)
-        .0
-        .assert_ok();
+    initialize_subscription_authority_action(litesvm, payer, mint).0.assert_ok();
 
     let delegatee = solana_pubkey::Pubkey::new_unique();
 
@@ -174,9 +138,8 @@ fn create_fixed_delegation_with_prefunded_pda() {
         .unwrap();
 
     // The user should still be able to create the delegation PDA
-    let (res, delegation_pda) = CreateDelegation::new(litesvm, payer, mint, delegatee)
-        .nonce(nonce)
-        .fixed(amount, expiry_ts);
+    let (res, delegation_pda) =
+        CreateDelegation::new(litesvm, payer, mint, delegatee).nonce(nonce).fixed(amount, expiry_ts);
     res.assert_ok();
 
     let account = litesvm.get_account(&delegation_pda).unwrap();
@@ -187,10 +150,7 @@ fn create_fixed_delegation_with_prefunded_pda() {
     let del_expiry_ts = delegation.expiry_ts;
     assert_eq!(header.delegator.to_bytes(), payer.pubkey().to_bytes());
     assert_eq!(header.delegatee.to_bytes(), delegatee.to_bytes());
-    assert_eq!(
-        header.discriminator,
-        AccountDiscriminator::FixedDelegation as u8
-    );
+    assert_eq!(header.discriminator, AccountDiscriminator::FixedDelegation as u8);
     assert_eq!(del_amount, amount);
     assert_eq!(del_expiry_ts, expiry_ts);
 }
@@ -203,20 +163,11 @@ fn create_delegation_without_subscription_authority() {
     let (litesvm, user) = &mut setup();
     let payer = user;
 
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(payer.pubkey()),
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(payer.pubkey()), &[]);
     let _user_ata = init_ata(litesvm, mint, payer.pubkey(), 1_000_000);
 
     let delegatee = Pubkey::new_unique();
-    let (res, _) = CreateDelegation::new(litesvm, payer, mint, delegatee)
-        .nonce(0)
-        .fixed(100, 1000);
+    let (res, _) = CreateDelegation::new(litesvm, payer, mint, delegatee).nonce(0).fixed(100, 1000);
 
     assert!(res.is_err());
 }
@@ -226,27 +177,15 @@ fn create_delegation_wrong_pda() {
     let (litesvm, user) = &mut setup();
     let payer = user;
 
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(payer.pubkey()),
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(payer.pubkey()), &[]);
     let _user_ata = init_ata(litesvm, mint, payer.pubkey(), 1_000_000);
 
-    initialize_subscription_authority_action(litesvm, payer, mint)
-        .0
-        .assert_ok();
+    initialize_subscription_authority_action(litesvm, payer, mint).0.assert_ok();
 
     let delegatee = Pubkey::new_unique();
     let wrong_pda = Pubkey::new_unique();
 
-    let (res, _) = CreateDelegation::new(litesvm, payer, mint, delegatee)
-        .pda(wrong_pda)
-        .nonce(0)
-        .fixed(100, 1000);
+    let (res, _) = CreateDelegation::new(litesvm, payer, mint, delegatee).pda(wrong_pda).nonce(0).fixed(100, 1000);
 
     assert!(res.is_err());
 }
@@ -256,30 +195,17 @@ fn create_delegation_duplicate_nonce() {
     let (litesvm, user) = &mut setup();
     let payer = user;
 
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(payer.pubkey()),
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(payer.pubkey()), &[]);
     let _user_ata = init_ata(litesvm, mint, payer.pubkey(), 1_000_000);
 
-    initialize_subscription_authority_action(litesvm, payer, mint)
-        .0
-        .assert_ok();
+    initialize_subscription_authority_action(litesvm, payer, mint).0.assert_ok();
 
     let delegatee = Pubkey::new_unique();
 
-    let (res, _) = CreateDelegation::new(litesvm, payer, mint, delegatee)
-        .nonce(0)
-        .fixed(100, current_ts() + 1000);
+    let (res, _) = CreateDelegation::new(litesvm, payer, mint, delegatee).nonce(0).fixed(100, current_ts() + 1000);
     res.assert_ok();
 
-    let (res2, _) = CreateDelegation::new(litesvm, payer, mint, delegatee)
-        .nonce(0)
-        .fixed(200, current_ts() + 2000);
+    let (res2, _) = CreateDelegation::new(litesvm, payer, mint, delegatee).nonce(0).fixed(200, current_ts() + 2000);
     res2.assert_err(SubscriptionsError::DelegationAlreadyExists);
 }
 
@@ -288,58 +214,32 @@ fn create_multiple_delegations_different_nonces() {
     let (litesvm, user) = &mut setup();
     let payer = user;
 
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(payer.pubkey()),
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(payer.pubkey()), &[]);
     let _user_ata = init_ata(litesvm, mint, payer.pubkey(), 1_000_000);
 
-    let (_, subscription_authority_pda, _) =
-        initialize_subscription_authority_action(litesvm, payer, mint);
+    let (_, subscription_authority_pda, _) = initialize_subscription_authority_action(litesvm, payer, mint);
 
     let delegatee = Pubkey::new_unique();
 
-    let (res0, pda0) = CreateDelegation::new(litesvm, payer, mint, delegatee)
-        .nonce(0)
-        .fixed(100, current_ts() + 1000);
+    let (res0, pda0) = CreateDelegation::new(litesvm, payer, mint, delegatee).nonce(0).fixed(100, current_ts() + 1000);
     let tx = res0.assert_ok();
-    println!(
-        "Create Fixed delegation consumed: {} CUs",
-        tx.compute_units_consumed
-    );
+    println!("Create Fixed delegation consumed: {} CUs", tx.compute_units_consumed);
 
-    let (res1, pda1) = CreateDelegation::new(litesvm, payer, mint, delegatee)
-        .nonce(1)
-        .fixed(200, current_ts() + 2000);
+    let (res1, pda1) = CreateDelegation::new(litesvm, payer, mint, delegatee).nonce(1).fixed(200, current_ts() + 2000);
     let tx = res1.assert_ok();
-    println!(
-        "Create Fixed delegation consumed: {} CUs",
-        tx.compute_units_consumed
-    );
+    println!("Create Fixed delegation consumed: {} CUs", tx.compute_units_consumed);
 
-    let (res2, pda2) = CreateDelegation::new(litesvm, payer, mint, delegatee)
-        .nonce(2)
-        .fixed(300, current_ts() + 3000);
+    let (res2, pda2) = CreateDelegation::new(litesvm, payer, mint, delegatee).nonce(2).fixed(300, current_ts() + 3000);
     let tx = res2.assert_ok();
-    println!(
-        "Create Fixed delegation consumed: {} CUs",
-        tx.compute_units_consumed
-    );
+    println!("Create Fixed delegation consumed: {} CUs", tx.compute_units_consumed);
 
     assert_ne!(pda0, pda1);
     assert_ne!(pda1, pda2);
     assert_ne!(pda0, pda2);
 
-    let (expected_pda0, _) =
-        get_delegation_pda(&subscription_authority_pda, &payer.pubkey(), &delegatee, 0);
-    let (expected_pda1, _) =
-        get_delegation_pda(&subscription_authority_pda, &payer.pubkey(), &delegatee, 1);
-    let (expected_pda2, _) =
-        get_delegation_pda(&subscription_authority_pda, &payer.pubkey(), &delegatee, 2);
+    let (expected_pda0, _) = get_delegation_pda(&subscription_authority_pda, &payer.pubkey(), &delegatee, 0);
+    let (expected_pda1, _) = get_delegation_pda(&subscription_authority_pda, &payer.pubkey(), &delegatee, 1);
+    let (expected_pda2, _) = get_delegation_pda(&subscription_authority_pda, &payer.pubkey(), &delegatee, 2);
 
     assert_eq!(pda0, expected_pda0);
     assert_eq!(pda1, expected_pda1);
@@ -365,29 +265,16 @@ fn writable_accounts_must_be_writable() {
     let (litesvm, user) = &mut setup();
     let fee_payer = init_wallet(litesvm, 10_000_000_000);
 
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(user.pubkey()),
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(user.pubkey()), &[]);
     let _user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
 
-    initialize_subscription_authority_action(litesvm, user, mint)
-        .0
-        .assert_ok();
+    initialize_subscription_authority_action(litesvm, user, mint).0.assert_ok();
 
     let delegatee = Pubkey::new_unique();
     let nonce: u64 = 0;
     let (subscription_authority_pda, _) = get_subscription_authority_pda(&user.pubkey(), &mint);
-    let (delegation_pda, _) = crate::tests::pda::get_delegation_pda(
-        &subscription_authority_pda,
-        &user.pubkey(),
-        &delegatee,
-        nonce,
-    );
+    let (delegation_pda, _) =
+        crate::tests::pda::get_delegation_pda(&subscription_authority_pda, &user.pubkey(), &delegatee, nonce);
 
     for (idx, _name, is_signer) in &writable {
         let mut accounts = vec![
@@ -410,14 +297,9 @@ fn writable_accounts_must_be_writable() {
         ]
         .concat();
 
-        let ix = Instruction {
-            program_id: PROGRAM_ID,
-            accounts,
-            data,
-        };
+        let ix = Instruction { program_id: PROGRAM_ID, accounts, data };
 
-        let res =
-            build_and_send_transaction(litesvm, &[&fee_payer, user], &fee_payer.pubkey(), &ix);
+        let res = build_and_send_transaction(litesvm, &[&fee_payer, user], &fee_payer.pubkey(), &ix);
         res.assert_err(SubscriptionsError::AccountNotWritable);
     }
 }
@@ -441,29 +323,16 @@ fn signer_accounts_must_be_signers() {
     let (litesvm, user) = &mut setup();
     let fee_payer = init_wallet(litesvm, 10_000_000_000);
 
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(user.pubkey()),
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(user.pubkey()), &[]);
     let _user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
 
-    initialize_subscription_authority_action(litesvm, user, mint)
-        .0
-        .assert_ok();
+    initialize_subscription_authority_action(litesvm, user, mint).0.assert_ok();
 
     let delegatee = Pubkey::new_unique();
     let nonce: u64 = 0;
     let (subscription_authority_pda, _) = get_subscription_authority_pda(&user.pubkey(), &mint);
-    let (delegation_pda, _) = crate::tests::pda::get_delegation_pda(
-        &subscription_authority_pda,
-        &user.pubkey(),
-        &delegatee,
-        nonce,
-    );
+    let (delegation_pda, _) =
+        crate::tests::pda::get_delegation_pda(&subscription_authority_pda, &user.pubkey(), &delegatee, nonce);
 
     for (idx, _name, is_writable) in &signers {
         let mut accounts = vec![
@@ -476,11 +345,8 @@ fn signer_accounts_must_be_signers() {
 
         // Flip signer to non-signer, preserving writable flag
         let pubkey = accounts[*idx].pubkey;
-        accounts[*idx] = if *is_writable {
-            AccountMeta::new(pubkey, false)
-        } else {
-            AccountMeta::new_readonly(pubkey, false)
-        };
+        accounts[*idx] =
+            if *is_writable { AccountMeta::new(pubkey, false) } else { AccountMeta::new_readonly(pubkey, false) };
 
         let data = [
             vec![*create_fixed_delegation::DISCRIMINATOR],
@@ -490,11 +356,7 @@ fn signer_accounts_must_be_signers() {
         ]
         .concat();
 
-        let ix = Instruction {
-            program_id: PROGRAM_ID,
-            accounts,
-            data,
-        };
+        let ix = Instruction { program_id: PROGRAM_ID, accounts, data };
 
         let res = build_and_send_transaction(litesvm, &[&fee_payer], &fee_payer.pubkey(), &ix);
         res.assert_err(SubscriptionsError::NotSigner);
@@ -509,25 +371,15 @@ fn create_fixed_delegation_with_expiry_in_past() {
     let expiry_ts: i64 = -10000000;
     let nonce: u64 = 0;
 
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(payer.pubkey()),
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(payer.pubkey()), &[]);
     let _user_ata = init_ata(litesvm, mint, payer.pubkey(), 1_000_000);
 
-    initialize_subscription_authority_action(litesvm, payer, mint)
-        .0
-        .assert_ok();
+    initialize_subscription_authority_action(litesvm, payer, mint).0.assert_ok();
 
     let delegatee = Pubkey::new_unique();
 
-    let (res, _delegation_pda) = CreateDelegation::new(litesvm, payer, mint, delegatee)
-        .nonce(nonce)
-        .fixed(amount, expiry_ts);
+    let (res, _delegation_pda) =
+        CreateDelegation::new(litesvm, payer, mint, delegatee).nonce(nonce).fixed(amount, expiry_ts);
     res.assert_err(SubscriptionsError::FixedDelegationExpiryInPast);
 }
 
@@ -539,27 +391,17 @@ fn create_fixed_delegation_with_zero_expiry() {
     let expiry_ts: i64 = 0;
     let nonce: u64 = 0;
 
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(payer.pubkey()),
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(payer.pubkey()), &[]);
     let _user_ata = init_ata(litesvm, mint, payer.pubkey(), 100_000_000);
 
-    initialize_subscription_authority_action(litesvm, payer, mint)
-        .0
-        .assert_ok();
+    initialize_subscription_authority_action(litesvm, payer, mint).0.assert_ok();
 
     let delegatee = solana_keypair::Keypair::new();
     litesvm.airdrop(&delegatee.pubkey(), 10_000_000).unwrap();
     let delegatee_ata = init_ata(litesvm, mint, delegatee.pubkey(), 0);
 
-    let (res, delegation_pda) = CreateDelegation::new(litesvm, payer, mint, delegatee.pubkey())
-        .nonce(nonce)
-        .fixed(amount, expiry_ts);
+    let (res, delegation_pda) =
+        CreateDelegation::new(litesvm, payer, mint, delegatee.pubkey()).nonce(nonce).fixed(amount, expiry_ts);
     res.assert_ok();
 
     let account = litesvm.get_account(&delegation_pda).unwrap();
