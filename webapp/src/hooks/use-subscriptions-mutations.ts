@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { address } from "gill";
+import { address, type Instruction } from "gill";
 import {
   findAssociatedTokenPda,
   TOKEN_2022_PROGRAM_ADDRESS,
@@ -31,7 +31,8 @@ import { useWalletUiSigner } from "../components/solana/use-wallet-ui-signer";
 import { useWalletTransactionSignAndSend } from "../components/solana/use-wallet-transaction-sign-and-send";
 import { useTransactionToast } from "../components/use-transaction-toast";
 import { invalidateWithDelay } from "@/lib/utils";
-import { packInstructionBatches } from "@/lib/tx-packer";
+import { createAllPlanPaymentCollectionResult, type ConfirmedPlanTransfer } from "@/lib/collect-all-results";
+import { packInstructionBatches, packInstructionBatchesWithItems } from "@/lib/tx-packer";
 import { getBlockTimestamp } from "@/hooks/use-time-travel";
 import { useProgramAddress } from "@/hooks/use-token-config";
 
@@ -659,12 +660,21 @@ export function useSubscriptionsMutations() {
       if (!signer) throw new Error("Wallet not connected");
       if (!progId) throw new Error("Program address not configured");
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const ataIxs: any[] = [];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const transferIxs: any[] = [];
-      const transferRequests: Array<{ planAddress: string; subscriptionAddress: string; amount: bigint }> = [];
+      type PendingTransferInstruction = {
+        planAddress: string;
+        subscriptionAddress: string;
+        delegator: string;
+        amount: bigint;
+        instruction: Instruction;
+      };
+
+      const ataIxs: Instruction[] = [];
+      const pendingTransfers: PendingTransferInstruction[] = [];
       const seenAtas = new Set<string>();
+      const planTotals = plans.map((plan) => ({
+        planAddress: plan.planAddress,
+        total: plan.subscribers.length,
+      }));
 
       for (const plan of plans) {
         const mintAddr = address(plan.mint);
@@ -703,46 +713,58 @@ export function useSubscriptionsMutations() {
             tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
             programAddress: progId,
           });
-          transferIxs.push(instructions[0]);
-          transferRequests.push({
+          pendingTransfers.push({
             planAddress: plan.planAddress,
             subscriptionAddress: sub.subscriptionAddress,
+            delegator: sub.delegator,
             amount: sub.amount,
+            instruction: instructions[0],
           });
         }
       }
 
       const signatures: string[] = [];
-      const transfers: Array<{ planAddress: string; subscriptionAddress: string; amount: bigint; signature: string }> = [];
-      let collected = 0;
-      const batches = packInstructionBatches(transferIxs, signer, ataIxs);
+      const confirmedTransfers: ConfirmedPlanTransfer[] = [];
+      const batches = packInstructionBatchesWithItems(pendingTransfers, signer, ataIxs);
 
       for (let b = 0; b < batches.length; b++) {
         try {
-          const signature = await signAndSend(batches[b], signer);
-          const batchTransferCount = batches[b].length - (b === 0 ? ataIxs.length : 0);
+          const signature = await signAndSend(batches[b].instructions, signer);
           signatures.push(signature);
-          transfers.push(
-            ...transferRequests.slice(collected, collected + batchTransferCount).map((transfer) => ({
-              ...transfer,
+          confirmedTransfers.push(
+            ...batches[b].items.map((transfer) => ({
+              planAddress: transfer.planAddress,
+              subscriptionAddress: transfer.subscriptionAddress,
+              delegator: transfer.delegator,
+              amount: transfer.amount,
+              batchIndex: b,
               signature,
             })),
           );
-          collected += batchTransferCount;
         } catch (err) {
-          if (collected === 0) throw err;
+          if (confirmedTransfers.length === 0) throw err;
           console.warn(
-            `Batch failed after collecting ${collected}/${transferIxs.length}:`,
+            `Batch failed after collecting ${confirmedTransfers.length}/${pendingTransfers.length}:`,
             err instanceof Error ? err.message : err,
           );
-          return { signatures, collected, total: transferIxs.length, partial: true, transfers };
+          return createAllPlanPaymentCollectionResult(
+            planTotals,
+            confirmedTransfers,
+            signatures,
+            true,
+          );
         }
       }
 
-      return { signatures, collected, total: transferIxs.length, partial: false, transfers };
+      return createAllPlanPaymentCollectionResult(
+        planTotals,
+        confirmedTransfers,
+        signatures,
+        false,
+      );
     },
     onSuccess: (res) => {
-      toast.onSuccess(res.signatures[0]);
+      if (res.signatures[0]) toast.onSuccess(res.signatures[0]);
       invalidateWithDelay(queryClient, [
         ["subscriberCounts"],
         ["get-token-accounts"],

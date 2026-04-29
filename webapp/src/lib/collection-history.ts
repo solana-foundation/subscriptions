@@ -57,23 +57,25 @@ export function createSuccessRecord(
   subscribersTotal: number,
   subscribersAttempted: number,
 ): CollectionRecord {
-  const storedTransfers = transfers.map((transfer) => ({
+  const storedTransfers = transfers.slice(0, subscribersTotal).map((transfer) => ({
     subscriptionAddress: transfer.subscriptionAddress,
     amount: transfer.amount.toString(),
     signature: transfer.signature,
   }))
-  const totalAmount = transfers.reduce((sum, transfer) => sum + transfer.amount, 0n)
+  const totalAmount = storedTransfers.reduce((sum, transfer) => sum + BigInt(transfer.amount), 0n)
+  const subscribersCollected = storedTransfers.length
+  const attempted = Math.min(subscribersAttempted, subscribersTotal)
 
   return {
     id: crypto.randomUUID(),
     timestamp: Math.floor(Date.now() / 1000),
     planAddress,
     planName,
-    subscribersCollected: transfers.length,
+    subscribersCollected,
     subscribersTotal,
     totalAmount: totalAmount.toString(),
     transfers: storedTransfers,
-    status: transfers.length < subscribersAttempted ? 'partial' : 'success',
+    status: subscribersCollected < attempted ? 'partial' : 'success',
     signatures: Array.from(new Set(storedTransfers.map((transfer) => transfer.signature))),
   }
 }
