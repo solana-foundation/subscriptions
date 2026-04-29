@@ -1,6 +1,5 @@
 packages:
   - 'clients/*'
-  - 'apps/*'
   - 'webapp'
   - 'webapp/api'
   - 'webapp/scripts'

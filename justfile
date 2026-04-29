@@ -96,10 +96,6 @@ build-client: generate-clients
 # Run all tests
 test *args: unit-test (integration-test args) test-client
 
-# Run E2E tests against the dev UI (requires PLAYRIGHT_WALLET and PLAYWRIGHT_TOKEN_MINT in .env)
-e2e-test:
-    pnpm --filter @subscriptions/web test:e2e
-
 # Run Rust unit tests
 unit-test:
     cargo test -p subscriptions
@@ -194,7 +190,7 @@ webapp-run:
     ./scripts/start-webapp.sh
 
 webapp-test:
-    cd {{webapp_dir}} && node --experimental-strip-types --test test/*.test.ts
+    cd {{webapp_dir}} && pnpm run test
 
 # Kill all webapp processes and remove all generated state
 webapp-clean:

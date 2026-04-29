@@ -102,7 +102,6 @@ Audited by Cantina. See [audits/AUDIT_STATUS.md](audits/AUDIT_STATUS.md) for the
 - `program/` — Pinocchio program (workspace member `subscriptions`)
 - `clients/rust/` — Codama-generated Rust client (`subscriptions-client`)
 - `clients/typescript/` — Hand-written SDK wrapping Codama-generated TS (`@subscriptions/client`)
-- `apps/web/` — Next.js production web stub (Vercel)
 - `webapp/` — Vite + React 19 + Node API demo (faucet, deploy wizard, marketplace)
 - `docs/` — Numbered ADRs
 - `audits/` — Audit report and AUDIT_STATUS.md
