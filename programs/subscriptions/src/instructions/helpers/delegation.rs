@@ -60,22 +60,24 @@ impl<'a> TryFrom<&'a [AccountView]> for CreateDelegationAccounts<'a> {
 /// Creates and allocates a delegation PDA.
 ///
 /// Verifies the delegator owns the [`SubscriptionAuthority`], derives the expected PDA,
-/// and creates the account via CPI. Returns `(bump, init_id)` on success.
+/// and creates the account via CPI. Returns `(bump, init_id, mint)` on success.
 pub fn create_delegation_account(
     accounts: &CreateDelegationAccounts,
     nonce: u64,
     space: usize,
-) -> Result<(u8, i64), ProgramError> {
+) -> Result<(u8, i64, Address), ProgramError> {
     if accounts.delegation_account.data_len() > 0 {
         return Err(SubscriptionsError::DelegationAlreadyExists.into());
     }
 
     let init_id;
+    let mint;
     {
         let md_data = accounts.subscription_authority.try_borrow()?;
         let subscription_authority = SubscriptionAuthority::load(&md_data)?;
         subscription_authority.check_owner(accounts.delegator.address())?;
         init_id = subscription_authority.init_id;
+        mint = subscription_authority.token_mint;
     }
 
     let nonce_bytes = nonce.to_le_bytes();
@@ -103,7 +105,7 @@ pub fn create_delegation_account(
 
     ProgramAccount::init::<()>(accounts.payer, accounts.delegation_account, &seeds, space)?;
 
-    Ok((bump, init_id))
+    Ok((bump, init_id, mint))
 }
 
 /// Populates a delegation [`Header`] with the standard fields.

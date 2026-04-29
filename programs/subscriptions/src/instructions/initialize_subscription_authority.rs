@@ -10,9 +10,9 @@ use pinocchio_token_2022::instructions::Approve as Approve2022;
 
 use crate::{
     check_token_account_mint, check_token_account_owner, constants::TOKEN_2022_PROGRAM_ID,
-    AccountCheck, MintInterface, ProgramAccount, ProgramAccountInit, SignerAccount,
-    SubscriptionAuthority, SubscriptionsError, SystemAccount, TokenAccountInterface,
-    TokenProgramInterface, WritableAccount,
+    AccountCheck, AssociatedTokenAccount, AssociatedTokenAccountCheck, MintInterface,
+    ProgramAccount, ProgramAccountInit, SignerAccount, SubscriptionAuthority, SubscriptionsError,
+    SystemAccount, TokenAccountInterface, TokenProgramInterface, WritableAccount,
 };
 
 /// Validated accounts for the [`InitSubscriptionAuthority`](crate::SubscriptionsInstruction::InitSubscriptionAuthority) instruction.
@@ -125,6 +125,12 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
         check_token_account_owner(&ata_data, accounts.user.address())?;
         check_token_account_mint(&ata_data, accounts.token_mint.address())?;
     }
+    AssociatedTokenAccount::check(
+        accounts.user_ata,
+        accounts.user,
+        accounts.token_mint,
+        accounts.token_program,
+    )?;
 
     // Approve delegation on the correct token program (SPL Token vs Token-2022).
     // The instruction data is the same, but the program id differs.
@@ -157,18 +163,25 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
 #[cfg(test)]
 mod tests {
     use rstest::rstest;
+    use solana_account::Account;
+    use solana_instruction::{AccountMeta, Instruction};
+    use solana_pubkey::Pubkey;
     use solana_signer::Signer;
     use spl_token_2022::extension::ExtensionType;
 
     use crate::{
+        instructions::initialize_subscription_authority,
         tests::{
             asserts::TransactionResultExt,
             constants::{
-                MINT_DECIMALS, SYSTEM_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID,
+                MINT_DECIMALS, PROGRAM_ID, SYSTEM_PROGRAM_ID, TOKEN_2022_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
             },
+            idl,
+            pda::get_subscription_authority_pda,
             utils::{
-                fetch_account, init_ata, init_mint, init_wallet,
-                initialize_subscription_authority_action,
+                build_and_send_transaction, fetch_account, init_ata, init_aux_token_account,
+                init_mint, init_wallet, initialize_subscription_authority_action,
                 initialize_subscription_authority_action_with_sponsor, setup,
             },
         },
@@ -221,6 +234,38 @@ mod tests {
         assert!(ata_account.delegate.is_some());
         assert_eq!(ata_account.delegate.unwrap(), subscription_authority_pda);
         assert_eq!(ata_account.delegated_amount, u64::MAX);
+    }
+
+    #[test]
+    fn initialize_subscription_authority_rejects_non_canonical_token_account() {
+        let (litesvm, user) = &mut setup();
+
+        let mint = init_mint(
+            litesvm,
+            TOKEN_PROGRAM_ID,
+            MINT_DECIMALS,
+            1_000_000_000,
+            Some(user.pubkey()),
+            &[],
+        );
+        let aux_token_account = init_aux_token_account(litesvm, mint, user.pubkey(), 1_000_000);
+        let (subscription_authority_pda, _) = get_subscription_authority_pda(&user.pubkey(), &mint);
+
+        let ix = Instruction {
+            program_id: PROGRAM_ID,
+            accounts: vec![
+                AccountMeta::new(user.pubkey(), true),
+                AccountMeta::new(subscription_authority_pda, false),
+                AccountMeta::new_readonly(mint, false),
+                AccountMeta::new(aux_token_account, false),
+                AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+                AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
+            ],
+            data: vec![*initialize_subscription_authority::DISCRIMINATOR],
+        };
+
+        build_and_send_transaction(litesvm, &[user], &user.pubkey(), &ix)
+            .assert_err(SubscriptionsError::InvalidAssociatedTokenAccountDerivedAddress);
     }
 
     #[test]
@@ -359,17 +404,6 @@ mod tests {
 
     #[test]
     fn wrong_token_program_returns_error() {
-        use solana_instruction::{AccountMeta, Instruction};
-        use solana_signer::Signer;
-
-        use crate::{
-            instructions::initialize_subscription_authority,
-            tests::{
-                constants::PROGRAM_ID, constants::SYSTEM_PROGRAM_ID,
-                pda::get_subscription_authority_pda, utils::build_and_send_transaction,
-            },
-        };
-
         let (litesvm, user) = &mut setup();
 
         let mint = init_mint(
@@ -408,8 +442,6 @@ mod tests {
     /// does not prevent the legitimate user from creating the account.
     #[test]
     fn initialize_subscription_authority_with_prefunded_pda() {
-        use solana_account::Account;
-
         let (litesvm, user) = &mut setup();
 
         let mint = init_mint(
@@ -469,8 +501,6 @@ mod tests {
 
     #[test]
     fn initialize_subscription_authority_with_overfunded_pda() {
-        use solana_account::Account;
-
         let (litesvm, user) = &mut setup();
 
         let mint = init_mint(
@@ -527,18 +557,6 @@ mod tests {
 
     #[test]
     fn writable_accounts_must_be_writable() {
-        use solana_instruction::{AccountMeta, Instruction};
-
-        use crate::{
-            instructions::initialize_subscription_authority,
-            tests::{
-                constants::PROGRAM_ID,
-                idl,
-                pda::get_subscription_authority_pda,
-                utils::{build_and_send_transaction, init_wallet},
-            },
-        };
-
         let writable = idl::writable_account_indices("initSubscriptionAuthority");
 
         let (litesvm, user) = &mut setup();
@@ -583,18 +601,6 @@ mod tests {
 
     #[test]
     fn signer_accounts_must_be_signers() {
-        use solana_instruction::{AccountMeta, Instruction};
-
-        use crate::{
-            instructions::initialize_subscription_authority,
-            tests::{
-                constants::PROGRAM_ID,
-                idl,
-                pda::get_subscription_authority_pda,
-                utils::{build_and_send_transaction, init_wallet},
-            },
-        };
-
         let signers = idl::signer_account_indices("initSubscriptionAuthority");
 
         let (litesvm, user) = &mut setup();
@@ -645,18 +651,6 @@ mod tests {
     /// signer.
     #[test]
     fn non_signer_payer_rejected() {
-        use solana_instruction::{AccountMeta, Instruction};
-        use solana_pubkey::Pubkey;
-        use solana_signer::Signer;
-
-        use crate::{
-            instructions::initialize_subscription_authority,
-            tests::{
-                constants::PROGRAM_ID, constants::TOKEN_PROGRAM_ID,
-                pda::get_subscription_authority_pda, utils::build_and_send_transaction,
-            },
-        };
-
         let (litesvm, user) = &mut setup();
 
         let mint = init_mint(
