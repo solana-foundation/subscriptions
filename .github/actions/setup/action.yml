@@ -77,9 +77,10 @@ runs:
       shell: bash
       run: echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-    - name: Install Just
-      shell: bash
-      run: command -v just || curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to ~/.local/bin
+    - name: Install just
+      uses: extractions/setup-just@v4
+      with:
+        just-version: "1.50.0"
 
     - name: Install pnpm
       uses: pnpm/action-setup@v4
