@@ -51,7 +51,14 @@ function StatusError({ onRetry }: { onRetry: () => void }) {
 
 export function DelegationManagementPanel() {
   const { mint: usdcMint, isLoading: isMintLoading } = useUsdcMintRaw()
-  const { isLoading: statusLoading, isError, isApproved, data: statusData, refetch: refetchStatus } = useSubscriptionAuthorityStatus(usdcMint)
+  const {
+    isLoading: statusLoading,
+    isError,
+    isInitialized,
+    isApproved,
+    data: statusData,
+    refetch: refetchStatus,
+  } = useSubscriptionAuthorityStatus(usdcMint)
 
   if (isMintLoading || statusLoading) {
     return <LoadingState />
@@ -66,6 +73,7 @@ export function DelegationManagementPanel() {
   }
 
   const subscriptionAuthorityInitId = statusData?.data?.initId ?? null
+  const subscriptionAuthorityPayer = statusData?.data?.payer ?? null
 
   return (
     <div className="w-full">
@@ -77,7 +85,14 @@ export function DelegationManagementPanel() {
           <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-700/40 to-transparent" />
         </div>
       )}
-      <ActiveDelegations tokenMint={usdcMint} isApproved={isApproved} subscriptionAuthorityInitId={subscriptionAuthorityInitId} onInitSuccess={refetchStatus} />
+      <ActiveDelegations
+        tokenMint={usdcMint}
+        isInitialized={isInitialized}
+        isApproved={isApproved}
+        subscriptionAuthorityPayer={subscriptionAuthorityPayer}
+        subscriptionAuthorityInitId={subscriptionAuthorityInitId}
+        onInitSuccess={refetchStatus}
+      />
     </div>
   )
 }

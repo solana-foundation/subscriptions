@@ -30,10 +30,13 @@ import type { TokenAccountEntry } from '@/lib/types'
 import { useClusterConfig } from '@/hooks/use-cluster-config'
 import { getBlockTimestamp } from '@/hooks/use-time-travel'
 import { useMySubscriptions } from '@/hooks/use-subscriptions'
+import { getDelegationApprovalState } from '@/lib/delegation-approval-state'
 
 interface ActiveDelegationsProps {
   tokenMint: string
+  isInitialized: boolean
   isApproved: boolean
+  subscriptionAuthorityPayer?: string | null
   subscriptionAuthorityInitId?: bigint | null
   onInitSuccess?: () => void
 }
@@ -80,7 +83,6 @@ function formatAmount(amount: bigint | number): string {
     maximumFractionDigits: 2,
   })
 }
-
 
 interface RevokeDelegationButtonProps {
   delegation: DelegationItem
@@ -469,7 +471,13 @@ function FilterCard({ active, onClick, label, count, subLabel, isActiveCard = tr
   )
 }
 
-function InitPrompt({ tokenMint, onSuccess }: { tokenMint: string; onSuccess?: () => void }) {
+function InitPrompt({ tokenMint, onSuccess, isReapproval = false, subscriptionAuthorityInitId, compact = false }: {
+  tokenMint: string
+  onSuccess?: () => void
+  isReapproval?: boolean
+  subscriptionAuthorityInitId?: bigint | null
+  compact?: boolean
+}) {
   const { account } = useWalletUi()
   const { initSubscriptionAuthority } = useSubscriptionsMutations()
   const queryClient = useQueryClient()
@@ -511,12 +519,28 @@ function InitPrompt({ tokenMint, onSuccess }: { tokenMint: string; onSuccess?: (
 
   const hasAta = !!userAtaAddress
 
+  const containerClass = compact
+    ? 'flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20'
+    : 'flex flex-col items-center justify-center py-8 text-center space-y-3'
+  const iconClass = compact ? 'h-5 w-5 text-amber-500 shrink-0' : 'h-10 w-10 text-amber-500/60'
+  const reapprovalText = subscriptionAuthorityInitId == null
+    ? 'Enabling Delegations reapproves this authority and can reactivate existing grants that match its current delegation ID. Revoke or disable first if you do not want those grants usable.'
+    : `Enabling Delegations reapproves this authority and can reactivate existing grants with delegation ID ${subscriptionAuthorityInitId.toString()}. Revoke or disable first if you do not want those grants usable.`
+
   return (
-    <div className="flex flex-col items-center justify-center py-8 text-center space-y-3">
-      <ShieldAlert className="h-10 w-10 text-amber-500/60" />
-      <div>
-        <p className="text-sm font-medium text-muted-foreground">Approval required to create delegations</p>
-        <p className="text-xs text-muted-foreground/70 mt-1">One-time setup to enable the delegation program</p>
+    <div className={containerClass}>
+      <div className={compact ? 'flex items-start gap-2' : 'flex flex-col items-center gap-3'}>
+        <ShieldAlert className={iconClass} />
+        <div>
+          <p className="text-sm font-medium text-muted-foreground">
+            {isReapproval ? 'Token approval is off' : 'Approval required to create delegations'}
+          </p>
+          <p className="text-xs text-muted-foreground/70 mt-1">
+            {isReapproval
+              ? reapprovalText
+              : 'One-time setup to enable the delegation program'}
+          </p>
+        </div>
       </div>
       {!hasAta && !tokenAccountsLoading && (
         <p className="text-xs text-destructive">No token account found. Get some USDC first.</p>
@@ -532,8 +556,9 @@ function InitPrompt({ tokenMint, onSuccess }: { tokenMint: string; onSuccess?: (
   )
 }
 
-function CloseSubscriptionAuthorityDialog({ tokenMint, open, onOpenChange }: {
+function CloseSubscriptionAuthorityDialog({ tokenMint, payer, open, onOpenChange }: {
   tokenMint: string
+  payer?: string | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
@@ -561,7 +586,7 @@ function CloseSubscriptionAuthorityDialog({ tokenMint, open, onOpenChange }: {
 
   const handleClose = async () => {
     try {
-      await closeSubscriptionAuthority.mutateAsync({ tokenMint })
+      await closeSubscriptionAuthority.mutateAsync({ tokenMint, payer: payer ?? undefined })
       handleOpenChange(false)
     } catch {
       // error handled by toast
@@ -616,7 +641,14 @@ function CloseSubscriptionAuthorityDialog({ tokenMint, open, onOpenChange }: {
   )
 }
 
-export function ActiveDelegations({ tokenMint, isApproved, subscriptionAuthorityInitId, onInitSuccess }: ActiveDelegationsProps) {
+export function ActiveDelegations({
+  tokenMint,
+  isInitialized,
+  isApproved,
+  subscriptionAuthorityPayer,
+  subscriptionAuthorityInitId,
+  onInitSuccess,
+}: ActiveDelegationsProps) {
   const [activeTab, setActiveTab] = useState<TabType>('outgoing')
   const [outgoingSubTab, setOutgoingSubTab] = useState<OutgoingSubTab>('active')
   const [closeDialogOpen, setCloseDialogOpen] = useState(false)
@@ -661,6 +693,11 @@ export function ActiveDelegations({ tokenMint, isApproved, subscriptionAuthority
   }, [outgoing.all, subscriptionAuthorityInitId])
 
   const { revokeMultipleDelegations } = useSubscriptionsMutations()
+  const approvalState = getDelegationApprovalState({
+    isInitialized,
+    isApproved,
+    outgoingDelegationCount: outgoing.all.length,
+  })
 
   const handleRevokeAllStale = async () => {
     if (staleDelegations.length === 0) return
@@ -687,7 +724,7 @@ export function ActiveDelegations({ tokenMint, isApproved, subscriptionAuthority
   }
 
   const renderOutgoingContent = () => {
-    if (!isApproved) {
+    if (approvalState.shouldShowApprovalPromptAsContent) {
       return <InitPrompt tokenMint={tokenMint} onSuccess={onInitSuccess} />
     }
 
@@ -731,7 +768,7 @@ export function ActiveDelegations({ tokenMint, isApproved, subscriptionAuthority
             {revokeMultipleDelegations.isPending ? 'Revoking...' : `Revoke ${staleDelegations.length} Stale`}
           </Button>
         )}
-        {isApproved && (
+        {approvalState.canCloseSubscriptionAuthority && (
           <Button
             variant="outline"
             size="sm"
@@ -777,11 +814,14 @@ export function ActiveDelegations({ tokenMint, isApproved, subscriptionAuthority
         />
       </div>
 
-      {activeTab === 'outgoing' && !isApproved && (
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-          <ShieldAlert className="h-4 w-4 text-amber-500" />
-          <p className="text-xs text-amber-500">Approval required to create outgoing delegations</p>
-        </div>
+      {activeTab === 'outgoing' && approvalState.shouldShowApprovalRecoveryBanner && (
+        <InitPrompt
+          tokenMint={tokenMint}
+          onSuccess={onInitSuccess}
+          isReapproval={isInitialized}
+          subscriptionAuthorityInitId={subscriptionAuthorityInitId}
+          compact
+        />
       )}
 
       {isLoading ? (
@@ -795,9 +835,14 @@ export function ActiveDelegations({ tokenMint, isApproved, subscriptionAuthority
       )}
       
       <div className="flex justify-end">
-        <CreateDelegationDialog tokenMint={tokenMint} disabled={!isApproved} />
+        <CreateDelegationDialog tokenMint={tokenMint} disabled={!approvalState.canCreateDelegations} />
       </div>
-      <CloseSubscriptionAuthorityDialog tokenMint={tokenMint} open={closeDialogOpen} onOpenChange={setCloseDialogOpen} />
+      <CloseSubscriptionAuthorityDialog
+        tokenMint={tokenMint}
+        payer={subscriptionAuthorityPayer}
+        open={closeDialogOpen}
+        onOpenChange={setCloseDialogOpen}
+      />
     </div>
   )
 }
