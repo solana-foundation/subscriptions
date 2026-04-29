@@ -5,7 +5,7 @@
 set shell := ["bash", "-uc"]
 
 # Variables
-program_dir := "programs/subscriptions"
+program_dir := "program"
 ts_client_dir := "clients/typescript"
 webapp_dir := "webapp"
 idl_file := program_dir / "idl/subscriptions.json"
@@ -318,6 +318,6 @@ verify-mainnet: check-solana-verify
         https://github.com/solana-program/multi-delegator \
         --program-id "$PROG_ID" \
         --library-name subscriptions \
-        --mount-path programs/subscriptions \
+        --mount-path program \
         --remote \
         -um

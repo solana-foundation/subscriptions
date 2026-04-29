@@ -71,8 +71,8 @@ jobs:
 
       - name: Generate IDL and clients
         run: |
-          cd programs/subscriptions && cargo build
-          cd ../.. && pnpm run generate-clients
+          cd program && cargo build
+          cd .. && pnpm run generate-clients
 
       - name: Build TypeScript client
         working-directory: clients/typescript

@@ -46,13 +46,13 @@ Solana program using **Pinocchio** (lightweight `no_std` framework) with **Codam
 ### Code Flow
 
 ```
-programs/subscriptions/src/lib.rs (declares ID, dispatches via SubscriptionsInstruction enum)
+program/src/lib.rs (declares ID, dispatches via SubscriptionsInstruction enum)
     ↓
-programs/subscriptions/src/instructions/*.rs (instruction processors)
+program/src/instructions/*.rs (instruction processors)
     ↓
-programs/subscriptions/src/state/*.rs (PDA account structs)
+program/src/state/*.rs (PDA account structs)
     ↓
-programs/subscriptions/src/event_engine.rs (self-CPI event emission)
+program/src/event_engine.rs (self-CPI event emission)
 ```
 
 ### Client Generation Pipeline
@@ -60,9 +60,9 @@ programs/subscriptions/src/event_engine.rs (self-CPI event emission)
 ```
 Rust code with #[codama(...)] attributes
     ↓
-programs/subscriptions/build.rs → programs/subscriptions/idl/subscriptions.json
+program/build.rs → program/idl/subscriptions.json
     ↓
-codama.js + codama-visitors.mjs (event authority PDA, defaults)
+scripts/generate-clients.ts
     ↓
 clients/rust/src/generated/        (auto-generated)
 clients/typescript/src/generated/  (auto-generated; wrapped by hand-written SDK in src/)
@@ -77,15 +77,15 @@ clients/typescript/src/generated/  (auto-generated; wrapped by hand-written SDK 
 
 ### Key Modules
 
-- `programs/subscriptions/src/instructions/` — 14 instruction handlers + `helpers/` (validation, token ops, traits)
-- `programs/subscriptions/src/state/` — Account structs (SubscriptionAuthority, FixedDelegation, RecurringDelegation, Plan, Subscription) + `versioning/`
-- `programs/subscriptions/src/events/` — Event structs and self-CPI emission
-- `programs/subscriptions/src/errors.rs` — Error codes (ranges 100-699)
-- `programs/subscriptions/src/event_engine.rs` — Self-CPI dispatcher for events
+- `program/src/instructions/` — 14 instruction handlers + `helpers/` (validation, token ops, traits)
+- `program/src/state/` — Account structs (SubscriptionAuthority, FixedDelegation, RecurringDelegation, Plan, Subscription) + `versioning/`
+- `program/src/events/` — Event structs and self-CPI emission
+- `program/src/errors.rs` — Error codes (ranges 100-699)
+- `program/src/event_engine.rs` — Self-CPI dispatcher for events
 
 ### Testing
 
-- Rust: LiteSVM-based, located in `programs/subscriptions/src/tests/` (in-crate). Run via `cargo test-sbf`.
+- Rust: LiteSVM-based, located in `program/src/tests/` (in-crate). Run via `cargo test-sbf`.
 - TypeScript: Vitest against Surfpool, in `clients/typescript/test/`. Includes Squads + Swig smart-wallet integration tests and security-focused tests.
 - CU benchmarks: set `CU_REPORT=1` to write `cu_report.md` (posted as PR comment in CI).
 
@@ -99,7 +99,7 @@ Audited by Cantina. See [audits/AUDIT_STATUS.md](audits/AUDIT_STATUS.md) for the
 
 ## Workspace Structure
 
-- `programs/subscriptions/` — Pinocchio program (workspace member `subscriptions`)
+- `program/` — Pinocchio program (workspace member `subscriptions`)
 - `clients/rust/` — Codama-generated Rust client (`subscriptions-client`)
 - `clients/typescript/` — Hand-written SDK wrapping Codama-generated TS (`@subscriptions/client`)
 - `apps/web/` — Next.js production web stub (Vercel)
