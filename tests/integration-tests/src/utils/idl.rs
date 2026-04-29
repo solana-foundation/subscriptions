@@ -3,7 +3,7 @@ use std::vec::Vec;
 
 use serde_json::Value;
 
-const IDL_JSON: &str = include_str!("../../../idl/subscriptions.json");
+const IDL_JSON: &str = include_str!("../../../../idl/subscriptions.json");
 
 /// Account info from the IDL.
 pub struct IdlAccount {

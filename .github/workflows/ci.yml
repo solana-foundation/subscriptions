@@ -71,7 +71,30 @@ jobs:
           save-rust-cache: "true"
 
       - name: Test program
-        run: just test-program
+        run: just unit-test
+
+  rust-integration-test:
+    runs-on: ubuntu-latest
+    needs: [build]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: ./.github/actions/setup
+        with:
+          install-solana: "false"
+          rust-cache-key: "rust-integration-test"
+
+      - name: Download program SO
+        uses: actions/download-artifact@v4
+        with:
+          name: program-so
+          path: target/deploy/
+
+      - name: Run Rust integration tests
+        run: cargo test -p tests-subscriptions
 
   lint:
     runs-on: ubuntu-latest
@@ -156,7 +179,7 @@ jobs:
           PR=${{ github.event.pull_request.number }}
           MARKER="<!-- cu-report -->"
           REPORT="$MARKER
-          $(cat program/cu_report.md)"
+          $(cat cu_report.md)"
 
           COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${PR}/comments" \
             --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" | head -1)

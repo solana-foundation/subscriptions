@@ -94,19 +94,29 @@ build-client: generate-clients
 # ============================================
 
 # Run all tests
-test: test-program test-client
+test *args: unit-test (integration-test args) test-client
 
 # Run E2E tests against the dev UI (requires PLAYRIGHT_WALLET and PLAYWRIGHT_TOKEN_MINT in .env)
 e2e-test:
     pnpm --filter @subscriptions/web test:e2e
 
-# Run Rust program tests
-test-program:
-    cd {{program_dir}} && cargo test-sbf
+# Run Rust unit tests
+unit-test:
+    cargo test -p subscriptions
+
+# Backwards-compatible alias for the old recipe name
+test-program: unit-test
+    @true
+
+# Run Rust integration tests
+integration-test *args: build-program
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cargo test -p tests-subscriptions "$@"
 
 # Run tests with compute unit benchmark report
-test-and-benchmark:
-    cd {{program_dir}} && CU_REPORT=1 CU_REPORT_DATE=$(date +%Y-%m-%d) cargo test-sbf
+test-and-benchmark: build-program
+    CU_REPORT=1 CU_REPORT_DATE=$(date +%Y-%m-%d) cargo test -p tests-subscriptions
 
 # Run TypeScript client integration tests
 test-client: build-program generate-clients ensure-surfpool
@@ -240,7 +250,7 @@ clean:
 # Check formatting without fixing
 fmt-check:
     @echo "Checking Rust formatting..."
-    @cargo fmt -p subscriptions --check
+    @cargo fmt -p subscriptions -p tests-subscriptions --check
     @echo "Checking TypeScript formatting..."
     @cd {{ts_client_dir}} && pnpm run format:check
     @echo "✓ Format check passed"
@@ -248,7 +258,7 @@ fmt-check:
 # Auto-format all code
 fmt:
     @echo "Formatting Rust..."
-    @cargo fmt -p subscriptions
+    @cargo fmt -p subscriptions -p tests-subscriptions
     @echo "Formatting TypeScript..."
     @cd {{ts_client_dir}} && pnpm run format
     @echo "✓ Code formatted"

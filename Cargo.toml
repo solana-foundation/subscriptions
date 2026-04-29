@@ -2,6 +2,7 @@
 members = [
     "program",
     "clients/rust",
+    "tests/integration-tests",
 ]
 resolver = "2"
 

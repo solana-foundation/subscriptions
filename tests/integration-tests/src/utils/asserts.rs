@@ -58,10 +58,7 @@ impl TransactionResultExt for TransactionResult {
 fn format_error(failed_tx: &FailedTransactionMetadata) -> String {
     match &failed_tx.err {
         TransactionError::InstructionError(_, InstructionError::Custom(code)) => {
-            match SubscriptionsError::try_from(*code) {
-                Ok(err) => format!("{:?}: {}", err, err),
-                Err(code) => format!("Unknown custom error code: {}", code),
-            }
+            format!("Custom error code: {}", code)
         }
         other => format!("{:?}", other),
     }
