@@ -16,6 +16,20 @@
             },
             {
               "kind": "structFieldTypeNode",
+              "name": "subscriptionAuthority",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "mint",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
               "name": "amount",
               "type": {
                 "endian": "le",
@@ -98,6 +112,20 @@
               "type": {
                 "kind": "definedTypeLinkNode",
                 "name": "header"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "subscriptionAuthority",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "mint",
+              "type": {
+                "kind": "publicKeyTypeNode"
               }
             },
             {

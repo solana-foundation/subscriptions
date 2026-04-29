@@ -2,7 +2,7 @@
 
 use codama::CodamaAccount;
 use core::mem::{size_of, transmute};
-use pinocchio::error::ProgramError;
+use pinocchio::{error::ProgramError, Address};
 
 use crate::{
     check_min_account_size, state::common::AccountDiscriminator,
@@ -22,6 +22,10 @@ use crate::{
 pub struct FixedDelegation {
     /// Common delegation header (discriminator, version, bump, delegator, delegatee, payer).
     pub header: Header,
+    /// The exact SubscriptionAuthority PDA used when this delegation was created.
+    pub subscription_authority: Address,
+    /// The token mint this delegation authorizes.
+    pub mint: Address,
     /// Remaining token amount the delegatee is allowed to transfer.
     pub amount: u64,
     /// Unix timestamp after which this delegation is no longer valid.
@@ -68,5 +72,5 @@ impl FixedDelegation {
     }
 }
 
-pub const FIXED_DELEGATION_LEN_V1: usize = 123;
-const _: () = assert!(FixedDelegation::LEN == FIXED_DELEGATION_LEN_V1);
+pub const FIXED_DELEGATION_LEN: usize = 187;
+const _: () = assert!(FixedDelegation::LEN == FIXED_DELEGATION_LEN);

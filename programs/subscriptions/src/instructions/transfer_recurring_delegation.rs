@@ -45,6 +45,14 @@ pub fn process(accounts: &[AccountView], transfer_data: &TransferData) -> Progra
             &transfer_data.delegator,
             accounts_struct.delegatee.address(),
         )?;
+        if delegation_mut.subscription_authority
+            != *accounts_struct.subscription_authority.address()
+        {
+            return Err(SubscriptionsError::InvalidDelegatePda.into());
+        }
+        if delegation_mut.mint != transfer_data.mint {
+            return Err(SubscriptionsError::MintMismatch.into());
+        }
 
         delegatee_address = *accounts_struct.delegatee.address();
         period_length_s = delegation_mut.period_length_s;
@@ -167,16 +175,20 @@ impl<'a> TryFrom<&'a [AccountView]> for RecurringTransferAccounts<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::utils::build_and_send_transaction;
     use crate::{
-        state::RecurringDelegation,
+        event_engine::event_authority_pda,
+        instructions::transfer_recurring_delegation,
+        state::{header::VERSION_OFFSET, RecurringDelegation},
         tests::{
             asserts::TransactionResultExt,
-            constants::{MINT_DECIMALS, TOKEN_PROGRAM_ID},
+            constants::{MINT_DECIMALS, PROGRAM_ID, TOKEN_PROGRAM_ID},
+            idl,
+            pda::get_subscription_authority_pda,
             utils::{
-                current_ts, days, get_ata_balance, hours, init_ata, init_mint,
+                build_and_send_transaction, current_ts, days, get_ata_balance, hours, init_ata,
+                init_aux_token_account, init_mint, init_wallet,
                 initialize_subscription_authority_action, minutes, move_clock_forward, setup,
-                CreateDelegation, TransferDelegation,
+                CloseSubscriptionAuthority, CreateDelegation, TransferDelegation,
             },
         },
         SubscriptionsError,
@@ -187,6 +199,7 @@ mod tests {
     use solana_pubkey::Pubkey;
     use solana_signer::Signer;
     use solana_transaction_error::TransactionError::InstructionError;
+    use spl_associated_token_account::get_associated_token_address_with_program_id;
     use spl_token::instruction::TokenInstruction::{Approve, Revoke};
 
     fn setup_recurring_delegation(
@@ -538,20 +551,127 @@ mod tests {
     }
 
     #[test]
-    fn writable_accounts_must_be_writable() {
-        use spl_associated_token_account::get_associated_token_address_with_program_id;
+    fn recurring_delegation_rejects_transfer_with_different_mint_authority() {
+        let (mut litesvm, alice) = setup();
+        let bob = Keypair::new();
+        litesvm.airdrop(&bob.pubkey(), 10_000_000).unwrap();
 
-        use crate::{
-            event_engine::event_authority_pda,
-            instructions::transfer_recurring_delegation,
-            tests::{
-                constants::PROGRAM_ID,
-                idl,
-                pda::get_subscription_authority_pda,
-                utils::{build_and_send_transaction, init_wallet},
-            },
+        let low_value_mint = init_mint(
+            &mut litesvm,
+            TOKEN_PROGRAM_ID,
+            MINT_DECIMALS,
+            1_000_000_000,
+            Some(alice.pubkey()),
+            &[],
+        );
+        let high_value_mint = init_mint(
+            &mut litesvm,
+            TOKEN_PROGRAM_ID,
+            MINT_DECIMALS,
+            1_000_000_000,
+            Some(alice.pubkey()),
+            &[],
+        );
+
+        let _alice_low_ata = init_ata(&mut litesvm, low_value_mint, alice.pubkey(), 100_000_000);
+        let alice_high_ata = init_ata(&mut litesvm, high_value_mint, alice.pubkey(), 100_000_000);
+        let _bob_low_ata = init_ata(&mut litesvm, low_value_mint, bob.pubkey(), 0);
+        let bob_high_ata = init_ata(&mut litesvm, high_value_mint, bob.pubkey(), 0);
+
+        initialize_subscription_authority_action(&mut litesvm, &alice, low_value_mint)
+            .0
+            .assert_ok();
+        initialize_subscription_authority_action(&mut litesvm, &alice, high_value_mint)
+            .0
+            .assert_ok();
+
+        let amount_per_period = 50_000_000;
+        let period_length_s = hours(1);
+        let start_ts = current_ts();
+        let expiry_ts = start_ts + days(1) as i64;
+        let (res, low_value_delegation_pda) =
+            CreateDelegation::new(&mut litesvm, &alice, low_value_mint, bob.pubkey())
+                .nonce(7)
+                .recurring(amount_per_period, period_length_s, start_ts, expiry_ts);
+        res.assert_ok();
+
+        TransferDelegation::new(
+            &mut litesvm,
+            &bob,
+            alice.pubkey(),
+            high_value_mint,
+            low_value_delegation_pda,
+        )
+        .amount(10_000_000)
+        .recurring()
+        .assert_err(SubscriptionsError::InvalidDelegatePda);
+
+        assert_eq!(get_ata_balance(&litesvm, &alice_high_ata), 100_000_000);
+        assert_eq!(get_ata_balance(&litesvm, &bob_high_ata), 0);
+
+        let delegation_account = litesvm.get_account(&low_value_delegation_pda).unwrap();
+        let amount_pulled = RecurringDelegation::load(&delegation_account.data)
+            .unwrap()
+            .amount_pulled_in_period;
+        assert_eq!(amount_pulled, 0);
+    }
+
+    #[test]
+    fn recurring_transfer_rejects_approved_non_canonical_source() {
+        let amount_per_period: u64 = 50_000_000;
+        let period_length_s: u64 = hours(1);
+        let start_ts: i64 = current_ts();
+        let expiry_ts: i64 = current_ts() + days(1) as i64;
+        let nonce = 0;
+
+        let (
+            mut litesvm,
+            alice,
+            bob,
+            delegation_pda,
+            mint,
+            alice_ata,
+            bob_ata,
+            subscription_authority_pda,
+        ) = setup_recurring_delegation(
+            amount_per_period,
+            period_length_s,
+            start_ts,
+            expiry_ts,
+            nonce,
+        );
+
+        let alice_aux = init_aux_token_account(&mut litesvm, mint, alice.pubkey(), 100_000_000);
+        let ix = Instruction {
+            program_id: TOKEN_PROGRAM_ID,
+            accounts: vec![
+                AccountMeta::new(alice_aux, false),
+                AccountMeta::new(subscription_authority_pda, false),
+                AccountMeta::new(alice.pubkey(), true),
+            ],
+            data: Approve { amount: u64::MAX }.pack(),
         };
+        build_and_send_transaction(&mut litesvm, &[&alice], &alice.pubkey(), &ix).assert_ok();
 
+        TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
+            .from(alice_aux)
+            .amount(10_000_000)
+            .recurring()
+            .assert_err(SubscriptionsError::InvalidAssociatedTokenAccountDerivedAddress);
+
+        assert_eq!(get_ata_balance(&litesvm, &alice_ata), 100_000_000);
+        assert_eq!(get_ata_balance(&litesvm, &alice_aux), 100_000_000);
+        assert_eq!(get_ata_balance(&litesvm, &bob_ata), 0);
+
+        let delegation_account = litesvm.get_account(&delegation_pda).unwrap();
+        let amount_pulled = RecurringDelegation::load(&delegation_account.data)
+            .unwrap()
+            .amount_pulled_in_period;
+        assert_eq!(amount_pulled, 0);
+    }
+
+    #[test]
+    fn writable_accounts_must_be_writable() {
         let writable = idl::writable_account_indices("transferRecurring");
 
         let amount_per_period: u64 = 50_000_000;
@@ -620,19 +740,6 @@ mod tests {
 
     #[test]
     fn signer_accounts_must_be_signers() {
-        use spl_associated_token_account::get_associated_token_address_with_program_id;
-
-        use crate::{
-            event_engine::event_authority_pda,
-            instructions::transfer_recurring_delegation,
-            tests::{
-                constants::PROGRAM_ID,
-                idl,
-                pda::get_subscription_authority_pda,
-                utils::{build_and_send_transaction, init_wallet},
-            },
-        };
-
         let signers = idl::signer_account_indices("transferRecurring");
 
         let amount_per_period: u64 = 50_000_000;
@@ -897,8 +1004,6 @@ mod tests {
 
     #[test]
     fn test_recurring_transfer_version_mismatch() {
-        use crate::state::header::VERSION_OFFSET;
-
         let amount_per_period: u64 = 50_000_000;
         let period_length_s: u64 = hours(1);
         let start_ts: i64 = current_ts();
@@ -929,8 +1034,6 @@ mod tests {
 
     #[test]
     fn test_recurring_transfer_stale_subscription_authority() {
-        use crate::tests::utils::{move_clock_forward, CloseSubscriptionAuthority};
-
         let amount_per_period: u64 = 50_000_000;
         let period_length_s = days(1);
         let start_ts = current_ts();

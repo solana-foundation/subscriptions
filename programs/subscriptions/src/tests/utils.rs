@@ -232,7 +232,26 @@ pub fn init_mint(
 pub fn init_ata(litesvm: &mut LiteSVM, mint: Pubkey, owner: Pubkey, amount: u64) -> Pubkey {
     let token_program = litesvm.get_account(&mint).unwrap().owner;
     let ata = get_associated_token_address_with_program_id(&owner, &mint, &token_program);
+    init_token_account_at(litesvm, ata, mint, owner, amount)
+}
 
+pub fn init_aux_token_account(
+    litesvm: &mut LiteSVM,
+    mint: Pubkey,
+    owner: Pubkey,
+    amount: u64,
+) -> Pubkey {
+    init_token_account_at(litesvm, Pubkey::new_unique(), mint, owner, amount)
+}
+
+fn init_token_account_at(
+    litesvm: &mut LiteSVM,
+    token_account: Pubkey,
+    mint: Pubkey,
+    owner: Pubkey,
+    amount: u64,
+) -> Pubkey {
+    let token_program = litesvm.get_account(&mint).unwrap().owner;
     let ata_state = TokenAccount {
         mint,
         owner,
@@ -249,7 +268,7 @@ pub fn init_ata(litesvm: &mut LiteSVM, mint: Pubkey, owner: Pubkey, amount: u64)
 
     litesvm
         .set_account(
-            ata,
+            token_account,
             Account {
                 lamports,
                 data: ata_data,
@@ -260,7 +279,7 @@ pub fn init_ata(litesvm: &mut LiteSVM, mint: Pubkey, owner: Pubkey, amount: u64)
         )
         .unwrap();
 
-    ata
+    token_account
 }
 
 pub fn initialize_subscription_authority_action(
@@ -439,6 +458,7 @@ pub struct TransferDelegation<'a> {
     mint: Pubkey,
     delegation_pda: Pubkey,
     amount: u64,
+    source: Option<Pubkey>,
     receiver: Option<Pubkey>,
 }
 
@@ -457,6 +477,7 @@ impl<'a> TransferDelegation<'a> {
             mint,
             delegation_pda,
             amount: 0,
+            source: None,
             receiver: None,
         }
     }
@@ -468,6 +489,11 @@ impl<'a> TransferDelegation<'a> {
 
     pub fn to(mut self, receiver: Pubkey) -> Self {
         self.receiver = Some(receiver);
+        self
+    }
+
+    pub fn from(mut self, source: Pubkey) -> Self {
+        self.source = Some(source);
         self
     }
 
@@ -486,11 +512,13 @@ impl<'a> TransferDelegation<'a> {
         let token_program = self.litesvm.get_account(&self.mint).unwrap().owner;
         let (subscription_authority_pda, _) =
             get_subscription_authority_pda(&self.delegator, &self.mint);
-        let delegator_ata = get_associated_token_address_with_program_id(
-            &self.delegator,
-            &self.mint,
-            &token_program,
-        );
+        let delegator_ata = self.source.unwrap_or_else(|| {
+            get_associated_token_address_with_program_id(
+                &self.delegator,
+                &self.mint,
+                &token_program,
+            )
+        });
 
         // Default receiver is the signer's (delegatee's) ATA
         let receiver_ata = self.receiver.unwrap_or_else(|| {

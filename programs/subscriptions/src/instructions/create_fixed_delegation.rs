@@ -64,7 +64,7 @@ pub fn process(accounts: &[AccountView], call_data: &CreateFixedDelegationData) 
 
     let accounts = CreateDelegationAccounts::try_from(accounts)?;
 
-    let (bump, init_id) =
+    let (bump, init_id, mint) =
         create_delegation_account(&accounts, call_data.nonce, FixedDelegation::LEN)?;
 
     let binding = &mut accounts.delegation_account.try_borrow_mut()?;
@@ -80,6 +80,8 @@ pub fn process(accounts: &[AccountView], call_data: &CreateFixedDelegationData) 
         accounts.payer.address(),
         init_id,
     );
+    delegation.subscription_authority = *accounts.subscription_authority.address();
+    delegation.mint = mint;
     delegation.amount = call_data.amount;
     delegation.expiry_ts = call_data.expiry_ts;
 

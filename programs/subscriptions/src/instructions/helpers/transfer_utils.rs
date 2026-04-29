@@ -93,6 +93,18 @@ pub fn transfer_with_delegate(
         check_token_account_owner(&ata_data, delegator)?;
         check_token_account_mint(&ata_data, mint)?;
     }
+    let expected_ata = Address::find_program_address(
+        &[
+            delegator.as_ref(),
+            accounts.token_program.address().as_ref(),
+            mint.as_ref(),
+        ],
+        &pinocchio_associated_token_account::ID,
+    )
+    .0;
+    if expected_ata != *accounts.delegator_ata.address() {
+        return Err(SubscriptionsError::InvalidAssociatedTokenAccountDerivedAddress.into());
+    }
 
     {
         let to_data = accounts.to_ata.try_borrow()?;

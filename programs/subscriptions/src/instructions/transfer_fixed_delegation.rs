@@ -42,6 +42,12 @@ pub fn process(accounts: &[AccountView], transfer: &TransferData) -> ProgramResu
             &transfer.delegator,
             accounts_struct.delegatee.address(),
         )?;
+        if delegation.subscription_authority != *accounts_struct.subscription_authority.address() {
+            return Err(SubscriptionsError::InvalidDelegatePda.into());
+        }
+        if delegation.mint != transfer.mint {
+            return Err(SubscriptionsError::MintMismatch.into());
+        }
 
         delegatee_address = *accounts_struct.delegatee.address();
 
@@ -158,24 +164,31 @@ impl<'a> TryFrom<&'a [AccountView]> for FixedTransferAccounts<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::utils::move_clock_forward;
     use crate::{
-        state::FixedDelegation,
+        event_engine::event_authority_pda,
+        instructions::transfer_fixed_delegation,
+        state::{header::VERSION_OFFSET, FixedDelegation},
         tests::{
             asserts::TransactionResultExt,
-            constants::{MINT_DECIMALS, TOKEN_PROGRAM_ID},
+            constants::{MINT_DECIMALS, PROGRAM_ID, TOKEN_PROGRAM_ID},
+            idl,
+            pda::get_subscription_authority_pda,
             utils::{
-                current_ts, days, get_ata_balance, init_ata, init_mint,
-                initialize_subscription_authority_action, setup, CreateDelegation,
-                TransferDelegation,
+                build_and_send_transaction, current_ts, days, get_ata_balance, init_ata,
+                init_aux_token_account, init_mint, init_wallet,
+                initialize_subscription_authority_action, move_clock_forward, setup,
+                CloseSubscriptionAuthority, CreateDelegation, RevokeDelegation, TransferDelegation,
             },
         },
         SubscriptionsError,
     };
     use litesvm::LiteSVM;
+    use solana_instruction::{AccountMeta, Instruction};
     use solana_keypair::Keypair;
     use solana_pubkey::Pubkey;
     use solana_signer::Signer;
+    use spl_associated_token_account::get_associated_token_address_with_program_id;
+    use spl_token::instruction::TokenInstruction::Approve;
 
     fn setup_fixed_delegation(
         amount: u64,
@@ -407,21 +420,126 @@ mod tests {
     }
 
     #[test]
-    fn writable_accounts_must_be_writable() {
-        use solana_instruction::{AccountMeta, Instruction};
-        use spl_associated_token_account::get_associated_token_address_with_program_id;
+    fn fixed_delegation_rejects_transfer_with_different_mint_authority() {
+        let (mut litesvm, alice) = setup();
+        let bob = Keypair::new();
+        litesvm.airdrop(&bob.pubkey(), 10_000_000).unwrap();
 
-        use crate::{
-            event_engine::event_authority_pda,
-            instructions::transfer_fixed_delegation,
-            tests::{
-                constants::PROGRAM_ID,
-                idl,
-                pda::get_subscription_authority_pda,
-                utils::{build_and_send_transaction, init_wallet},
-            },
+        let low_value_mint = init_mint(
+            &mut litesvm,
+            TOKEN_PROGRAM_ID,
+            MINT_DECIMALS,
+            1_000_000_000,
+            Some(alice.pubkey()),
+            &[],
+        );
+        let high_value_mint = init_mint(
+            &mut litesvm,
+            TOKEN_PROGRAM_ID,
+            MINT_DECIMALS,
+            1_000_000_000,
+            Some(alice.pubkey()),
+            &[],
+        );
+
+        let _alice_low_ata = init_ata(&mut litesvm, low_value_mint, alice.pubkey(), 100_000_000);
+        let alice_high_ata = init_ata(&mut litesvm, high_value_mint, alice.pubkey(), 100_000_000);
+        let _bob_low_ata = init_ata(&mut litesvm, low_value_mint, bob.pubkey(), 0);
+        let bob_high_ata = init_ata(&mut litesvm, high_value_mint, bob.pubkey(), 0);
+
+        initialize_subscription_authority_action(&mut litesvm, &alice, low_value_mint)
+            .0
+            .assert_ok();
+        initialize_subscription_authority_action(&mut litesvm, &alice, high_value_mint)
+            .0
+            .assert_ok();
+
+        let fixed_allowance = 50_000_000;
+        let (res, low_value_delegation_pda) =
+            CreateDelegation::new(&mut litesvm, &alice, low_value_mint, bob.pubkey())
+                .nonce(89)
+                .fixed(fixed_allowance, current_ts() + days(1) as i64);
+        res.assert_ok();
+
+        TransferDelegation::new(
+            &mut litesvm,
+            &bob,
+            alice.pubkey(),
+            high_value_mint,
+            low_value_delegation_pda,
+        )
+        .amount(20_000_000)
+        .fixed()
+        .assert_err(SubscriptionsError::InvalidDelegatePda);
+
+        assert_eq!(get_ata_balance(&litesvm, &alice_high_ata), 100_000_000);
+        assert_eq!(get_ata_balance(&litesvm, &bob_high_ata), 0);
+
+        let delegation_account = litesvm.get_account(&low_value_delegation_pda).unwrap();
+        let remaining_allowance = FixedDelegation::load(&delegation_account.data)
+            .unwrap()
+            .amount;
+        assert_eq!(remaining_allowance, fixed_allowance);
+    }
+
+    #[test]
+    fn fixed_transfer_rejects_approved_non_canonical_source() {
+        let (mut litesvm, alice) = setup();
+        let bob = Keypair::new();
+        litesvm.airdrop(&bob.pubkey(), 10_000_000).unwrap();
+
+        let mint = init_mint(
+            &mut litesvm,
+            TOKEN_PROGRAM_ID,
+            MINT_DECIMALS,
+            1_000_000_000,
+            Some(alice.pubkey()),
+            &[],
+        );
+        let alice_ata = init_ata(&mut litesvm, mint, alice.pubkey(), 5_000_000);
+        let alice_aux = init_aux_token_account(&mut litesvm, mint, alice.pubkey(), 100_000_000);
+        let bob_ata = init_ata(&mut litesvm, mint, bob.pubkey(), 0);
+
+        let (res, subscription_authority_pda, _) =
+            initialize_subscription_authority_action(&mut litesvm, &alice, mint);
+        res.assert_ok();
+
+        let fixed_allowance = 60_000_000;
+        let (res, delegation_pda) = CreateDelegation::new(&mut litesvm, &alice, mint, bob.pubkey())
+            .nonce(87)
+            .fixed(fixed_allowance, current_ts() + days(1) as i64);
+        res.assert_ok();
+
+        let ix = Instruction {
+            program_id: TOKEN_PROGRAM_ID,
+            accounts: vec![
+                AccountMeta::new(alice_aux, false),
+                AccountMeta::new(subscription_authority_pda, false),
+                AccountMeta::new(alice.pubkey(), true),
+            ],
+            data: Approve { amount: u64::MAX }.pack(),
         };
+        build_and_send_transaction(&mut litesvm, &[&alice], &alice.pubkey(), &ix).assert_ok();
 
+        TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
+            .from(alice_aux)
+            .amount(10_000_000)
+            .fixed()
+            .assert_err(SubscriptionsError::InvalidAssociatedTokenAccountDerivedAddress);
+
+        assert_eq!(get_ata_balance(&litesvm, &alice_ata), 5_000_000);
+        assert_eq!(get_ata_balance(&litesvm, &alice_aux), 100_000_000);
+        assert_eq!(get_ata_balance(&litesvm, &bob_ata), 0);
+
+        let delegation_account = litesvm.get_account(&delegation_pda).unwrap();
+        let remaining_allowance = FixedDelegation::load(&delegation_account.data)
+            .unwrap()
+            .amount;
+        assert_eq!(remaining_allowance, fixed_allowance);
+    }
+
+    #[test]
+    fn writable_accounts_must_be_writable() {
         let writable = idl::writable_account_indices("transferFixed");
 
         let amount: u64 = 50_000_000;
@@ -483,20 +601,6 @@ mod tests {
 
     #[test]
     fn signer_accounts_must_be_signers() {
-        use solana_instruction::{AccountMeta, Instruction};
-        use spl_associated_token_account::get_associated_token_address_with_program_id;
-
-        use crate::{
-            event_engine::event_authority_pda,
-            instructions::transfer_fixed_delegation,
-            tests::{
-                constants::PROGRAM_ID,
-                idl,
-                pda::get_subscription_authority_pda,
-                utils::{build_and_send_transaction, init_wallet},
-            },
-        };
-
         let signers = idl::signer_account_indices("transferFixed");
 
         let amount: u64 = 50_000_000;
@@ -601,8 +705,6 @@ mod tests {
 
     #[test]
     fn test_fixed_transfer_version_mismatch() {
-        use crate::state::header::VERSION_OFFSET;
-
         let amount: u64 = 50_000_000;
         let expiry_ts: i64 = current_ts() + days(1) as i64;
         let nonce = 0;
@@ -625,10 +727,6 @@ mod tests {
 
     #[test]
     fn test_fixed_transfer_stale_subscription_authority() {
-        use crate::tests::utils::{
-            move_clock_forward, CloseSubscriptionAuthority, RevokeDelegation,
-        };
-
         let amount: u64 = 50_000_000;
         let expiry_ts: i64 = current_ts() + days(1) as i64;
         let nonce = 0;
@@ -662,8 +760,6 @@ mod tests {
 
     #[test]
     fn test_close_subscription_authority_blocks_all_transfers() {
-        use crate::tests::utils::{CloseSubscriptionAuthority, RevokeDelegation};
-
         let amount: u64 = 50_000_000;
         let expiry_ts: i64 = current_ts() + days(1) as i64;
 
