@@ -21,7 +21,7 @@ import { preserveConfigFiles } from './lib/utils';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const projectRoot = path.join(__dirname, '..');
-const idlPath = path.join(projectRoot, 'program', 'idl', 'subscriptions.json');
+const idlPath = path.join(projectRoot, 'idl', 'subscriptions.json');
 const idl = JSON.parse(fs.readFileSync(idlPath, 'utf-8')) as AnchorIdl;
 const rustClientsDir = path.join(projectRoot, 'clients', 'rust');
 const typescriptClientsDir = path.join(projectRoot, 'clients', 'typescript');

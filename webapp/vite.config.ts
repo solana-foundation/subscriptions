@@ -29,7 +29,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "@idl": path.resolve(__dirname, "../program/idl/subscriptions.json"),
+      "@idl": path.resolve(__dirname, "../idl/subscriptions.json"),
     },
   },
   build: {

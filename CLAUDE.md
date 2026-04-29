@@ -60,7 +60,7 @@ program/src/event_engine.rs (self-CPI event emission)
 ```
 Rust code with #[codama(...)] attributes
     ↓
-program/build.rs → program/idl/subscriptions.json
+program/build.rs → idl/subscriptions.json
     ↓
 scripts/generate-clients.ts
     ↓
