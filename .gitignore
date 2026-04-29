@@ -17,6 +17,7 @@ test-ledger/
 
 # Log files
 *.log
+**/cu_report.md
 
 # Local config (contains generated mint addresses)
 config.json

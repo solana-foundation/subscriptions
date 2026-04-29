@@ -179,7 +179,7 @@ jobs:
           PR=${{ github.event.pull_request.number }}
           MARKER="<!-- cu-report -->"
           REPORT="$MARKER
-          $(cat cu_report.md)"
+          $(cat tests/integration-tests/cu_report.md)"
 
           COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${PR}/comments" \
             --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" | head -1)
