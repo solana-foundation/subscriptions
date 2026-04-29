@@ -14,11 +14,14 @@
 //! // Report is automatically output when tests complete if CU_REPORT is set
 //! ```
 
+use std::borrow::ToOwned;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
+use std::string::{String, ToString};
 use std::sync::Mutex;
 use std::sync::OnceLock;
+use std::vec::Vec;
 
 use litesvm::types::TransactionResult;
 use solana_instruction::Instruction;

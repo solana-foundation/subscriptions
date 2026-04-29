@@ -214,6 +214,8 @@ impl<'a> TryFrom<&'a [AccountView]> for TransferSubscriptionAccounts<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::vec::Vec;
+
     use crate::{
         event_engine::event_authority_pda,
         state::{plan::Plan, subscription_delegation::SubscriptionDelegation},

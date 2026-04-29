@@ -1,3 +1,5 @@
+use std::string::String;
+
 use crate::errors::SubscriptionsError;
 
 use litesvm::types::{FailedTransactionMetadata, TransactionMetadata, TransactionResult};

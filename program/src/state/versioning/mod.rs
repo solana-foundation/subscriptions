@@ -81,6 +81,8 @@ pub fn check_min_account_size(data_len: usize, expected_len: usize) -> Result<()
 
 #[cfg(test)]
 mod tests {
+    use std::vec::Vec;
+
     use pinocchio::error::ProgramError;
 
     use super::*;

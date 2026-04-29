@@ -1,5 +1,6 @@
 use core::mem::size_of;
 
+use alloc::vec::Vec;
 use pinocchio::Address;
 
 use crate::event_engine::{EventDiscriminator, EventDiscriminators, EventSerialize};

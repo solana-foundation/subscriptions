@@ -6,6 +6,7 @@
 
 use core::mem::size_of;
 
+use alloc::vec::Vec;
 use codama::CodamaAccount;
 use const_crypto::ed25519;
 use pinocchio::cpi::{invoke_signed, Seed, Signer};

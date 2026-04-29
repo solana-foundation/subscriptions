@@ -115,6 +115,8 @@ pub fn process(accounts: &[AccountView], data: &UpdatePlanData) -> ProgramResult
 
 #[cfg(test)]
 mod tests {
+    use std::vec::Vec;
+
     use solana_pubkey::Pubkey;
     use solana_signer::Signer;
 
