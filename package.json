@@ -13,7 +13,7 @@
     }
   },
   "scripts": {
-    "generate-idl": "cd programs/subscriptions && GENERATE_IDL=1 cargo check",
+    "generate-idl": "cd program && GENERATE_IDL=1 cargo check",
     "generate-clients": "tsx ./scripts/generate-clients.ts"
   },
   "devDependencies": {

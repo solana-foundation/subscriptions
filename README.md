@@ -40,7 +40,7 @@ De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44
 
 ```text
 subscriptions/
-├── programs/subscriptions/      # Rust Solana program
+├── program/                       # Rust Solana program
 │   ├── src/
 │   │   ├── instructions/          # Instruction handlers
 │   │   │   └── helpers/           # Transfer validation, token helpers, traits
@@ -152,7 +152,7 @@ The `justfile` is the main entrypoint for day-to-day development.
 |---|---|
 | `just build` | Build program + generate IDL + generate clients + build TypeScript client |
 | `just build-program` | Compile the SBF program (`.so`) |
-| `just generate-idl` | Regenerate `programs/subscriptions/idl/subscriptions.json` |
+| `just generate-idl` | Regenerate `program/idl/subscriptions.json` |
 | `just generate-clients` | Regenerate TypeScript and Rust clients from IDL via Codama |
 | `just build-client` | Build `clients/typescript` into `clients/typescript/dist` |
 

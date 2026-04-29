@@ -14,7 +14,7 @@ jobs:
         with:
           rust-cache-key: idl-check
       - name: Generate IDL
-        run: cd programs/subscriptions && cargo build
+        run: cd program && cargo build
       - name: Generate clients
         run: pnpm run generate-clients
       - name: Check for uncommitted changes

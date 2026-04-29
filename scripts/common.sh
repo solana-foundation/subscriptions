@@ -31,7 +31,7 @@ check_program_so() {
       echo -e "${YELLOW}Program SO file not found. Building...${NC}"
       SCRIPT_DIR_COMMON="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
       PROJECT_ROOT_COMMON="$( cd "$SCRIPT_DIR_COMMON/.." && pwd )"
-      cd "$PROJECT_ROOT_COMMON/programs/subscriptions" && cargo build-sbf
+      cd "$PROJECT_ROOT_COMMON/program" && cargo build-sbf
       cd "$PROJECT_ROOT_COMMON"
     else
       echo -e "${YELLOW}Warning: Program SO file not found: $PROGRAM_SO${NC}"
