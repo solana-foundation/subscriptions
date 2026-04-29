@@ -8,10 +8,24 @@ export interface CollectionRecord {
   planName: string
   subscribersCollected: number
   subscribersTotal: number
-  amountPerSubscriber: number
+  amountPerSubscriber?: number
+  totalAmount?: string
+  transfers?: CollectionTransfer[]
   status: 'success' | 'partial' | 'failed'
   signatures: string[]
   error?: string
+}
+
+export interface CollectionTransfer {
+  subscriptionAddress: string
+  amount: string
+  signature: string
+}
+
+export interface CollectionTransferInput {
+  subscriptionAddress: string
+  amount: bigint
+  signature: string
 }
 
 export function getCollectionHistory(planAddress?: string): CollectionRecord[] {
@@ -39,20 +53,28 @@ export function addCollectionRecord(record: CollectionRecord): void {
 export function createSuccessRecord(
   planAddress: string,
   planName: string,
-  res: { collected: number; partial: boolean; signatures: string[] },
+  transfers: CollectionTransferInput[],
   subscribersTotal: number,
-  amountPerSubscriber: number,
+  subscribersAttempted: number,
 ): CollectionRecord {
+  const storedTransfers = transfers.map((transfer) => ({
+    subscriptionAddress: transfer.subscriptionAddress,
+    amount: transfer.amount.toString(),
+    signature: transfer.signature,
+  }))
+  const totalAmount = transfers.reduce((sum, transfer) => sum + transfer.amount, 0n)
+
   return {
     id: crypto.randomUUID(),
     timestamp: Math.floor(Date.now() / 1000),
     planAddress,
     planName,
-    subscribersCollected: res.collected,
+    subscribersCollected: transfers.length,
     subscribersTotal,
-    amountPerSubscriber,
-    status: res.partial ? 'partial' : 'success',
-    signatures: res.signatures,
+    totalAmount: totalAmount.toString(),
+    transfers: storedTransfers,
+    status: transfers.length < subscribersAttempted ? 'partial' : 'success',
+    signatures: Array.from(new Set(storedTransfers.map((transfer) => transfer.signature))),
   }
 }
 
@@ -60,7 +82,6 @@ export function createFailureRecord(
   planAddress: string,
   planName: string,
   subscribersTotal: number,
-  amountPerSubscriber: number,
   error: unknown,
 ): CollectionRecord {
   return {
@@ -70,9 +91,21 @@ export function createFailureRecord(
     planName,
     subscribersCollected: 0,
     subscribersTotal,
-    amountPerSubscriber,
+    totalAmount: '0',
+    transfers: [],
     status: 'failed',
     signatures: [],
     error: error instanceof Error ? error.message : 'Unknown error',
   }
+}
+
+export function getCollectionRecordTotalDisplayAmount(
+  record: CollectionRecord,
+  amountMultiplier: number,
+): number {
+  if (record.totalAmount !== undefined) {
+    return Number(record.totalAmount) / amountMultiplier
+  }
+
+  return (record.amountPerSubscriber ?? 0) * record.subscribersCollected
 }

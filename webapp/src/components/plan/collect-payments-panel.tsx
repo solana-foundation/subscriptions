@@ -13,12 +13,20 @@ import { useClusterConfig } from '@/hooks/use-cluster-config'
 import { useProgramAddress } from '@/hooks/use-token-config'
 import { getBlockTimestamp } from '@/hooks/use-time-travel'
 import { computeEligibleSubscribers, hasMatchingPlanTerms } from '@/lib/collect-utils'
-import { getCollectionHistory, addCollectionRecord, createSuccessRecord, createFailureRecord, type CollectionRecord } from '@/lib/collection-history'
+import {
+  getCollectionHistory,
+  addCollectionRecord,
+  createSuccessRecord,
+  createFailureRecord,
+  getCollectionRecordTotalDisplayAmount,
+  type CollectionRecord,
+} from '@/lib/collection-history'
 import { parsePlanMeta, ICON_MAP } from '@/lib/plan-constants'
 import { Star } from 'lucide-react'
 
 export function HistoryEntry({ record }: { record: CollectionRecord }) {
   const isSuccess = record.status === 'success' || record.status === 'partial'
+  const totalAmount = getCollectionRecordTotalDisplayAmount(record, USDC_MULTIPLIER)
 
   return (
     <div className="flex items-center gap-3 bg-slate-800/50 border border-emerald-500/10 rounded-lg p-2 text-sm">
@@ -29,7 +37,7 @@ export function HistoryEntry({ record }: { record: CollectionRecord }) {
       )}
       <span className="text-slate-400 shrink-0">{fmtDateTime(record.timestamp)}</span>
       <span className="text-white">
-        ${record.amountPerSubscriber.toFixed(2)} from {record.subscribersCollected}/{record.subscribersTotal} subs
+        ${totalAmount.toFixed(2)} total from {record.subscribersCollected}/{record.subscribersTotal} subs
       </span>
       {isSuccess && record.signatures[0] && (
         <span className="ml-auto">
@@ -100,14 +108,14 @@ function CollectPlanCard({ plan, subscriberCount, progAddr }: { plan: PlanItem; 
         {
           onSuccess: (res) => {
             addCollectionRecord(createSuccessRecord(
-              plan.address, planName, res, currentSubscriberCount, amountUsd,
+              plan.address, planName, res.transfers, currentSubscriberCount, eligible.length,
             ))
             setHistoryVersion((v) => v + 1)
             setIsCollecting(false)
           },
           onError: (error) => {
             addCollectionRecord(createFailureRecord(
-              plan.address, planName, currentSubscriberCount, amountUsd, error,
+              plan.address, planName, currentSubscriberCount, error,
             ))
             setHistoryVersion((v) => v + 1)
             setIsCollecting(false)
@@ -118,7 +126,7 @@ function CollectPlanCard({ plan, subscriberCount, progAddr }: { plan: PlanItem; 
       toast.error(err instanceof Error ? err.message : 'Failed to collect')
       setIsCollecting(false)
     }
-  }, [rpcUrl, plan, planName, amountUsd, collectSubscriptionPayments, progAddr])
+  }, [rpcUrl, plan, planName, collectSubscriptionPayments, progAddr])
 
   return (
     <div className="border border-emerald-500/15 bg-slate-900/60 rounded-xl p-4 space-y-3">

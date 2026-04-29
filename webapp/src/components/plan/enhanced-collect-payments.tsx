@@ -157,9 +157,17 @@ function CollectAllButton({
       for (const pd of eligiblePlans) {
         const meta = parsePlanMeta(pd.plan.data.metadataUri)
         const planName = meta.n || `Plan ${ellipsify(pd.plan.address)}`
-        const amountUsd = Number(pd.plan.data.terms.amount) / USDC_MULTIPLIER
+        const planTransfers = res.transfers
+          .filter((transfer) => transfer.planAddress === pd.plan.address)
+          .map(({ subscriptionAddress, amount, signature }) => ({
+            subscriptionAddress,
+            amount,
+            signature,
+          }))
+        const attempted = plans.find((plan) => plan.planAddress === pd.plan.address)?.subscribers.length ?? 0
+        if (attempted === 0) continue
         addCollectionRecord(createSuccessRecord(
-          pd.plan.address, planName, res, pd.currentSubscribers.length, amountUsd,
+          pd.plan.address, planName, planTransfers, pd.currentSubscribers.length, attempted,
         ))
       }
 
@@ -168,9 +176,8 @@ function CollectAllButton({
       for (const pd of eligiblePlans) {
         const meta = parsePlanMeta(pd.plan.data.metadataUri)
         const planName = meta.n || `Plan ${ellipsify(pd.plan.address)}`
-        const amountUsd = Number(pd.plan.data.terms.amount) / USDC_MULTIPLIER
         addCollectionRecord(createFailureRecord(
-          pd.plan.address, planName, pd.currentSubscribers.length, amountUsd, err,
+          pd.plan.address, planName, pd.currentSubscribers.length, err,
         ))
       }
       toast.error('Failed to collect payments')
@@ -256,14 +263,14 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
         {
           onSuccess: (res) => {
             addCollectionRecord(createSuccessRecord(
-              plan.address, planName, res, currentSubscriberCount, amountUsd,
+              plan.address, planName, res.transfers, currentSubscriberCount, elig.length,
             ))
             setHistoryVersion((v) => v + 1)
             setIsCollecting(false)
           },
           onError: (error) => {
             addCollectionRecord(createFailureRecord(
-              plan.address, planName, currentSubscriberCount, amountUsd, error,
+              plan.address, planName, currentSubscriberCount, error,
             ))
             setHistoryVersion((v) => v + 1)
             setIsCollecting(false)
@@ -274,7 +281,7 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
       toast.error(err instanceof Error ? err.message : 'Failed to collect')
       setIsCollecting(false)
     }
-  }, [rpcUrl, progAddr, plan, planName, amountUsd, collectSubscriptionPayments])
+  }, [rpcUrl, progAddr, plan, planName, collectSubscriptionPayments])
 
   const periodHoursSec = Number(plan.data.terms.periodHours) * 3600
 

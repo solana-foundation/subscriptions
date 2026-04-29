@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "test": "node --disable-warning=ExperimentalWarning --experimental-strip-types --test test/*.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {

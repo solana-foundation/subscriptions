@@ -606,24 +606,34 @@ export function useSubscriptionsMutations() {
       );
 
       const signatures: string[] = [];
+      const transfers: Array<{ subscriptionAddress: string; amount: bigint; signature: string }> = [];
       let collected = 0;
       const batches = packInstructionBatches(transferIxs, signer, [createAtaIx]);
 
       for (let b = 0; b < batches.length; b++) {
         try {
-          signatures.push(await signAndSend(batches[b], signer));
-          collected += batches[b].length - (b === 0 ? 1 : 0);
+          const signature = await signAndSend(batches[b], signer);
+          const batchTransferCount = batches[b].length - (b === 0 ? 1 : 0);
+          signatures.push(signature);
+          transfers.push(
+            ...subscribers.slice(collected, collected + batchTransferCount).map((sub) => ({
+              subscriptionAddress: sub.subscriptionAddress,
+              amount: sub.amount,
+              signature,
+            })),
+          );
+          collected += batchTransferCount;
         } catch (err) {
           if (collected === 0) throw err;
           console.warn(
             `Batch failed after collecting ${collected}/${subscribers.length}:`,
             err instanceof Error ? err.message : err,
           );
-          return { signatures, collected, partial: true };
+          return { signatures, collected, partial: true, transfers };
         }
       }
 
-      return { signatures, collected, partial: false };
+      return { signatures, collected, partial: false, transfers };
     },
     onSuccess: (res) => {
       toast.onSuccess(res.signatures[0]);
@@ -653,6 +663,7 @@ export function useSubscriptionsMutations() {
       const ataIxs: any[] = [];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const transferIxs: any[] = [];
+      const transferRequests: Array<{ planAddress: string; subscriptionAddress: string; amount: bigint }> = [];
       const seenAtas = new Set<string>();
 
       for (const plan of plans) {
@@ -693,28 +704,42 @@ export function useSubscriptionsMutations() {
             programAddress: progId,
           });
           transferIxs.push(instructions[0]);
+          transferRequests.push({
+            planAddress: plan.planAddress,
+            subscriptionAddress: sub.subscriptionAddress,
+            amount: sub.amount,
+          });
         }
       }
 
       const signatures: string[] = [];
+      const transfers: Array<{ planAddress: string; subscriptionAddress: string; amount: bigint; signature: string }> = [];
       let collected = 0;
       const batches = packInstructionBatches(transferIxs, signer, ataIxs);
 
       for (let b = 0; b < batches.length; b++) {
         try {
-          signatures.push(await signAndSend(batches[b], signer));
-          collected += batches[b].length - (b === 0 ? ataIxs.length : 0);
+          const signature = await signAndSend(batches[b], signer);
+          const batchTransferCount = batches[b].length - (b === 0 ? ataIxs.length : 0);
+          signatures.push(signature);
+          transfers.push(
+            ...transferRequests.slice(collected, collected + batchTransferCount).map((transfer) => ({
+              ...transfer,
+              signature,
+            })),
+          );
+          collected += batchTransferCount;
         } catch (err) {
           if (collected === 0) throw err;
           console.warn(
             `Batch failed after collecting ${collected}/${transferIxs.length}:`,
             err instanceof Error ? err.message : err,
           );
-          return { signatures, collected, total: transferIxs.length, partial: true };
+          return { signatures, collected, total: transferIxs.length, partial: true, transfers };
         }
       }
 
-      return { signatures, collected, total: transferIxs.length, partial: false };
+      return { signatures, collected, total: transferIxs.length, partial: false, transfers };
     },
     onSuccess: (res) => {
       toast.onSuccess(res.signatures[0]);
