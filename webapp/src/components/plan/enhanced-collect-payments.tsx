@@ -16,7 +16,7 @@ import { useClusterConfig } from '@/hooks/use-cluster-config'
 import { useProgramAddress } from '@/hooks/use-token-config'
 import { fetchPlanSubscriptions } from '@/hooks/use-subscriptions'
 import { getBlockTimestamp } from '@/hooks/use-time-travel'
-import { computeEligibleSubscribers } from '@/lib/collect-utils'
+import { computeEligibleSubscribers, hasMatchingPlanTerms } from '@/lib/collect-utils'
 import { getCollectionHistory, addCollectionRecord, createSuccessRecord, createFailureRecord, clearCollectionHistory } from '@/lib/collection-history'
 import { parsePlanMeta, ICON_MAP } from '@/lib/plan-constants'
 import { USDC_MULTIPLIER, ellipsify, fmtDateShort } from '@/lib/utils'
@@ -127,7 +127,7 @@ function CollectAllButton({
       for (const pd of eligiblePlans) {
         const subscribers = await fetchPlanSubscriptions(rpcUrl, pd.plan.address, progAddr!)
         const eligible = computeEligibleSubscribers(
-          subscribers, pd.plan.data.terms.amount, pd.plan.data.terms.periodHours, ts,
+          subscribers, pd.plan.data.terms, ts,
         )
         if (eligible.length === 0) continue
         plans.push({
@@ -159,7 +159,7 @@ function CollectAllButton({
         const planName = meta.n || `Plan ${ellipsify(pd.plan.address)}`
         const amountUsd = Number(pd.plan.data.terms.amount) / USDC_MULTIPLIER
         addCollectionRecord(createSuccessRecord(
-          pd.plan.address, planName, res, pd.subscribers.length, amountUsd,
+          pd.plan.address, planName, res, pd.currentSubscribers.length, amountUsd,
         ))
       }
 
@@ -170,7 +170,7 @@ function CollectAllButton({
         const planName = meta.n || `Plan ${ellipsify(pd.plan.address)}`
         const amountUsd = Number(pd.plan.data.terms.amount) / USDC_MULTIPLIER
         addCollectionRecord(createFailureRecord(
-          pd.plan.address, planName, pd.subscribers.length, amountUsd, err,
+          pd.plan.address, planName, pd.currentSubscribers.length, amountUsd, err,
         ))
       }
       toast.error('Failed to collect payments')
@@ -208,12 +208,16 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
   const progAddr = useProgramAddress()
   const { collectSubscriptionPayments } = useSubscriptionsMutations()
 
-  const { plan, subscribers, eligible } = planData
+  const { plan, subscribers, currentSubscribers, staleSubscribers, eligible } = planData
   const meta = useMemo(() => parsePlanMeta(plan.data.metadataUri), [plan.data.metadataUri])
   const planName = meta.n || `Plan ${ellipsify(plan.address)}`
   const PlanIcon = (meta.i && ICON_MAP[meta.i]) || Star
   const amountUsd = Number(plan.data.terms.amount) / USDC_MULTIPLIER
   const pendingUsd = Number(planData.totalPending) / USDC_MULTIPLIER
+  const staleSubscriberAddresses = useMemo(
+    () => new Set(staleSubscribers.map((sub) => sub.subscriptionAddress)),
+    [staleSubscribers],
+  )
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const history = useMemo(() => getCollectionHistory(plan.address), [plan.address, historyVersion])
@@ -223,10 +227,17 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
     try {
       const subs = await fetchPlanSubscriptions(rpcUrl, plan.address, progAddr!)
       const ts = await getBlockTimestamp(rpcUrl)
-      const elig = computeEligibleSubscribers(subs, plan.data.terms.amount, plan.data.terms.periodHours, ts)
+      const elig = computeEligibleSubscribers(subs, plan.data.terms, ts)
+      const currentSubscriberCount = subs.filter((sub) =>
+        hasMatchingPlanTerms(sub, plan.data.terms),
+      ).length
 
       if (elig.length === 0) {
-        toast.info('All payments already collected this period')
+        toast.info(
+          currentSubscriberCount === 0 && subs.length > 0
+            ? 'Only stale subscriptions found for this plan'
+            : 'All payments already collected this period',
+        )
         setIsCollecting(false)
         return
       }
@@ -245,14 +256,14 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
         {
           onSuccess: (res) => {
             addCollectionRecord(createSuccessRecord(
-              plan.address, planName, res, subscribers.length, amountUsd,
+              plan.address, planName, res, currentSubscriberCount, amountUsd,
             ))
             setHistoryVersion((v) => v + 1)
             setIsCollecting(false)
           },
           onError: (error) => {
             addCollectionRecord(createFailureRecord(
-              plan.address, planName, subscribers.length, amountUsd, error,
+              plan.address, planName, currentSubscriberCount, amountUsd, error,
             ))
             setHistoryVersion((v) => v + 1)
             setIsCollecting(false)
@@ -263,7 +274,7 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
       toast.error(err instanceof Error ? err.message : 'Failed to collect')
       setIsCollecting(false)
     }
-  }, [rpcUrl, progAddr, plan, planName, amountUsd, subscribers.length, collectSubscriptionPayments])
+  }, [rpcUrl, progAddr, plan, planName, amountUsd, collectSubscriptionPayments])
 
   const periodHoursSec = Number(plan.data.terms.periodHours) * 3600
 
@@ -278,7 +289,8 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
           <div className="text-left">
             <p className="text-white font-medium">{planName}</p>
             <p className="text-sm text-slate-400">
-              ${amountUsd.toFixed(2)}/period &middot; {eligible.length}/{subscribers.length} eligible
+              ${amountUsd.toFixed(2)}/period &middot; {eligible.length}/{currentSubscribers.length} eligible
+              {staleSubscribers.length > 0 && ` / ${staleSubscribers.length} stale`}
             </p>
           </div>
         </div>
@@ -344,6 +356,7 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
                       const isCancelled = sub.expiresAtTs !== 0n && blockTs < Number(sub.expiresAtTs)
                       const periodEnd = Number(sub.currentPeriodStartTs) + periodHoursSec
                       const eligEntry = eligible.find((e) => e.subscriptionAddress === sub.subscriptionAddress)
+                      const isStale = staleSubscriberAddresses.has(sub.subscriptionAddress)
                       const collectibleUsd = eligEntry
                         ? Number(eligEntry.collectAmount) / USDC_MULTIPLIER
                         : null
@@ -358,7 +371,11 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
                             />
                           </TableCell>
                           <TableCell>
-                            {isActive ? (
+                            {isStale ? (
+                              <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
+                                Stale Terms
+                              </Badge>
+                            ) : isActive ? (
                               <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
                                 Active
                               </Badge>
@@ -376,7 +393,9 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
                             {fmtDateShort(Number(sub.currentPeriodStartTs))} - {fmtDateShort(periodEnd)}
                           </TableCell>
                           <TableCell className="text-right">
-                            {collectibleUsd !== null ? (
+                            {isStale ? (
+                              <span className="text-amber-400">Excluded</span>
+                            ) : collectibleUsd !== null ? (
                               <span className="text-emerald-400 font-medium">
                                 ${collectibleUsd.toFixed(2)}
                               </span>

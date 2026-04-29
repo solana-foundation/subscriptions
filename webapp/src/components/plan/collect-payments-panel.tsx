@@ -12,7 +12,7 @@ import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations'
 import { useClusterConfig } from '@/hooks/use-cluster-config'
 import { useProgramAddress } from '@/hooks/use-token-config'
 import { getBlockTimestamp } from '@/hooks/use-time-travel'
-import { computeEligibleSubscribers } from '@/lib/collect-utils'
+import { computeEligibleSubscribers, hasMatchingPlanTerms } from '@/lib/collect-utils'
 import { getCollectionHistory, addCollectionRecord, createSuccessRecord, createFailureRecord, type CollectionRecord } from '@/lib/collection-history'
 import { parsePlanMeta, ICON_MAP } from '@/lib/plan-constants'
 import { Star } from 'lucide-react'
@@ -64,19 +64,24 @@ function CollectPlanCard({ plan, subscriberCount, progAddr }: { plan: PlanItem; 
 
   const handleCollect = useCallback(async () => {
     setIsCollecting(true)
-    const totalSubs = subscriberCount
     try {
       const subscribers = await fetchPlanSubscriptions(rpcUrl, plan.address, progAddr)
       const ts = await getBlockTimestamp(rpcUrl)
       const eligible = computeEligibleSubscribers(
         subscribers,
-        plan.data.terms.amount,
-        plan.data.terms.periodHours,
+        plan.data.terms,
         ts,
       )
+      const currentSubscriberCount = subscribers.filter((sub) =>
+        hasMatchingPlanTerms(sub, plan.data.terms),
+      ).length
 
       if (eligible.length === 0) {
-        toast.info('All payments already collected this period')
+        toast.info(
+          currentSubscriberCount === 0 && subscribers.length > 0
+            ? 'Only stale subscriptions found for this plan'
+            : 'All payments already collected this period',
+        )
         setIsCollecting(false)
         return
       }
@@ -95,14 +100,14 @@ function CollectPlanCard({ plan, subscriberCount, progAddr }: { plan: PlanItem; 
         {
           onSuccess: (res) => {
             addCollectionRecord(createSuccessRecord(
-              plan.address, planName, res, totalSubs, amountUsd,
+              plan.address, planName, res, currentSubscriberCount, amountUsd,
             ))
             setHistoryVersion((v) => v + 1)
             setIsCollecting(false)
           },
           onError: (error) => {
             addCollectionRecord(createFailureRecord(
-              plan.address, planName, totalSubs, amountUsd, error,
+              plan.address, planName, currentSubscriberCount, amountUsd, error,
             ))
             setHistoryVersion((v) => v + 1)
             setIsCollecting(false)
@@ -113,7 +118,7 @@ function CollectPlanCard({ plan, subscriberCount, progAddr }: { plan: PlanItem; 
       toast.error(err instanceof Error ? err.message : 'Failed to collect')
       setIsCollecting(false)
     }
-  }, [rpcUrl, plan, subscriberCount, planName, amountUsd, collectSubscriptionPayments, progAddr])
+  }, [rpcUrl, plan, planName, amountUsd, collectSubscriptionPayments, progAddr])
 
   return (
     <div className="border border-emerald-500/15 bg-slate-900/60 rounded-xl p-4 space-y-3">

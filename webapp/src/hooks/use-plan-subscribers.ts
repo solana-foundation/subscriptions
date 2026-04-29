@@ -4,12 +4,19 @@ import { useSubscriberCounts, fetchPlanSubscriptions, type PlanSubscriber } from
 import { useClusterConfig } from '@/hooks/use-cluster-config'
 import { useProgramAddress } from '@/hooks/use-token-config'
 import { getBlockTimestamp } from '@/hooks/use-time-travel'
-import { computeEligibleSubscribers, type EligibleSubscriber } from '@/lib/collect-utils'
+import {
+  computeEligibleSubscribers,
+  getStalePlanSubscribers,
+  hasMatchingPlanTerms,
+  type EligibleSubscriber,
+} from '@/lib/collect-utils'
 import { useMemo } from 'react'
 
 export interface PlanSubscriberData {
   plan: PlanItem
   subscribers: PlanSubscriber[]
+  currentSubscribers: PlanSubscriber[]
+  staleSubscribers: PlanSubscriber[]
   eligible: EligibleSubscriber[]
   totalPending: bigint
   activeCount: number
@@ -44,19 +51,31 @@ export function useAllPlanSubscribers() {
       const planDataArr = await Promise.all(
         plansWithSubs.map(async (plan): Promise<PlanSubscriberData> => {
           const subscribers = await fetchPlanSubscriptions(rpcUrl, plan.address, progAddr!)
+          const staleSubscribers = getStalePlanSubscribers(subscribers, plan.data.terms)
+          const currentSubscribers = subscribers.filter((sub) =>
+            hasMatchingPlanTerms(sub, plan.data.terms),
+          )
           const eligible = computeEligibleSubscribers(
             subscribers,
-            plan.data.terms.amount,
-            plan.data.terms.periodHours,
+            plan.data.terms,
             blockTimestamp,
           )
           const totalPending = eligible.reduce((sum, e) => sum + e.collectAmount, 0n)
-          const activeCount = subscribers.filter((s) => s.expiresAtTs === 0n).length
-          const cancelledCount = subscribers.filter(
+          const activeCount = currentSubscribers.filter((s) => s.expiresAtTs === 0n).length
+          const cancelledCount = currentSubscribers.filter(
             (s) => s.expiresAtTs !== 0n && blockTimestamp < Number(s.expiresAtTs),
           ).length
 
-          return { plan, subscribers, eligible, totalPending, activeCount, cancelledCount }
+          return {
+            plan,
+            subscribers,
+            currentSubscribers,
+            staleSubscribers,
+            eligible,
+            totalPending,
+            activeCount,
+            cancelledCount,
+          }
         }),
       )
 

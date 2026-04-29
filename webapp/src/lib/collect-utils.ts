@@ -1,29 +1,57 @@
-import type { PlanSubscriber } from '@/hooks/use-subscriptions'
-
 export interface EligibleSubscriber {
   subscriptionAddress: string
   delegator: string
   collectAmount: bigint
 }
 
+export interface PlanTermsFingerprint {
+  amount: bigint
+  periodHours: bigint
+  createdAt: bigint
+}
+
+export interface PlanSubscriberForCollection {
+  subscriptionAddress: string
+  delegator: string
+  terms: PlanTermsFingerprint
+  amountPulledInPeriod: bigint
+  currentPeriodStartTs: bigint
+  expiresAtTs: bigint
+}
+
+export function hasMatchingPlanTerms(
+  sub: PlanSubscriberForCollection,
+  planTerms: PlanTermsFingerprint,
+): boolean {
+  return sub.terms.amount === planTerms.amount
+    && sub.terms.periodHours === planTerms.periodHours
+    && sub.terms.createdAt === planTerms.createdAt
+}
+
+export function getStalePlanSubscribers<T extends PlanSubscriberForCollection>(
+  subscribers: T[],
+  planTerms: PlanTermsFingerprint,
+): T[] {
+  return subscribers.filter((sub) => !hasMatchingPlanTerms(sub, planTerms))
+}
+
 export function computeEligibleSubscribers(
-  subscribers: PlanSubscriber[],
-  planAmount: bigint,
-  periodHours: bigint,
+  subscribers: PlanSubscriberForCollection[],
+  planTerms: PlanTermsFingerprint,
   currentTs: number,
 ): EligibleSubscriber[] {
-  if (planAmount <= 0n || periodHours <= 0n) return []
+  if (planTerms.amount <= 0n || planTerms.periodHours <= 0n) return []
 
   const eligible: EligibleSubscriber[] = []
 
   for (const sub of subscribers) {
     if (sub.expiresAtTs !== 0n && currentTs >= Number(sub.expiresAtTs)) continue
-    if (sub.terms.amount !== planAmount || sub.terms.periodHours !== periodHours) continue
+    if (!hasMatchingPlanTerms(sub, planTerms)) continue
 
-    const periodEnd = Number(sub.currentPeriodStartTs) + Number(periodHours) * 3600
+    const periodEnd = Number(sub.currentPeriodStartTs) + Number(planTerms.periodHours) * 3600
     const collectAmount = currentTs >= periodEnd
-      ? planAmount
-      : planAmount - sub.amountPulledInPeriod
+      ? planTerms.amount
+      : planTerms.amount - sub.amountPulledInPeriod
 
     if (collectAmount <= 0n) continue
 
