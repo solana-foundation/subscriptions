@@ -248,7 +248,7 @@ fmt-check:
     @echo "Checking Rust formatting..."
     @cargo fmt -p subscriptions -p tests-subscriptions --check
     @echo "Checking TypeScript formatting..."
-    @cd {{ts_client_dir}} && pnpm run format:check
+    @pnpm run format:check
     @echo "✓ Format check passed"
 
 # Auto-format all code
@@ -256,7 +256,7 @@ fmt:
     @echo "Formatting Rust..."
     @cargo fmt -p subscriptions -p tests-subscriptions
     @echo "Formatting TypeScript..."
-    @cd {{ts_client_dir}} && pnpm run format
+    @pnpm run format
     @echo "✓ Code formatted"
 
 # Lint with auto-fix
@@ -264,7 +264,7 @@ lint:
     @echo "Linting Rust..."
     @cargo clippy --workspace --exclude subscriptions-client --all-targets --no-deps --fix -- -D warnings
     @echo "Linting TypeScript..."
-    @cd {{ts_client_dir}} && pnpm run lint
+    @pnpm run lint:fix
     @echo "✓ Code linted"
 
 # Check linting without fixing
@@ -272,7 +272,7 @@ lint-check:
     @echo "Checking Rust lint..."
     @cargo clippy --workspace --exclude subscriptions-client --all-targets --no-deps -- -D warnings
     @echo "Checking TypeScript lint..."
-    @cd {{ts_client_dir}} && pnpm run lint:check
+    @pnpm run lint
     @echo "✓ Lint check passed"
 
 # Run all code quality checks

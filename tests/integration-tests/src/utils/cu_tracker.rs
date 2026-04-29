@@ -36,9 +36,7 @@ static TRACKER: OnceLock<Mutex<CuTracker>> = OnceLock::new();
 /// Caches the result to avoid repeated env lookups.
 fn is_tracking_enabled() -> bool {
     static ENABLED: OnceLock<bool> = OnceLock::new();
-    ENABLED
-        .get_or_init(|| std::env::var("CU_REPORT").is_ok())
-        .to_owned()
+    ENABLED.get_or_init(|| std::env::var("CU_REPORT").is_ok()).to_owned()
 }
 
 /// Global CU tracker shared across all tests.
@@ -54,10 +52,7 @@ pub fn record_transaction(result: &TransactionResult, ix: &Instruction) -> Optio
     if !is_tracking_enabled() {
         return None;
     }
-    global_tracker()
-        .lock()
-        .ok()
-        .and_then(|mut tracker| tracker.record(result, ix))
+    global_tracker().lock().ok().and_then(|mut tracker| tracker.record(result, ix))
 }
 
 /// Output the CU report if the CU_REPORT environment variable is set.
@@ -122,9 +117,7 @@ pub struct CuTracker {
 impl CuTracker {
     /// Create a new empty tracker.
     pub fn new() -> Self {
-        Self {
-            measurements: HashMap::new(),
-        }
+        Self { measurements: HashMap::new() }
     }
 
     /// Record CU from a transaction result.
@@ -139,10 +132,7 @@ impl CuTracker {
 
         if let Ok(instruction) = SubscriptionsInstruction::from_bytes(&ix.data) {
             let instruction_name = instruction.to_string();
-            self.measurements
-                .entry(instruction_name)
-                .or_default()
-                .push(tx.compute_units_consumed);
+            self.measurements.entry(instruction_name).or_default().push(tx.compute_units_consumed);
         }
 
         Some(tx.compute_units_consumed)
@@ -167,11 +157,7 @@ impl CuTracker {
                 let count = measurements.len();
                 let min = *measurements.iter().min().unwrap_or(&0);
                 let max = *measurements.iter().max().unwrap_or(&0);
-                let avg = if count > 0 {
-                    measurements.iter().sum::<u64>() / count as u64
-                } else {
-                    0
-                };
+                let avg = if count > 0 { measurements.iter().sum::<u64>() / count as u64 } else { 0 };
 
                 let cost_low = format!("{:.9}", calculate_sol_cost(avg, RATE_LOW));
                 let cost_med = format!("{:.9}", calculate_sol_cost(avg, RATE_MED));

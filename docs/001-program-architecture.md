@@ -161,7 +161,7 @@ Delegates discover their delegations via `getProgramAccounts` with `memcmp` filt
 ```typescript
 // Delegatee discovers Bob's delegations:
 getProgramAccounts(PROGRAM_ID, {
-  filters: [{ memcmp: { offset: DELEGATEE_OFFSET, bytes: bobPubkey } }],
+    filters: [{ memcmp: { offset: DELEGATEE_OFFSET, bytes: bobPubkey } }],
 });
 ```
 
@@ -169,24 +169,24 @@ getProgramAccounts(PROGRAM_ID, {
 
 ### Initialization
 
-| Instruction                | Actor     | Purpose                                              |
-| -------------------------- | --------- | ---------------------------------------------------- |
+| Instruction                         | Actor     | Purpose                                             |
+| ----------------------------------- | --------- | --------------------------------------------------- |
 | `initialize_subscription_authority` | Delegator | Create SA and approve `u64::MAX` delegate authority |
 | `close_subscription_authority`      | Delegator | Close SA account and return rent                    |
 
 ### Delegation Management
 
-| Instruction                   | Actor     | Purpose                                                                             |
-| ----------------------------- | --------- | ----------------------------------------------------------------------------------- |
-| `create_fixed_delegation`     | Delegator | Create one-time delegation with nonce, amount, and expiry (payer can be sponsor)     |
-| `create_recurring_delegation` | Delegator | Create recurring delegation with period limits (payer can be sponsor)              |
+| Instruction                   | Actor               | Purpose                                                                                                 |
+| ----------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------- |
+| `create_fixed_delegation`     | Delegator           | Create one-time delegation with nonce, amount, and expiry (payer can be sponsor)                        |
+| `create_recurring_delegation` | Delegator           | Create recurring delegation with period limits (payer can be sponsor)                                   |
 | `revoke_delegation`           | Delegator / Sponsor | Close a delegation account and return rent to the original payer. Sponsor can only revoke after expiry. |
 
 ### Transfer
 
-| Instruction          | Actor     | Purpose                                                                 |
-| -------------------- | --------- | ----------------------------------------------------------------------- |
-| `transfer_fixed`     | Delegatee | Execute token transfer for a fixed delegation, enforcing limits         |
+| Instruction          | Actor     | Purpose                                                                    |
+| -------------------- | --------- | -------------------------------------------------------------------------- |
+| `transfer_fixed`     | Delegatee | Execute token transfer for a fixed delegation, enforcing limits            |
 | `transfer_recurring` | Delegatee | Execute token transfer for a recurring delegation, enforcing period limits |
 
 ---
@@ -262,6 +262,7 @@ impl Header {
 ```
 
 Field offsets are defined as standalone constants in `state/header.rs`:
+
 - `DISCRIMINATOR_OFFSET = 0`
 - `VERSION_OFFSET = 1`
 - `BUMP_OFFSET = 2`
@@ -323,14 +324,14 @@ impl RecurringDelegation {
 
 Creates the SA and grants it `u64::MAX` delegated approval over the user's ATA.
 
-| Account | Type             | Description                 |
-| ------- | ---------------- | --------------------------- |
-| 0       | signer, writable | The delegator (user)        |
+| Account | Type             | Description                         |
+| ------- | ---------------- | ----------------------------------- |
+| 0       | signer, writable | The delegator (user)                |
 | 1       | writable         | SubscriptionAuthority PDA to create |
-| 2       | mint             | Token mint for this SA     |
-| 3       | writable         | User's ATA to approve       |
-| 4       | system_program   | System program              |
-| 5       | token_program    | Token program               |
+| 2       | mint             | Token mint for this SA              |
+| 3       | writable         | User's ATA to approve               |
+| 4       | system_program   | System program                      |
+| 5       | token_program    | Token program                       |
 
 **Process:**
 
@@ -342,13 +343,13 @@ Creates the SA and grants it `u64::MAX` delegated approval over the user's ATA.
 
 Creates a one-time delegation with nonce-based PDA.
 
-| Account | Type             | Description                            |
-| ------- | ---------------- | -------------------------------------- |
-| 0       | signer, writable | The delegator creating this delegation |
-| 1       |                  | SubscriptionAuthority PDA for this token type  |
-| 2       | writable         | FixedDelegation PDA being created      |
-| 3       |                  | The delegatee (beneficiary)            |
-| 4       | system_program   | System program                         |
+| Account | Type             | Description                                                                  |
+| ------- | ---------------- | ---------------------------------------------------------------------------- |
+| 0       | signer, writable | The delegator creating this delegation                                       |
+| 1       |                  | SubscriptionAuthority PDA for this token type                                |
+| 2       | writable         | FixedDelegation PDA being created                                            |
+| 3       |                  | The delegatee (beneficiary)                                                  |
+| 4       | system_program   | System program                                                               |
 | 5       | signer, writable | The payer who funds the delegation account (optional, defaults to delegator) |
 
 **Parameters:**
@@ -367,13 +368,13 @@ Creates a one-time delegation with nonce-based PDA.
 
 Creates a recurring delegation with period tracking.
 
-| Account | Type             | Description                            |
-| ------- | ---------------- | -------------------------------------- |
-| 0       | signer, writable | The delegator creating this delegation |
-| 1       |                  | SubscriptionAuthority PDA for this token type  |
-| 2       | writable         | RecurringDelegation PDA being created  |
-| 3       |                  | The delegatee (beneficiary)            |
-| 4       | system_program   | System program                         |
+| Account | Type             | Description                                                                  |
+| ------- | ---------------- | ---------------------------------------------------------------------------- |
+| 0       | signer, writable | The delegator creating this delegation                                       |
+| 1       |                  | SubscriptionAuthority PDA for this token type                                |
+| 2       | writable         | RecurringDelegation PDA being created                                        |
+| 3       |                  | The delegatee (beneficiary)                                                  |
+| 4       | system_program   | System program                                                               |
 | 5       | signer, writable | The payer who funds the delegation account (optional, defaults to delegator) |
 
 **Parameters:**
@@ -396,11 +397,11 @@ Creates a recurring delegation with period tracking.
 
 Revokes a delegation by closing the delegation PDA and returning rent to the original payer.
 
-| Account | Type     | Description                                                                 |
-| ------- | -------- | --------------------------------------------------------------------------- |
-| 0       | signer, writable | The delegator or sponsor (authority)                             |
-| 1       | writable | Delegation PDA to close                                                    |
-| 2       | writable | Receiver account (required only when delegator revokes a sponsor-funded delegation) |
+| Account | Type             | Description                                                                         |
+| ------- | ---------------- | ----------------------------------------------------------------------------------- |
+| 0       | signer, writable | The delegator or sponsor (authority)                                                |
+| 1       | writable         | Delegation PDA to close                                                             |
+| 2       | writable         | Receiver account (required only when delegator revokes a sponsor-funded delegation) |
 
 **Process:**
 
@@ -411,10 +412,10 @@ Revokes a delegation by closing the delegation PDA and returning rent to the ori
 
 Closes a SubscriptionAuthority PDA and returns rent to the owner.
 
-| Account | Type             | Description                                |
-| ------- | ---------------- | ------------------------------------------ |
-| 0       | signer, writable | The user who owns the SubscriptionAuthority PDA    |
-| 1       | writable         | SubscriptionAuthority PDA to close                 |
+| Account | Type             | Description                                     |
+| ------- | ---------------- | ----------------------------------------------- |
+| 0       | signer, writable | The user who owns the SubscriptionAuthority PDA |
+| 1       | writable         | SubscriptionAuthority PDA to close              |
 
 **Process:**
 
@@ -439,16 +440,16 @@ The transfer mechanism uses specific instructions for each delegation type to va
 
 Executes a transfer for a fixed delegation.
 
-| Account | Type             | Description                                |
-| ------- | ---------------- | ------------------------------------------ |
-| 0       | writable         | FixedDelegation PDA                        |
-| 1       |                  | SubscriptionAuthority PDA                          |
-| 2       | writable         | Delegator's ATA                            |
-| 3       | writable         | Receiver's ATA                             |
-| 4       |                  | Token Program                              |
-| 5       | signer           | Delegatee (beneficiary)                    |
-| 6       |                  | Event authority PDA                        |
-| 7       |                  | This program (for self-CPI event emission) |
+| Account | Type     | Description                                |
+| ------- | -------- | ------------------------------------------ |
+| 0       | writable | FixedDelegation PDA                        |
+| 1       |          | SubscriptionAuthority PDA                  |
+| 2       | writable | Delegator's ATA                            |
+| 3       | writable | Receiver's ATA                             |
+| 4       |          | Token Program                              |
+| 5       | signer   | Delegatee (beneficiary)                    |
+| 6       |          | Event authority PDA                        |
+| 7       |          | This program (for self-CPI event emission) |
 
 **Parameters (in instruction data):**
 
@@ -469,16 +470,16 @@ Executes a transfer for a fixed delegation.
 
 Executes a transfer for a recurring delegation.
 
-| Account | Type             | Description                                |
-| ------- | ---------------- | ------------------------------------------ |
-| 0       | writable         | RecurringDelegation PDA                    |
-| 1       |                  | SubscriptionAuthority PDA                          |
-| 2       | writable         | Delegator's ATA                            |
-| 3       | writable         | Receiver's ATA                             |
-| 4       |                  | Token Program                              |
-| 5       | signer           | Delegatee (beneficiary)                    |
-| 6       |                  | Event authority PDA                        |
-| 7       |                  | This program (for self-CPI event emission) |
+| Account | Type     | Description                                |
+| ------- | -------- | ------------------------------------------ |
+| 0       | writable | RecurringDelegation PDA                    |
+| 1       |          | SubscriptionAuthority PDA                  |
+| 2       | writable | Delegator's ATA                            |
+| 3       | writable | Receiver's ATA                             |
+| 4       |          | Token Program                              |
+| 5       | signer   | Delegatee (beneficiary)                    |
+| 6       |          | Event authority PDA                        |
+| 7       |          | This program (for self-CPI event emission) |
 
 **Parameters (in instruction data):**
 
@@ -496,4 +497,3 @@ Executes a transfer for a recurring delegation.
 6. Update tracking
 7. Execute transfer via SubscriptionAuthority
 8. Emit `RecurringTransferEvent` via self-CPI
-

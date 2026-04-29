@@ -8,9 +8,8 @@ use crate::{
         idl,
         pda::get_subscription_authority_pda,
         utils::{
-            build_and_send_transaction, current_ts, days, get_ata_balance, init_ata,
-            init_aux_token_account, init_mint, init_wallet,
-            initialize_subscription_authority_action, move_clock_forward, setup,
+            build_and_send_transaction, current_ts, days, get_ata_balance, init_ata, init_aux_token_account, init_mint,
+            init_wallet, initialize_subscription_authority_action, move_clock_forward, setup,
             CloseSubscriptionAuthority, CreateDelegation, RevokeDelegation, TransferDelegation,
         },
     },
@@ -33,35 +32,17 @@ fn setup_fixed_delegation(
     let bob = Keypair::new();
     lite_svm.airdrop(&bob.pubkey(), 10_000_000).unwrap();
 
-    let mint = init_mint(
-        &mut lite_svm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(alice.pubkey()),
-        &[],
-    );
+    let mint = init_mint(&mut lite_svm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(alice.pubkey()), &[]);
     let alice_ata = init_ata(&mut lite_svm, mint, alice.pubkey(), 100_000_000);
     let bob_ata = init_ata(&mut lite_svm, mint, bob.pubkey(), 0);
 
-    initialize_subscription_authority_action(&mut lite_svm, &alice, mint)
-        .0
-        .assert_ok();
+    initialize_subscription_authority_action(&mut lite_svm, &alice, mint).0.assert_ok();
 
-    let (res, delegation_pda) = CreateDelegation::new(&mut lite_svm, &alice, mint, bob.pubkey())
-        .nonce(nonce)
-        .fixed(amount, expiry_ts);
+    let (res, delegation_pda) =
+        CreateDelegation::new(&mut lite_svm, &alice, mint, bob.pubkey()).nonce(nonce).fixed(amount, expiry_ts);
     res.assert_ok();
 
-    (
-        lite_svm,
-        alice,
-        bob,
-        delegation_pda,
-        mint,
-        alice_ata,
-        bob_ata,
-    )
+    (lite_svm, alice, bob, delegation_pda, mint, alice_ata, bob_ata)
 }
 
 #[test]
@@ -97,8 +78,7 @@ fn test_fixed_transfer_multiple_times() {
     let expiry_s: i64 = current_ts() + days(1) as i64;
     let nonce = 1;
 
-    let (mut litesvm, alice, bob, delegation_pda, mint, _, bob_ata) =
-        setup_fixed_delegation(amount, expiry_s, nonce);
+    let (mut litesvm, alice, bob, delegation_pda, mint, _, bob_ata) = setup_fixed_delegation(amount, expiry_s, nonce);
 
     assert_eq!(get_ata_balance(&litesvm, &bob_ata), 0);
 
@@ -111,9 +91,7 @@ fn test_fixed_transfer_multiple_times() {
     assert_eq!(get_ata_balance(&litesvm, &bob_ata), 30_000_000);
 
     let delegation_account = litesvm.get_account(&delegation_pda).unwrap();
-    let del_amount = FixedDelegation::load(&delegation_account.data)
-        .unwrap()
-        .amount;
+    let del_amount = FixedDelegation::load(&delegation_account.data).unwrap().amount;
     assert_eq!(del_amount, 20_000_000);
 
     let result = TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
@@ -124,9 +102,7 @@ fn test_fixed_transfer_multiple_times() {
     assert_eq!(get_ata_balance(&litesvm, &bob_ata), 30_000_000);
 
     let delegation_account = litesvm.get_account(&delegation_pda).unwrap();
-    let del_amount = FixedDelegation::load(&delegation_account.data)
-        .unwrap()
-        .amount;
+    let del_amount = FixedDelegation::load(&delegation_account.data).unwrap().amount;
     assert_eq!(del_amount, 20_000_000);
 }
 
@@ -136,8 +112,7 @@ fn test_fixed_transfer_exceeds_amount() {
     let expiry_ts: i64 = current_ts() + days(1) as i64;
     let nonce = 1;
 
-    let (mut litesvm, alice, bob, delegation_pda, mint, _, bob_ata) =
-        setup_fixed_delegation(amount, expiry_ts, nonce);
+    let (mut litesvm, alice, bob, delegation_pda, mint, _, bob_ata) = setup_fixed_delegation(amount, expiry_ts, nonce);
 
     assert_eq!(get_ata_balance(&litesvm, &bob_ata), 0);
 
@@ -152,9 +127,7 @@ fn test_fixed_transfer_exceeds_amount() {
     assert_eq!(get_ata_balance(&litesvm, &bob_ata), 0);
 
     let delegation_account = litesvm.get_account(&delegation_pda).unwrap();
-    let del_amount = FixedDelegation::load(&delegation_account.data)
-        .unwrap()
-        .amount;
+    let del_amount = FixedDelegation::load(&delegation_account.data).unwrap().amount;
     assert_eq!(del_amount, 50_000_000);
 }
 
@@ -164,8 +137,7 @@ fn test_fixed_transfer_expired() {
     let expiry_ts: i64 = current_ts() + days(1) as i64;
     let nonce = 1;
 
-    let (mut litesvm, alice, bob, delegation_pda, mint, _, bob_ata) =
-        setup_fixed_delegation(amount, expiry_ts, nonce);
+    let (mut litesvm, alice, bob, delegation_pda, mint, _, bob_ata) = setup_fixed_delegation(amount, expiry_ts, nonce);
 
     assert_eq!(get_ata_balance(&litesvm, &bob_ata), 0);
 
@@ -189,9 +161,7 @@ fn test_fixed_transfer_expired() {
     assert_eq!(get_ata_balance(&litesvm, &bob_ata), 30_000_000);
 
     let delegation_account = litesvm.get_account(&delegation_pda).unwrap();
-    let delegation_amount = FixedDelegation::load(&delegation_account.data)
-        .unwrap()
-        .amount;
+    let delegation_amount = FixedDelegation::load(&delegation_account.data).unwrap().amount;
     assert_eq!(delegation_amount, 20_000_000);
 }
 
@@ -201,8 +171,7 @@ fn test_fixed_transfer_wrong_signer() {
     let expiry_ts: i64 = current_ts() + days(1) as i64;
     let nonce = 10;
 
-    let (mut litesvm, alice, _bob, delegation_pda, mint, _, bob_ata) =
-        setup_fixed_delegation(amount, expiry_ts, nonce);
+    let (mut litesvm, alice, _bob, delegation_pda, mint, _, bob_ata) = setup_fixed_delegation(amount, expiry_ts, nonce);
 
     // Eve is the attacker
     let eve = Keypair::new();
@@ -227,8 +196,7 @@ fn test_fixed_transfer_to_third_party() {
     let nonce = 0;
 
     // Alice delegates to Bob
-    let (mut litesvm, alice, bob, delegation_pda, mint, _, _) =
-        setup_fixed_delegation(amount, expiry_ts, nonce);
+    let (mut litesvm, alice, bob, delegation_pda, mint, _, _) = setup_fixed_delegation(amount, expiry_ts, nonce);
 
     // Charlie is a third party
     let charlie = Keypair::new();
@@ -253,60 +221,35 @@ fn fixed_delegation_rejects_transfer_with_different_mint_authority() {
     let bob = Keypair::new();
     litesvm.airdrop(&bob.pubkey(), 10_000_000).unwrap();
 
-    let low_value_mint = init_mint(
-        &mut litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(alice.pubkey()),
-        &[],
-    );
-    let high_value_mint = init_mint(
-        &mut litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(alice.pubkey()),
-        &[],
-    );
+    let low_value_mint =
+        init_mint(&mut litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(alice.pubkey()), &[]);
+    let high_value_mint =
+        init_mint(&mut litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(alice.pubkey()), &[]);
 
     let _alice_low_ata = init_ata(&mut litesvm, low_value_mint, alice.pubkey(), 100_000_000);
     let alice_high_ata = init_ata(&mut litesvm, high_value_mint, alice.pubkey(), 100_000_000);
     let _bob_low_ata = init_ata(&mut litesvm, low_value_mint, bob.pubkey(), 0);
     let bob_high_ata = init_ata(&mut litesvm, high_value_mint, bob.pubkey(), 0);
 
-    initialize_subscription_authority_action(&mut litesvm, &alice, low_value_mint)
-        .0
-        .assert_ok();
-    initialize_subscription_authority_action(&mut litesvm, &alice, high_value_mint)
-        .0
-        .assert_ok();
+    initialize_subscription_authority_action(&mut litesvm, &alice, low_value_mint).0.assert_ok();
+    initialize_subscription_authority_action(&mut litesvm, &alice, high_value_mint).0.assert_ok();
 
     let fixed_allowance = 50_000_000;
-    let (res, low_value_delegation_pda) =
-        CreateDelegation::new(&mut litesvm, &alice, low_value_mint, bob.pubkey())
-            .nonce(89)
-            .fixed(fixed_allowance, current_ts() + days(1) as i64);
+    let (res, low_value_delegation_pda) = CreateDelegation::new(&mut litesvm, &alice, low_value_mint, bob.pubkey())
+        .nonce(89)
+        .fixed(fixed_allowance, current_ts() + days(1) as i64);
     res.assert_ok();
 
-    TransferDelegation::new(
-        &mut litesvm,
-        &bob,
-        alice.pubkey(),
-        high_value_mint,
-        low_value_delegation_pda,
-    )
-    .amount(20_000_000)
-    .fixed()
-    .assert_err(SubscriptionsError::InvalidDelegatePda);
+    TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), high_value_mint, low_value_delegation_pda)
+        .amount(20_000_000)
+        .fixed()
+        .assert_err(SubscriptionsError::InvalidDelegatePda);
 
     assert_eq!(get_ata_balance(&litesvm, &alice_high_ata), 100_000_000);
     assert_eq!(get_ata_balance(&litesvm, &bob_high_ata), 0);
 
     let delegation_account = litesvm.get_account(&low_value_delegation_pda).unwrap();
-    let remaining_allowance = FixedDelegation::load(&delegation_account.data)
-        .unwrap()
-        .amount;
+    let remaining_allowance = FixedDelegation::load(&delegation_account.data).unwrap().amount;
     assert_eq!(remaining_allowance, fixed_allowance);
 }
 
@@ -316,20 +259,12 @@ fn fixed_transfer_rejects_approved_non_canonical_source() {
     let bob = Keypair::new();
     litesvm.airdrop(&bob.pubkey(), 10_000_000).unwrap();
 
-    let mint = init_mint(
-        &mut litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(alice.pubkey()),
-        &[],
-    );
+    let mint = init_mint(&mut litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(alice.pubkey()), &[]);
     let alice_ata = init_ata(&mut litesvm, mint, alice.pubkey(), 5_000_000);
     let alice_aux = init_aux_token_account(&mut litesvm, mint, alice.pubkey(), 100_000_000);
     let bob_ata = init_ata(&mut litesvm, mint, bob.pubkey(), 0);
 
-    let (res, subscription_authority_pda, _) =
-        initialize_subscription_authority_action(&mut litesvm, &alice, mint);
+    let (res, subscription_authority_pda, _) = initialize_subscription_authority_action(&mut litesvm, &alice, mint);
     res.assert_ok();
 
     let fixed_allowance = 60_000_000;
@@ -360,9 +295,7 @@ fn fixed_transfer_rejects_approved_non_canonical_source() {
     assert_eq!(get_ata_balance(&litesvm, &bob_ata), 0);
 
     let delegation_account = litesvm.get_account(&delegation_pda).unwrap();
-    let remaining_allowance = FixedDelegation::load(&delegation_account.data)
-        .unwrap()
-        .amount;
+    let remaining_allowance = FixedDelegation::load(&delegation_account.data).unwrap().amount;
     assert_eq!(remaining_allowance, fixed_allowance);
 }
 
@@ -374,15 +307,12 @@ fn writable_accounts_must_be_writable() {
     let expiry_ts: i64 = current_ts() + days(1) as i64;
     let nonce = 0;
 
-    let (mut litesvm, alice, bob, delegation_pda, mint, _, _) =
-        setup_fixed_delegation(amount, expiry_ts, nonce);
+    let (mut litesvm, alice, bob, delegation_pda, mint, _, _) = setup_fixed_delegation(amount, expiry_ts, nonce);
     let fee_payer = init_wallet(&mut litesvm, 10_000_000_000);
 
     let (subscription_authority_pda, _) = get_subscription_authority_pda(&alice.pubkey(), &mint);
-    let delegator_ata =
-        get_associated_token_address_with_program_id(&alice.pubkey(), &mint, &TOKEN_PROGRAM_ID);
-    let receiver_ata =
-        get_associated_token_address_with_program_id(&bob.pubkey(), &mint, &TOKEN_PROGRAM_ID);
+    let delegator_ata = get_associated_token_address_with_program_id(&alice.pubkey(), &mint, &TOKEN_PROGRAM_ID);
+    let receiver_ata = get_associated_token_address_with_program_id(&bob.pubkey(), &mint, &TOKEN_PROGRAM_ID);
     let event_authority = Pubkey::new_from_array(event_authority_pda::ID.to_bytes());
 
     for (idx, _name, is_signer) in &writable {
@@ -410,14 +340,9 @@ fn writable_accounts_must_be_writable() {
         ]
         .concat();
 
-        let ix = Instruction {
-            program_id: PROGRAM_ID,
-            accounts,
-            data,
-        };
+        let ix = Instruction { program_id: PROGRAM_ID, accounts, data };
 
-        let res =
-            build_and_send_transaction(&mut litesvm, &[&fee_payer, &bob], &fee_payer.pubkey(), &ix);
+        let res = build_and_send_transaction(&mut litesvm, &[&fee_payer, &bob], &fee_payer.pubkey(), &ix);
         res.assert_err(SubscriptionsError::AccountNotWritable);
     }
 }
@@ -430,15 +355,12 @@ fn signer_accounts_must_be_signers() {
     let expiry_ts: i64 = current_ts() + days(1) as i64;
     let nonce = 0;
 
-    let (mut litesvm, alice, bob, delegation_pda, mint, _, _) =
-        setup_fixed_delegation(amount, expiry_ts, nonce);
+    let (mut litesvm, alice, bob, delegation_pda, mint, _, _) = setup_fixed_delegation(amount, expiry_ts, nonce);
     let fee_payer = init_wallet(&mut litesvm, 10_000_000_000);
 
     let (subscription_authority_pda, _) = get_subscription_authority_pda(&alice.pubkey(), &mint);
-    let delegator_ata =
-        get_associated_token_address_with_program_id(&alice.pubkey(), &mint, &TOKEN_PROGRAM_ID);
-    let receiver_ata =
-        get_associated_token_address_with_program_id(&bob.pubkey(), &mint, &TOKEN_PROGRAM_ID);
+    let delegator_ata = get_associated_token_address_with_program_id(&alice.pubkey(), &mint, &TOKEN_PROGRAM_ID);
+    let receiver_ata = get_associated_token_address_with_program_id(&bob.pubkey(), &mint, &TOKEN_PROGRAM_ID);
     let event_authority = Pubkey::new_from_array(event_authority_pda::ID.to_bytes());
 
     for (idx, _name, is_writable) in &signers {
@@ -455,11 +377,8 @@ fn signer_accounts_must_be_signers() {
 
         // Flip signer to non-signer, preserving writable flag
         let pubkey = accounts[*idx].pubkey;
-        accounts[*idx] = if *is_writable {
-            AccountMeta::new(pubkey, false)
-        } else {
-            AccountMeta::new_readonly(pubkey, false)
-        };
+        accounts[*idx] =
+            if *is_writable { AccountMeta::new(pubkey, false) } else { AccountMeta::new_readonly(pubkey, false) };
 
         let transfer_amount: u64 = 10_000_000;
         let data = [
@@ -470,11 +389,7 @@ fn signer_accounts_must_be_signers() {
         ]
         .concat();
 
-        let ix = Instruction {
-            program_id: PROGRAM_ID,
-            accounts,
-            data,
-        };
+        let ix = Instruction { program_id: PROGRAM_ID, accounts, data };
 
         let res = build_and_send_transaction(&mut litesvm, &[&fee_payer], &fee_payer.pubkey(), &ix);
         res.assert_err(SubscriptionsError::NotSigner);
@@ -494,25 +409,21 @@ fn test_fixed_transfer_delegator_mismatch_exploit() {
     let (mut litesvm, alice, bob, _alice_delegation_pda, mint, alice_ata, bob_ata) =
         setup_fixed_delegation(amount, expiry_ts, nonce);
 
-    initialize_subscription_authority_action(&mut litesvm, &bob, mint)
-        .0
-        .assert_ok();
+    initialize_subscription_authority_action(&mut litesvm, &bob, mint).0.assert_ok();
 
     // Attacker (Bob) creates a self-delegation (Bob -> Bob) with a large allowance
-    let (_res, bob_delegation_pda) = CreateDelegation::new(&mut litesvm, &bob, mint, bob.pubkey())
-        .nonce(nonce)
-        .fixed(1_000_000_000, expiry_ts);
+    let (_res, bob_delegation_pda) =
+        CreateDelegation::new(&mut litesvm, &bob, mint, bob.pubkey()).nonce(nonce).fixed(1_000_000_000, expiry_ts);
     _res.assert_ok();
 
     let transfer_amount: u64 = 30_000_000;
 
     // Exploit: Attacker tries to transfer from Alice's ATA using their own delegation
     // by passing Alice's delegator_pubkey in the instruction data
-    let result =
-        TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, bob_delegation_pda)
-            .amount(transfer_amount)
-            .to(bob_ata)
-            .fixed();
+    let result = TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, bob_delegation_pda)
+        .amount(transfer_amount)
+        .to(bob_ata)
+        .fixed();
 
     // After the fix, this should fail with Unauthorized error
     result.assert_err(SubscriptionsError::Unauthorized);
@@ -529,16 +440,14 @@ fn test_fixed_transfer_version_mismatch() {
     let expiry_ts: i64 = current_ts() + days(1) as i64;
     let nonce = 0;
 
-    let (mut litesvm, alice, bob, delegation_pda, mint, _, bob_ata) =
-        setup_fixed_delegation(amount, expiry_ts, nonce);
+    let (mut litesvm, alice, bob, delegation_pda, mint, _, bob_ata) = setup_fixed_delegation(amount, expiry_ts, nonce);
 
     let mut account = litesvm.get_account(&delegation_pda).unwrap();
     account.data[VERSION_OFFSET] = 0;
     litesvm.set_account(delegation_pda, account).unwrap();
 
-    let result = TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
-        .amount(10_000_000)
-        .fixed();
+    let result =
+        TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda).amount(10_000_000).fixed();
 
     result.assert_err(SubscriptionsError::MigrationRequired);
     assert_eq!(get_ata_balance(&litesvm, &bob_ata), 0);
@@ -553,27 +462,20 @@ fn test_fixed_transfer_stale_subscription_authority() {
     let (mut litesvm, alice, bob, delegation_pda, mint, alice_ata, bob_ata) =
         setup_fixed_delegation(amount, expiry_ts, nonce);
 
-    CloseSubscriptionAuthority::new(&mut litesvm, &alice, mint)
-        .execute()
-        .assert_ok();
+    CloseSubscriptionAuthority::new(&mut litesvm, &alice, mint).execute().assert_ok();
 
     move_clock_forward(&mut litesvm, 2);
 
-    initialize_subscription_authority_action(&mut litesvm, &alice, mint)
-        .0
-        .assert_ok();
+    initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
 
-    let result = TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
-        .amount(10_000_000)
-        .fixed();
+    let result =
+        TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda).amount(10_000_000).fixed();
 
     result.assert_err(SubscriptionsError::StaleSubscriptionAuthority);
     assert_eq!(get_ata_balance(&litesvm, &alice_ata), 100_000_000);
     assert_eq!(get_ata_balance(&litesvm, &bob_ata), 0);
 
-    RevokeDelegation::new(&mut litesvm, &alice, mint, bob.pubkey(), nonce)
-        .execute()
-        .assert_ok();
+    RevokeDelegation::new(&mut litesvm, &alice, mint, bob.pubkey(), nonce).execute().assert_ok();
 }
 
 #[test]
@@ -587,33 +489,20 @@ fn test_close_subscription_authority_blocks_all_transfers() {
     litesvm.airdrop(&bob.pubkey(), 10_000_000).unwrap();
     litesvm.airdrop(&charlie.pubkey(), 10_000_000).unwrap();
 
-    let mint = init_mint(
-        &mut litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(alice.pubkey()),
-        &[],
-    );
+    let mint = init_mint(&mut litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(alice.pubkey()), &[]);
     let alice_ata = init_ata(&mut litesvm, mint, alice.pubkey(), 100_000_000);
     let _bob_ata = init_ata(&mut litesvm, mint, bob.pubkey(), 0);
     let _charlie_ata = init_ata(&mut litesvm, mint, charlie.pubkey(), 0);
 
-    initialize_subscription_authority_action(&mut litesvm, &alice, mint)
-        .0
-        .assert_ok();
+    initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
 
-    let (_, del_bob) = CreateDelegation::new(&mut litesvm, &alice, mint, bob.pubkey())
-        .nonce(0)
-        .fixed(amount, expiry_ts);
+    let (_, del_bob) =
+        CreateDelegation::new(&mut litesvm, &alice, mint, bob.pubkey()).nonce(0).fixed(amount, expiry_ts);
 
-    let (_, del_charlie) = CreateDelegation::new(&mut litesvm, &alice, mint, charlie.pubkey())
-        .nonce(0)
-        .fixed(amount, expiry_ts);
+    let (_, del_charlie) =
+        CreateDelegation::new(&mut litesvm, &alice, mint, charlie.pubkey()).nonce(0).fixed(amount, expiry_ts);
 
-    CloseSubscriptionAuthority::new(&mut litesvm, &alice, mint)
-        .execute()
-        .assert_ok();
+    CloseSubscriptionAuthority::new(&mut litesvm, &alice, mint).execute().assert_ok();
 
     TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, del_bob)
         .amount(10_000_000)
@@ -627,12 +516,8 @@ fn test_close_subscription_authority_blocks_all_transfers() {
 
     assert_eq!(get_ata_balance(&litesvm, &alice_ata), 100_000_000);
 
-    RevokeDelegation::new(&mut litesvm, &alice, mint, bob.pubkey(), 0)
-        .execute()
-        .assert_ok();
-    RevokeDelegation::new(&mut litesvm, &alice, mint, charlie.pubkey(), 0)
-        .execute()
-        .assert_ok();
+    RevokeDelegation::new(&mut litesvm, &alice, mint, bob.pubkey(), 0).execute().assert_ok();
+    RevokeDelegation::new(&mut litesvm, &alice, mint, charlie.pubkey(), 0).execute().assert_ok();
 }
 
 #[test]
@@ -642,8 +527,7 @@ fn test_fixed_transfer_within_drift_window() {
     let nonce = 0;
     let transfer_amount = 10_000_000;
 
-    let (mut litesvm, alice, bob, delegation_pda, mint, _, _) =
-        setup_fixed_delegation(amount, expiry_ts, nonce);
+    let (mut litesvm, alice, bob, delegation_pda, mint, _, _) = setup_fixed_delegation(amount, expiry_ts, nonce);
 
     move_clock_forward(&mut litesvm, 110);
 
@@ -660,8 +544,7 @@ fn test_fixed_transfer_past_drift_window() {
     let nonce = 0;
     let transfer_amount = 10_000_000;
 
-    let (mut litesvm, alice, bob, delegation_pda, mint, _, _) =
-        setup_fixed_delegation(amount, expiry_ts, nonce);
+    let (mut litesvm, alice, bob, delegation_pda, mint, _, _) = setup_fixed_delegation(amount, expiry_ts, nonce);
 
     move_clock_forward(&mut litesvm, 221);
 

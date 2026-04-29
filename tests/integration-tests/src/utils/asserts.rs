@@ -31,15 +31,9 @@ impl TransactionResultExt for TransactionResult {
 
     fn assert_err(self, expected: SubscriptionsError) {
         match self {
-            Ok(_) => panic!(
-                "Expected transaction to fail with {:?} ({})",
-                expected, expected
-            ),
+            Ok(_) => panic!("Expected transaction to fail with {:?} ({})", expected, expected),
             Err(failed_tx) => {
-                let expected_err = TransactionError::InstructionError(
-                    0,
-                    InstructionError::Custom(expected as u32),
-                );
+                let expected_err = TransactionError::InstructionError(0, InstructionError::Custom(expected as u32));
                 if failed_tx.err != expected_err {
                     let actual_msg = format_error(&failed_tx);
                     panic!(

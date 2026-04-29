@@ -123,7 +123,6 @@ Normal instructions (transfer, create) use exact-size `load`/`load_mut`.
 Defensive instructions (revoke, cancel) use `load_with_min_size`/`load_mut_with_min_size`
 so users can always reclaim funds from old-version accounts.
 
-
 ## Adding a New Version
 
 1. Bump `CURRENT_VERSION` in `versioning/mod.rs`
@@ -136,13 +135,13 @@ so users can always reclaim funds from old-version accounts.
 
 ## Error Semantics
 
-| Error | Tier | When | User Action |
-|-------|------|------|-------------|
-| `Ok` | - | version == CURRENT or lazy migration succeeded | None |
-| `DelegationVersionMismatch` | - | version > CURRENT (program downgrade) | Use newer program |
-| `MigrationRequired` | 2 | version < CURRENT, no lazy path, explicit migrate IX exists | Call migrate instruction |
-| `NeedsAccountRecreate` | 3 | no migration path at all (future) | Revoke/close and recreate |
-| `InvalidAccountData` | - | data too short for version byte | Account corrupted |
+| Error                       | Tier | When                                                        | User Action               |
+| --------------------------- | ---- | ----------------------------------------------------------- | ------------------------- |
+| `Ok`                        | -    | version == CURRENT or lazy migration succeeded              | None                      |
+| `DelegationVersionMismatch` | -    | version > CURRENT (program downgrade)                       | Use newer program         |
+| `MigrationRequired`         | 2    | version < CURRENT, no lazy path, explicit migrate IX exists | Call migrate instruction  |
+| `NeedsAccountRecreate`      | 3    | no migration path at all (future)                           | Revoke/close and recreate |
+| `InvalidAccountData`        | -    | data too short for version byte                             | Account corrupted         |
 
 **Note**: `NeedsAccountRecreate` is not yet implemented. Currently `MigrationRequired`
 covers both Tier 2 and Tier 3 since CURRENT_VERSION == 1 and no migrations exist.

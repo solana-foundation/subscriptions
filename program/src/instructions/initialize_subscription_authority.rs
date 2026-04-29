@@ -9,10 +9,10 @@ use pinocchio_token::instructions::Approve as ApproveSpl;
 use pinocchio_token_2022::instructions::Approve as Approve2022;
 
 use crate::{
-    check_token_account_mint, check_token_account_owner, constants::TOKEN_2022_PROGRAM_ID,
-    AccountCheck, AssociatedTokenAccount, AssociatedTokenAccountCheck, MintInterface,
-    ProgramAccount, ProgramAccountInit, SignerAccount, SubscriptionAuthority, SubscriptionsError,
-    SystemAccount, TokenAccountInterface, TokenProgramInterface, WritableAccount,
+    check_token_account_mint, check_token_account_owner, constants::TOKEN_2022_PROGRAM_ID, AccountCheck,
+    AssociatedTokenAccount, AssociatedTokenAccountCheck, MintInterface, ProgramAccount, ProgramAccountInit,
+    SignerAccount, SubscriptionAuthority, SubscriptionsError, SystemAccount, TokenAccountInterface,
+    TokenProgramInterface, WritableAccount,
 };
 
 /// Validated accounts for the [`InitSubscriptionAuthority`](crate::SubscriptionsInstruction::InitSubscriptionAuthority) instruction.
@@ -31,8 +31,7 @@ impl<'a> TryFrom<&'a [AccountView]> for InitializeSubscriptionAuthorityAccounts<
     type Error = ProgramError;
 
     fn try_from(accounts: &'a [AccountView]) -> Result<Self, Self::Error> {
-        let [user, subscription_authority, token_mint, user_ata, system_program, token_program, rem @ ..] =
-            accounts
+        let [user, subscription_authority, token_mint, user_ata, system_program, token_program, rem @ ..] = accounts
         else {
             return Err(SubscriptionsError::NotEnoughAccountKeys.into());
         };
@@ -54,15 +53,7 @@ impl<'a> TryFrom<&'a [AccountView]> for InitializeSubscriptionAuthorityAccounts<
             user
         };
 
-        Ok(Self {
-            subscription_authority,
-            user,
-            token_mint,
-            user_ata,
-            system_program,
-            token_program,
-            payer,
-        })
+        Ok(Self { subscription_authority, user, token_mint, user_ata, system_program, token_program, payer })
     }
 }
 
@@ -78,8 +69,7 @@ pub const DISCRIMINATOR: &u8 = &0;
 pub fn process(accounts: &[AccountView]) -> ProgramResult {
     let accounts = InitializeSubscriptionAuthorityAccounts::try_from(accounts)?;
 
-    let (expected_pda, bump) =
-        SubscriptionAuthority::find_pda(accounts.user.address(), accounts.token_mint.address());
+    let (expected_pda, bump) = SubscriptionAuthority::find_pda(accounts.user.address(), accounts.token_mint.address());
 
     if expected_pda != *accounts.subscription_authority.address() {
         return Err(SubscriptionsError::InvalidSubscriptionAuthorityPda.into());
@@ -125,12 +115,7 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
         check_token_account_owner(&ata_data, accounts.user.address())?;
         check_token_account_mint(&ata_data, accounts.token_mint.address())?;
     }
-    AssociatedTokenAccount::check(
-        accounts.user_ata,
-        accounts.user,
-        accounts.token_mint,
-        accounts.token_program,
-    )?;
+    AssociatedTokenAccount::check(accounts.user_ata, accounts.user, accounts.token_mint, accounts.token_program)?;
 
     // Approve delegation on the correct token program (SPL Token vs Token-2022).
     // The instruction data is the same, but the program id differs.

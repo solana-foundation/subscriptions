@@ -20,9 +20,8 @@ use spl_associated_token_account::{
 use spl_token_2022::{
     extension::{
         confidential_transfer::ConfidentialTransferMint, mint_close_authority::MintCloseAuthority,
-        non_transferable::NonTransferable, pausable::PausableConfig,
-        permanent_delegate::PermanentDelegate, transfer_fee::TransferFeeConfig,
-        transfer_hook::TransferHook, BaseStateWithExtensionsMut, ExtensionType,
+        non_transferable::NonTransferable, pausable::PausableConfig, permanent_delegate::PermanentDelegate,
+        transfer_fee::TransferFeeConfig, transfer_hook::TransferHook, BaseStateWithExtensionsMut, ExtensionType,
         StateWithExtensionsMut,
     },
     state::{Account as TokenAccount, AccountState, Mint as Mint2022},
@@ -36,17 +35,14 @@ use crate::{
     instructions::update_plan::UpdatePlanData,
     instructions::{
         cancel_subscription, close_subscription_authority, create_fixed_delegation, create_plan,
-        create_recurring_delegation, delete_plan, initialize_subscription_authority,
-        revoke_delegation, subscribe, transfer_fixed_delegation, transfer_recurring_delegation,
-        transfer_subscription, update_plan,
+        create_recurring_delegation, delete_plan, initialize_subscription_authority, revoke_delegation, subscribe,
+        transfer_fixed_delegation, transfer_recurring_delegation, transfer_subscription, update_plan,
     },
     state::common::PlanStatus,
     tests::{
         constants::{PROGRAM_ID, SYSTEM_PROGRAM_ID},
         cu_tracker::record_transaction,
-        pda::{
-            get_delegation_pda, get_plan_pda, get_subscription_authority_pda, get_subscription_pda,
-        },
+        pda::{get_delegation_pda, get_plan_pda, get_subscription_authority_pda, get_subscription_pda},
     },
 };
 
@@ -66,10 +62,7 @@ pub fn days(days: u64) -> u64 {
 }
 
 pub fn current_ts() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as i64
+    SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64
 }
 
 pub fn move_clock_forward(litesvm: &mut LiteSVM, seconds: u64) {
@@ -87,20 +80,15 @@ pub fn get_ata_balance(litesvm: &LiteSVM, ata: &Pubkey) -> u64 {
 pub fn setup() -> (LiteSVM, Keypair) {
     let mut litesvm = LiteSVM::new();
 
-    let so_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../target/deploy/subscriptions.so");
-    litesvm
-        .add_program_from_file(PROGRAM_ID.to_bytes(), so_path)
-        .unwrap();
+    let so_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/deploy/subscriptions.so");
+    litesvm.add_program_from_file(PROGRAM_ID.to_bytes(), so_path).unwrap();
 
     let mut initial_clock = litesvm.get_sysvar::<Clock>();
     initial_clock.unix_timestamp = current_ts();
     litesvm.set_sysvar::<Clock>(&initial_clock);
 
     let default_payer = Keypair::new();
-    litesvm
-        .airdrop(&default_payer.pubkey(), LAMPORTS_PER_SOL * 100)
-        .unwrap();
+    litesvm.airdrop(&default_payer.pubkey(), LAMPORTS_PER_SOL * 100).unwrap();
 
     (litesvm, default_payer)
 }
@@ -123,11 +111,7 @@ pub fn build_and_send_transaction(
     payer: &Pubkey,
     ix: &Instruction,
 ) -> TransactionResult {
-    let tx = Transaction::new(
-        signers,
-        Message::new(std::slice::from_ref(ix), Some(payer)),
-        litesvm.latest_blockhash(),
-    );
+    let tx = Transaction::new(signers, Message::new(std::slice::from_ref(ix), Some(payer)), litesvm.latest_blockhash());
     let result = litesvm.send_transaction(tx);
     litesvm.expire_blockhash();
 
@@ -170,8 +154,7 @@ pub fn init_mint(
         };
         Mint2022::pack(mint_state, &mut mint_data).unwrap();
     } else {
-        let mut state =
-            StateWithExtensionsMut::<Mint2022>::unpack_uninitialized(&mut mint_data).unwrap();
+        let mut state = StateWithExtensionsMut::<Mint2022>::unpack_uninitialized(&mut mint_data).unwrap();
 
         state.base.mint_authority = authority.into();
         state.base.supply = supply;
@@ -185,9 +168,7 @@ pub fn init_mint(
         for ext in extensions {
             match ext {
                 ExtensionType::ConfidentialTransferMint => {
-                    state
-                        .init_extension::<ConfidentialTransferMint>(true)
-                        .unwrap();
+                    state.init_extension::<ConfidentialTransferMint>(true).unwrap();
                 }
                 ExtensionType::NonTransferable => {
                     state.init_extension::<NonTransferable>(true).unwrap();
@@ -217,13 +198,7 @@ pub fn init_mint(
     litesvm
         .set_account(
             mint,
-            Account {
-                lamports,
-                data: mint_data,
-                owner: token_program,
-                executable: false,
-                rent_epoch: 0,
-            },
+            Account { lamports, data: mint_data, owner: token_program, executable: false, rent_epoch: 0 },
         )
         .unwrap();
 
@@ -236,12 +211,7 @@ pub fn init_ata(litesvm: &mut LiteSVM, mint: Pubkey, owner: Pubkey, amount: u64)
     init_token_account_at(litesvm, ata, mint, owner, amount)
 }
 
-pub fn init_aux_token_account(
-    litesvm: &mut LiteSVM,
-    mint: Pubkey,
-    owner: Pubkey,
-    amount: u64,
-) -> Pubkey {
+pub fn init_aux_token_account(litesvm: &mut LiteSVM, mint: Pubkey, owner: Pubkey, amount: u64) -> Pubkey {
     init_token_account_at(litesvm, Pubkey::new_unique(), mint, owner, amount)
 }
 
@@ -270,13 +240,7 @@ fn init_token_account_at(
     litesvm
         .set_account(
             token_account,
-            Account {
-                lamports,
-                data: ata_data,
-                owner: token_program,
-                executable: false,
-                rent_epoch: 0,
-            },
+            Account { lamports, data: ata_data, owner: token_program, executable: false, rent_epoch: 0 },
         )
         .unwrap();
 
@@ -298,8 +262,7 @@ pub fn initialize_subscription_authority_action_with_sponsor(
     sponsor: Option<&Keypair>,
 ) -> (TransactionResult, Pubkey, u8) {
     let token_program = litesvm.get_account(&mint).unwrap().owner;
-    let user_ata =
-        get_associated_token_address_with_program_id(&user.pubkey(), &mint, &token_program);
+    let user_ata = get_associated_token_address_with_program_id(&user.pubkey(), &mint, &token_program);
     let (subscription_authority_pda, bump) = get_subscription_authority_pda(&user.pubkey(), &mint);
 
     let mut accounts = vec![
@@ -320,17 +283,10 @@ pub fn initialize_subscription_authority_action_with_sponsor(
         fee_payer = sponsor.pubkey();
     }
 
-    let ix = Instruction {
-        program_id: PROGRAM_ID,
-        accounts,
-        data: vec![*initialize_subscription_authority::DISCRIMINATOR],
-    };
+    let ix =
+        Instruction { program_id: PROGRAM_ID, accounts, data: vec![*initialize_subscription_authority::DISCRIMINATOR] };
 
-    (
-        build_and_send_transaction(litesvm, &signers, &fee_payer, &ix),
-        subscription_authority_pda,
-        bump,
-    )
+    (build_and_send_transaction(litesvm, &signers, &fee_payer, &ix), subscription_authority_pda, bump)
 }
 
 pub struct CreateDelegation<'a> {
@@ -344,21 +300,8 @@ pub struct CreateDelegation<'a> {
 }
 
 impl<'a> CreateDelegation<'a> {
-    pub fn new(
-        litesvm: &'a mut LiteSVM,
-        delegator: &'a Keypair,
-        mint: Pubkey,
-        delegatee: Pubkey,
-    ) -> Self {
-        Self {
-            litesvm,
-            delegator,
-            payer: None,
-            mint,
-            delegatee,
-            nonce: 0,
-            custom_pda: None,
-        }
+    pub fn new(litesvm: &'a mut LiteSVM, delegator: &'a Keypair, mint: Pubkey, delegatee: Pubkey) -> Self {
+        Self { litesvm, delegator, payer: None, mint, delegatee, nonce: 0, custom_pda: None }
     }
 
     pub fn payer(mut self, payer: &'a Keypair) -> Self {
@@ -380,12 +323,7 @@ impl<'a> CreateDelegation<'a> {
         let nonce_bytes = self.nonce.to_le_bytes().to_vec();
         self.execute(
             *create_fixed_delegation::DISCRIMINATOR,
-            [
-                nonce_bytes,
-                amount.to_le_bytes().to_vec(),
-                expiry_ts.to_le_bytes().to_vec(),
-            ]
-            .concat(),
+            [nonce_bytes, amount.to_le_bytes().to_vec(), expiry_ts.to_le_bytes().to_vec()].concat(),
         )
     }
 
@@ -411,14 +349,9 @@ impl<'a> CreateDelegation<'a> {
     }
 
     fn execute(self, discriminator: u8, data: Vec<u8>) -> (TransactionResult, Pubkey) {
-        let (subscription_authority_pda, _) =
-            get_subscription_authority_pda(&self.delegator.pubkey(), &self.mint);
-        let (derived_pda, _) = get_delegation_pda(
-            &subscription_authority_pda,
-            &self.delegator.pubkey(),
-            &self.delegatee,
-            self.nonce,
-        );
+        let (subscription_authority_pda, _) = get_subscription_authority_pda(&self.delegator.pubkey(), &self.mint);
+        let (derived_pda, _) =
+            get_delegation_pda(&subscription_authority_pda, &self.delegator.pubkey(), &self.delegatee, self.nonce);
         let delegation_pda = self.custom_pda.unwrap_or(derived_pda);
 
         let mut accounts = vec![
@@ -439,16 +372,9 @@ impl<'a> CreateDelegation<'a> {
         }
 
         // Instruction data now includes the bump at the end
-        let ix = Instruction {
-            program_id: PROGRAM_ID,
-            accounts,
-            data: [vec![discriminator], data].concat(),
-        };
+        let ix = Instruction { program_id: PROGRAM_ID, accounts, data: [vec![discriminator], data].concat() };
 
-        (
-            build_and_send_transaction(self.litesvm, &signers, &fee_payer, &ix),
-            delegation_pda,
-        )
+        (build_and_send_transaction(self.litesvm, &signers, &fee_payer, &ix), delegation_pda)
     }
 }
 
@@ -471,16 +397,7 @@ impl<'a> TransferDelegation<'a> {
         mint: Pubkey,
         delegation_pda: Pubkey,
     ) -> Self {
-        Self {
-            litesvm,
-            signer,
-            delegator,
-            mint,
-            delegation_pda,
-            amount: 0,
-            source: None,
-            receiver: None,
-        }
+        Self { litesvm, signer, delegator, mint, delegation_pda, amount: 0, source: None, receiver: None }
     }
 
     pub fn amount(mut self, amount: u64) -> Self {
@@ -511,23 +428,14 @@ impl<'a> TransferDelegation<'a> {
     #[allow(clippy::result_large_err)]
     fn execute(self, discriminator: u8) -> TransactionResult {
         let token_program = self.litesvm.get_account(&self.mint).unwrap().owner;
-        let (subscription_authority_pda, _) =
-            get_subscription_authority_pda(&self.delegator, &self.mint);
+        let (subscription_authority_pda, _) = get_subscription_authority_pda(&self.delegator, &self.mint);
         let delegator_ata = self.source.unwrap_or_else(|| {
-            get_associated_token_address_with_program_id(
-                &self.delegator,
-                &self.mint,
-                &token_program,
-            )
+            get_associated_token_address_with_program_id(&self.delegator, &self.mint, &token_program)
         });
 
         // Default receiver is the signer's (delegatee's) ATA
         let receiver_ata = self.receiver.unwrap_or_else(|| {
-            get_associated_token_address_with_program_id(
-                &self.signer.pubkey(),
-                &self.mint,
-                &token_program,
-            )
+            get_associated_token_address_with_program_id(&self.signer.pubkey(), &self.mint, &token_program)
         });
 
         let event_authority = Pubkey::new_from_array(event_authority_pda::ID.to_bytes());
@@ -569,23 +477,8 @@ pub struct RevokeDelegation<'a> {
 }
 
 impl<'a> RevokeDelegation<'a> {
-    pub fn new(
-        litesvm: &'a mut LiteSVM,
-        delegator: &'a Keypair,
-        mint: Pubkey,
-        delegatee: Pubkey,
-        nonce: u64,
-    ) -> Self {
-        Self {
-            litesvm,
-            delegator,
-            signer: None,
-            mint,
-            delegatee,
-            nonce,
-            receiver: None,
-            custom_pda: None,
-        }
+    pub fn new(litesvm: &'a mut LiteSVM, delegator: &'a Keypair, mint: Pubkey, delegatee: Pubkey, nonce: u64) -> Self {
+        Self { litesvm, delegator, signer: None, mint, delegatee, nonce, receiver: None, custom_pda: None }
     }
 
     pub fn signer(mut self, signer: &'a Keypair) -> Self {
@@ -605,32 +498,20 @@ impl<'a> RevokeDelegation<'a> {
 
     #[allow(clippy::result_large_err)]
     pub fn execute(self) -> TransactionResult {
-        let (subscription_authority_pda, _) =
-            get_subscription_authority_pda(&self.delegator.pubkey(), &self.mint);
-        let (derived_pda, _) = get_delegation_pda(
-            &subscription_authority_pda,
-            &self.delegator.pubkey(),
-            &self.delegatee,
-            self.nonce,
-        );
+        let (subscription_authority_pda, _) = get_subscription_authority_pda(&self.delegator.pubkey(), &self.mint);
+        let (derived_pda, _) =
+            get_delegation_pda(&subscription_authority_pda, &self.delegator.pubkey(), &self.delegatee, self.nonce);
         let delegation_pda = self.custom_pda.unwrap_or(derived_pda);
 
         let authority = self.signer.unwrap_or(self.delegator);
 
-        let mut accounts = vec![
-            AccountMeta::new(authority.pubkey(), true),
-            AccountMeta::new(delegation_pda, false),
-        ];
+        let mut accounts = vec![AccountMeta::new(authority.pubkey(), true), AccountMeta::new(delegation_pda, false)];
 
         if let Some(r) = self.receiver {
             accounts.push(AccountMeta::new(r, false));
         }
 
-        let ix = Instruction {
-            program_id: PROGRAM_ID,
-            accounts,
-            data: vec![*revoke_delegation::DISCRIMINATOR],
-        };
+        let ix = Instruction { program_id: PROGRAM_ID, accounts, data: vec![*revoke_delegation::DISCRIMINATOR] };
 
         build_and_send_transaction(self.litesvm, &[authority], &authority.pubkey(), &ix)
     }
@@ -646,13 +527,7 @@ pub struct CloseSubscriptionAuthority<'a> {
 
 impl<'a> CloseSubscriptionAuthority<'a> {
     pub fn new(litesvm: &'a mut LiteSVM, user: &'a Keypair, mint: Pubkey) -> Self {
-        Self {
-            litesvm,
-            user,
-            mint,
-            custom_pda: None,
-            receiver: None,
-        }
+        Self { litesvm, user, mint, custom_pda: None, receiver: None }
     }
 
     pub fn pda(mut self, pda: Pubkey) -> Self {
@@ -670,20 +545,15 @@ impl<'a> CloseSubscriptionAuthority<'a> {
         let (derived_pda, _) = get_subscription_authority_pda(&self.user.pubkey(), &self.mint);
         let subscription_authority_pda = self.custom_pda.unwrap_or(derived_pda);
 
-        let mut accounts = vec![
-            AccountMeta::new(self.user.pubkey(), true),
-            AccountMeta::new(subscription_authority_pda, false),
-        ];
+        let mut accounts =
+            vec![AccountMeta::new(self.user.pubkey(), true), AccountMeta::new(subscription_authority_pda, false)];
 
         if let Some(receiver) = self.receiver {
             accounts.push(AccountMeta::new(receiver, false));
         }
 
-        let ix = Instruction {
-            program_id: PROGRAM_ID,
-            accounts,
-            data: vec![*close_subscription_authority::DISCRIMINATOR],
-        };
+        let ix =
+            Instruction { program_id: PROGRAM_ID, accounts, data: vec![*close_subscription_authority::DISCRIMINATOR] };
 
         build_and_send_transaction(self.litesvm, &[self.user], &self.user.pubkey(), &ix)
     }
@@ -707,11 +577,7 @@ impl<'a> CreatePlan<'a> {
             data: PlanData {
                 plan_id: 0,
                 mint: mint.to_bytes().into(),
-                terms: PlanTerms {
-                    amount: 0,
-                    period_hours: 0,
-                    created_at: 0,
-                },
+                terms: PlanTerms { amount: 0, period_hours: 0, created_at: 0 },
                 end_ts: 0,
                 destinations: [zero_addr; MAX_DESTINATIONS],
                 pullers: [zero_addr; MAX_PULLERS],
@@ -770,29 +636,22 @@ impl<'a> CreatePlan<'a> {
         let (derived_pda, _) = get_plan_pda(&self.owner.pubkey(), self.data.plan_id);
         let plan_pda = self.custom_pda.unwrap_or(derived_pda);
 
-        assert!(
-            self.destinations_vec.len() <= MAX_DESTINATIONS,
-            "max {MAX_DESTINATIONS} destinations"
-        );
+        assert!(self.destinations_vec.len() <= MAX_DESTINATIONS, "max {MAX_DESTINATIONS} destinations");
         let mut destinations = [[0u8; 32]; MAX_DESTINATIONS];
         for (i, d) in self.destinations_vec.iter().enumerate() {
             destinations[i] = d.to_bytes();
         }
         self.data.destinations = destinations.map(|d| d.into());
 
-        assert!(
-            self.pullers_vec.len() <= MAX_PULLERS,
-            "max {MAX_PULLERS} pullers"
-        );
+        assert!(self.pullers_vec.len() <= MAX_PULLERS, "max {MAX_PULLERS} pullers");
         let mut pullers = [[0u8; 32]; MAX_PULLERS];
         for (i, p) in self.pullers_vec.iter().enumerate() {
             pullers[i] = p.to_bytes();
         }
         self.data.pullers = pullers.map(|p| p.into());
 
-        let plan_data_bytes = unsafe {
-            std::slice::from_raw_parts(&self.data as *const PlanData as *const u8, PlanData::LEN)
-        };
+        let plan_data_bytes =
+            unsafe { std::slice::from_raw_parts(&self.data as *const PlanData as *const u8, PlanData::LEN) };
 
         let mut data = vec![*create_plan::DISCRIMINATOR];
         data.extend_from_slice(plan_data_bytes);
@@ -812,16 +671,9 @@ impl<'a> CreatePlan<'a> {
             AccountMeta::new_readonly(token_program, false),
         ];
 
-        let ix = Instruction {
-            program_id: PROGRAM_ID,
-            accounts,
-            data,
-        };
+        let ix = Instruction { program_id: PROGRAM_ID, accounts, data };
 
-        (
-            build_and_send_transaction(self.litesvm, &[self.owner], &self.owner.pubkey(), &ix),
-            plan_pda,
-        )
+        (build_and_send_transaction(self.litesvm, &[self.owner], &self.owner.pubkey(), &ix), plan_pda)
     }
 }
 
@@ -880,10 +732,7 @@ impl<'a> UpdatePlan<'a> {
 
     #[allow(clippy::result_large_err)]
     pub fn execute(mut self) -> TransactionResult {
-        assert!(
-            self.pullers_vec.len() <= MAX_PULLERS,
-            "max {MAX_PULLERS} pullers"
-        );
+        assert!(self.pullers_vec.len() <= MAX_PULLERS, "max {MAX_PULLERS} pullers");
         let mut pullers = [[0u8; 32]; MAX_PULLERS];
         for (i, p) in self.pullers_vec.iter().enumerate() {
             pullers[i] = p.to_bytes();
@@ -891,25 +740,15 @@ impl<'a> UpdatePlan<'a> {
         self.data.pullers = pullers.map(|p| p.into());
 
         let data_bytes = unsafe {
-            std::slice::from_raw_parts(
-                &self.data as *const UpdatePlanData as *const u8,
-                UpdatePlanData::LEN,
-            )
+            std::slice::from_raw_parts(&self.data as *const UpdatePlanData as *const u8, UpdatePlanData::LEN)
         };
 
         let mut data = vec![*update_plan::DISCRIMINATOR];
         data.extend_from_slice(data_bytes);
 
-        let accounts = vec![
-            AccountMeta::new(self.owner.pubkey(), true),
-            AccountMeta::new(self.plan_pda, false),
-        ];
+        let accounts = vec![AccountMeta::new(self.owner.pubkey(), true), AccountMeta::new(self.plan_pda, false)];
 
-        let ix = Instruction {
-            program_id: PROGRAM_ID,
-            accounts,
-            data,
-        };
+        let ix = Instruction { program_id: PROGRAM_ID, accounts, data };
 
         build_and_send_transaction(self.litesvm, &[self.owner], &self.owner.pubkey(), &ix)
     }
@@ -923,25 +762,14 @@ pub struct DeletePlan<'a> {
 
 impl<'a> DeletePlan<'a> {
     pub fn new(litesvm: &'a mut LiteSVM, owner: &'a Keypair, plan_pda: Pubkey) -> Self {
-        Self {
-            litesvm,
-            owner,
-            plan_pda,
-        }
+        Self { litesvm, owner, plan_pda }
     }
 
     #[allow(clippy::result_large_err)]
     pub fn execute(self) -> TransactionResult {
-        let accounts = vec![
-            AccountMeta::new(self.owner.pubkey(), true),
-            AccountMeta::new(self.plan_pda, false),
-        ];
+        let accounts = vec![AccountMeta::new(self.owner.pubkey(), true), AccountMeta::new(self.plan_pda, false)];
 
-        let ix = Instruction {
-            program_id: PROGRAM_ID,
-            accounts,
-            data: vec![*delete_plan::DISCRIMINATOR],
-        };
+        let ix = Instruction { program_id: PROGRAM_ID, accounts, data: vec![*delete_plan::DISCRIMINATOR] };
 
         build_and_send_transaction(self.litesvm, &[self.owner], &self.owner.pubkey(), &ix)
     }
@@ -974,11 +802,7 @@ impl<'a> CreateSubscription<'a> {
             period_start_ts,
             amount_pulled: 0,
             expires_at_ts: 0,
-            terms: PlanTerms {
-                amount: 0,
-                period_hours: 0,
-                created_at: 0,
-            },
+            terms: PlanTerms { amount: 0, period_hours: 0, created_at: 0 },
         }
     }
 
@@ -1038,13 +862,7 @@ impl<'a> CreateSubscription<'a> {
         self.litesvm
             .set_account(
                 subscription_pda,
-                Account {
-                    lamports,
-                    data: data.to_vec(),
-                    owner: PROGRAM_ID,
-                    executable: false,
-                    rent_epoch: 0,
-                },
+                Account { lamports, data: data.to_vec(), owner: PROGRAM_ID, executable: false, rent_epoch: 0 },
             )
             .unwrap();
 
@@ -1072,16 +890,7 @@ impl<'a> TransferSubscription<'a> {
         subscription_pda: Pubkey,
         plan_pda: Pubkey,
     ) -> Self {
-        Self {
-            litesvm,
-            caller,
-            delegator,
-            mint,
-            subscription_pda,
-            plan_pda,
-            amount: 0,
-            receiver: None,
-        }
+        Self { litesvm, caller, delegator, mint, subscription_pda, plan_pda, amount: 0, receiver: None }
     }
 
     pub fn amount(mut self, amount: u64) -> Self {
@@ -1097,20 +906,11 @@ impl<'a> TransferSubscription<'a> {
     #[allow(clippy::result_large_err)]
     pub fn execute(self) -> TransactionResult {
         let token_program = self.litesvm.get_account(&self.mint).unwrap().owner;
-        let (subscription_authority_pda, _) =
-            get_subscription_authority_pda(&self.delegator, &self.mint);
-        let delegator_ata = get_associated_token_address_with_program_id(
-            &self.delegator,
-            &self.mint,
-            &token_program,
-        );
+        let (subscription_authority_pda, _) = get_subscription_authority_pda(&self.delegator, &self.mint);
+        let delegator_ata = get_associated_token_address_with_program_id(&self.delegator, &self.mint, &token_program);
 
         let receiver_ata = self.receiver.unwrap_or_else(|| {
-            get_associated_token_address_with_program_id(
-                &self.caller.pubkey(),
-                &self.mint,
-                &token_program,
-            )
+            get_associated_token_address_with_program_id(&self.caller.pubkey(), &self.mint, &token_program)
         });
 
         let event_authority = Pubkey::new_from_array(event_authority_pda::ID.to_bytes());
@@ -1162,16 +962,7 @@ impl<'a> Subscribe<'a> {
         plan_bump: u8,
         mint: Pubkey,
     ) -> Self {
-        Self {
-            litesvm,
-            subscriber,
-            merchant,
-            plan_pda,
-            plan_id,
-            plan_bump,
-            mint,
-            payer: None,
-        }
+        Self { litesvm, subscriber, merchant, plan_pda, plan_id, plan_bump, mint, payer: None }
     }
 
     pub fn payer(mut self, payer: &'a Keypair) -> Self {
@@ -1181,8 +972,7 @@ impl<'a> Subscribe<'a> {
 
     #[allow(clippy::result_large_err)]
     pub fn execute(self) -> TransactionResult {
-        let (subscription_authority_pda, _) =
-            get_subscription_authority_pda(&self.subscriber.pubkey(), &self.mint);
+        let (subscription_authority_pda, _) = get_subscription_authority_pda(&self.subscriber.pubkey(), &self.mint);
         let (subscription_pda, _) = get_subscription_pda(&self.plan_pda, &self.subscriber.pubkey());
 
         let event_authority = Pubkey::new_from_array(event_authority_pda::ID.to_bytes());
@@ -1226,11 +1016,7 @@ impl<'a> Subscribe<'a> {
         ]
         .concat();
 
-        let ix = Instruction {
-            program_id: PROGRAM_ID,
-            accounts,
-            data,
-        };
+        let ix = Instruction { program_id: PROGRAM_ID, accounts, data };
 
         build_and_send_transaction(self.litesvm, &signers, &fee_payer, &ix)
     }
@@ -1244,18 +1030,8 @@ pub struct CancelSubscription<'a> {
 }
 
 impl<'a> CancelSubscription<'a> {
-    pub fn new(
-        litesvm: &'a mut LiteSVM,
-        subscriber: &'a Keypair,
-        plan_pda: Pubkey,
-        subscription_pda: Pubkey,
-    ) -> Self {
-        Self {
-            litesvm,
-            subscriber,
-            plan_pda,
-            subscription_pda,
-        }
+    pub fn new(litesvm: &'a mut LiteSVM, subscriber: &'a Keypair, plan_pda: Pubkey, subscription_pda: Pubkey) -> Self {
+        Self { litesvm, subscriber, plan_pda, subscription_pda }
     }
 
     #[allow(clippy::result_large_err)]
@@ -1270,18 +1046,9 @@ impl<'a> CancelSubscription<'a> {
             AccountMeta::new_readonly(PROGRAM_ID, false),
         ];
 
-        let ix = Instruction {
-            program_id: PROGRAM_ID,
-            accounts,
-            data: vec![*cancel_subscription::DISCRIMINATOR],
-        };
+        let ix = Instruction { program_id: PROGRAM_ID, accounts, data: vec![*cancel_subscription::DISCRIMINATOR] };
 
-        build_and_send_transaction(
-            self.litesvm,
-            &[self.subscriber],
-            &self.subscriber.pubkey(),
-            &ix,
-        )
+        build_and_send_transaction(self.litesvm, &[self.subscriber], &self.subscriber.pubkey(), &ix)
     }
 }
 
@@ -1304,19 +1071,10 @@ pub fn setup_with_subscription() -> (
     let merchant = Keypair::new();
     litesvm.airdrop(&merchant.pubkey(), 10_000_000_000).unwrap();
 
-    let mint = init_mint(
-        &mut litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(alice.pubkey()),
-        &[],
-    );
+    let mint = init_mint(&mut litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(alice.pubkey()), &[]);
     let _alice_ata = init_ata(&mut litesvm, mint, alice.pubkey(), 100_000_000);
 
-    initialize_subscription_authority_action(&mut litesvm, &alice, mint)
-        .0
-        .assert_ok();
+    initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
 
     let end_ts = current_ts() + days(30) as i64;
     let (res, plan_pda) = CreatePlan::new(&mut litesvm, &merchant, mint)
@@ -1328,29 +1086,11 @@ pub fn setup_with_subscription() -> (
     res.assert_ok();
 
     let (_, plan_bump) = get_plan_pda(&merchant.pubkey(), 1);
-    Subscribe::new(
-        &mut litesvm,
-        &alice,
-        merchant.pubkey(),
-        plan_pda,
-        1,
-        plan_bump,
-        mint,
-    )
-    .execute()
-    .assert_ok();
+    Subscribe::new(&mut litesvm, &alice, merchant.pubkey(), plan_pda, 1, plan_bump, mint).execute().assert_ok();
 
     let (subscription_pda, _) = get_subscription_pda(&plan_pda, &alice.pubkey());
 
-    (
-        litesvm,
-        alice,
-        merchant,
-        mint,
-        plan_pda,
-        plan_bump,
-        subscription_pda,
-    )
+    (litesvm, alice, merchant, mint, plan_pda, plan_bump, subscription_pda)
 }
 
 pub struct RevokeSubscription<'a> {
@@ -1362,19 +1102,8 @@ pub struct RevokeSubscription<'a> {
 }
 
 impl<'a> RevokeSubscription<'a> {
-    pub fn new(
-        litesvm: &'a mut LiteSVM,
-        authority: &'a Keypair,
-        subscription_pda: Pubkey,
-        plan_pda: Pubkey,
-    ) -> Self {
-        Self {
-            litesvm,
-            authority,
-            subscription_pda,
-            plan_pda,
-            receiver: None,
-        }
+    pub fn new(litesvm: &'a mut LiteSVM, authority: &'a Keypair, subscription_pda: Pubkey, plan_pda: Pubkey) -> Self {
+        Self { litesvm, authority, subscription_pda, plan_pda, receiver: None }
     }
 
     pub fn receiver(mut self, receiver: Pubkey) -> Self {
@@ -1394,17 +1123,8 @@ impl<'a> RevokeSubscription<'a> {
             accounts.push(AccountMeta::new(receiver, false));
         }
 
-        let ix = Instruction {
-            program_id: PROGRAM_ID,
-            accounts,
-            data: vec![*revoke_delegation::DISCRIMINATOR],
-        };
+        let ix = Instruction { program_id: PROGRAM_ID, accounts, data: vec![*revoke_delegation::DISCRIMINATOR] };
 
-        build_and_send_transaction(
-            self.litesvm,
-            &[self.authority],
-            &self.authority.pubkey(),
-            &ix,
-        )
+        build_and_send_transaction(self.litesvm, &[self.authority], &self.authority.pubkey(), &ix)
     }
 }

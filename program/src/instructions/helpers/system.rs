@@ -1,8 +1,5 @@
 use super::traits::AccountCheck;
-use crate::{
-    state::common::AccountDiscriminator, SubscriptionAuthority, SubscriptionsError,
-    DISCRIMINATOR_OFFSET,
-};
+use crate::{state::common::AccountDiscriminator, SubscriptionAuthority, SubscriptionsError, DISCRIMINATOR_OFFSET};
 use pinocchio::{error::ProgramError, AccountView};
 
 /// Validates that an account is a transaction signer.

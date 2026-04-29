@@ -24,12 +24,7 @@ impl SubscriptionCreatedEvent {
 
     /// Constructs a new event.
     pub fn new(plan: Address, subscriber: Address, mint: Address, created_ts: i64) -> Self {
-        Self {
-            plan,
-            subscriber,
-            mint,
-            created_ts,
-        }
+        Self { plan, subscriber, mint, created_ts }
     }
 }
 

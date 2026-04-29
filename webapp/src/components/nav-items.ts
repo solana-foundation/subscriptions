@@ -1,25 +1,25 @@
-import { LayoutDashboard, Droplets, ClipboardPen, ShoppingBag, Users, Calendar, Banknote, Code2 } from 'lucide-react'
-import { type LucideIcon } from 'lucide-react'
+import { Banknote, Calendar, ClipboardPen, Code2, Droplets, LayoutDashboard, ShoppingBag, Users } from 'lucide-react';
+import { type LucideIcon } from 'lucide-react';
 
 export interface NavItem {
-  label: string
-  path: string
-  icon: LucideIcon
-  children?: NavItem[]
-  clusterFilter?: string[]
+    children?: NavItem[];
+    clusterFilter?: string[];
+    icon: LucideIcon;
+    label: string;
+    path: string;
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', path: '/', icon: LayoutDashboard },
-  { label: 'Marketplace', path: '/marketplace', icon: ShoppingBag },
-  { label: 'Delegations', path: '/delegations', icon: Users },
-  { label: 'Subscriptions', path: '/subscriptions', icon: Calendar },
-  {
-    label: 'Plans', path: '/plans', icon: ClipboardPen,
-    children: [
-      { label: 'Collect Payments', path: '/plans/collect', icon: Banknote },
-    ],
-  },
-  { label: 'Faucet', path: '/faucet', icon: Droplets, clusterFilter: ['solana:localnet', 'solana:devnet'] },
-  { label: 'Program', path: '/program', icon: Code2, clusterFilter: ['solana:devnet', 'solana:testnet'] },
-]
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+    { icon: ShoppingBag, label: 'Marketplace', path: '/marketplace' },
+    { icon: Users, label: 'Delegations', path: '/delegations' },
+    { icon: Calendar, label: 'Subscriptions', path: '/subscriptions' },
+    {
+        children: [{ icon: Banknote, label: 'Collect Payments', path: '/plans/collect' }],
+        icon: ClipboardPen,
+        label: 'Plans',
+        path: '/plans',
+    },
+    { clusterFilter: ['solana:localnet', 'solana:devnet'], icon: Droplets, label: 'Faucet', path: '/faucet' },
+    { clusterFilter: ['solana:devnet', 'solana:testnet'], icon: Code2, label: 'Program', path: '/program' },
+];

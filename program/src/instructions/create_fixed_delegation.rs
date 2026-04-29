@@ -1,6 +1,6 @@
 use crate::{
-    constants::TIME_DRIFT_ALLOWED_SECS, create_delegation_account, state::FixedDelegation,
-    AccountDiscriminator, CreateDelegationAccounts, SubscriptionsError, DISCRIMINATOR_OFFSET,
+    constants::TIME_DRIFT_ALLOWED_SECS, create_delegation_account, state::FixedDelegation, AccountDiscriminator,
+    CreateDelegationAccounts, SubscriptionsError, DISCRIMINATOR_OFFSET,
 };
 use codama::CodamaType;
 use core::mem::{size_of, transmute};
@@ -25,9 +25,7 @@ pub struct CreateFixedDelegationData {
 impl CreateFixedDelegationData {
     /// Validates the instruction data against the current clock time.
     pub fn validate(&self, current_time: i64) -> Result<(), SubscriptionsError> {
-        if self.expiry_ts != 0
-            && self.expiry_ts < current_time.saturating_sub(TIME_DRIFT_ALLOWED_SECS)
-        {
+        if self.expiry_ts != 0 && self.expiry_ts < current_time.saturating_sub(TIME_DRIFT_ALLOWED_SECS) {
             return Err(SubscriptionsError::FixedDelegationExpiryInPast);
         }
 
@@ -64,8 +62,7 @@ pub fn process(accounts: &[AccountView], call_data: &CreateFixedDelegationData) 
 
     let accounts = CreateDelegationAccounts::try_from(accounts)?;
 
-    let (bump, init_id, mint) =
-        create_delegation_account(&accounts, call_data.nonce, FixedDelegation::LEN)?;
+    let (bump, init_id, mint) = create_delegation_account(&accounts, call_data.nonce, FixedDelegation::LEN)?;
 
     let binding = &mut accounts.delegation_account.try_borrow_mut()?;
     // Set discriminator before load_mut so validation passes on freshly created account

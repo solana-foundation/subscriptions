@@ -22,11 +22,7 @@ impl SubscriptionCancelledEvent {
 
     /// Constructs a new event.
     pub fn new(plan: Address, subscriber: Address, expires_at_ts: i64) -> Self {
-        Self {
-            plan,
-            subscriber,
-            expires_at_ts,
-        }
+        Self { plan, subscriber, expires_at_ts }
     }
 }
 

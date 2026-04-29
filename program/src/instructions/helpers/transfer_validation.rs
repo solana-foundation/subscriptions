@@ -16,12 +16,7 @@ pub fn is_effectively_expired(expiry_ts: i64, current_ts: i64) -> bool {
 /// - `transfer_amount` is zero
 /// - the delegation has expired (`expiry_ts != 0 && current_ts > expiry_ts + TIME_DRIFT_ALLOWED_SECS`)
 /// - `transfer_amount` exceeds the remaining allowance
-pub fn validate_fixed_transfer(
-    transfer_amount: u64,
-    remaining: u64,
-    expiry_ts: i64,
-    current_ts: i64,
-) -> ProgramResult {
+pub fn validate_fixed_transfer(transfer_amount: u64, remaining: u64, expiry_ts: i64, current_ts: i64) -> ProgramResult {
     if transfer_amount == 0 {
         return Err(SubscriptionsError::InvalidAmount.into());
     }
@@ -61,8 +56,7 @@ pub fn validate_recurring_transfer(
         return Err(SubscriptionsError::DelegationExpired.into());
     }
 
-    let period_length =
-        i64::try_from(period_length_s).map_err(|_| SubscriptionsError::InvalidPeriodLength)?;
+    let period_length = i64::try_from(period_length_s).map_err(|_| SubscriptionsError::InvalidPeriodLength)?;
     if period_length == 0 {
         return Err(SubscriptionsError::InvalidPeriodLength.into());
     }
@@ -75,28 +69,23 @@ pub fn validate_recurring_transfer(
 
     if time_since_start >= period_length {
         let periods_passed = time_since_start / period_length;
-        let increment = periods_passed
-            .checked_mul(period_length)
-            .ok_or(SubscriptionsError::ArithmeticOverflow)?;
-        let candidate_start = current_period_start_ts
-            .checked_add(increment)
-            .ok_or(SubscriptionsError::ArithmeticOverflow)?;
+        let increment = periods_passed.checked_mul(period_length).ok_or(SubscriptionsError::ArithmeticOverflow)?;
+        let candidate_start =
+            current_period_start_ts.checked_add(increment).ok_or(SubscriptionsError::ArithmeticOverflow)?;
         if expiry_ts == 0 || candidate_start < expiry_ts {
             *current_period_start_ts = candidate_start;
             *amount_pulled_in_period = 0;
         }
     }
 
-    let available = amount_per_period
-        .checked_sub(*amount_pulled_in_period)
-        .ok_or(SubscriptionsError::ArithmeticUnderflow)?;
+    let available =
+        amount_per_period.checked_sub(*amount_pulled_in_period).ok_or(SubscriptionsError::ArithmeticUnderflow)?;
     if transfer_amount > available {
         return Err(SubscriptionsError::AmountExceedsPeriodLimit.into());
     }
 
-    *amount_pulled_in_period = amount_pulled_in_period
-        .checked_add(transfer_amount)
-        .ok_or(SubscriptionsError::ArithmeticOverflow)?;
+    *amount_pulled_in_period =
+        amount_pulled_in_period.checked_add(transfer_amount).ok_or(SubscriptionsError::ArithmeticOverflow)?;
 
     Ok(())
 }

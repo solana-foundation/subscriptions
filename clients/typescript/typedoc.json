@@ -1,12 +1,12 @@
 {
-  "$schema": "https://typedoc.org/schema.json",
-  "entryPoints": ["./src/index.ts"],
-  "out": "./docs",
-  "tsconfig": "./tsconfig.json",
-  "exclude": ["**/generated/**"],
-  "excludePrivate": true,
-  "excludeInternal": true,
-  "excludeExternals": true,
-  "readme": "none",
-  "name": "@subscriptions/client"
+    "$schema": "https://typedoc.org/schema.json",
+    "entryPoints": ["./src/index.ts"],
+    "out": "./docs",
+    "tsconfig": "./tsconfig.json",
+    "exclude": ["**/generated/**"],
+    "excludePrivate": true,
+    "excludeInternal": true,
+    "excludeExternals": true,
+    "readme": "none",
+    "name": "@subscriptions/client"
 }

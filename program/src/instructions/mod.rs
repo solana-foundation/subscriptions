@@ -44,12 +44,7 @@ use crate::SubscriptionsError;
 #[repr(u8)]
 #[allow(clippy::large_enum_variant)]
 pub enum SubscriptionsInstruction {
-    #[codama(account(
-        name = "owner",
-        signer,
-        writable,
-        docs = "The owner of the subscription-authority program"
-    ))]
+    #[codama(account(name = "owner", signer, writable, docs = "The owner of the subscription-authority program"))]
     #[codama(account(
         name = "subscription_authority",
         writable,
@@ -60,11 +55,7 @@ pub enum SubscriptionsInstruction {
         name = "token_mint",
         docs = "The token mint that we are creating a subscription-authority account for"
     ))]
-    #[codama(account(
-        name = "user_ata",
-        writable,
-        docs = "The ata that we are setting up delegation for"
-    ))]
+    #[codama(account(name = "user_ata", writable, docs = "The ata that we are setting up delegation for"))]
     #[codama(account(
         name = "system_program",
         docs = "The system program",
@@ -73,21 +64,9 @@ pub enum SubscriptionsInstruction {
     #[codama(account(name = "token_program", docs = "Token program"))]
     InitSubscriptionAuthority = 0,
 
-    #[codama(account(
-        name = "delegator",
-        signer,
-        writable,
-        docs = "The user creating the delegation"
-    ))]
-    #[codama(account(
-        name = "subscription_authority",
-        docs = "The subscription_authority PDA for this token"
-    ))]
-    #[codama(account(
-        name = "delegation_account",
-        writable,
-        docs = "The fixed delegation PDA being created"
-    ))]
+    #[codama(account(name = "delegator", signer, writable, docs = "The user creating the delegation"))]
+    #[codama(account(name = "subscription_authority", docs = "The subscription_authority PDA for this token"))]
+    #[codama(account(name = "delegation_account", writable, docs = "The fixed delegation PDA being created"))]
     #[codama(account(name = "delegatee", docs = "The user receiving delegation rights"))]
     #[codama(account(
         name = "system_program",
@@ -96,30 +75,16 @@ pub enum SubscriptionsInstruction {
     ))]
     CreateFixedDelegation(#[codama(name = "fixed_delegation")] CreateFixedDelegationData) = 1,
 
-    #[codama(account(
-        name = "delegator",
-        signer,
-        writable,
-        docs = "The user creating the delegation"
-    ))]
-    #[codama(account(
-        name = "subscription_authority",
-        docs = "The subscription_authority PDA for this token"
-    ))]
-    #[codama(account(
-        name = "delegation_account",
-        writable,
-        docs = "The recurring delegation PDA being created"
-    ))]
+    #[codama(account(name = "delegator", signer, writable, docs = "The user creating the delegation"))]
+    #[codama(account(name = "subscription_authority", docs = "The subscription_authority PDA for this token"))]
+    #[codama(account(name = "delegation_account", writable, docs = "The recurring delegation PDA being created"))]
     #[codama(account(name = "delegatee", docs = "The user receiving delegation rights"))]
     #[codama(account(
         name = "system_program",
         docs = "The system program",
         default_value = program("system")
     ))]
-    CreateRecurringDelegation(
-        #[codama(name = "recurring_delegation")] CreateRecurringDelegationData,
-    ) = 2,
+    CreateRecurringDelegation(#[codama(name = "recurring_delegation")] CreateRecurringDelegationData) = 2,
 
     #[codama(account(
         name = "authority",
@@ -127,38 +92,15 @@ pub enum SubscriptionsInstruction {
         writable,
         docs = "The delegator revoking the delegation (receives rent)"
     ))]
-    #[codama(account(
-        name = "delegation_account",
-        writable,
-        docs = "The delegation PDA to close"
-    ))]
+    #[codama(account(name = "delegation_account", writable, docs = "The delegation PDA to close"))]
     RevokeDelegation = 3,
 
-    #[codama(account(
-        name = "delegation_pda",
-        writable,
-        docs = "The fixed delegation PDA to transfer from"
-    ))]
-    #[codama(account(
-        name = "subscription_authority",
-        docs = "The subscription-authority PDA"
-    ))]
-    #[codama(account(
-        name = "delegator_ata",
-        writable,
-        docs = "The delegator's ATA to transfer from"
-    ))]
-    #[codama(account(
-        name = "receiver_ata",
-        writable,
-        docs = "The receiver's ATA to transfer to"
-    ))]
+    #[codama(account(name = "delegation_pda", writable, docs = "The fixed delegation PDA to transfer from"))]
+    #[codama(account(name = "subscription_authority", docs = "The subscription-authority PDA"))]
+    #[codama(account(name = "delegator_ata", writable, docs = "The delegator's ATA to transfer from"))]
+    #[codama(account(name = "receiver_ata", writable, docs = "The receiver's ATA to transfer to"))]
     #[codama(account(name = "token_program", docs = "Token program"))]
-    #[codama(account(
-        name = "delegatee",
-        signer,
-        docs = "The delegatee signing the transfer"
-    ))]
+    #[codama(account(name = "delegatee", signer, docs = "The delegatee signing the transfer"))]
     #[codama(account(
         name = "event_authority",
         docs = "The event authority PDA",
@@ -171,31 +113,12 @@ pub enum SubscriptionsInstruction {
     ))]
     TransferFixed(#[codama(name = "transfer_data")] TransferData) = 4,
 
-    #[codama(account(
-        name = "delegation_pda",
-        writable,
-        docs = "The recurring delegation PDA to transfer from"
-    ))]
-    #[codama(account(
-        name = "subscription_authority",
-        docs = "The subscription-authority PDA"
-    ))]
-    #[codama(account(
-        name = "delegator_ata",
-        writable,
-        docs = "The delegator's ATA to transfer from"
-    ))]
-    #[codama(account(
-        name = "receiver_ata",
-        writable,
-        docs = "The receiver's ATA to transfer to"
-    ))]
+    #[codama(account(name = "delegation_pda", writable, docs = "The recurring delegation PDA to transfer from"))]
+    #[codama(account(name = "subscription_authority", docs = "The subscription-authority PDA"))]
+    #[codama(account(name = "delegator_ata", writable, docs = "The delegator's ATA to transfer from"))]
+    #[codama(account(name = "receiver_ata", writable, docs = "The receiver's ATA to transfer to"))]
     #[codama(account(name = "token_program", docs = "Token program"))]
-    #[codama(account(
-        name = "delegatee",
-        signer,
-        docs = "The delegatee signing the transfer"
-    ))]
+    #[codama(account(name = "delegatee", signer, docs = "The delegatee signing the transfer"))]
     #[codama(account(
         name = "event_authority",
         docs = "The event authority PDA",
@@ -214,19 +137,10 @@ pub enum SubscriptionsInstruction {
         writable,
         docs = "The user who owns the SubscriptionAuthority PDA (receives rent)"
     ))]
-    #[codama(account(
-        name = "subscription_authority",
-        writable,
-        docs = "The SubscriptionAuthority PDA to close"
-    ))]
+    #[codama(account(name = "subscription_authority", writable, docs = "The SubscriptionAuthority PDA to close"))]
     CloseSubscriptionAuthority = 6,
 
-    #[codama(account(
-        name = "merchant",
-        signer,
-        writable,
-        docs = "The merchant creating the plan"
-    ))]
+    #[codama(account(name = "merchant", signer, writable, docs = "The merchant creating the plan"))]
     #[codama(account(name = "plan_pda", writable, docs = "The plan PDA being created"))]
     #[codama(account(name = "token_mint", docs = "The token mint"))]
     #[codama(account(
@@ -245,40 +159,16 @@ pub enum SubscriptionsInstruction {
     #[codama(account(name = "plan_pda", writable, docs = "The plan PDA being updated"))]
     UpdatePlan(#[codama(name = "update_plan_data")] UpdatePlanData) = 8,
 
-    #[codama(account(
-        name = "owner",
-        signer,
-        writable,
-        docs = "The plan owner deleting the plan (receives rent)"
-    ))]
+    #[codama(account(name = "owner", signer, writable, docs = "The plan owner deleting the plan (receives rent)"))]
     #[codama(account(name = "plan_pda", writable, docs = "The plan PDA being deleted"))]
     DeletePlan = 9,
 
-    #[codama(account(
-        name = "subscription_pda",
-        writable,
-        docs = "The subscription delegation PDA"
-    ))]
+    #[codama(account(name = "subscription_pda", writable, docs = "The subscription delegation PDA"))]
     #[codama(account(name = "plan_pda", docs = "The plan PDA"))]
-    #[codama(account(
-        name = "subscription_authority",
-        docs = "The subscription-authority PDA"
-    ))]
-    #[codama(account(
-        name = "delegator_ata",
-        writable,
-        docs = "The delegator's ATA to transfer from"
-    ))]
-    #[codama(account(
-        name = "receiver_ata",
-        writable,
-        docs = "The receiver's ATA to transfer to"
-    ))]
-    #[codama(account(
-        name = "caller",
-        signer,
-        docs = "The authorized puller (plan owner or whitelisted)"
-    ))]
+    #[codama(account(name = "subscription_authority", docs = "The subscription-authority PDA"))]
+    #[codama(account(name = "delegator_ata", writable, docs = "The delegator's ATA to transfer from"))]
+    #[codama(account(name = "receiver_ata", writable, docs = "The receiver's ATA to transfer to"))]
+    #[codama(account(name = "caller", signer, docs = "The authorized puller (plan owner or whitelisted)"))]
     #[codama(account(name = "token_program", docs = "Token program"))]
     #[codama(account(
         name = "event_authority",
@@ -327,11 +217,7 @@ pub enum SubscriptionsInstruction {
     ))]
     Subscribe(#[codama(name = "subscribe_data")] SubscribeData) = 11,
 
-    #[codama(account(
-        name = "subscriber",
-        signer,
-        docs = "The subscriber cancelling the subscription"
-    ))]
+    #[codama(account(name = "subscriber", signer, docs = "The subscriber cancelling the subscription"))]
     #[codama(account(name = "plan_pda", docs = "The plan PDA for the subscription"))]
     #[codama(account(
         name = "subscription_pda",
@@ -365,9 +251,7 @@ impl SubscriptionsInstruction {
     /// Parse a `SubscriptionsInstruction` from raw instruction bytes.
     /// The first byte is the discriminator, followed by instruction-specific data.
     pub fn from_bytes(data: &[u8]) -> Result<Self, ProgramError> {
-        let (discriminator, rest) = data
-            .split_first()
-            .ok_or(SubscriptionsError::InvalidInstruction)?;
+        let (discriminator, rest) = data.split_first().ok_or(SubscriptionsError::InvalidInstruction)?;
 
         match discriminator {
             initialize_subscription_authority::DISCRIMINATOR => Ok(Self::InitSubscriptionAuthority),

@@ -13,21 +13,22 @@ ADR-001 implements a direct delegation model where delegators create Delegation 
 **Use Cases:**
 
 1. **Subscription Services**: Netflix, Spotify, or any SaaS where:
-   - Merchants publish pricing plans once for all customers
-   - Many users voluntarily subscribe to the same pre-verified terms
-   - Terms remain immutable to establish trust
+    - Merchants publish pricing plans once for all customers
+    - Many users voluntarily subscribe to the same pre-verified terms
+    - Terms remain immutable to establish trust
 
 2. **Recurring Billing Platforms**: Payment processors where:
-   - Merchants want centralized plan management
-   - Subscribers independently verify terms before subscribing
-   - Mutual agreement on pricing prevents disputes
+    - Merchants want centralized plan management
+    - Subscribers independently verify terms before subscribing
+    - Mutual agreement on pricing prevents disputes
 
 3. **Marketplace Ecosystems**: DeFi or NFT platforms where:
-   - Service providers publish standardized offerings
-   - Users discover and subscribe via UI/SDK with term verification
-   - Plan registries enable discoverability
+    - Service providers publish standardized offerings
+    - Users discover and subscribe via UI/SDK with term verification
+    - Plan registries enable discoverability
 
 **This is an Enhancement, Not Replacement:**
+
 - ADR-001 flows remain fully available and intact
 - Plans are built on top of the existing delegation structure
 - Both models can coexist and are selected per use case
@@ -36,6 +37,7 @@ ADR-001 implements a direct delegation model where delegators create Delegation 
 ## Decision
 
 Extend ADR-001 with a **Plan-based subscription layer** that:
+
 1. Allows delegatees to publish reusable, immutable terms as Plans
 2. Lets delegators subscribe to Plans, creating Delegation PDAs that reference the Plan
 3. Uses the same Subscription Authority (SA) and transfer flows from ADR-001
@@ -90,59 +92,59 @@ graph TB
 ADR-001 provides the core delegation infrastructure. Plans add a subscription model on top with these benefits:
 
 1. **Mutual Term Agreement**
-   - Both delegator and delegatee verify the same immutable Plan terms
-   - Establishes clear, shared understanding before commitment
-   - Prevents disputes - terms are visible to all parties
+    - Both delegator and delegatee verify the same immutable Plan terms
+    - Establishes clear, shared understanding before commitment
+    - Prevents disputes - terms are visible to all parties
 
 2. **Cost Efficiency for Merchants (Delegatees)**
-   - One Plan PDA serves infinite subscribers
-   - Per-subscriber cost is only the Delegation PDA (much smaller than Plan)
-   - Example: 10K subscribers = 10K Delegation PDAs + 1 Plan (vs 10K separate delegations if using embedded terms
+    - One Plan PDA serves infinite subscribers
+    - Per-subscriber cost is only the Delegation PDA (much smaller than Plan)
+    - Example: 10K subscribers = 10K Delegation PDAs + 1 Plan (vs 10K separate delegations if using embedded terms
 
 3. **Trust Model Through Immutability**
-   - Merchants commit to terms via immutable Plan
-   - Subscribers verify Plan terms before subscribing
-   - No fear of arbitrary price changes mid-subscription
-   - Builds trust for subscription-heavy use cases
+    - Merchants commit to terms via immutable Plan
+    - Subscribers verify Plan terms before subscribing
+    - No fear of arbitrary price changes mid-subscription
+    - Builds trust for subscription-heavy use cases
 
 4. **Discoverability and Ecosystem Growth**
-   - Merchants publish Plans with metadata URIs (images, descriptions)
-   - Plan discovery via `getProgramAccounts` and filtering
-   - Enables subscription marketplaces and aggregators
-   - Supports frontend SDKs for user-friendly subscription flows
+    - Merchants publish Plans with metadata URIs (images, descriptions)
+    - Plan discovery via `getProgramAccounts` and filtering
+    - Enables subscription marketplaces and aggregators
+    - Supports frontend SDKs for user-friendly subscription flows
 
 5. **Management Flexibility**
-   - `update_plan` allows:
-      - Set status to Sunset (stop accepting new subscribers, terminal and irreversible, requires non-zero end_ts)
-      - Set end_ts (graceful discontinuation, or 0 to remove expiry; cannot be 0 when sunsetting)
-      - Update pullers array (change authorized callers)
-      - Update metadata_uri (change plan description/branding)
-   - Without modifying core terms (mint, terms, destinations)
-   - `delete_plan` allows the owner to reclaim rent after a plan has expired (end_ts has passed)
+    - `update_plan` allows:
+        - Set status to Sunset (stop accepting new subscribers, terminal and irreversible, requires non-zero end_ts)
+        - Set end_ts (graceful discontinuation, or 0 to remove expiry; cannot be 0 when sunsetting)
+        - Update pullers array (change authorized callers)
+        - Update metadata_uri (change plan description/branding)
+    - Without modifying core terms (mint, terms, destinations)
+    - `delete_plan` allows the owner to reclaim rent after a plan has expired (end_ts has passed)
 
 6. **Zero Breaking Changes to ADR-001**
-   - All direct delegation flows continue working unchanged
-   - Transfer logic is reused with Plan-provided terms instead of embedded terms
-   - `pullers` array configures authorization without modifying core transfer validation
-   - Both models use the same SubscriptionAuthority PDA infrastructure
+    - All direct delegation flows continue working unchanged
+    - Transfer logic is reused with Plan-provided terms instead of embedded terms
+    - `pullers` array configures authorization without modifying core transfer validation
+    - Both models use the same SubscriptionAuthority PDA infrastructure
 
 7. **Opt-In Enhancement**
-   - Use ADR-001 for: P2P, ad-hoc, customized delegations
-   - Use ADR-002 for: Subscriptions, mass-market, standardized services
-   - Users choose the approach that fits their use case
+    - Use ADR-001 for: P2P, ad-hoc, customized delegations
+    - Use ADR-002 for: Subscriptions, mass-market, standardized services
+    - Users choose the approach that fits their use case
 
 ### Comparison to Direct Delegation
 
-| Aspect | ADR-001 Direct Delegation | ADR-002 Plan Subscriptions |
-|--------|------------------------|---------------------------|
-| **Creation** | Delegator initiates | Delegatee publishes, delegators subscribe |
-| **Terms Storage** | Embedded per delegation | Single Plan for all |
-| **Cost Structure** | Full cost per delegation | Plan cost (1x) + Delegation cost (Nx) |
-| **Term Mutability** | Per delegation | Core billing terms (amount, period_hours, created_at) immutable and snapshotted per subscription; pullers, status, end_ts, metadata_uri mutable |
-| **Discoverability** | Manual PDA sharing | Plans can be discovered/marketplace |
-| **Use Cases** | P2P, custom, one-off | Subscription services, SaaS, platforms |
-| **Pull Authorization** | Delegatee-only (`transfer_fixed`/`transfer_recurring`) | Owner + configurable pullers array (`transfer_subscription`) |
-| **Cancellability** | Not implemented (add later) | Two-step: `cancel_subscription` (pre-computes expiration at end of current period) then `revoke_delegation` (close after expiration). Plan can sunset. |
+| Aspect                 | ADR-001 Direct Delegation                              | ADR-002 Plan Subscriptions                                                                                                                             |
+| ---------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Creation**           | Delegator initiates                                    | Delegatee publishes, delegators subscribe                                                                                                              |
+| **Terms Storage**      | Embedded per delegation                                | Single Plan for all                                                                                                                                    |
+| **Cost Structure**     | Full cost per delegation                               | Plan cost (1x) + Delegation cost (Nx)                                                                                                                  |
+| **Term Mutability**    | Per delegation                                         | Core billing terms (amount, period_hours, created_at) immutable and snapshotted per subscription; pullers, status, end_ts, metadata_uri mutable        |
+| **Discoverability**    | Manual PDA sharing                                     | Plans can be discovered/marketplace                                                                                                                    |
+| **Use Cases**          | P2P, custom, one-off                                   | Subscription services, SaaS, platforms                                                                                                                 |
+| **Pull Authorization** | Delegatee-only (`transfer_fixed`/`transfer_recurring`) | Owner + configurable pullers array (`transfer_subscription`)                                                                                           |
+| **Cancellability**     | Not implemented (add later)                            | Two-step: `cancel_subscription` (pre-computes expiration at end of current period) then `revoke_delegation` (close after expiration). Plan can sunset. |
 
 ### Integration With ADR-001
 
@@ -152,12 +154,13 @@ ADR-002 is built **on top of** ADR-001's core infrastructure with **zero changes
 
 When a subscriber subscribes, the plan's `PlanTerms` (amount, period_hours, created_at) are copied into the `SubscriptionDelegation` PDA. At transfer time, `transfer_subscription` reads billing terms from the subscription's snapshot and validates them against the live plan via `check_plan_terms()`. This prevents ghost-account attacks where a merchant deletes and recreates a plan at the same PDA address with different terms.
 
-| Flow | Terms Storage | Transfer Reads From |
-|------|--------------|---------------------|
-| **Direct Delegation (ADR-001)** | Terms embedded in Delegation PDA | Delegation PDA only |
-| **Subscription (ADR-002)** | Terms snapshotted in SubscriptionDelegation + stored in Plan PDA | Subscription PDA (billing terms) + Plan PDA (authorization, destinations, expiry) |
+| Flow                            | Terms Storage                                                    | Transfer Reads From                                                               |
+| ------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| **Direct Delegation (ADR-001)** | Terms embedded in Delegation PDA                                 | Delegation PDA only                                                               |
+| **Subscription (ADR-002)**      | Terms snapshotted in SubscriptionDelegation + stored in Plan PDA | Subscription PDA (billing terms) + Plan PDA (authorization, destinations, expiry) |
 
 **What SubscriptionDelegation Stores:**
+
 - `header` (delegator = subscriber, delegatee = plan_pda, payer = subscriber)
 - `terms` - snapshot of plan's PlanTerms (amount, period_hours, created_at)
 - `amount_pulled_in_period` - tracking for the current billing period
@@ -165,6 +168,7 @@ When a subscriber subscribes, the plan's `PlanTerms` (amount, period_hours, crea
 - `expires_at_ts` - cancellation timestamp (0 = active)
 
 **What Plans Provide at Transfer Time:**
+
 - `terms` - validated against subscription's snapshot via `check_plan_terms()`
 - `destinations` - whitelisted receiver addresses
 - `pullers` - authorized caller addresses
@@ -172,36 +176,40 @@ When a subscriber subscribes, the plan's `PlanTerms` (amount, period_hours, crea
 - `end_ts` - plan expiration
 
 **The Plan is Just a Reusable container for terms:**
+
 - Plan = Published, reusable terms that delegators can subscribe to
 - Subscribe = Create a Delegation PDA with a snapshot of the Plan's terms
 - After subscription, the Delegation works exactly like ADR-001 delegations
 
 **Subscription Uses a Dedicated Transfer Instruction:**
+
 - Direct delegations use `transfer_fixed` or `transfer_recurring`
 - Subscriptions use `transfer_subscription`, which loads both the Plan PDA and SubscriptionDelegation PDA
 - The Plan PDA provides the billing terms; the SubscriptionDelegation PDA provides the billing state
 
 **Component Overview:**
 
-| Component | ADR-001 | ADR-002 |
-|-----------|---------|---------|
-| `SubscriptionAuthority` PDA | Used | Same SA |
-| `FixedDelegation` | Standalone delegation | Not used for subscriptions |
-| `RecurringDelegation` | Standalone delegation | Not used for subscriptions |
-| `transfer_fixed` / `transfer_recurring` | Delegation transfers | Not used for subscriptions |
-| **NEW**: `Plan` PDA | - | Stores subscription terms |
-| **NEW**: `SubscriptionDelegation` PDA | - | Tracks per-subscriber billing state |
-| **NEW**: `subscribe` instruction | - | Creates SubscriptionDelegation referencing a Plan |
-| **NEW**: `cancel_subscription` instruction | - | Sets expires_at_ts, grace period |
-| **NEW**: `transfer_subscription` instruction | - | Pulls tokens using Plan terms + Delegation state |
+| Component                                    | ADR-001               | ADR-002                                           |
+| -------------------------------------------- | --------------------- | ------------------------------------------------- |
+| `SubscriptionAuthority` PDA                  | Used                  | Same SA                                           |
+| `FixedDelegation`                            | Standalone delegation | Not used for subscriptions                        |
+| `RecurringDelegation`                        | Standalone delegation | Not used for subscriptions                        |
+| `transfer_fixed` / `transfer_recurring`      | Delegation transfers  | Not used for subscriptions                        |
+| **NEW**: `Plan` PDA                          | -                     | Stores subscription terms                         |
+| **NEW**: `SubscriptionDelegation` PDA        | -                     | Tracks per-subscriber billing state               |
+| **NEW**: `subscribe` instruction             | -                     | Creates SubscriptionDelegation referencing a Plan |
+| **NEW**: `cancel_subscription` instruction   | -                     | Sets expires_at_ts, grace period                  |
+| **NEW**: `transfer_subscription` instruction | -                     | Pulls tokens using Plan terms + Delegation state  |
 
 **Seeded Separation for Coexistence:**
+
 - **Direct Delegations**: Seeds `["delegation", subscription_authority, delegator, delegatee, nonce]`
 - **Subscription Delegations**: Seeds `["subscription", plan_pda, subscriber]`
 - Different seeds prevent PDA collisions
 - Both can use the same SubscriptionAuthority PDA simultaneously
 
 **Flows Remain Available:**
+
 - All ADR-001 instructions (`initialize_subscription_authority`, `create_fixed_delegation`, `create_recurring_delegation`) continue to work unchanged
 - New ADR-002 instructions (`create_plan`, `update_plan`, `delete_plan`, `subscribe`, `cancel_subscription`, `transfer_subscription`) add subscription capability
 - Direct delegations and subscriptions can be created and withdrawn independently
@@ -213,6 +221,7 @@ When a subscriber subscribes, the plan's `PlanTerms` (amount, period_hours, crea
 ### Plan PDA (`repr(C, packed)`)
 
 Top-level account structure:
+
 - `discriminator`: 1 byte - `AccountDiscriminator::Plan` (= 1)
 - `owner`: 32 bytes - Merchant (Plan creator)
 - `bump`: 1 byte - PDA bump seed
@@ -230,6 +239,7 @@ Immutable billing terms snapshotted into each SubscriptionDelegation at subscrib
 ### PlanData (456 bytes)
 
 Embedded payload within the Plan PDA:
+
 - `plan_id`: 8 bytes (`u64`) - Unique identifier
 - `mint`: 32 bytes (`Address`) - Token mint
 - `terms`: 24 bytes (`PlanTerms`) - Immutable billing terms (amount, period_hours, created_at)
@@ -243,6 +253,7 @@ Plans are always recurring; there is no one-time variant.
 **PDA seeds**: `["plan", owner, plan_id]`
 
 **Puller Authorization:**
+
 - The plan owner is **always** implicitly authorized to pull (does not need to be in the `pullers` array)
 - If all 4 puller slots are zero, only the plan owner can pull
 - Up to 4 additional puller addresses can be specified in the `pullers` array
@@ -276,15 +287,16 @@ Per-subscriber billing state linked to a Plan:
 
 Merchant publishes a Plan with subscription terms.
 
-| Account | Type              | Description          |
-| ------- | ----------------- | -------------------- |
-| 0       | signer, writable  | Merchant (Plan owner)|
-| 1       | writable          | Plan PDA to create   |
-| 2       |                   | Token mint           |
-| 3       |                   | System program       |
-| 4       |                   | Token program        |
+| Account | Type             | Description           |
+| ------- | ---------------- | --------------------- |
+| 0       | signer, writable | Merchant (Plan owner) |
+| 1       | writable         | Plan PDA to create    |
+| 2       |                  | Token mint            |
+| 3       |                  | System program        |
+| 4       |                  | Token program         |
 
 **Parameters (PlanData):**
+
 - `plan_id: u64` - Unique identifier
 - `mint: Address` - Token mint
 - `terms: PlanTerms` - Billing terms (amount, period_hours, created_at). `created_at` is overwritten on-chain.
@@ -294,11 +306,13 @@ Merchant publishes a Plan with subscription terms.
 - `metadata_uri: [u8; 128]` - Optional metadata URI
 
 **Validation:**
+
 1. `terms.amount > 0` (else `InvalidAmount`)
 2. `0 < terms.period_hours <= 8760` (else `InvalidPeriodLength`)
 3. `end_ts == 0` or `end_ts >= current_time + (terms.period_hours * 3600)` (else `InvalidEndTs`)
 
 **Process:**
+
 1. Validate PlanData fields (see above)
 2. Derive PDA from `["plan", merchant, plan_id]` and verify match (else `InvalidPlanPda`)
 3. Create Plan account via CPI to System Program (handles pre-funded accounts)
@@ -316,12 +330,14 @@ Plan owner updates mutable admin fields (status, end_ts, pullers, metadata_uri).
 | 1       | writable | Plan PDA to update |
 
 **Parameters (UpdatePlanData, 265 bytes):**
+
 - `status: u8` - PlanStatus (Sunset=0, Active=1)
 - `end_ts: i64` - Plan expiration timestamp (0 = remove expiry, cannot be 0 when status=Sunset)
 - `pullers: [Address; 4]` - Updated puller whitelist (128 bytes)
 - `metadata_uri: [u8; 128]` - Metadata URI
 
 **Process:**
+
 1. Load Plan account, verify discriminator and size
 2. Verify caller is Plan owner (else `NotPlanOwner`)
 3. Reject if plan is already in Sunset status (else `PlanImmutableAfterSunset`) - Sunset is a terminal state
@@ -338,19 +354,21 @@ Plan owner updates mutable admin fields (status, end_ts, pullers, metadata_uri).
 
 Plan owner deletes an expired plan, closing the account and reclaiming rent. Does NOT require Sunset status, only that the plan has expired.
 
-| Account | Type             | Description                              |
-| ------- | ---------------- | ---------------------------------------- |
-| 0       | signer, writable | Plan owner (receives rent)               |
-| 1       | writable         | Plan PDA to delete                       |
+| Account | Type             | Description                |
+| ------- | ---------------- | -------------------------- |
+| 0       | signer, writable | Plan owner (receives rent) |
+| 1       | writable         | Plan PDA to delete         |
 
 **Parameters:** None (only discriminator byte)
 
 **Process:**
+
 1. Verify caller is Plan owner (else `NotPlanOwner`)
 2. Verify plan is expired: `end_ts != 0 && current_ts > end_ts` (else `PlanNotExpired`)
 3. Close account: zero all data, transfer lamports to owner
 
 **Lifecycle paths to deletion:**
+
 - **Active + expired:** Plan created with end_ts, time passes, owner deletes. Natural lifecycle.
 - **Sunset + expired:** Owner sunsets plan (sets end_ts), time passes, owner deletes. Early termination.
 - **Perpetual plans (end_ts=0):** Cannot be deleted directly. Owner must first `update_plan` to set an end_ts, then wait for expiration.
@@ -359,31 +377,33 @@ Plan owner deletes an expired plan, closing the account and reclaiming rent. Doe
 
 Subscriber subscribes to a Plan, creating a lightweight `SubscriptionDelegation` PDA that references the Plan.
 
-| Account | Type             | Description                                           |
-|---------|------------------|-------------------------------------------------------|
-| 0       | signer, writable | Subscriber (pays rent)                                |
-| 1       |                  | Merchant (Plan owner)                                 |
-| 2       |                  | Plan PDA being subscribed to                          |
-| 3       | writable         | SubscriptionDelegation PDA being created              |
+| Account | Type             | Description                                                   |
+| ------- | ---------------- | ------------------------------------------------------------- |
+| 0       | signer, writable | Subscriber (pays rent)                                        |
+| 1       |                  | Merchant (Plan owner)                                         |
+| 2       |                  | Plan PDA being subscribed to                                  |
+| 3       | writable         | SubscriptionDelegation PDA being created                      |
 | 4       |                  | Subscriber's SubscriptionAuthority PDA (must match plan mint) |
-| 5       |                  | System program                                        |
-| 6       |                  | Event authority PDA                                   |
-| 7       |                  | This program (for self-CPI event emission)            |
+| 5       |                  | System program                                                |
+| 6       |                  | Event authority PDA                                           |
+| 7       |                  | This program (for self-CPI event emission)                    |
 
 **Parameters (SubscribeData):**
+
 - `plan_id: u64` - The plan's identifier (used with merchant to derive plan PDA)
 - `plan_bump: u8` - The plan PDA's bump seed (avoids on-chain `find_program_address`)
 
 **Process:**
+
 1. Validate Plan PDA derivation from `["plan", merchant, plan_id]` using `plan_bump`
 2. Load Plan, verify `status == Active` (else `PlanSunset`), and check not expired (else `PlanExpired`)
 3. Validate subscriber's SubscriptionAuthority PDA exists and matches the plan's mint (else `MintMismatch`)
 4. Derive SubscriptionDelegation PDA from `["subscription", plan_pda, subscriber]`
 5. Check subscription doesn't already exist (else `AlreadySubscribed`)
 6. Create SubscriptionDelegation account with:
-   - `header.delegator = subscriber`, `header.delegatee = plan_pda`, `header.payer = subscriber`
-   - `terms = plan.data.terms` (snapshot of plan's billing terms)
-   - `amount_pulled_in_period = 0`, `current_period_start_ts = current_ts`, `expires_at_ts = 0`
+    - `header.delegator = subscriber`, `header.delegatee = plan_pda`, `header.payer = subscriber`
+    - `terms = plan.data.terms` (snapshot of plan's billing terms)
+    - `amount_pulled_in_period = 0`, `current_period_start_ts = current_ts`, `expires_at_ts = 0`
 7. Emit `SubscriptionCreatedEvent` via self-CPI
 
 ---
@@ -392,24 +412,26 @@ Subscriber subscribes to a Plan, creating a lightweight `SubscriptionDelegation`
 
 Authorized caller (plan owner or whitelisted puller) pulls tokens from a subscriber's account through their SubscriptionDelegation, validated against the Plan's terms.
 
-| Account | Type             | Description                                      |
-| ------- | ---------------- | ------------------------------------------------ |
-| 0       | writable         | SubscriptionDelegation PDA                       |
-| 1       |                  | Plan PDA                                         |
-| 2       |                  | SubscriptionAuthority PDA                                |
-| 3       | writable         | Delegator's ATA (source of funds)                |
-| 4       | writable         | Receiver's ATA (destination)                     |
-| 5       | signer           | Caller (plan owner or whitelisted puller)         |
-| 6       |                  | Token program                                    |
-| 7       |                  | Event authority PDA                              |
-| 8       |                  | This program (for self-CPI event emission)       |
+| Account | Type     | Description                                |
+| ------- | -------- | ------------------------------------------ |
+| 0       | writable | SubscriptionDelegation PDA                 |
+| 1       |          | Plan PDA                                   |
+| 2       |          | SubscriptionAuthority PDA                  |
+| 3       | writable | Delegator's ATA (source of funds)          |
+| 4       | writable | Receiver's ATA (destination)               |
+| 5       | signer   | Caller (plan owner or whitelisted puller)  |
+| 6       |          | Token program                              |
+| 7       |          | Event authority PDA                        |
+| 8       |          | This program (for self-CPI event emission) |
 
 **Parameters (TransferData):**
+
 - `amount: u64` - Amount to transfer
 - `delegator: Address` - Subscriber's public key
 - `mint: Address` - Token mint
 
 **Validation:**
+
 1. Verify plan account is program-owned (else `PlanClosed`)
 2. Load Plan and verify `mint` matches `transfer_data.mint` (else `MintMismatch`)
 3. Check plan not expired: `end_ts == 0` or `current_ts <= end_ts` (else `PlanExpired`)
@@ -425,6 +447,7 @@ Authorized caller (plan owner or whitelisted puller) pulls tokens from a subscri
 13. Emit `SubscriptionTransferEvent` via self-CPI
 
 **Authorization Logic:**
+
 - Direct delegations (ADR-001): Only delegatee can call transfer
 - Subscription delegations (ADR-002): Plan owner is always authorized, plus up to 4 additional addresses in `pullers` array
 
@@ -433,34 +456,38 @@ Authorized caller (plan owner or whitelisted puller) pulls tokens from a subscri
 ### `cancel_subscription` (Discriminator: 12)
 
 Subscriber cancels their subscription. Three paths based on plan state:
+
 - **Plan exists, terms match:** grace period (expires at end of current billing period)
 - **Plan exists, terms mismatch (ghost plan):** immediate expiration (`expires_at_ts = current_ts`)
 - **Plan closed:** immediate expiration (`expires_at_ts = current_ts`)
 
 After `expires_at_ts` passes, pulls are blocked. The subscriber can then call `revoke_delegation` to close the account and reclaim rent.
 
-| Account | Type             | Description                      |
-| ------- | ---------------- | -------------------------------- |
-| 0       | signer           | Subscriber (delegator)           |
-| 1       |                  | Plan PDA                         |
-| 2       | writable         | SubscriptionDelegation PDA       |
-| 3       |                  | Event authority PDA              |
-| 4       |                  | Self program                     |
+| Account | Type     | Description                |
+| ------- | -------- | -------------------------- |
+| 0       | signer   | Subscriber (delegator)     |
+| 1       |          | Plan PDA                   |
+| 2       | writable | SubscriptionDelegation PDA |
+| 3       |          | Event authority PDA        |
+| 4       |          | Self program               |
 
 **Parameters:** None (only discriminator byte)
 
 **Validation:**
+
 1. Verify caller is the subscription's delegator (else `Unauthorized`)
 2. Verify `expires_at_ts == 0` (else `SubscriptionAlreadyCancelled`)
 3. Verify subscription's delegatee matches the plan PDA (else `SubscriptionPlanMismatch`)
 
 **Process:**
+
 1. If plan is valid (program-owned) and `check_plan_terms()` passes: compute `expires_at_ts = current_period_start + (periods_elapsed + 1) * period_length` using subscription's snapshotted `terms.period_hours`, then cap at `plan.end_ts` if `end_ts != 0` (so a cancelled subscription cannot outlive the plan itself)
 2. If plan is valid but `check_plan_terms()` fails (ghost plan): set `expires_at_ts = current_ts` (immediate, no grace period)
 3. If plan is closed (not program-owned): set `expires_at_ts = current_ts`
 4. Emit `SubscriptionCancelled` event via self-CPI
 
 **Two-step revocation flow:**
+
 - `cancel_subscription` → pre-computes `expires_at_ts` (end of current period), allows pulls until then
 - `revoke_delegation` → closes account (requires `expires_at_ts != 0` and `expires_at_ts <= current_ts`)
 
@@ -525,6 +552,7 @@ sequenceDiagram
 ### Delegator Cancels and Revokes Subscription
 
 Cancellation is a two-step process:
+
 1. **`cancel_subscription`** — Sets `expires_at_ts`. Three paths: terms match (grace period until end of billing period), terms mismatch/ghost plan (immediate), plan closed (immediate).
 2. **`revoke_delegation`** — Closes the subscription account and reclaims rent. Only allowed after `expires_at_ts` is in the past.
 
@@ -595,27 +623,28 @@ sequenceDiagram
 
 ## Security Model
 
-| Attack | Prevention |
-|--------|------------|
-| Merchant changes terms mid-subscription | `update_plan` only modifies status, end_ts, pullers, metadata_uri; core billing terms (mint, terms, destinations) are immutable |
+| Attack                                                      | Prevention                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Merchant changes terms mid-subscription                     | `update_plan` only modifies status, end_ts, pullers, metadata_uri; core billing terms (mint, terms, destinations) are immutable                                                                                                                                                                                                                                                                              |
 | Ghost account (merchant deletes/recreates plan at same PDA) | `PlanTerms` (amount, period_hours, created_at) are snapshotted into each SubscriptionDelegation at subscribe time. `transfer_subscription` calls `check_plan_terms()` to compare the snapshot against the live plan; mismatch returns `PlanTermsMismatch`. `cancel_subscription` detects mismatch and expires immediately (no grace period). Subscriber then calls `revoke_delegation` to close the account. |
-| Delegator can't verify terms | Terms stored in immutable Plan PDA; delegator verifies before subscribing |
-| Unauthorized pull on Plans | Owner is always authorized, plus explicit pullers array (`Unauthorized`) |
-| Plan closed/deleted before pull | `transfer_subscription` checks plan ownership before loading; returns `PlanClosed` if account is no longer program-owned |
-| Puller redirects funds to unauthorized wallet | `destinations` whitelist is checked at transfer time; receiver ATA owner must match a whitelisted address (`UnauthorizedDestination`). Destinations are immutable after plan creation. |
-| Duplicate subscription | `subscribe` checks if SubscriptionDelegation PDA already has data (`AlreadySubscribed`) |
-| Delegator hijacks subscription | Delegation PDA seeds include plan_pda; can't be recreated |
-| Plan expiration handling | `end_ts` field; 0 means no expiry, otherwise must be in the future at creation. Sunset requires non-zero end_ts (`SunsetRequiresEndTs`) |
-| Unauthorized plan deletion | `delete_plan` requires owner signature and expired end_ts (`PlanNotExpired`). Does not require Sunset status. |
-| Plan with invalid data | Validated: amount>0, period_hours in (0,8760], destinations optional (0-4), end_ts=0 or future |
-| Orphaned Delegation reference | Delegation tracks state; `transfer_subscription` checks Plan reference |
-| SA spends without Plan constraint | Pull must validate Plan terms and Delegation constraints |
+| Delegator can't verify terms                                | Terms stored in immutable Plan PDA; delegator verifies before subscribing                                                                                                                                                                                                                                                                                                                                    |
+| Unauthorized pull on Plans                                  | Owner is always authorized, plus explicit pullers array (`Unauthorized`)                                                                                                                                                                                                                                                                                                                                     |
+| Plan closed/deleted before pull                             | `transfer_subscription` checks plan ownership before loading; returns `PlanClosed` if account is no longer program-owned                                                                                                                                                                                                                                                                                     |
+| Puller redirects funds to unauthorized wallet               | `destinations` whitelist is checked at transfer time; receiver ATA owner must match a whitelisted address (`UnauthorizedDestination`). Destinations are immutable after plan creation.                                                                                                                                                                                                                       |
+| Duplicate subscription                                      | `subscribe` checks if SubscriptionDelegation PDA already has data (`AlreadySubscribed`)                                                                                                                                                                                                                                                                                                                      |
+| Delegator hijacks subscription                              | Delegation PDA seeds include plan_pda; can't be recreated                                                                                                                                                                                                                                                                                                                                                    |
+| Plan expiration handling                                    | `end_ts` field; 0 means no expiry, otherwise must be in the future at creation. Sunset requires non-zero end_ts (`SunsetRequiresEndTs`)                                                                                                                                                                                                                                                                      |
+| Unauthorized plan deletion                                  | `delete_plan` requires owner signature and expired end_ts (`PlanNotExpired`). Does not require Sunset status.                                                                                                                                                                                                                                                                                                |
+| Plan with invalid data                                      | Validated: amount>0, period_hours in (0,8760], destinations optional (0-4), end_ts=0 or future                                                                                                                                                                                                                                                                                                               |
+| Orphaned Delegation reference                               | Delegation tracks state; `transfer_subscription` checks Plan reference                                                                                                                                                                                                                                                                                                                                       |
+| SA spends without Plan constraint                           | Pull must validate Plan terms and Delegation constraints                                                                                                                                                                                                                                                                                                                                                     |
 
 ---
 
 ## Consequences
 
 ### Positive
+
 - `+` **Cost Efficiency** - One Plan serves many subscribers
 - `+` **Trust Through Immutability** - Terms fixed at creation prevent price changes
 - `+` **Discoverability** - Plans can be published and discovered via marketplaces
@@ -625,11 +654,13 @@ sequenceDiagram
 - `+` **Marketplace Enabling** - Standard structure for subscription services
 
 ### Negative
+
 - `-` **Complexity** - Adds Plan management layer and additional instructions
 - `-` **Rent Overhead** - Plan rent paid by merchants (though amortized over many delegations)
 - `-` **Discovery Required** - Delegators must find Plans (vs direct PDA sharing)
 
 ### Neutral
+
 - `~` **Mixed Authorization Models** - Direct delegations: delegatee-only; Subscriptions: configurable via pullers
 - `~` **Separate Transfer Instructions** - Subscriptions use `transfer_subscription` with Plan reference; direct delegations use `transfer_fixed`/`transfer_recurring` with embedded terms
 - `~` **Graceful Sunset** - Allows merchants to retire plans while honoring existing commitments
@@ -642,13 +673,13 @@ All transfer and lifecycle instructions emit events via self-CPI through an even
 
 **Events:**
 
-| Event | Emitted By | Data |
-|-------|-----------|------|
-| `SubscriptionCreatedEvent` | `subscribe` | plan_pda, subscriber, mint, timestamp |
-| `SubscriptionCancelledEvent` | `cancel_subscription` | plan_pda, subscriber, expires_at_ts, timestamp |
-| `SubscriptionTransferEvent` | `transfer_subscription` | plan_pda, subscriber, amount, receiver, timestamp |
-| `FixedTransferEvent` | `transfer_fixed` | delegation_pda, delegator, delegatee, amount, receiver, timestamp |
-| `RecurringTransferEvent` | `transfer_recurring` | delegation_pda, delegator, delegatee, amount, receiver, timestamp |
+| Event                        | Emitted By              | Data                                                              |
+| ---------------------------- | ----------------------- | ----------------------------------------------------------------- |
+| `SubscriptionCreatedEvent`   | `subscribe`             | plan_pda, subscriber, mint, timestamp                             |
+| `SubscriptionCancelledEvent` | `cancel_subscription`   | plan_pda, subscriber, expires_at_ts, timestamp                    |
+| `SubscriptionTransferEvent`  | `transfer_subscription` | plan_pda, subscriber, amount, receiver, timestamp                 |
+| `FixedTransferEvent`         | `transfer_fixed`        | delegation_pda, delegator, delegatee, amount, receiver, timestamp |
+| `RecurringTransferEvent`     | `transfer_recurring`    | delegation_pda, delegator, delegatee, amount, receiver, timestamp |
 
 Instructions that emit events require two additional accounts: the event authority PDA and the program itself (for self-CPI).
 
@@ -659,11 +690,13 @@ Instructions that emit events require two additional accounts: the event authori
 Subscription Delegations would use different PDA seeds than direct delegations, so both models can coexist:
 
 **Direct Delegation Seeds (ADR-001):**
+
 ```
 ["delegation", subscription_authority, delegator, delegatee, nonce]
 ```
 
 **Subscription Delegation Seeds (ADR-002):**
+
 ```
 ["subscription", plan_pda, subscriber]
 ```

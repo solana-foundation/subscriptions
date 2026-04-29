@@ -1,91 +1,89 @@
 import {
-  appendTransactionMessageInstructions,
-  compileTransaction,
-  createTransactionMessage,
-  getBase64EncodedWireTransaction,
-  pipe,
-  setTransactionMessageFeePayerSigner,
-  setTransactionMessageLifetimeUsingBlockhash,
-  type Instruction,
-  type TransactionSendingSigner,
-} from '@solana/kit'
+    appendTransactionMessageInstructions,
+    compileTransaction,
+    createTransactionMessage,
+    getBase64EncodedWireTransaction,
+    pipe,
+    setTransactionMessageFeePayerSigner,
+    setTransactionMessageLifetimeUsingBlockhash,
+    type Instruction,
+    type TransactionSendingSigner,
+} from '@solana/kit';
 
-const MAX_TX_BYTES = 1232
+const MAX_TX_BYTES = 1232;
 
 function base64ByteLength(b64: string): number {
-  const padding = b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0
-  return (b64.length * 3) / 4 - padding
+    const padding = b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0;
+    return (b64.length * 3) / 4 - padding;
 }
 
 function txByteSize(instructions: Instruction[], feePayer: TransactionSendingSigner): number {
-  try {
-    const tx = pipe(
-      createTransactionMessage({ version: 0 }),
-      m => setTransactionMessageFeePayerSigner(feePayer, m),
-      m => setTransactionMessageLifetimeUsingBlockhash(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        { blockhash: '11111111111111111111111111111111' as any, lastValidBlockHeight: 0n },
-        m,
-      ),
-      m => appendTransactionMessageInstructions(instructions, m),
-    )
-    return base64ByteLength(getBase64EncodedWireTransaction(compileTransaction(tx)))
-  } catch {
-    return MAX_TX_BYTES + 1
-  }
+    try {
+        const tx = pipe(
+            createTransactionMessage({ version: 0 }),
+            m => setTransactionMessageFeePayerSigner(feePayer, m),
+            m =>
+                setTransactionMessageLifetimeUsingBlockhash(
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    { blockhash: '11111111111111111111111111111111' as any, lastValidBlockHeight: 0n },
+                    m,
+                ),
+            m => appendTransactionMessageInstructions(instructions, m),
+        );
+        return base64ByteLength(getBase64EncodedWireTransaction(compileTransaction(tx)));
+    } catch {
+        return MAX_TX_BYTES + 1;
+    }
 }
 
 export type InstructionBatch<T> = {
-  instructions: Instruction[]
-  items: T[]
-}
+    instructions: Instruction[];
+    items: T[];
+};
 
 export function packInstructionBatchesWithItems<T extends { instruction: Instruction }>(
-  items: T[],
-  feePayer: TransactionSendingSigner,
-  prefixIxs: Instruction[] = [],
+    items: T[],
+    feePayer: TransactionSendingSigner,
+    prefixIxs: Instruction[] = [],
 ): InstructionBatch<T>[] {
-  if (items.length === 0) {
-    return prefixIxs.length > 0 ? [{ instructions: prefixIxs, items: [] }] : []
-  }
-
-  const batches: InstructionBatch<T>[] = []
-  let cursor = 0
-  let isFirst = true
-
-  while (cursor < items.length) {
-    const prefix = isFirst ? prefixIxs : []
-    let count = 0
-
-    for (let i = cursor; i < items.length; i++) {
-      const candidate = [
-        ...prefix,
-        ...items.slice(cursor, i + 1).map((item) => item.instruction),
-      ]
-      if (txByteSize(candidate, feePayer) > MAX_TX_BYTES) break
-      count = i - cursor + 1
+    if (items.length === 0) {
+        return prefixIxs.length > 0 ? [{ instructions: prefixIxs, items: [] }] : [];
     }
 
-    const batchItems = items.slice(cursor, cursor + Math.max(count, 1))
-    batches.push({
-      instructions: [...prefix, ...batchItems.map((item) => item.instruction)],
-      items: batchItems,
-    })
-    cursor += batchItems.length
-    isFirst = false
-  }
+    const batches: InstructionBatch<T>[] = [];
+    let cursor = 0;
+    let isFirst = true;
 
-  return batches
+    while (cursor < items.length) {
+        const prefix = isFirst ? prefixIxs : [];
+        let count = 0;
+
+        for (let i = cursor; i < items.length; i++) {
+            const candidate = [...prefix, ...items.slice(cursor, i + 1).map(item => item.instruction)];
+            if (txByteSize(candidate, feePayer) > MAX_TX_BYTES) break;
+            count = i - cursor + 1;
+        }
+
+        const batchItems = items.slice(cursor, cursor + Math.max(count, 1));
+        batches.push({
+            instructions: [...prefix, ...batchItems.map(item => item.instruction)],
+            items: batchItems,
+        });
+        cursor += batchItems.length;
+        isFirst = false;
+    }
+
+    return batches;
 }
 
 export function packInstructionBatches(
-  ixs: Instruction[],
-  feePayer: TransactionSendingSigner,
-  prefixIxs: Instruction[] = [],
+    ixs: Instruction[],
+    feePayer: TransactionSendingSigner,
+    prefixIxs: Instruction[] = [],
 ): Instruction[][] {
-  return packInstructionBatchesWithItems(
-    ixs.map((instruction) => ({ instruction })),
-    feePayer,
-    prefixIxs,
-  ).map((batch) => batch.instructions)
+    return packInstructionBatchesWithItems(
+        ixs.map(instruction => ({ instruction })),
+        feePayer,
+        prefixIxs,
+    ).map(batch => batch.instructions);
 }

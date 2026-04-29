@@ -24,8 +24,8 @@ jobs:
 
       - uses: ./.github/actions/setup
         with:
-          save-rust-cache: "true"
-          solana-version: "stable"
+          save-rust-cache: 'true'
+          solana-version: 'stable'
 
       - name: Build program
         run: just build-program
@@ -66,9 +66,9 @@ jobs:
 
       - uses: ./.github/actions/setup
         with:
-          solana-version: "stable"
-          rust-cache-key: "unit-test"
-          save-rust-cache: "true"
+          solana-version: 'stable'
+          rust-cache-key: 'unit-test'
+          save-rust-cache: 'true'
 
       - name: Test program
         run: just unit-test
@@ -84,8 +84,8 @@ jobs:
 
       - uses: ./.github/actions/setup
         with:
-          install-solana: "false"
-          rust-cache-key: "rust-integration-test"
+          install-solana: 'false'
+          rust-cache-key: 'rust-integration-test'
 
       - name: Download program SO
         uses: actions/download-artifact@v4
@@ -106,7 +106,7 @@ jobs:
 
       - uses: ./.github/actions/setup
         with:
-          install-solana: "false"
+          install-solana: 'false'
 
       - name: Check formatting and linting
         run: just check
@@ -122,9 +122,9 @@ jobs:
 
       - uses: ./.github/actions/setup
         with:
-          install-surfpool: "true"
-          solana-version: "stable"
-          enable-rust-cache: "false"
+          install-surfpool: 'true'
+          solana-version: 'stable'
+          enable-rust-cache: 'false'
 
       - name: Download program SO
         uses: actions/download-artifact@v4
@@ -166,8 +166,8 @@ jobs:
 
       - uses: ./.github/actions/setup
         with:
-          solana-version: "stable"
-          rust-cache-key: "unit-test"
+          solana-version: 'stable'
+          rust-cache-key: 'unit-test'
 
       - name: Run benchmark
         run: just test-and-benchmark

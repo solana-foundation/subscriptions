@@ -1,9 +1,9 @@
 use pinocchio::{cpi::Seed, error::ProgramError, AccountView, Address};
 
 use crate::{
-    state::common::find_delegation_pda, AccountCheck, AccountDiscriminator, Header, ProgramAccount,
-    ProgramAccountInit, SignerAccount, SubscriptionAuthority, SubscriptionAuthorityAccount,
-    SubscriptionsError, SystemAccount, WritableAccount, CURRENT_VERSION, DELEGATE_BASE_SEED,
+    state::common::find_delegation_pda, AccountCheck, AccountDiscriminator, Header, ProgramAccount, ProgramAccountInit,
+    SignerAccount, SubscriptionAuthority, SubscriptionAuthorityAccount, SubscriptionsError, SystemAccount,
+    WritableAccount, CURRENT_VERSION, DELEGATE_BASE_SEED,
 };
 
 /// Validated accounts shared by `CreateFixedDelegation` and `CreateRecurringDelegation`.
@@ -26,8 +26,7 @@ impl<'a> TryFrom<&'a [AccountView]> for CreateDelegationAccounts<'a> {
     type Error = ProgramError;
 
     fn try_from(accounts: &'a [AccountView]) -> Result<Self, Self::Error> {
-        let [delegator, subscription_authority, delegation_account, delegatee, system_program, rem @ ..] =
-            accounts
+        let [delegator, subscription_authority, delegation_account, delegatee, system_program, rem @ ..] = accounts
         else {
             return Err(SubscriptionsError::NotEnoughAccountKeys.into());
         };
@@ -46,14 +45,7 @@ impl<'a> TryFrom<&'a [AccountView]> for CreateDelegationAccounts<'a> {
             delegator
         };
 
-        Ok(Self {
-            delegator,
-            subscription_authority,
-            delegation_account,
-            delegatee,
-            system_program,
-            payer,
-        })
+        Ok(Self { delegator, subscription_authority, delegation_account, delegatee, system_program, payer })
     }
 }
 

@@ -6,8 +6,7 @@ use crate::{
         constants::{MINT_DECIMALS, TOKEN_PROGRAM_ID},
         utils::{
             init_ata, init_mint, init_wallet, initialize_subscription_authority_action,
-            initialize_subscription_authority_action_with_sponsor, setup,
-            CloseSubscriptionAuthority,
+            initialize_subscription_authority_action_with_sponsor, setup, CloseSubscriptionAuthority,
         },
     },
     SubscriptionAuthority, SubscriptionsError,
@@ -17,18 +16,10 @@ use crate::{
 fn close_subscription_authority() {
     let (litesvm, user) = &mut setup();
 
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(user.pubkey()),
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(user.pubkey()), &[]);
     let _user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
 
-    let (res, subscription_authority_pda, _bump) =
-        initialize_subscription_authority_action(litesvm, user, mint);
+    let (res, subscription_authority_pda, _bump) = initialize_subscription_authority_action(litesvm, user, mint);
     res.assert_ok();
 
     let account_before = litesvm.get_account(&subscription_authority_pda);
@@ -41,9 +32,7 @@ fn close_subscription_authority() {
     res.assert_ok();
 
     let account_after = litesvm.get_account(&subscription_authority_pda);
-    assert!(
-        account_after.is_none() || account_after.as_ref().map(|a| a.lamports).unwrap_or(0) == 0
-    );
+    assert!(account_after.is_none() || account_after.as_ref().map(|a| a.lamports).unwrap_or(0) == 0);
 
     let user_balance_after = litesvm.get_account(&user.pubkey()).unwrap().lamports;
     assert!(user_balance_after > user_balance_before);
@@ -54,24 +43,14 @@ fn close_subscription_authority() {
 fn non_owner_cannot_close() {
     let (litesvm, user) = &mut setup();
 
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(user.pubkey()),
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(user.pubkey()), &[]);
     let _user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
 
-    let (res, subscription_authority_pda, _bump) =
-        initialize_subscription_authority_action(litesvm, user, mint);
+    let (res, subscription_authority_pda, _bump) = initialize_subscription_authority_action(litesvm, user, mint);
     res.assert_ok();
 
     let attacker = init_wallet(litesvm, 1_000_000_000);
-    let res = CloseSubscriptionAuthority::new(litesvm, &attacker, mint)
-        .pda(subscription_authority_pda)
-        .execute();
+    let res = CloseSubscriptionAuthority::new(litesvm, &attacker, mint).pda(subscription_authority_pda).execute();
     res.assert_err(SubscriptionsError::Unauthorized);
 
     // Account should still exist
@@ -98,38 +77,24 @@ fn writable_accounts_must_be_writable() {
     let (litesvm, user) = &mut setup();
     let fee_payer = init_wallet(litesvm, 10_000_000_000);
 
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(user.pubkey()),
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(user.pubkey()), &[]);
     let _user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
 
-    let (res, subscription_authority_pda, _) =
-        initialize_subscription_authority_action(litesvm, user, mint);
+    let (res, subscription_authority_pda, _) = initialize_subscription_authority_action(litesvm, user, mint);
     res.assert_ok();
 
     for (idx, _name, is_signer) in &writable {
-        let mut accounts = vec![
-            AccountMeta::new(user.pubkey(), true),
-            AccountMeta::new(subscription_authority_pda, false),
-        ];
+        let mut accounts =
+            vec![AccountMeta::new(user.pubkey(), true), AccountMeta::new(subscription_authority_pda, false)];
 
         // Flip writable account to readonly, preserving signer flag
         let pubkey = accounts[*idx].pubkey;
         accounts[*idx] = AccountMeta::new_readonly(pubkey, *is_signer);
 
-        let ix = Instruction {
-            program_id: PROGRAM_ID,
-            accounts,
-            data: vec![*close_subscription_authority::DISCRIMINATOR],
-        };
+        let ix =
+            Instruction { program_id: PROGRAM_ID, accounts, data: vec![*close_subscription_authority::DISCRIMINATOR] };
 
-        let res =
-            build_and_send_transaction(litesvm, &[&fee_payer, user], &fee_payer.pubkey(), &ix);
+        let res = build_and_send_transaction(litesvm, &[&fee_payer, user], &fee_payer.pubkey(), &ix);
         res.assert_err(SubscriptionsError::AccountNotWritable);
     }
 }
@@ -152,39 +117,23 @@ fn signer_accounts_must_be_signers() {
     let (litesvm, user) = &mut setup();
     let fee_payer = init_wallet(litesvm, 10_000_000_000);
 
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(user.pubkey()),
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(user.pubkey()), &[]);
     let _user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
 
-    let (res, subscription_authority_pda, _) =
-        initialize_subscription_authority_action(litesvm, user, mint);
+    let (res, subscription_authority_pda, _) = initialize_subscription_authority_action(litesvm, user, mint);
     res.assert_ok();
 
     for (idx, _name, is_writable) in &signers {
-        let mut accounts = vec![
-            AccountMeta::new(user.pubkey(), true),
-            AccountMeta::new(subscription_authority_pda, false),
-        ];
+        let mut accounts =
+            vec![AccountMeta::new(user.pubkey(), true), AccountMeta::new(subscription_authority_pda, false)];
 
         // Flip signer to non-signer, preserving writable flag
         let pubkey = accounts[*idx].pubkey;
-        accounts[*idx] = if *is_writable {
-            AccountMeta::new(pubkey, false)
-        } else {
-            AccountMeta::new_readonly(pubkey, false)
-        };
+        accounts[*idx] =
+            if *is_writable { AccountMeta::new(pubkey, false) } else { AccountMeta::new_readonly(pubkey, false) };
 
-        let ix = Instruction {
-            program_id: PROGRAM_ID,
-            accounts,
-            data: vec![*close_subscription_authority::DISCRIMINATOR],
-        };
+        let ix =
+            Instruction { program_id: PROGRAM_ID, accounts, data: vec![*close_subscription_authority::DISCRIMINATOR] };
 
         let res = build_and_send_transaction(litesvm, &[&fee_payer], &fee_payer.pubkey(), &ix);
         res.assert_err(SubscriptionsError::NotSigner);
@@ -196,14 +145,7 @@ fn close_returns_rent_to_sponsor() {
     let (litesvm, user) = &mut setup();
     let sponsor = init_wallet(litesvm, 10_000_000_000);
 
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(user.pubkey()),
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(user.pubkey()), &[]);
     let _user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
 
     let (res, subscription_authority_pda, _bump) =
@@ -218,9 +160,7 @@ fn close_returns_rent_to_sponsor() {
     let rent = account.lamports;
     let sponsor_balance_before = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
 
-    let res = CloseSubscriptionAuthority::new(litesvm, user, mint)
-        .receiver(sponsor.pubkey())
-        .execute();
+    let res = CloseSubscriptionAuthority::new(litesvm, user, mint).receiver(sponsor.pubkey()).execute();
     res.assert_ok();
 
     let sponsor_balance_after = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
@@ -232,19 +172,10 @@ fn close_without_receiver_when_sponsor_funded_fails() {
     let (litesvm, user) = &mut setup();
     let sponsor = init_wallet(litesvm, 10_000_000_000);
 
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(user.pubkey()),
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(user.pubkey()), &[]);
     let _user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
 
-    initialize_subscription_authority_action_with_sponsor(litesvm, user, mint, Some(&sponsor))
-        .0
-        .assert_ok();
+    initialize_subscription_authority_action_with_sponsor(litesvm, user, mint, Some(&sponsor)).0.assert_ok();
 
     // No receiver passed → must fail because stored payer differs from user.
     let res = CloseSubscriptionAuthority::new(litesvm, user, mint).execute();
@@ -257,23 +188,12 @@ fn close_with_wrong_receiver_unauthorized() {
     let sponsor = init_wallet(litesvm, 10_000_000_000);
     let attacker = init_wallet(litesvm, 1_000_000_000);
 
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(user.pubkey()),
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(user.pubkey()), &[]);
     let _user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
 
-    initialize_subscription_authority_action_with_sponsor(litesvm, user, mint, Some(&sponsor))
-        .0
-        .assert_ok();
+    initialize_subscription_authority_action_with_sponsor(litesvm, user, mint, Some(&sponsor)).0.assert_ok();
 
-    let res = CloseSubscriptionAuthority::new(litesvm, user, mint)
-        .receiver(attacker.pubkey())
-        .execute();
+    let res = CloseSubscriptionAuthority::new(litesvm, user, mint).receiver(attacker.pubkey()).execute();
     res.assert_err(SubscriptionsError::Unauthorized);
 }
 
@@ -283,30 +203,16 @@ fn idempotent_init_preserves_original_payer() {
     let sponsor_a = init_wallet(litesvm, 10_000_000_000);
     let sponsor_b = init_wallet(litesvm, 10_000_000_000);
 
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(user.pubkey()),
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(user.pubkey()), &[]);
     let _user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
 
     // Sponsor A inits.
     let (res, subscription_authority_pda, _) =
-        initialize_subscription_authority_action_with_sponsor(
-            litesvm,
-            user,
-            mint,
-            Some(&sponsor_a),
-        );
+        initialize_subscription_authority_action_with_sponsor(litesvm, user, mint, Some(&sponsor_a));
     res.assert_ok();
 
     // Sponsor B re-runs init.
-    initialize_subscription_authority_action_with_sponsor(litesvm, user, mint, Some(&sponsor_b))
-        .0
-        .assert_ok();
+    initialize_subscription_authority_action_with_sponsor(litesvm, user, mint, Some(&sponsor_b)).0.assert_ok();
 
     // Stored payer must remain sponsor A.
     let account = litesvm.get_account(&subscription_authority_pda).unwrap();
@@ -318,18 +224,10 @@ fn idempotent_init_preserves_original_payer() {
 fn closed_account_is_zeroed() {
     let (litesvm, user) = &mut setup();
 
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        Some(user.pubkey()),
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(user.pubkey()), &[]);
     let _user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
 
-    let (res, subscription_authority_pda, _bump) =
-        initialize_subscription_authority_action(litesvm, user, mint);
+    let (res, subscription_authority_pda, _bump) = initialize_subscription_authority_action(litesvm, user, mint);
     res.assert_ok();
 
     let res = CloseSubscriptionAuthority::new(litesvm, user, mint).execute();
@@ -337,9 +235,6 @@ fn closed_account_is_zeroed() {
 
     let account_after = litesvm.get_account(&subscription_authority_pda);
     if let Some(account) = account_after {
-        assert!(
-            account.data.iter().all(|&byte| byte == 0),
-            "All data should be zeroed after close"
-        );
+        assert!(account.data.iter().all(|&byte| byte == 0), "All data should be zeroed after close");
     }
 }

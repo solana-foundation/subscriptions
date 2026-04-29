@@ -1,49 +1,50 @@
-import { useQuery } from '@tanstack/react-query'
-import { useWalletUi } from '@wallet-ui/react'
-import { createSolanaRpc, address } from '@solana/kit'
-import { fetchPlansForOwner } from '@subscriptions/client'
-import type { PlanData } from '@subscriptions/client'
-import { useClusterConfig } from '@/hooks/use-cluster-config'
-import { useProgramAddress } from '@/hooks/use-token-config'
+import { address, createSolanaRpc } from '@solana/kit';
+import type { PlanData } from '@subscriptions/client';
+import { fetchPlansForOwner } from '@subscriptions/client';
+import { useQuery } from '@tanstack/react-query';
+import { useWalletUi } from '@wallet-ui/react';
+
+import { useClusterConfig } from '@/hooks/use-cluster-config';
+import { useProgramAddress } from '@/hooks/use-token-config';
 
 export interface PlanItem {
-  address: string
-  owner: string
-  status: number
-  data: PlanData
+    address: string;
+    data: PlanData;
+    owner: string;
+    status: number;
 }
 
 async function fetchPlansByMerchant(rpcUrl: string, merchantAddress: string, progAddr: string): Promise<PlanItem[]> {
-  const rpc = createSolanaRpc(rpcUrl)
-  const plans = await fetchPlansForOwner(rpc, address(merchantAddress), address(progAddr))
+    const rpc = createSolanaRpc(rpcUrl);
+    const plans = await fetchPlansForOwner(rpc, address(merchantAddress), address(progAddr));
 
-  return plans.map((p) => ({
-    address: p.address,
-    owner: p.data.owner,
-    status: p.data.status,
-    data: p.data.data,
-  }))
+    return plans.map(p => ({
+        address: p.address,
+        data: p.data.data,
+        owner: p.data.owner,
+        status: p.data.status,
+    }));
 }
 
 export function useMerchantPlans(merchantAddress: string | null) {
-  const clusterConfig = useClusterConfig()
-  const progAddr = useProgramAddress()
+    const clusterConfig = useClusterConfig();
+    const progAddr = useProgramAddress();
 
-  return useQuery({
-    queryKey: ['plans', merchantAddress, clusterConfig.id],
-    queryFn: () => fetchPlansByMerchant(clusterConfig.url, merchantAddress!, progAddr!),
-    enabled: !!merchantAddress && merchantAddress.length > 30 && !!progAddr,
-  })
+    return useQuery({
+        enabled: !!merchantAddress && merchantAddress.length > 30 && !!progAddr,
+        queryFn: () => fetchPlansByMerchant(clusterConfig.url, merchantAddress!, progAddr!),
+        queryKey: ['plans', merchantAddress, clusterConfig.id],
+    });
 }
 
 export function useMyPlans() {
-  const { account } = useWalletUi()
-  const clusterConfig = useClusterConfig()
-  const progAddr = useProgramAddress()
+    const { account } = useWalletUi();
+    const clusterConfig = useClusterConfig();
+    const progAddr = useProgramAddress();
 
-  return useQuery({
-    queryKey: ['plans', 'my', account?.address, clusterConfig.id],
-    queryFn: () => fetchPlansByMerchant(clusterConfig.url, account!.address, progAddr!),
-    enabled: !!account?.address && !!progAddr,
-  })
+    return useQuery({
+        enabled: !!account?.address && !!progAddr,
+        queryFn: () => fetchPlansByMerchant(clusterConfig.url, account!.address, progAddr!),
+        queryKey: ['plans', 'my', account?.address, clusterConfig.id],
+    });
 }

@@ -5,6 +5,7 @@
 ## Available Runbooks
 
 ### deployment
+
 Deploy programs
 
 ## Getting Started
@@ -12,6 +13,7 @@ Deploy programs
 This repository is using [Surfpool](https://surfpool.run) as a part of its development workflow.
 
 Surfpool provides three major upgrades to the Solana development experience:
+
 - **Surfnet**: A local validator that runs on your machine, allowing you fork mainnet on the fly so that you always use the latest chain data when testing your programs.
 - **Runbooks**: Bringing the devops best practice of `infrastructure as code` to Solana, Runbooks allow you to have secure, reproducible, and composable scripts for managing on-chain operations & deployments.
 - **Surfpool Studio**: An all-local Web UI that gives new levels of introspection into your transactions.
@@ -62,15 +64,17 @@ Additionally, the [Visual Studio Code extension](https://marketplace.visualstudi
 
 Our [Surfpool 101 Series](https://www.youtube.com/playlist?list=PL0FMgRjJMRzO1FdunpMS-aUS4GNkgyr3T) is also a great place to start learning about Surfpool and its features:
 <a href="https://www.youtube.com/playlist?list=PL0FMgRjJMRzO1FdunpMS-aUS4GNkgyr3T">
-  <picture>
-    <source srcset="https://raw.githubusercontent.com/txtx/surfpool/main/doc/assets/youtube.png">
-    <img alt="Surfpool 101 series" style="max-width: 100%;">
-  </picture>
+<picture>
+
+<source srcset="https://raw.githubusercontent.com/txtx/surfpool/main/doc/assets/youtube.png">
+<img alt="Surfpool 101 series" style="max-width: 100%;">
+</picture>
 </a>
 
 ## Quickstart
 
 ### List runbooks available in this repository
+
 ```console
 $ surfpool ls
 Name                                    Description
@@ -78,11 +82,13 @@ deployment                              Deploy programs
 ```
 
 ### Start a Surfnet, automatically executing the `deployment` runbook on program recompile:
+
 ```console
 $ surfpool start --watch
 ```
 
 ### Execute an existing runbook
+
 ```console
 $ surfpool run deployment
 ```

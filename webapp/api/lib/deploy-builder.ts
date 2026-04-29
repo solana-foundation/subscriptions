@@ -1,8 +1,8 @@
-import { getAddressFromPublicKey, createKeyPairFromBytes, createKeyPairFromPrivateKeyBytes } from '@solana/kit'
-import crypto from 'node:crypto'
-import { CHUNK_SIZE } from './bpf-loader.js'
+import { getAddressFromPublicKey, createKeyPairFromBytes, createKeyPairFromPrivateKeyBytes } from '@solana/kit';
+import crypto from 'node:crypto';
+import { CHUNK_SIZE } from './bpf-loader.js';
 
-export { CHUNK_SIZE }
+export { CHUNK_SIZE };
 
 /**
  * Generate a fresh ed25519 keypair and serialize it as the 64-byte
@@ -11,81 +11,75 @@ export { CHUNK_SIZE }
  * `generateExtractableKeyPair` + `extractBytesFromKeyPair`.
  */
 async function generateKeypairBytes(): Promise<{ keypairBytes: Uint8Array; publicKey: CryptoKey }> {
-  const privBytes = crypto.getRandomValues(new Uint8Array(32))
-  const kp = await createKeyPairFromPrivateKeyBytes(privBytes, true)
-  const pubBytes = new Uint8Array(await crypto.subtle.exportKey('raw', kp.publicKey))
-  const keypairBytes = new Uint8Array(64)
-  keypairBytes.set(privBytes, 0)
-  keypairBytes.set(pubBytes, 32)
-  return { keypairBytes, publicKey: kp.publicKey }
+    const privBytes = crypto.getRandomValues(new Uint8Array(32));
+    const kp = await createKeyPairFromPrivateKeyBytes(privBytes, true);
+    const pubBytes = new Uint8Array(await crypto.subtle.exportKey('raw', kp.publicKey));
+    const keypairBytes = new Uint8Array(64);
+    keypairBytes.set(privBytes, 0);
+    keypairBytes.set(pubBytes, 32);
+    return { keypairBytes, publicKey: kp.publicKey };
 }
 
 export interface DeployPlan {
-  bufferKeypair: number[]
-  bufferAddress: string
-  programKeypair?: number[]
-  chunks: string[]
-  totalChunks: number
-  programAddress: string
-  soHash: string
-  soSize: number
+    bufferKeypair: number[];
+    bufferAddress: string;
+    programKeypair?: number[];
+    chunks: string[];
+    totalChunks: number;
+    programAddress: string;
+    soHash: string;
+    soSize: number;
 }
 
 function chunkSoBytes(soBytes: Uint8Array): string[] {
-  const totalChunks = Math.ceil(soBytes.length / CHUNK_SIZE)
-  const chunks: string[] = []
-  for (let i = 0; i < totalChunks; i++) {
-    const offset = i * CHUNK_SIZE
-    const chunk = soBytes.slice(offset, offset + CHUNK_SIZE)
-    chunks.push(Buffer.from(chunk).toString('base64'))
-  }
-  return chunks
+    const totalChunks = Math.ceil(soBytes.length / CHUNK_SIZE);
+    const chunks: string[] = [];
+    for (let i = 0; i < totalChunks; i++) {
+        const offset = i * CHUNK_SIZE;
+        const chunk = soBytes.slice(offset, offset + CHUNK_SIZE);
+        chunks.push(Buffer.from(chunk).toString('base64'));
+    }
+    return chunks;
 }
 
-export async function buildDeployPlan(
-  soBytes: Uint8Array,
-  programKeypairBytes: Uint8Array,
-): Promise<DeployPlan> {
-  const soHash = crypto.createHash('sha256').update(soBytes).digest('hex')
+export async function buildDeployPlan(soBytes: Uint8Array, programKeypairBytes: Uint8Array): Promise<DeployPlan> {
+    const soHash = crypto.createHash('sha256').update(soBytes).digest('hex');
 
-  const { keypairBytes: bufferKeypairBytes, publicKey: bufferPubKey } = await generateKeypairBytes()
-  const bufferAddress = await getAddressFromPublicKey(bufferPubKey)
+    const { keypairBytes: bufferKeypairBytes, publicKey: bufferPubKey } = await generateKeypairBytes();
+    const bufferAddress = await getAddressFromPublicKey(bufferPubKey);
 
-  const programKp = await createKeyPairFromBytes(programKeypairBytes)
-  const programAddress = await getAddressFromPublicKey(programKp.publicKey)
+    const programKp = await createKeyPairFromBytes(programKeypairBytes);
+    const programAddress = await getAddressFromPublicKey(programKp.publicKey);
 
-  const chunks = chunkSoBytes(soBytes)
+    const chunks = chunkSoBytes(soBytes);
 
-  return {
-    bufferKeypair: Array.from(bufferKeypairBytes),
-    bufferAddress: bufferAddress.toString(),
-    programKeypair: Array.from(programKeypairBytes),
-    chunks,
-    totalChunks: chunks.length,
-    programAddress: programAddress.toString(),
-    soHash,
-    soSize: soBytes.length,
-  }
+    return {
+        bufferKeypair: Array.from(bufferKeypairBytes),
+        bufferAddress: bufferAddress.toString(),
+        programKeypair: Array.from(programKeypairBytes),
+        chunks,
+        totalChunks: chunks.length,
+        programAddress: programAddress.toString(),
+        soHash,
+        soSize: soBytes.length,
+    };
 }
 
-export async function buildUpgradePlan(
-  soBytes: Uint8Array,
-  programAddress: string,
-): Promise<DeployPlan> {
-  const soHash = crypto.createHash('sha256').update(soBytes).digest('hex')
+export async function buildUpgradePlan(soBytes: Uint8Array, programAddress: string): Promise<DeployPlan> {
+    const soHash = crypto.createHash('sha256').update(soBytes).digest('hex');
 
-  const { keypairBytes: bufferKeypairBytes, publicKey: bufferPubKey } = await generateKeypairBytes()
-  const bufferAddress = await getAddressFromPublicKey(bufferPubKey)
+    const { keypairBytes: bufferKeypairBytes, publicKey: bufferPubKey } = await generateKeypairBytes();
+    const bufferAddress = await getAddressFromPublicKey(bufferPubKey);
 
-  const chunks = chunkSoBytes(soBytes)
+    const chunks = chunkSoBytes(soBytes);
 
-  return {
-    bufferKeypair: Array.from(bufferKeypairBytes),
-    bufferAddress: bufferAddress.toString(),
-    chunks,
-    totalChunks: chunks.length,
-    programAddress,
-    soHash,
-    soSize: soBytes.length,
-  }
+    return {
+        bufferKeypair: Array.from(bufferKeypairBytes),
+        bufferAddress: bufferAddress.toString(),
+        chunks,
+        totalChunks: chunks.length,
+        programAddress,
+        soHash,
+        soSize: soBytes.length,
+    };
 }

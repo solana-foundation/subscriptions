@@ -1,6 +1,6 @@
 use crate::{
-    create_delegation_account, AccountDiscriminator, CreateDelegationAccounts, RecurringDelegation,
-    SubscriptionsError, DISCRIMINATOR_OFFSET,
+    create_delegation_account, AccountDiscriminator, CreateDelegationAccounts, RecurringDelegation, SubscriptionsError,
+    DISCRIMINATOR_OFFSET,
 };
 use codama::CodamaType;
 use core::mem::{size_of, transmute};
@@ -71,16 +71,12 @@ pub const DISCRIMINATOR: &u8 = &2;
 ///
 /// Validates the instruction data, creates the delegation account via CPI,
 /// and initializes its header and period-tracking fields.
-pub fn process(
-    accounts: &[AccountView],
-    call_data: &CreateRecurringDelegationData,
-) -> ProgramResult {
+pub fn process(accounts: &[AccountView], call_data: &CreateRecurringDelegationData) -> ProgramResult {
     call_data.validate(Clock::get()?.unix_timestamp)?;
 
     let accounts = CreateDelegationAccounts::try_from(accounts)?;
 
-    let (bump, init_id, mint) =
-        create_delegation_account(&accounts, call_data.nonce, RecurringDelegation::LEN)?;
+    let (bump, init_id, mint) = create_delegation_account(&accounts, call_data.nonce, RecurringDelegation::LEN)?;
 
     let binding = &mut accounts.delegation_account.try_borrow_mut()?;
     // Set discriminator before load_mut so validation passes on freshly created account

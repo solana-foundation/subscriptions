@@ -3,10 +3,7 @@ use crate::{
     constants::{TOKEN_ACCOUNT_OWNER_END, TOKEN_ACCOUNT_OWNER_OFFSET},
     event_engine::{self, EventSerialize},
     events::RecurringTransferEvent,
-    helpers::{
-        transfer_with_delegate, validate_recurring_transfer, Delegation, TransferAccounts,
-        TransferData,
-    },
+    helpers::{transfer_with_delegate, validate_recurring_transfer, Delegation, TransferAccounts, TransferData},
     state::RecurringDelegation,
     AccountCheck, ProgramAccount, SignerAccount, SubscriptionAuthorityAccount, SubscriptionsError,
     TokenAccountInterface, TokenProgramInterface, WritableAccount,
@@ -40,14 +37,8 @@ pub fn process(accounts: &[AccountView], transfer_data: &TransferData) -> Progra
         let delegation_mut = RecurringDelegation::load_mut(&mut binding)?;
 
         // Fail fast: Check authorization first
-        Delegation::check(
-            &delegation_mut.header,
-            &transfer_data.delegator,
-            accounts_struct.delegatee.address(),
-        )?;
-        if delegation_mut.subscription_authority
-            != *accounts_struct.subscription_authority.address()
-        {
+        Delegation::check(&delegation_mut.header, &transfer_data.delegator, accounts_struct.delegatee.address())?;
+        if delegation_mut.subscription_authority != *accounts_struct.subscription_authority.address() {
             return Err(SubscriptionsError::InvalidDelegatePda.into());
         }
         if delegation_mut.mint != transfer_data.mint {
@@ -84,8 +75,7 @@ pub fn process(accounts: &[AccountView], transfer_data: &TransferData) -> Progra
             return Err(SubscriptionsError::InvalidAccountData.into());
         }
         let mut owner_bytes = [0u8; 32];
-        owner_bytes
-            .copy_from_slice(&receiver_data[TOKEN_ACCOUNT_OWNER_OFFSET..TOKEN_ACCOUNT_OWNER_END]);
+        owner_bytes.copy_from_slice(&receiver_data[TOKEN_ACCOUNT_OWNER_OFFSET..TOKEN_ACCOUNT_OWNER_END]);
         receiver_owner = Address::from(owner_bytes);
     }
 
@@ -116,12 +106,7 @@ pub fn process(accounts: &[AccountView], transfer_data: &TransferData) -> Progra
         receiver_owner,
     );
     let event_data = event.to_bytes();
-    event_engine::emit_event(
-        &crate::ID,
-        accounts_struct.event_authority,
-        accounts_struct.self_program,
-        &event_data,
-    )?;
+    event_engine::emit_event(&crate::ID, accounts_struct.event_authority, accounts_struct.self_program, &event_data)?;
 
     Ok(())
 }
@@ -154,10 +139,7 @@ impl<'a> TryFrom<&'a [AccountView]> for RecurringTransferAccounts<'a> {
         WritableAccount::check(receiver_ata)?;
         SubscriptionAuthorityAccount::check(subscription_authority)?;
         TokenProgramInterface::check(token_program)?;
-        TokenAccountInterface::check_accounts_with_program(
-            token_program,
-            &[delegator_ata, receiver_ata],
-        )?;
+        TokenAccountInterface::check_accounts_with_program(token_program, &[delegator_ata, receiver_ata])?;
         SignerAccount::check(delegatee)?;
 
         Ok(Self {

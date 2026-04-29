@@ -125,15 +125,8 @@ mod tests {
     #[test]
     fn check_destination_rejects_zero_owned_receiver_with_partial_whitelist() {
         let merchant = addr(1);
-        let plan = make_plan(
-            [
-                merchant,
-                Address::default(),
-                Address::default(),
-                Address::default(),
-            ],
-            [Address::default(); 4],
-        );
+        let plan =
+            make_plan([merchant, Address::default(), Address::default(), Address::default()], [Address::default(); 4]);
 
         plan.check_destination(&merchant).unwrap();
         assert!(plan.check_destination(&Address::default()).is_err());
@@ -150,15 +143,8 @@ mod tests {
     fn can_pull_rejects_zero_caller_with_partial_whitelist() {
         let owner = addr(2);
         let puller = addr(3);
-        let mut plan = make_plan(
-            [Address::default(); 4],
-            [
-                puller,
-                Address::default(),
-                Address::default(),
-                Address::default(),
-            ],
-        );
+        let mut plan =
+            make_plan([Address::default(); 4], [puller, Address::default(), Address::default(), Address::default()]);
         plan.owner = owner;
 
         plan.can_pull(&owner).unwrap();

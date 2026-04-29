@@ -1,34 +1,34 @@
-name: "Setup CI Environment"
-description: "Shared setup for Rust, Solana, pnpm, and optional surfpool"
+name: 'Setup CI Environment'
+description: 'Shared setup for Rust, Solana, pnpm, and optional surfpool'
 
 inputs:
   enable-rust-cache:
-    description: "Enable Rust caching (restore/save)"
+    description: 'Enable Rust caching (restore/save)'
     required: false
-    default: "true"
+    default: 'true'
   save-rust-cache:
-    description: "Save the Rust cache after this job (only enable for the build job)"
+    description: 'Save the Rust cache after this job (only enable for the build job)'
     required: false
-    default: "false"
+    default: 'false'
   rust-cache-key:
-    description: "Key for the Rust cache"
+    description: 'Key for the Rust cache'
     required: false
-    default: "build"
+    default: 'build'
   install-surfpool:
-    description: "Install surfpool (only needed for integration tests)"
+    description: 'Install surfpool (only needed for integration tests)'
     required: false
-    default: "false"
+    default: 'false'
   install-solana:
-    description: "Install Solana CLI"
+    description: 'Install Solana CLI'
     required: false
-    default: "true"
+    default: 'true'
   solana-version:
     description: "Solana CLI version to install (e.g., 'stable', 'v1.18.23')"
     required: false
-    default: "stable"
+    default: 'stable'
 
 runs:
-  using: "composite"
+  using: 'composite'
   steps:
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@master
@@ -40,7 +40,7 @@ runs:
       if: inputs.enable-rust-cache == 'true'
       uses: Swatinem/rust-cache@v2
       with:
-        workspaces: ". -> target"
+        workspaces: '. -> target'
         shared-key: ${{ inputs.rust-cache-key }}
         save-if: ${{ inputs.save-rust-cache }}
         cache-on-failure: true

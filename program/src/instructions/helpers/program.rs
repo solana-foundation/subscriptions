@@ -34,37 +34,18 @@ impl ProgramAccountInit for ProgramAccount {
         let signer = [Signer::from(seeds)];
 
         if account.lamports() == 0 {
-            CreateAccount {
-                from: payer,
-                to: account,
-                lamports,
-                space: space as u64,
-                owner: &crate::ID,
-            }
-            .invoke_signed(&signer)?;
+            CreateAccount { from: payer, to: account, lamports, space: space as u64, owner: &crate::ID }
+                .invoke_signed(&signer)?;
         } else {
             let required_lamports = lamports.saturating_sub(account.lamports());
 
             if required_lamports > 0 {
-                Transfer {
-                    from: payer,
-                    to: account,
-                    lamports: required_lamports,
-                }
-                .invoke()?;
+                Transfer { from: payer, to: account, lamports: required_lamports }.invoke()?;
             }
 
-            Allocate {
-                account,
-                space: space as u64,
-            }
-            .invoke_signed(&signer)?;
+            Allocate { account, space: space as u64 }.invoke_signed(&signer)?;
 
-            Assign {
-                account,
-                owner: &crate::ID,
-            }
-            .invoke_signed(&signer)?;
+            Assign { account, owner: &crate::ID }.invoke_signed(&signer)?;
         }
 
         Ok(())
@@ -75,9 +56,8 @@ impl AccountClose for ProgramAccount {
     fn close(account: &AccountView, destination: &AccountView) -> ProgramResult {
         let lamports = account.lamports();
         let destination_lamports = destination.lamports();
-        let new_balance = destination_lamports
-            .checked_add(lamports)
-            .ok_or(crate::SubscriptionsError::ArithmeticOverflow)?;
+        let new_balance =
+            destination_lamports.checked_add(lamports).ok_or(crate::SubscriptionsError::ArithmeticOverflow)?;
         destination.set_lamports(new_balance);
         account.resize(0)?;
         account.close()

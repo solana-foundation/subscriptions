@@ -33,20 +33,11 @@ pub trait MintInit {
 /// Initializes an SPL Token account.
 pub trait TokenInit {
     /// Creates and initializes a new token account.
-    fn init(
-        account: &AccountView,
-        mint: &AccountView,
-        payer: &AccountView,
-        owner: &Address,
-    ) -> ProgramResult;
+    fn init(account: &AccountView, mint: &AccountView, payer: &AccountView, owner: &Address) -> ProgramResult;
 
     /// Initializes the token account only if it does not already exist.
-    fn init_if_needed(
-        account: &AccountView,
-        mint: &AccountView,
-        payer: &AccountView,
-        owner: &Address,
-    ) -> ProgramResult;
+    fn init_if_needed(account: &AccountView, mint: &AccountView, payer: &AccountView, owner: &Address)
+        -> ProgramResult;
 }
 
 /// Validates that an account is the correct Associated Token Account for the given inputs.

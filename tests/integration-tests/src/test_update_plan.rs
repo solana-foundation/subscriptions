@@ -16,20 +16,10 @@ use crate::{
 #[test]
 fn update_plan_happy_path() {
     let (litesvm, owner) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
 
-    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint)
-        .plan_id(1)
-        .amount(1_000_000)
-        .period_hours(720)
-        .execute();
+    let (res, plan_pda) =
+        CreatePlan::new(litesvm, owner, mint).plan_id(1).amount(1_000_000).period_hours(720).execute();
     res.assert_ok();
 
     let res = UpdatePlan::new(litesvm, owner, plan_pda)
@@ -53,14 +43,7 @@ fn update_plan_happy_path() {
 #[test]
 fn update_plan_preserves_immutable_fields() {
     let (litesvm, owner) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
     let dest = Pubkey::new_unique();
     let puller = Pubkey::new_unique();
 
@@ -109,20 +92,9 @@ fn update_plan_preserves_immutable_fields() {
 #[test]
 fn update_plan_not_owner() {
     let (litesvm, owner) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
 
-    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint)
-        .plan_id(1)
-        .amount(1_000)
-        .period_hours(24)
-        .execute();
+    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint).plan_id(1).amount(1_000).period_hours(24).execute();
     res.assert_ok();
 
     let non_owner = crate::tests::utils::init_wallet(litesvm, 1_000_000_000);
@@ -136,77 +108,38 @@ fn update_plan_not_owner() {
 #[test]
 fn update_plan_invalid_status() {
     let (litesvm, owner) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
 
-    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint)
-        .plan_id(1)
-        .amount(1_000)
-        .period_hours(24)
-        .execute();
+    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint).plan_id(1).amount(1_000).period_hours(24).execute();
     res.assert_ok();
 
-    let res = UpdatePlan::new(litesvm, owner, plan_pda)
-        .status_raw(99)
-        .execute();
+    let res = UpdatePlan::new(litesvm, owner, plan_pda).status_raw(99).execute();
     res.assert_err(crate::SubscriptionsError::InvalidPlanStatus);
 }
 
 #[test]
 fn update_plan_end_ts_in_past() {
     let (litesvm, owner) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
 
-    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint)
-        .plan_id(1)
-        .amount(1_000)
-        .period_hours(24)
-        .execute();
+    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint).plan_id(1).amount(1_000).period_hours(24).execute();
     res.assert_ok();
 
-    let res = UpdatePlan::new(litesvm, owner, plan_pda)
-        .end_ts(1000)
-        .execute();
+    let res = UpdatePlan::new(litesvm, owner, plan_pda).end_ts(1000).execute();
     res.assert_err(crate::SubscriptionsError::InvalidEndTs);
 }
 
 #[test]
 fn update_plan_clear_end_ts() {
     let (litesvm, owner) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
 
     let end_ts = current_ts() + days(30) as i64;
-    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint)
-        .plan_id(1)
-        .amount(1_000)
-        .period_hours(24)
-        .end_ts(end_ts)
-        .execute();
+    let (res, plan_pda) =
+        CreatePlan::new(litesvm, owner, mint).plan_id(1).amount(1_000).period_hours(24).end_ts(end_ts).execute();
     res.assert_ok();
 
-    let res = UpdatePlan::new(litesvm, owner, plan_pda)
-        .end_ts(0)
-        .execute();
+    let res = UpdatePlan::new(litesvm, owner, plan_pda).end_ts(0).execute();
     res.assert_ok();
 
     let account = litesvm.get_account(&plan_pda).unwrap();
@@ -218,20 +151,9 @@ fn update_plan_clear_end_ts() {
 #[test]
 fn update_plan_sunset_is_terminal() {
     let (litesvm, owner) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
 
-    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint)
-        .plan_id(1)
-        .amount(1_000)
-        .period_hours(24)
-        .execute();
+    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint).plan_id(1).amount(1_000).period_hours(24).execute();
     res.assert_ok();
 
     let res = UpdatePlan::new(litesvm, owner, plan_pda)
@@ -243,29 +165,16 @@ fn update_plan_sunset_is_terminal() {
     let plan = Plan::load(&account.data).unwrap();
     assert_eq!(plan.status, PlanStatus::Sunset as u8);
 
-    let res = UpdatePlan::new(litesvm, owner, plan_pda)
-        .status(PlanStatus::Active)
-        .execute();
+    let res = UpdatePlan::new(litesvm, owner, plan_pda).status(PlanStatus::Active).execute();
     res.assert_err(crate::SubscriptionsError::PlanImmutableAfterSunset);
 }
 
 #[test]
 fn update_plan_no_op() {
     let (litesvm, owner) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
 
-    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint)
-        .plan_id(1)
-        .amount(1_000)
-        .period_hours(24)
-        .execute();
+    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint).plan_id(1).amount(1_000).period_hours(24).execute();
     res.assert_ok();
 
     let account_before = litesvm.get_account(&plan_pda).unwrap();
@@ -280,54 +189,28 @@ fn update_plan_no_op() {
 #[test]
 fn update_plan_sunset_requires_end_ts() {
     let (litesvm, owner) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
 
-    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint)
-        .plan_id(1)
-        .amount(1_000)
-        .period_hours(24)
-        .execute();
+    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint).plan_id(1).amount(1_000).period_hours(24).execute();
     res.assert_ok();
 
-    let res = UpdatePlan::new(litesvm, owner, plan_pda)
-        .status(PlanStatus::Sunset)
-        .execute();
+    let res = UpdatePlan::new(litesvm, owner, plan_pda).status(PlanStatus::Sunset).execute();
     res.assert_err(crate::SubscriptionsError::SunsetRequiresEndTs);
 }
 
 #[test]
 fn update_plan_at_exact_expiry_boundary() {
     let (litesvm, owner) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
 
     let end_ts = current_ts() + days(2) as i64;
-    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint)
-        .plan_id(1)
-        .amount(1_000)
-        .period_hours(24)
-        .end_ts(end_ts)
-        .execute();
+    let (res, plan_pda) =
+        CreatePlan::new(litesvm, owner, mint).plan_id(1).amount(1_000).period_hours(24).end_ts(end_ts).execute();
     res.assert_ok();
 
     move_clock_forward(litesvm, days(2));
 
-    let res = UpdatePlan::new(litesvm, owner, plan_pda)
-        .metadata_uri("https://example.com/at-boundary.json")
-        .execute();
+    let res = UpdatePlan::new(litesvm, owner, plan_pda).metadata_uri("https://example.com/at-boundary.json").execute();
     res.assert_ok();
 
     let account = litesvm.get_account(&plan_pda).unwrap();
@@ -339,50 +222,26 @@ fn update_plan_at_exact_expiry_boundary() {
 #[test]
 fn update_plan_expired() {
     let (litesvm, owner) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
 
     let end_ts = current_ts() + days(2) as i64;
-    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint)
-        .plan_id(1)
-        .amount(1_000)
-        .period_hours(24)
-        .end_ts(end_ts)
-        .execute();
+    let (res, plan_pda) =
+        CreatePlan::new(litesvm, owner, mint).plan_id(1).amount(1_000).period_hours(24).end_ts(end_ts).execute();
     res.assert_ok();
 
     move_clock_forward(litesvm, days(3));
 
     let new_end = current_ts() + days(30) as i64;
-    let res = UpdatePlan::new(litesvm, owner, plan_pda)
-        .end_ts(new_end)
-        .execute();
+    let res = UpdatePlan::new(litesvm, owner, plan_pda).end_ts(new_end).execute();
     res.assert_err(crate::SubscriptionsError::PlanExpired);
 }
 
 #[test]
 fn update_plan_add_pullers() {
     let (litesvm, owner) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
 
-    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint)
-        .plan_id(1)
-        .amount(1_000)
-        .period_hours(24)
-        .execute();
+    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint).plan_id(1).amount(1_000).period_hours(24).execute();
     res.assert_ok();
 
     let account = litesvm.get_account(&plan_pda).unwrap();
@@ -394,9 +253,7 @@ fn update_plan_add_pullers() {
 
     let puller_a = Pubkey::new_unique();
     let puller_b = Pubkey::new_unique();
-    let res = UpdatePlan::new(litesvm, owner, plan_pda)
-        .pullers(vec![puller_a, puller_b])
-        .execute();
+    let res = UpdatePlan::new(litesvm, owner, plan_pda).pullers(vec![puller_a, puller_b]).execute();
     res.assert_ok();
 
     let account = litesvm.get_account(&plan_pda).unwrap();
@@ -410,14 +267,7 @@ fn update_plan_add_pullers() {
 #[test]
 fn update_plan_remove_pullers_owner_still_authorized() {
     let (litesvm, owner) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
 
     let puller_a = Pubkey::new_unique();
     let puller_b = Pubkey::new_unique();
@@ -449,14 +299,7 @@ fn update_plan_remove_pullers_owner_still_authorized() {
 #[test]
 fn update_plan_replace_pullers() {
     let (litesvm, owner) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
 
     let puller_a = Pubkey::new_unique();
     let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint)
@@ -468,9 +311,7 @@ fn update_plan_replace_pullers() {
     res.assert_ok();
 
     let puller_b = Pubkey::new_unique();
-    let res = UpdatePlan::new(litesvm, owner, plan_pda)
-        .pullers(vec![puller_b])
-        .execute();
+    let res = UpdatePlan::new(litesvm, owner, plan_pda).pullers(vec![puller_b]).execute();
     res.assert_ok();
 
     let account = litesvm.get_account(&plan_pda).unwrap();
@@ -483,26 +324,13 @@ fn update_plan_replace_pullers() {
 #[test]
 fn update_plan_max_pullers() {
     let (litesvm, owner) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
 
-    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint)
-        .plan_id(1)
-        .amount(1_000)
-        .period_hours(24)
-        .execute();
+    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint).plan_id(1).amount(1_000).period_hours(24).execute();
     res.assert_ok();
 
     let pullers: Vec<Pubkey> = (0..4).map(|_| Pubkey::new_unique()).collect();
-    let res = UpdatePlan::new(litesvm, owner, plan_pda)
-        .pullers(pullers.clone())
-        .execute();
+    let res = UpdatePlan::new(litesvm, owner, plan_pda).pullers(pullers.clone()).execute();
     res.assert_ok();
 
     let account = litesvm.get_account(&plan_pda).unwrap();
@@ -515,24 +343,11 @@ fn update_plan_max_pullers() {
 #[test]
 fn update_plan_rejects_near_immediate_end_ts() {
     let (litesvm, owner) = &mut setup();
-    let mint = init_mint(
-        litesvm,
-        TOKEN_PROGRAM_ID,
-        MINT_DECIMALS,
-        1_000_000_000,
-        None,
-        &[],
-    );
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
 
-    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint)
-        .plan_id(1)
-        .amount(1_000)
-        .period_hours(720)
-        .execute();
+    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint).plan_id(1).amount(1_000).period_hours(720).execute();
     res.assert_ok();
 
-    let res = UpdatePlan::new(litesvm, owner, plan_pda)
-        .end_ts(current_ts() + 2)
-        .execute();
+    let res = UpdatePlan::new(litesvm, owner, plan_pda).end_ts(current_ts() + 2).execute();
     res.assert_err(crate::SubscriptionsError::InvalidEndTs);
 }

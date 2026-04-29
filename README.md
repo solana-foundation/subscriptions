@@ -25,8 +25,8 @@ This repository contains:
 - A Rust Solana program built with [Pinocchio](https://github.com/febo/pinocchio)
 - IDL generation via [Codama](https://github.com/codama-idl/codama)
 - Generated clients via Codama:
-  - TypeScript client (`@subscriptions/client`) in `clients/typescript`
-  - Rust client (`subscriptions-client`) in `clients/rust`
+    - TypeScript client (`@subscriptions/client`) in `clients/typescript`
+    - Rust client (`subscriptions-client`) in `clients/rust`
 - A local demo webapp in `webapp/`
 - CI pipeline with build, test, lint, and CU benchmarking
 
@@ -148,39 +148,39 @@ The `justfile` is the main entrypoint for day-to-day development.
 
 ### Build
 
-| Recipe | Description |
-|---|---|
-| `just build` | Build program + generate IDL + generate clients + build TypeScript client |
-| `just build-program` | Compile the SBF program (`.so`) |
-| `just generate-idl` | Regenerate `idl/subscriptions.json` |
-| `just generate-clients` | Regenerate TypeScript and Rust clients from IDL via Codama |
-| `just build-client` | Build `clients/typescript` into `clients/typescript/dist` |
+| Recipe                  | Description                                                               |
+| ----------------------- | ------------------------------------------------------------------------- |
+| `just build`            | Build program + generate IDL + generate clients + build TypeScript client |
+| `just build-program`    | Compile the SBF program (`.so`)                                           |
+| `just generate-idl`     | Regenerate `idl/subscriptions.json`                                       |
+| `just generate-clients` | Regenerate TypeScript and Rust clients from IDL via Codama                |
+| `just build-client`     | Build `clients/typescript` into `clients/typescript/dist`                 |
 
 ### Test
 
-| Recipe | Description |
-|---|---|
-| `just test` | Run program tests + client integration tests |
-| `just test-program` | Run Rust SBF tests (`cargo test-sbf` with LiteSVM) |
-| `just test-client` | Run TypeScript integration tests (vitest with Surfpool) |
+| Recipe                    | Description                                                   |
+| ------------------------- | ------------------------------------------------------------- |
+| `just test`               | Run program tests + client integration tests                  |
+| `just test-program`       | Run Rust SBF tests (`cargo test-sbf` with LiteSVM)            |
+| `just test-client`        | Run TypeScript integration tests (vitest with Surfpool)       |
 | `just test-and-benchmark` | Run tests and generate `cu_report.md` with compute unit usage |
 
 ### Code Quality
 
-| Recipe | Description |
-|---|---|
-| `just check` | Run `fmt-check` + `lint-check` |
-| `just fmt-check` | Check Rust and TypeScript formatting |
-| `just fmt` | Auto-format Rust and TypeScript |
+| Recipe            | Description                                        |
+| ----------------- | -------------------------------------------------- |
+| `just check`      | Run `fmt-check` + `lint-check`                     |
+| `just fmt-check`  | Check Rust and TypeScript formatting               |
+| `just fmt`        | Auto-format Rust and TypeScript                    |
 | `just lint-check` | Check Rust (clippy) and TypeScript (biome) linting |
-| `just lint` | Lint with auto-fix |
+| `just lint`       | Lint with auto-fix                                 |
 
 ### Cleanup
 
-| Recipe | Description |
-|---|---|
-| `just clean` | Remove all build artifacts, node_modules, validator state |
-| `just webapp-clean` | Stop webapp processes, remove webapp-specific generated state |
+| Recipe                | Description                                                    |
+| --------------------- | -------------------------------------------------------------- |
+| `just clean`          | Remove all build artifacts, node_modules, validator state      |
+| `just webapp-clean`   | Stop webapp processes, remove webapp-specific generated state  |
 | `just kill-validator` | Stop all running validators (surfpool + solana-test-validator) |
 
 ### Validator Modes
@@ -196,16 +196,16 @@ Both default to `http://localhost:8899`.
 
 The `@subscriptions/client` package in `clients/typescript` provides a high-level `SubscriptionsClient` class wrapping all program instructions:
 
-| Method | Purpose |
-|---|---|
-| `initSubscriptionAuthority` / `closeSubscriptionAuthority` | Create or close the SA for a (user, mint) pair |
-| `createFixedDelegation` / `transferFixed` | Create a fixed delegation and execute transfers against it |
-| `createRecurringDelegation` / `transferRecurring` | Create a recurring delegation and execute transfers against it |
-| `createPlan` / `updatePlan` / `deletePlan` | Manage merchant subscription plans |
-| `subscribe` / `cancelSubscription` / `transferSubscription` | Subscribe to plans, cancel, and pull payments |
-| `revokeDelegation` | Close any delegation PDA and return rent to the original payer |
-| `getDelegationsForWallet` / `getPlansForOwner` | Query on-chain accounts |
-| `isSubscriptionAuthorityInitialized` | Check if an SA exists for a wallet/mint pair |
+| Method                                                      | Purpose                                                        |
+| ----------------------------------------------------------- | -------------------------------------------------------------- |
+| `initSubscriptionAuthority` / `closeSubscriptionAuthority`  | Create or close the SA for a (user, mint) pair                 |
+| `createFixedDelegation` / `transferFixed`                   | Create a fixed delegation and execute transfers against it     |
+| `createRecurringDelegation` / `transferRecurring`           | Create a recurring delegation and execute transfers against it |
+| `createPlan` / `updatePlan` / `deletePlan`                  | Manage merchant subscription plans                             |
+| `subscribe` / `cancelSubscription` / `transferSubscription` | Subscribe to plans, cancel, and pull payments                  |
+| `revokeDelegation`                                          | Close any delegation PDA and return rent to the original payer |
+| `getDelegationsForWallet` / `getPlansForOwner`              | Query on-chain accounts                                        |
+| `isSubscriptionAuthorityInitialized`                        | Check if an SA exists for a wallet/mint pair                   |
 
 PDA derivation helpers are exported from `pdas.ts`: `getSubscriptionAuthorityPDA`, `getDelegationPDA`, `getPlanPDA`, `getSubscriptionPDA`, `getEventAuthorityPDA`.
 
@@ -238,17 +238,17 @@ Expected local endpoints:
 
 ### Features
 
-| Route | Feature |
-|---|---|
-| `/setup` | Setup wizard (validator, program deploy, mock USDC) |
-| `/` | Dashboard overview |
-| `/delegations` | Create and manage fixed/recurring delegations |
-| `/plans` | Create and manage merchant subscription plans |
-| `/plans/collect` | Collect subscription payments |
-| `/subscriptions` | View and manage active subscriptions |
-| `/marketplace` | Browse available plans |
-| `/faucet` | SOL and USDC airdrops (localnet/devnet) |
-| `/program` | Program deploy/upgrade status |
+| Route            | Feature                                             |
+| ---------------- | --------------------------------------------------- |
+| `/setup`         | Setup wizard (validator, program deploy, mock USDC) |
+| `/`              | Dashboard overview                                  |
+| `/delegations`   | Create and manage fixed/recurring delegations       |
+| `/plans`         | Create and manage merchant subscription plans       |
+| `/plans/collect` | Collect subscription payments                       |
+| `/subscriptions` | View and manage active subscriptions                |
+| `/marketplace`   | Browse available plans                              |
+| `/faucet`        | SOL and USDC airdrops (localnet/devnet)             |
+| `/program`       | Program deploy/upgrade status                       |
 
 Stop local processes:
 
@@ -269,20 +269,20 @@ Audit status, audited-through commit, and the current unaudited delta are tracke
 
 The GitHub Actions workflow (`.github/workflows/ci.yml`) runs on PRs and pushes to `main`:
 
-| Job | Description |
-|---|---|
-| **build** | Build program + client, upload artifacts |
-| **unit-test** | `just test-program` (Rust SBF tests) |
-| **lint** | `just check` (formatting + clippy + biome) |
-| **integration-test** | Start Surfpool, run TypeScript integration tests |
-| **benchmark** | (PRs only) Generate CU report and post as PR comment |
+| Job                  | Description                                          |
+| -------------------- | ---------------------------------------------------- |
+| **build**            | Build program + client, upload artifacts             |
+| **unit-test**        | `just test-program` (Rust SBF tests)                 |
+| **lint**             | `just check` (formatting + clippy + biome)           |
+| **integration-test** | Start Surfpool, run TypeScript integration tests     |
+| **benchmark**        | (PRs only) Generate CU report and post as PR comment |
 
 ## Architecture Docs
 
-| Document | Description |
-|---|---|
-| [ADR-001](docs/001-program-architecture.md) | Core program architecture: SA, fixed/recurring delegations, PDA design |
-| [ADR-002](docs/002-subscriptions-architecture.md) | Subscription plans: merchant plans, subscriber flow, pull payments |
+| Document                                                 | Description                                                                       |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| [ADR-001](docs/001-program-architecture.md)              | Core program architecture: SA, fixed/recurring delegations, PDA design            |
+| [ADR-002](docs/002-subscriptions-architecture.md)        | Subscription plans: merchant plans, subscriber flow, pull payments                |
 | [ADR-003](docs/003-versioning-migration-architecture.md) | Versioning and migration: three-tier fallback chain for on-chain account upgrades |
 
 ## Smart Wallet Support
