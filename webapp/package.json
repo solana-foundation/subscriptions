@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "test": "node --disable-warning=ExperimentalWarning --experimental-strip-types --test test/*.test.ts",
+    "test": "tsx --test test/*.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -50,6 +50,7 @@
     "playwright": "^1.58.0",
     "postcss": "^8.5.10",
     "tailwindcss": "^4.1.18",
+    "tsx": "^4.20.5",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^8.0.9",
