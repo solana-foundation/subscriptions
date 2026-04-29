@@ -68,6 +68,20 @@ test('does not attach earlier plan signatures to plans skipped by a later failed
   assert.deepEqual(result.plans['plan-b'].signatures, [])
 })
 
+test('omits cached-pending plans skipped before transaction construction', () => {
+  const result = createAllPlanPaymentCollectionResult(
+    [{ planAddress: 'fresh-plan', total: 1 }],
+    [transfer('fresh-plan', 'fresh-sub', 'fresh-sig', 0)],
+    ['fresh-sig'],
+    false,
+  )
+
+  assert.equal(result.collected, 1)
+  assert.equal(result.total, 1)
+  assert.equal(result.plans['fresh-plan'].collected, 1)
+  assert.equal(result.plans['stale-cached-plan'], undefined)
+})
+
 test('marks a plan partial only for its own uncollected transfers', () => {
   const result = createAllPlanPaymentCollectionResult(
     [
