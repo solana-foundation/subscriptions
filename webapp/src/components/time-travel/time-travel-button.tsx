@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Clock, RotateCcw } from 'lucide-react';
 import { useCluster } from '@solana/connector/react';
+import { TextInput } from '@solana/design-system';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useTimeTravel } from '@/hooks/use-time-travel';
@@ -194,7 +194,7 @@ function TimeTravelButtonInner() {
                             Jump to Date
                         </Label>
                         <div ref={dateDisplayRef} className="flex gap-2">
-                            <Input
+                            <TextInput
                                 type="date"
                                 value={date}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDate(e.target.value)}

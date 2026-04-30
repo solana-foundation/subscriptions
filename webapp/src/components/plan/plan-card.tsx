@@ -12,10 +12,9 @@ import {
     Plus,
     X,
 } from 'lucide-react';
-import { Badge } from '@solana/design-system';
+import { Badge, TextInput } from '@solana/design-system';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     Dialog,
@@ -52,7 +51,7 @@ function ImmutableField({ label, value }: { label: string; value: string }) {
                 <Lock className="h-3 w-3" />
                 {label}
             </Label>
-            <Input value={value} disabled className="opacity-50 cursor-not-allowed" />
+            <TextInput value={value} disabled />
         </div>
     );
 }
@@ -176,7 +175,7 @@ function EditPlanDialog({
 
                         <div className="grid gap-2">
                             <Label htmlFor="edit-name">Plan Name</Label>
-                            <Input
+                            <TextInput
                                 id="edit-name"
                                 value={planName}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPlanName(e.target.value)}
@@ -186,7 +185,7 @@ function EditPlanDialog({
 
                         <div className="grid gap-2">
                             <Label htmlFor="edit-desc">Description</Label>
-                            <Input
+                            <TextInput
                                 id="edit-desc"
                                 value={description}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDescription(e.target.value)}
@@ -230,7 +229,7 @@ function EditPlanDialog({
 
                         <div className="grid gap-2">
                             <Label htmlFor="edit-website">Website URL</Label>
-                            <Input
+                            <TextInput
                                 id="edit-website"
                                 value={website}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWebsite(e.target.value)}
@@ -264,7 +263,7 @@ function EditPlanDialog({
                         <div className="sm:col-span-2 grid gap-2">
                             <Label>End Date/Time</Label>
                             <div className="flex gap-2">
-                                <Input
+                                <TextInput
                                     type="date"
                                     value={endDate}
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEndDate(e.target.value)}
@@ -300,12 +299,7 @@ function EditPlanDialog({
                             </Label>
                             {activeDestinations.length > 0 ? (
                                 activeDestinations.map((d, i) => (
-                                    <Input
-                                        key={i}
-                                        value={ellipsify(d, 8)}
-                                        disabled
-                                        className="font-mono text-sm opacity-50 cursor-not-allowed"
-                                    />
+                                    <TextInput key={i} value={ellipsify(d, 8)} disabled inputClassName="font-mono" />
                                 ))
                             ) : (
                                 <p className="text-sm text-muted-foreground/60 italic">
@@ -320,13 +314,14 @@ function EditPlanDialog({
                             </Label>
                             {pullers.map((addr, i) => (
                                 <div key={i} className="flex gap-2">
-                                    <Input
+                                    <TextInput
                                         value={addr}
                                         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                                             updatePuller(i, e.target.value)
                                         }
                                         placeholder="Solana address"
-                                        className="font-mono text-sm flex-1"
+                                        className="flex-1"
+                                        inputClassName="font-mono"
                                         disabled={isSunset}
                                     />
                                     <Button

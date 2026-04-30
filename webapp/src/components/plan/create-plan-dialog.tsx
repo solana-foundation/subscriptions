@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { X, Plus, ChevronDown } from 'lucide-react';
+import { TextInput } from '@solana/design-system';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import {
     DropdownMenu,
@@ -8,7 +9,6 @@ import {
     DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations';
 import { useUsdcMint } from '@/hooks/use-token-config';
@@ -203,13 +203,14 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
             </Label>
             {list.map((addr, i) => (
                 <div key={i} className="flex gap-2">
-                    <Input
+                    <TextInput
                         value={addr}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                             updateAddress(list, setList, i, e.target.value)
                         }
                         placeholder="Solana address"
-                        className="font-mono text-sm flex-1"
+                        className="flex-1"
+                        inputClassName="font-mono"
                     />
                     <Button
                         type="button"
@@ -274,7 +275,7 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
 
                         <div className="grid gap-2">
                             <Label htmlFor="plan-name">Plan Name</Label>
-                            <Input
+                            <TextInput
                                 id="plan-name"
                                 value={planName}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPlanName(e.target.value)}
@@ -284,7 +285,7 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
 
                         <div className="grid gap-2">
                             <Label htmlFor="plan-desc">Description</Label>
-                            <Input
+                            <TextInput
                                 id="plan-desc"
                                 value={description}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDescription(e.target.value)}
@@ -330,7 +331,7 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
                             <Label htmlFor="plan-website">
                                 Website URL <span className="text-muted-foreground font-normal">(optional)</span>
                             </Label>
-                            <Input
+                            <TextInput
                                 id="plan-website"
                                 value={website}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWebsite(e.target.value)}
@@ -360,7 +361,7 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
                         <div className="grid gap-2">
                             <Label htmlFor="plan-amount">Amount per Period</Label>
                             <div className="flex gap-2">
-                                <Input
+                                <TextInput
                                     id="plan-amount"
                                     type="number"
                                     min="0"
@@ -379,7 +380,7 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
                         <div className="grid gap-2">
                             <Label htmlFor="plan-period">Billing Period</Label>
                             <div className="flex gap-2">
-                                <Input
+                                <TextInput
                                     id="plan-period"
                                     type="number"
                                     min="1"
@@ -426,7 +427,7 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
                             ) : (
                                 <>
                                     <div className="flex gap-2">
-                                        <Input
+                                        <TextInput
                                             type="date"
                                             value={endDate}
                                             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>

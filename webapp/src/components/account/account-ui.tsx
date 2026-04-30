@@ -1,14 +1,13 @@
 import { useCluster, useWallet } from '@solana/connector/react';
 import { address } from '@solana/kit';
 import type { Address, Lamports } from '@solana/kit';
-import { CopyButton } from '@solana/design-system';
+import { CopyButton, TextInput } from '@solana/design-system';
 
 const lamportsToSol = (lamports: bigint | number): number => Number(lamports) / 1e9;
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { AppAlert } from '@/components/app-alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { useEffect, useMemo, useState } from 'react';
 import { RefreshCw, Wallet, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
@@ -316,14 +315,15 @@ export function SolFaucetCard() {
                     </p>
                 ) : (
                     <>
-                        <Input
+                        <TextInput
                             type="number"
                             placeholder="0"
                             value={amount}
                             onChange={e => setAmount(e.target.value)}
                             min="0.1"
                             step="0.1"
-                            className="text-3xl font-bold h-14 border-purple-500/20 focus-visible:ring-purple-500/40"
+                            inputClassName="text-3xl font-bold"
+                            size="xl"
                         />
                         <div className="flex flex-wrap gap-2">
                             {[1, 2, 5, 10].map(v => (
@@ -381,22 +381,24 @@ export function UsdcFaucetCard() {
                 </CardTitle>
             </CardHeader>
             <CardContent className="relative space-y-4">
-                <Input
+                <TextInput
                     type="number"
                     placeholder="0"
                     value={amount}
                     onChange={e => setAmount(e.target.value)}
                     min="1"
                     step="100"
-                    className="text-3xl font-bold h-14 border-green-500/20 focus-visible:ring-green-500/40"
+                    inputClassName="text-3xl font-bold"
+                    size="xl"
                 />
                 {isDevnet && (
-                    <Input
+                    <TextInput
                         type="text"
                         placeholder={account ?? 'Recipient address (leave empty for self)'}
                         value={recipient}
                         onChange={e => setRecipient(e.target.value)}
-                        className="font-mono text-xs h-10 border-green-500/20 focus-visible:ring-green-500/40"
+                        inputClassName="font-mono text-xs"
+                        size="lg"
                     />
                 )}
                 <div className="flex flex-wrap gap-2">
