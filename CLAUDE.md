@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build Commands
 
 ```bash
-# Full build (deploy keys → program .so → IDL → clients → TS client dist)
+# Full build (program .so → IDL → clients → TS client dist)
 just build
 
 # Individual steps
@@ -21,12 +21,14 @@ just build-program         # Build .so binary only (cargo build-sbf)
 just build-client          # Build TypeScript client (tsup)
 
 # Formatting and linting
-just fmt                   # cargo fmt + biome format
+just fmt                   # cargo fmt + prettier
 just check                 # fmt-check + lint-check
 
-# Testing (program uses LiteSVM in-crate; client uses Vitest)
+# Testing
 just test                  # All tests (program + client)
-just test-program          # cargo test-sbf
+just unit-test             # Rust unit tests
+just integration-test      # Rust LiteSVM integration tests
+just test-program          # backwards-compatible alias for unit-test
 just test-client           # Vitest against Surfpool
 just test-and-benchmark    # CU report → cu_report.md
 
@@ -85,7 +87,8 @@ clients/typescript/src/generated/  (auto-generated; wrapped by hand-written SDK 
 
 ### Testing
 
-- Rust: LiteSVM-based, located in `program/src/tests/` (in-crate). Run via `cargo test-sbf`.
+- Rust unit tests: located in `program/src/tests/`. Run via `just unit-test`.
+- Rust integration tests: LiteSVM-based workspace crate in `tests/integration-tests/`. Run via `just integration-test`.
 - TypeScript: Vitest against Surfpool, in `clients/typescript/test/`. Includes Squads + Swig smart-wallet integration tests and security-focused tests.
 - CU benchmarks: set `CU_REPORT=1` to write `cu_report.md` (posted as PR comment in CI).
 

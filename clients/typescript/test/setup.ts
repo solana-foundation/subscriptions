@@ -74,9 +74,6 @@ async function createTestClient(payer: KeyPairSigner) {
 
 type KitClient = Awaited<ReturnType<typeof createTestClient>>;
 
-// Backward-compatible alias for requested naming.
-export const getSmartWalletlist = getSmartWalletList;
-
 export type WalletProvider = {
     name: string;
     createWallet(testSuite: IntegrationTest): Promise<Wallet>;

@@ -58,7 +58,6 @@ subscriptions/
 ├── webapp/                        # Demo UI (React) + local API server
 │   ├── src/                       # React app (routes, components, hooks)
 │   ├── api/                       # Node.js API server (faucet, deploy, config)
-│   ├── patches/                   # pnpm patch overrides for webapp deps
 │   └── scripts/                   # Environment init, mock USDC minting
 ├── scripts/                       # Shell scripts (validator, webapp launcher)
 ├── docs/                          # Architecture Decision Records
@@ -67,8 +66,7 @@ subscriptions/
 ├── .githooks/                     # Git hooks (pre-push: fmt + lint checks)
 ├── keys/                          # Program keypair (gitignored)
 ├── justfile                       # Build/test/dev task runner
-├── codama.js                      # Codama client generation config
-├── codama-visitors.mjs            # Codama visitors (event authority PDA, defaults)
+├── scripts/generate-clients.ts    # Codama client generation script
 └── txtx.yml                       # Surfpool runbook config
 ```
 
@@ -126,15 +124,9 @@ curl -sL https://run.surfpool.run/ | bash
 
 6. Node.js (required by `webapp/` scripts)
 
-## Keypair and Program ID
+## Program ID
 
-Local workflows use `keys/subscriptions-keypair.json` as the source keypair. The `just build` and `just build-program` recipes copy it to `target/deploy/` and verify that the keypair matches the `declare_id!` in `lib.rs`.
-
-The keypair is checked into the repository. If it is missing, `prepare-deploy-keys` will error and prompt you to restore it:
-
-```bash
-git show <commit>^:keys/subscriptions-keypair.json > keys/subscriptions-keypair.json
-```
+The program ID is declared in `program/src/lib.rs`. Local Surfpool workflows install the program at that canonical address via `runbooks/surfnet-setup`, so a checked-in program keypair is not required for local tests.
 
 Print the program ID at any time:
 
@@ -161,19 +153,21 @@ The `justfile` is the main entrypoint for day-to-day development.
 | Recipe                    | Description                                                   |
 | ------------------------- | ------------------------------------------------------------- |
 | `just test`               | Run program tests + client integration tests                  |
-| `just test-program`       | Run Rust SBF tests (`cargo test-sbf` with LiteSVM)            |
+| `just test-program`       | Backwards-compatible alias for `just unit-test`               |
+| `just unit-test`          | Run Rust unit tests                                           |
+| `just integration-test`   | Run Rust LiteSVM integration tests                            |
 | `just test-client`        | Run TypeScript integration tests (vitest with Surfpool)       |
 | `just test-and-benchmark` | Run tests and generate `cu_report.md` with compute unit usage |
 
 ### Code Quality
 
-| Recipe            | Description                                        |
-| ----------------- | -------------------------------------------------- |
-| `just check`      | Run `fmt-check` + `lint-check`                     |
-| `just fmt-check`  | Check Rust and TypeScript formatting               |
-| `just fmt`        | Auto-format Rust and TypeScript                    |
-| `just lint-check` | Check Rust (clippy) and TypeScript (biome) linting |
-| `just lint`       | Lint with auto-fix                                 |
+| Recipe            | Description                                 |
+| ----------------- | ------------------------------------------- |
+| `just check`      | Run `fmt-check` + `lint-check`              |
+| `just fmt-check`  | Check Rust and TypeScript formatting        |
+| `just fmt`        | Auto-format Rust and TypeScript             |
+| `just lint-check` | Check Rust (clippy) and TypeScript (ESLint) |
+| `just lint`       | Lint with auto-fix                          |
 
 ### Cleanup
 
@@ -259,7 +253,7 @@ just webapp-clean     # also removes generated state
 
 ## Security Audit
 
-`subscriptions` has been audited by [Cantina](https://cantina.xyz). View the [audit report](audits/report-cli-cantina-db2ffeea-c85c-4f35-b188-e861cdcd785d-solana-subscriptions.pdf).
+`subscriptions` has been audited by [Cantina](https://cantina.xyz). View the [audit report](audits/report-cli-cantina-db2ffeea-c85c-4f35-b188-e861cdcd785d-solana-multi-delegator.pdf).
 
 The external audit baseline is commit `18a50bc21c4b91ed62e612109c371f41200385e8`, and audit fixes were implemented and verified through commit `b4b0345f9fd616e1355b7b6628362283fd6b1691`.
 
@@ -267,15 +261,16 @@ Audit status, audited-through commit, and the current unaudited delta are tracke
 
 ## CI Pipeline
 
-The GitHub Actions workflow (`.github/workflows/ci.yml`) runs on PRs and pushes to `main`:
+GitHub Actions runs split workflows on PRs and pushes to `main`:
 
-| Job                  | Description                                          |
-| -------------------- | ---------------------------------------------------- |
-| **build**            | Build program + client, upload artifacts             |
-| **unit-test**        | `just test-program` (Rust SBF tests)                 |
-| **lint**             | `just check` (formatting + clippy + biome)           |
-| **integration-test** | Start Surfpool, run TypeScript integration tests     |
-| **benchmark**        | (PRs only) Generate CU report and post as PR comment |
+| Workflow      | Description                                          |
+| ------------- | ---------------------------------------------------- |
+| **Build**     | Build program and clients                            |
+| **Test**      | Run Rust unit, Rust integration, and TS client tests |
+| **Format**    | Check Rust and TypeScript formatting                 |
+| **Lint**      | Check Rust clippy and TypeScript ESLint              |
+| **Benchmark** | Generate CU report and post it as a PR comment       |
+| **IDL Check** | Verify committed IDL and generated clients are fresh |
 
 ## Architecture Docs
 
