@@ -1,11 +1,10 @@
 import { useCluster, useWallet } from '@solana/connector/react';
 import { address } from '@solana/kit';
 import type { Address, Lamports } from '@solana/kit';
-import { CopyButton, TextInput } from '@solana/design-system';
+import { Button, CopyButton, TextInput } from '@solana/design-system';
 
 const lamportsToSol = (lamports: bigint | number): number => Number(lamports) / 1e9;
 import { Link } from 'react-router';
-import { Button } from '@/components/ui/button';
 import { AppAlert } from '@/components/app-alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useEffect, useMemo, useState } from 'react';
@@ -41,7 +40,7 @@ export function AccountBalanceCheck({ address: addr }: { address: Address }) {
         return (
             <AppAlert
                 action={
-                    <Button variant="outline" asChild>
+                    <Button variant="secondary" asChild>
                         <Link to="/faucet">Request Airdrop</Link>
                     </Button>
                 }
@@ -153,14 +152,14 @@ export function WalletBalanceCards({ address: addr }: { address: Address }) {
                     )}
                 </div>
                 <Button
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
+                    iconOnly
+                    iconLeft={<RefreshCw className={isRefreshing ? 'animate-spin' : ''} />}
+                    aria-label="Refresh wallet balances"
                     onClick={handleRefresh}
                     disabled={isRefreshing}
-                    className="rounded-full bg-white/5 border-white/10 hover:bg-white/10 text-white"
-                >
-                    <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                </Button>
+                />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -329,9 +328,9 @@ export function SolFaucetCard() {
                             {[1, 2, 5, 10].map(v => (
                                 <Button
                                     key={v}
-                                    variant="outline"
+                                    variant="secondary"
                                     size="sm"
-                                    className="rounded-full text-xs border-purple-500/30 hover:bg-purple-500/10"
+                                    radius="round"
                                     onClick={() => setAmount(String(v))}
                                 >
                                     {v} SOL
@@ -341,9 +340,11 @@ export function SolFaucetCard() {
                         <Button
                             onClick={handleAirdrop}
                             disabled={airdrop.isPending}
-                            className="w-full rounded-full bg-purple-600 hover:bg-purple-500 text-white"
+                            loading={airdrop.isPending}
+                            radius="round"
+                            style={{ width: '100%' }}
                         >
-                            {airdrop.isPending ? 'Requesting...' : 'Request Airdrop'}
+                            Request Airdrop
                         </Button>
                     </>
                 )}
@@ -405,9 +406,9 @@ export function UsdcFaucetCard() {
                     {[100, 1000, 5000, 10000].map(v => (
                         <Button
                             key={v}
-                            variant="outline"
+                            variant="secondary"
                             size="sm"
-                            className="rounded-full text-xs border-green-500/30 hover:bg-green-500/10"
+                            radius="round"
                             onClick={() => setAmount(String(v))}
                         >
                             {v.toLocaleString()}
@@ -418,9 +419,11 @@ export function UsdcFaucetCard() {
                 <Button
                     onClick={handleAirdrop}
                     disabled={airdrop.isPending}
-                    className="w-full rounded-full bg-green-600 hover:bg-green-500 text-white"
+                    loading={airdrop.isPending}
+                    radius="round"
+                    style={{ width: '100%' }}
                 >
-                    {airdrop.isPending ? 'Requesting...' : isDevnet ? 'Mint USDC' : 'Request Airdrop'}
+                    {isDevnet ? 'Mint USDC' : 'Request Airdrop'}
                 </Button>
             </CardContent>
         </Card>
