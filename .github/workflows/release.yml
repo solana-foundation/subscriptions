@@ -130,7 +130,7 @@ jobs:
         with:
           idl-path: idl/subscriptions.json
           rpc-url: ${{ env.RPC_URL }}
-          keypair: /tmp/deployer.json
+          keypair: ${{ env.DEPLOYER_KEYPAIR }}
           buffer-authority: ${{ env.SQUADS_VAULT }}
           priority-fees: ${{ inputs.priority-fee }}
 
@@ -142,7 +142,7 @@ jobs:
           program: ${{ env.PROGRAM }}
           program-id: ${{ env.PROGRAM_ID }}
           rpc-url: ${{ env.RPC_URL }}
-          keypair: /tmp/deployer.json
+          keypair: ${{ env.DEPLOYER_KEYPAIR }}
           repo-url: ${{ env.REPO_URL }}
           network: mainnet
           mount-path: program
