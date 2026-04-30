@@ -41,3 +41,7 @@ clients/typescript/docs/
 .vercel
 
 .claude/
+
+# Editor / tool config
+.emdash.json
+.vscode/
