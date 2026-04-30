@@ -58,6 +58,12 @@ jobs:
           install -m 600 /dev/null /tmp/deployer.json
           printf '%s' "$DEPLOYER_KEYPAIR" > /tmp/deployer.json
 
+      - name: Derive deployer pubkey
+        id: deployer
+        run: |
+          PUBKEY=$(solana-keygen pubkey /tmp/deployer.json)
+          echo "pubkey=$PUBKEY" >> "$GITHUB_OUTPUT"
+
       - name: Generate IDL
         run: just generate-idl
 
@@ -74,7 +80,7 @@ jobs:
           program-id: ${{ env.PROGRAM_ID }}
           rpc-url: ${{ env.RPC_URL }}
           keypair: ${{ env.DEPLOYER_KEYPAIR }}
-          buffer-authority-address: ${{ inputs.network == 'mainnet' && env.SQUADS_VAULT || '' }}
+          buffer-authority-address: ${{ inputs.network == 'mainnet' && env.SQUADS_VAULT || steps.deployer.outputs.pubkey }}
           priority-fee: ${{ inputs.priority-fee }}
 
       # ============================================
@@ -124,7 +130,7 @@ jobs:
         with:
           idl-path: idl/subscriptions.json
           rpc-url: ${{ env.RPC_URL }}
-          keypair: /tmp/deployer.json
+          keypair: ${{ env.DEPLOYER_KEYPAIR }}
           buffer-authority: ${{ env.SQUADS_VAULT }}
           priority-fees: ${{ inputs.priority-fee }}
 
@@ -136,7 +142,7 @@ jobs:
           program: ${{ env.PROGRAM }}
           program-id: ${{ env.PROGRAM_ID }}
           rpc-url: ${{ env.RPC_URL }}
-          keypair: /tmp/deployer.json
+          keypair: ${{ env.DEPLOYER_KEYPAIR }}
           repo-url: ${{ env.REPO_URL }}
           network: mainnet
           mount-path: program
