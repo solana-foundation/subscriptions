@@ -9,6 +9,7 @@ program_dir := "program"
 ts_client_dir := "clients/typescript"
 webapp_dir := "webapp"
 idl_file := "idl/subscriptions.json"
+generated_paths := "idl clients/typescript/src/generated clients/rust/src/generated"
 
 # List available recipes
 default:
@@ -73,6 +74,21 @@ generate-idl:
 generate-clients: generate-idl
     pnpm run generate-clients
     @echo "✓ Clients generated"
+
+# Check that committed IDL and generated clients are current
+check-generated: generate-clients
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if ! git diff --quiet -- {{generated_paths}} || [[ -n "$(git ls-files --others --exclude-standard -- {{generated_paths}})" ]]; then
+        echo "Error: IDL or generated clients are out of date"
+        echo "Run: just generate-clients"
+        git status --short -- {{generated_paths}}
+        git diff -- {{generated_paths}}
+        exit 1
+    fi
+
+    echo "✓ IDL and generated clients are up-to-date"
 
 # Backwards-compatible alias for the old recipe name
 generate-client: generate-clients
