@@ -116,7 +116,6 @@ jobs:
           keypair: ${{ env.DEPLOYER_KEYPAIR }}
           repo-url: ${{ env.REPO_URL }}
           network: devnet
-          mount-path: program
           commit-hash: ${{ github.sha }}
           skip-build: 'false'
 
