@@ -1,4 +1,3 @@
-import { ThemeProvider } from './theme-provider';
 import { ReactQueryProvider } from './react-query-provider';
 import { SolanaProvider } from './solana/solana-provider';
 import { ErrorBoundary } from 'react-error-boundary';
@@ -11,8 +10,6 @@ function WalletErrorFallback({ error }: { error: unknown }) {
     } else {
         console.error('WalletErrorFallback caught non-Error:', error);
     }
-    // The cached wallet account can keep throwing across reloads, so clear
-    // ConnectorKit's persisted wallet state before reloading.
     const disconnectAndReload = () => {
         try {
             localStorage.removeItem('connector-kit:v1:account');
@@ -31,13 +28,13 @@ function WalletErrorFallback({ error }: { error: unknown }) {
             <div className="flex gap-2">
                 <button
                     onClick={disconnectAndReload}
-                    className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-full hover:bg-primary/90"
                 >
                     Disconnect Wallet & Reload
                 </button>
                 <button
                     onClick={() => window.location.reload()}
-                    className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90"
+                    className="px-4 py-2 bg-secondary text-secondary-foreground rounded-full hover:bg-secondary/80"
                 >
                     Reload Page
                 </button>
@@ -49,11 +46,9 @@ function WalletErrorFallback({ error }: { error: unknown }) {
 export function AppProviders({ children }: Readonly<{ children: React.ReactNode }>) {
     return (
         <ReactQueryProvider>
-            <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark" disableTransitionOnChange>
-                <ErrorBoundary FallbackComponent={WalletErrorFallback}>
-                    <SolanaProvider>{children}</SolanaProvider>
-                </ErrorBoundary>
-            </ThemeProvider>
+            <ErrorBoundary FallbackComponent={WalletErrorFallback}>
+                <SolanaProvider>{children}</SolanaProvider>
+            </ErrorBoundary>
         </ReactQueryProvider>
     );
 }

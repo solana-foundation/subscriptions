@@ -81,11 +81,11 @@ export function DelegationManagementPanel() {
     return (
         <div className="w-full">
             {subscriptionAuthorityInitId != null && (
-                <div className="flex items-center gap-2 mb-4 text-xs text-gray-500 tracking-wide">
-                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-700/40 to-transparent" />
+                <div className="flex items-center gap-2 mb-4 text-xs text-sand-1000 tracking-wide">
+                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-sand-300 to-transparent" />
                     <span className="uppercase">Current Delegation ID</span>
-                    <span className="text-gray-400">{subscriptionAuthorityInitId.toString()}</span>
-                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-700/40 to-transparent" />
+                    <span className="text-sand-1100">{subscriptionAuthorityInitId.toString()}</span>
+                    <div className="h-px flex-1 bg-gradient-to-r from-transparent via-sand-300 to-transparent" />
                 </div>
             )}
             <ActiveDelegations

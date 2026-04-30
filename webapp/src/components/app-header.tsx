@@ -1,8 +1,8 @@
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { useCluster } from '@solana/connector/react';
 import { Button } from '@solana/design-system';
-import { ChevronDown, Menu, RotateCcw, Settings2, X } from 'lucide-react';
-import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router';
+import { ChevronDown, Menu, RotateCcw, Settings2 } from 'lucide-react';
 
 import {
     DropdownMenu,
@@ -13,8 +13,10 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { CURRENT_PROGRAM_VERSION } from '@subscriptions/client';
+import solanaLogo from '@/assets/solana-logo.svg';
+import { cn } from '@/lib/utils';
 
-import { NAV_ITEMS } from './nav-items';
+import { NAV_ITEMS, type NavItem } from './nav-items';
 import { WalletButton } from './solana/solana-provider';
 import { TimeTravelButton } from './time-travel/time-travel-button';
 
@@ -68,77 +70,142 @@ function ClusterButton() {
     );
 }
 
+function isActive(pathname: string, path: string): boolean {
+    return path === '/' ? pathname === '/' : pathname.startsWith(path);
+}
+
+function NavLinks({ items, pathname }: { items: NavItem[]; pathname: string }) {
+    return (
+        <>
+            {items.map(item => {
+                if (item.children?.length) {
+                    return <NavParent key={item.path} item={item} pathname={pathname} />;
+                }
+                const active = isActive(pathname, item.path);
+                return (
+                    <Link
+                        key={item.path}
+                        to={item.path}
+                        className={cn(
+                            'rounded-full px-3 py-2 text-sm font-medium transition-colors',
+                            active
+                                ? 'text-foreground bg-sand-200'
+                                : 'text-sand-1100 hover:text-foreground hover:bg-sand-100',
+                        )}
+                    >
+                        {item.label}
+                    </Link>
+                );
+            })}
+        </>
+    );
+}
+
+function NavParent({ item, pathname }: { item: NavItem; pathname: string }) {
+    const active = isActive(pathname, item.path) || item.children?.some(c => isActive(pathname, c.path));
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger
+                className={cn(
+                    'inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium transition-colors outline-none',
+                    active ? 'text-foreground bg-sand-200' : 'text-sand-1100 hover:text-foreground hover:bg-sand-100',
+                )}
+            >
+                {item.label}
+                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48">
+                <DropdownMenuItem asChild>
+                    <Link to={item.path}>{item.label}</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {item.children?.map(child => (
+                    <DropdownMenuItem key={child.path} asChild>
+                        <Link to={child.path} className="flex items-center gap-2">
+                            <child.icon className="h-4 w-4" />
+                            {child.label}
+                        </Link>
+                    </DropdownMenuItem>
+                ))}
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+}
+
 export function AppHeader() {
     const { pathname } = useLocation();
     const { cluster } = useCluster();
-    const [showMenu, setShowMenu] = useState(false);
+    const [hasScrolled, setHasScrolled] = useState(false);
+
+    useEffect(() => {
+        function handleScroll() {
+            const next = window.scrollY > 0;
+            setHasScrolled(prev => (prev === next ? prev : next));
+        }
+        handleScroll();
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
     const filteredItems = NAV_ITEMS.filter(
         item => !item.clusterFilter || item.clusterFilter.includes(cluster?.id ?? ''),
     );
 
-    function isActive(path: string) {
-        return path === '/' ? pathname === '/' : pathname.startsWith(path);
-    }
-
     return (
-        <header className="relative z-50 px-4 py-2 bg-neutral-100 dark:bg-neutral-900 dark:text-neutral-400">
-            <div className="mx-auto flex justify-between items-center">
-                <span className="text-xl md:hidden">
-                    Subscriptions <span className="text-sm font-bold text-blue-400/60">v{CURRENT_PROGRAM_VERSION}</span>
-                </span>
+        <header
+            className={cn(
+                'fixed inset-x-0 top-0 z-40 border-b transition-colors duration-200',
+                hasScrolled
+                    ? 'bg-background/70 backdrop-blur-sm border-border-low/70'
+                    : 'bg-transparent border-transparent',
+            )}
+        >
+            <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
+                <Link to="/" className="flex items-center gap-2 group">
+                    <img src={solanaLogo} alt="Solana" className="h-6 w-6 shrink-0" />
+                    <span className="text-foreground font-semibold text-lg tracking-tight">Subscriptions</span>
+                    <span className="text-xs font-medium text-sand-900">v{CURRENT_PROGRAM_VERSION}</span>
+                </Link>
 
-                <Button
-                    aria-label={showMenu ? 'Close navigation menu' : 'Open navigation menu'}
-                    className="md:hidden"
-                    iconLeft={showMenu ? <X /> : <Menu />}
-                    iconOnly
-                    onClick={() => setShowMenu(!showMenu)}
-                    size="lg"
-                    variant="secondary"
-                />
+                <nav className="hidden md:flex items-center gap-1">
+                    <NavLinks items={filteredItems} pathname={pathname} />
+                </nav>
 
-                <div className="hidden md:flex items-center gap-4 ml-auto">
+                <div className="hidden md:flex items-center gap-2">
                     <TimeTravelButton />
                     <WalletButton />
                     <ClusterButton />
                 </div>
 
-                {showMenu && (
-                    <div className="md:hidden fixed inset-x-0 top-[52px] bottom-0 bg-neutral-100/95 dark:bg-neutral-900/95 backdrop-blur-sm">
-                        <div className="flex flex-col p-4 gap-4 border-t dark:border-neutral-800">
-                            <ul className="flex flex-col gap-4">
-                                {filteredItems.map(({ label, path, icon: Icon, children }) => (
-                                    <li key={path}>
-                                        <Link
-                                            className={`flex items-center gap-3 hover:text-neutral-500 dark:hover:text-white text-lg py-2 ${isActive(path) ? 'text-neutral-500 dark:text-white' : ''}`}
-                                            to={path}
-                                            onClick={() => setShowMenu(false)}
-                                        >
-                                            <Icon className="h-5 w-5" />
-                                            {label}
-                                        </Link>
-                                        {children?.map(child => (
-                                            <Link
-                                                key={child.path}
-                                                className={`flex items-center gap-3 ml-8 hover:text-neutral-500 dark:hover:text-white text-sm py-1.5 ${isActive(child.path) ? 'text-neutral-500 dark:text-white' : 'text-gray-500'}`}
-                                                to={child.path}
-                                                onClick={() => setShowMenu(false)}
-                                            >
-                                                <child.icon className="h-4 w-4" />
-                                                {child.label}
-                                            </Link>
-                                        ))}
-                                    </li>
-                                ))}
-                            </ul>
-                            <div className="flex flex-col gap-4">
+                <div className="md:hidden flex items-center gap-2">
+                    <ClusterButton />
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                aria-label="Open navigation menu"
+                                iconLeft={<Menu />}
+                                iconOnly
+                                size="sm"
+                                variant="secondary"
+                            />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                            {filteredItems.map(item => (
+                                <DropdownMenuItem key={item.path} asChild>
+                                    <Link to={item.path} className="flex items-center gap-2">
+                                        <item.icon className="h-4 w-4" />
+                                        {item.label}
+                                    </Link>
+                                </DropdownMenuItem>
+                            ))}
+                            <DropdownMenuSeparator />
+                            <div className="p-2 flex flex-col gap-2">
                                 <TimeTravelButton />
                                 <WalletButton />
-                                <ClusterButton />
                             </div>
-                        </div>
-                    </div>
-                )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
             </div>
         </header>
     );

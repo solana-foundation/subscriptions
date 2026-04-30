@@ -132,8 +132,8 @@ function MarketplaceConnected() {
                     </Button>
                 </div>
                 {showRecent && recent.length > 0 && (
-                    <div className="absolute z-50 top-full mt-1 w-full rounded-md border border-emerald-500/20 bg-slate-950 shadow-lg overflow-hidden">
-                        <div className="flex items-center justify-between px-3 py-1.5 border-b border-emerald-500/10">
+                    <div className="absolute z-50 top-full mt-1 w-full rounded-md border border-sand-300 bg-card shadow-lg overflow-hidden">
+                        <div className="flex items-center justify-between px-3 py-1.5 border-b border-sand-200">
                             <span className="text-xs text-muted-foreground">Recent searches</span>
                             <button
                                 onClick={() => {
@@ -141,7 +141,7 @@ function MarketplaceConnected() {
                                     refreshRecent();
                                     setShowRecent(false);
                                 }}
-                                className="text-xs text-muted-foreground hover:text-red-400 transition-colors"
+                                className="text-xs text-muted-foreground hover:text-red-600 transition-colors"
                             >
                                 Clear all
                             </button>
@@ -150,14 +150,14 @@ function MarketplaceConnected() {
                             <button
                                 key={entry.address}
                                 onClick={() => handleSelectRecent(entry.address)}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-emerald-500/10 transition-colors group"
+                                className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-sand-100 transition-colors group"
                             >
                                 <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                <span className="font-mono text-sm text-emerald-400 truncate">
+                                <span className="font-mono text-sm text-foreground truncate">
                                     {ellipsify(entry.address, 8)}
                                 </span>
                                 <X
-                                    className="h-3.5 w-3.5 ml-auto text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-red-400 shrink-0 transition-opacity"
+                                    className="h-3.5 w-3.5 ml-auto text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-red-600 shrink-0 transition-opacity"
                                     onClick={e => handleRemoveRecent(e, entry.address)}
                                 />
                             </button>
@@ -168,7 +168,7 @@ function MarketplaceConnected() {
 
             {isLoading && (
                 <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
+                    <Loader2 className="h-8 w-8 animate-spin text-foreground" />
                 </div>
             )}
 
@@ -181,7 +181,7 @@ function MarketplaceConnected() {
             )}
 
             {!isLoading && hasSearched && !isError && !hasResults && (
-                <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 via-emerald-900/20 to-transparent">
+                <Card className="border-0 border-all-dashed-medium bg-card">
                     <CardContent className="flex flex-col items-center justify-center py-12 gap-2">
                         <Search className="h-8 w-8 text-muted-foreground" />
                         <p className="text-muted-foreground">No plans found for this merchant.</p>
@@ -194,8 +194,8 @@ function MarketplaceConnected() {
                     {plans.map((plan, i) => (
                         <div
                             key={plan.address}
-                            className="animate-[fadeInUp_0.3s_ease-out_both]"
-                            style={{ animationDelay: `${i * 80}ms` }}
+                            className="hero-entrance"
+                            style={{ animationDelay: `${100 + i * 80}ms` }}
                         >
                             <PlanCard plan={plan} variant="marketplace" />
                         </div>
@@ -204,9 +204,9 @@ function MarketplaceConnected() {
             )}
 
             {!hasSearched && !isLoading && (
-                <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 via-emerald-900/20 to-transparent">
+                <Card className="border-0 border-all-dashed-medium bg-card">
                     <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
-                        <Store className="h-12 w-12 text-emerald-400" />
+                        <Store className="h-12 w-12 text-sand-1100" />
                         <h2 className="text-xl font-semibold">Subscription Plans</h2>
                         <p className="text-muted-foreground text-center max-w-md">
                             Search for a merchant address to browse their subscription plans.

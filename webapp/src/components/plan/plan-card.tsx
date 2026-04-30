@@ -149,7 +149,7 @@ function EditPlanDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[750px] border-emerald-500/30">
+            <DialogContent className="sm:max-w-[750px]">
                 <DialogHeader>
                     <DialogTitle>Edit Plan: {meta.n || 'Unnamed'}</DialogTitle>
                     <DialogDescription>
@@ -160,7 +160,7 @@ function EditPlanDialog({
                 <div className="max-h-[70vh] overflow-y-auto pr-1">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
                         <div className="sm:col-span-2">
-                            <p className="text-xs font-medium uppercase tracking-wider text-emerald-400">
+                            <p className="text-xs font-medium uppercase tracking-wider text-sand-1000">
                                 Metadata (editable)
                             </p>
                         </div>
@@ -226,7 +226,7 @@ function EditPlanDialog({
                         <div className="sm:col-span-2 h-px bg-border" />
 
                         <div className="sm:col-span-2">
-                            <p className="text-xs font-medium uppercase tracking-wider text-emerald-400">
+                            <p className="text-xs font-medium uppercase tracking-wider text-sand-1000">
                                 Plan Parameters
                             </p>
                         </div>
@@ -331,7 +331,7 @@ function EditPlanDialog({
                         <div className="sm:col-span-2 h-px bg-border" />
 
                         {!isSunset && (
-                            <div className="sm:col-span-2 flex items-center gap-2 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
+                            <div className="sm:col-span-2 flex items-center gap-2 p-3 rounded-lg border border-amber-300 bg-amber-50">
                                 <input
                                     type="checkbox"
                                     id="sunset-check"
@@ -339,19 +339,19 @@ function EditPlanDialog({
                                     onChange={e => setSunsetMode(e.target.checked)}
                                     className="accent-amber-500"
                                 />
-                                <Label htmlFor="sunset-check" className="text-amber-400 text-sm cursor-pointer">
+                                <Label htmlFor="sunset-check" className="text-amber-600 text-sm cursor-pointer">
                                     Sunset this plan (terminal, stops new subscriptions)
                                 </Label>
                             </div>
                         )}
                         {sunsetMode && !endDate && (
                             <div className="sm:col-span-2">
-                                <p className="text-xs text-red-400">Sunset requires an end date.</p>
+                                <p className="text-xs text-red-600">Sunset requires an end date.</p>
                             </div>
                         )}
                         {isSunset && (
-                            <div className="sm:col-span-2 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
-                                <p className="text-sm text-amber-400">
+                            <div className="sm:col-span-2 p-3 rounded-lg border border-amber-300 bg-amber-50">
+                                <p className="text-sm text-amber-600">
                                     This plan is in Sunset status. No further edits are allowed.
                                 </p>
                             </div>
@@ -403,9 +403,9 @@ function DeletePlanDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="border-red-500/30 bg-slate-950">
+            <DialogContent className="border-red-300 bg-bg1">
                 <DialogHeader>
-                    <DialogTitle className="text-red-400">Delete Plan: {meta.n || 'Unnamed'}</DialogTitle>
+                    <DialogTitle className="text-red-600">Delete Plan: {meta.n || 'Unnamed'}</DialogTitle>
                     <DialogDescription>
                         {canDelete
                             ? 'This plan has expired. Deleting will close the account and return rent to your wallet.'
@@ -413,7 +413,7 @@ function DeletePlanDialog({
                     </DialogDescription>
                 </DialogHeader>
                 {!canDelete && (
-                    <div className="text-sm text-gray-400 space-y-1 p-3 rounded-lg border border-gray-700 bg-gray-900/50">
+                    <div className="text-sm text-sand-1100 space-y-1 p-3 rounded-lg border border-sand-300 bg-sand-100">
                         {endTs === 0 ? (
                             <p>This plan has no expiry. Set an end date via Edit first, then wait for it to expire.</p>
                         ) : (
@@ -482,9 +482,9 @@ function SubscribeDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="border-emerald-500/30 bg-slate-950">
+            <DialogContent>
                 <DialogHeader>
-                    <DialogTitle className="text-emerald-400">Subscribe to: {meta.n || 'Unnamed'}</DialogTitle>
+                    <DialogTitle>Subscribe to: {meta.n || 'Unnamed'}</DialogTitle>
                     <DialogDescription>
                         ${amount} / {formatPeriod(plan.data.terms.periodHours)} from merchant {ellipsify(plan.owner, 4)}
                     </DialogDescription>
@@ -496,7 +496,7 @@ function SubscribeDialog({
                     </div>
                 ) : !isInitialized ? (
                     <div className="space-y-3">
-                        <div className="text-sm text-amber-400 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
+                        <div className="text-sm text-amber-600 p-3 rounded-lg border border-amber-300 bg-amber-50">
                             Your SubscriptionAuthority account must be initialized for this token before subscribing.
                         </div>
                         <SolanaButton
@@ -553,7 +553,7 @@ function PlanExpandedDetails({ plan, isExpanded }: { plan: PlanItem; isExpanded:
             }}
         >
             <div
-                className="h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent my-5 transition-all duration-1000 ease-out"
+                className="h-px bg-gradient-to-r from-transparent via-sand-300 to-transparent my-5 transition-all duration-1000 ease-out"
                 style={{ width: isExpanded ? '100%' : '0%', opacity: isExpanded ? 1 : 0 }}
             />
 
@@ -563,7 +563,7 @@ function PlanExpandedDetails({ plan, isExpanded }: { plan: PlanItem; isExpanded:
                     isExpanded ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0',
                 )}
             >
-                <p className="text-[11px] font-semibold text-emerald-400/60 uppercase tracking-[0.15em] mb-2.5">
+                <p className="text-[11px] font-semibold text-sand-1000 uppercase tracking-[0.15em] mb-2.5">
                     Destinations
                 </p>
                 {activeDestinations.length > 0 ? (
@@ -573,12 +573,12 @@ function PlanExpandedDetails({ plan, isExpanded }: { plan: PlanItem; isExpanded:
                                 key={d}
                                 address={d}
                                 label={ellipsify(d, 6)}
-                                className="bg-emerald-500/8 hover:bg-emerald-500/15 border border-emerald-500/20 hover:border-emerald-500/40 px-3 py-1.5 rounded-lg font-mono text-xs text-emerald-300 hover:text-emerald-200 shadow-[0_0_8px_rgba(16,185,129,0)] hover:shadow-[0_0_8px_rgba(16,185,129,0.15)] transition-all duration-300 no-underline"
+                                className="bg-card hover:bg-sand-100 border border-sand-300 hover:border-sand-400 px-3 py-1.5 rounded-lg font-mono text-xs text-foreground transition-all duration-300 no-underline"
                             />
                         ))}
                     </div>
                 ) : (
-                    <p className="text-sm text-gray-500/70 italic pl-1">Any destination (unrestricted)</p>
+                    <p className="text-sm text-sand-1000/70 italic pl-1">Any destination (unrestricted)</p>
                 )}
             </div>
 
@@ -588,9 +588,7 @@ function PlanExpandedDetails({ plan, isExpanded }: { plan: PlanItem; isExpanded:
                     isExpanded ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0',
                 )}
             >
-                <p className="text-[11px] font-semibold text-emerald-400/60 uppercase tracking-[0.15em] mb-2.5">
-                    Pullers
-                </p>
+                <p className="text-[11px] font-semibold text-sand-1000 uppercase tracking-[0.15em] mb-2.5">Pullers</p>
                 {activePullers.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
                         {activePullers.map(p => (
@@ -598,12 +596,12 @@ function PlanExpandedDetails({ plan, isExpanded }: { plan: PlanItem; isExpanded:
                                 key={p}
                                 address={p}
                                 label={ellipsify(p, 6)}
-                                className="bg-emerald-500/8 hover:bg-emerald-500/15 border border-emerald-500/20 hover:border-emerald-500/40 px-3 py-1.5 rounded-lg font-mono text-xs text-emerald-300 hover:text-emerald-200 shadow-[0_0_8px_rgba(16,185,129,0)] hover:shadow-[0_0_8px_rgba(16,185,129,0.15)] transition-all duration-300 no-underline"
+                                className="bg-card hover:bg-sand-100 border border-sand-300 hover:border-sand-400 px-3 py-1.5 rounded-lg font-mono text-xs text-foreground transition-all duration-300 no-underline"
                             />
                         ))}
                     </div>
                 ) : (
-                    <p className="text-sm text-gray-500/70 italic pl-1">Owner only</p>
+                    <p className="text-sm text-sand-1000/70 italic pl-1">Owner only</p>
                 )}
             </div>
 
@@ -613,25 +611,27 @@ function PlanExpandedDetails({ plan, isExpanded }: { plan: PlanItem; isExpanded:
                     isExpanded ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0',
                 )}
             >
-                <p className="text-[11px] font-semibold text-emerald-400/60 uppercase tracking-[0.15em] mb-2.5">
+                <p className="text-[11px] font-semibold text-sand-1000 uppercase tracking-[0.15em] mb-2.5">
                     On-chain Details
                 </p>
                 <div className="grid grid-cols-1 gap-2.5">
-                    <div className="flex items-center justify-between bg-slate-800/40 rounded-lg px-3 py-2 border border-emerald-500/8 hover:border-emerald-500/20 transition-colors">
-                        <p className="text-[11px] text-gray-500 uppercase tracking-wider">Plan ID</p>
-                        <p className="font-mono text-sm text-white">{Number(plan.data.planId)}</p>
+                    <div className="flex items-center justify-between bg-sand-100 rounded-lg px-3 py-2 border border-sand-200 hover:border-sand-300 transition-colors">
+                        <p className="text-[11px] text-sand-1000 uppercase tracking-wider">Plan ID</p>
+                        <p className="font-mono text-sm text-foreground">{Number(plan.data.planId)}</p>
                     </div>
-                    <div className="flex items-center justify-between bg-slate-800/40 rounded-lg px-3 py-2 border border-emerald-500/8 hover:border-emerald-500/20 transition-colors">
-                        <p className="text-[11px] text-gray-500 uppercase tracking-wider">Token Mint</p>
+                    <div className="flex items-center justify-between bg-sand-100 rounded-lg px-3 py-2 border border-sand-200 hover:border-sand-300 transition-colors">
+                        <p className="text-[11px] text-sand-1000 uppercase tracking-wider">Token Mint</p>
                         <ExplorerLink
                             address={plan.data.mint}
                             label={ellipsify(plan.data.mint, 4)}
-                            className="font-mono text-sm text-emerald-300 hover:text-emerald-200 no-underline"
+                            className="font-mono text-sm text-foreground hover:text-sand-1100 no-underline"
                         />
                     </div>
-                    <div className="flex items-center justify-between bg-slate-800/40 rounded-lg px-3 py-2 border border-emerald-500/8 hover:border-emerald-500/20 transition-colors">
-                        <p className="text-[11px] text-gray-500 uppercase tracking-wider">Period</p>
-                        <p className="font-mono text-sm text-white">{formatPeriodLabel(plan.data.terms.periodHours)}</p>
+                    <div className="flex items-center justify-between bg-sand-100 rounded-lg px-3 py-2 border border-sand-200 hover:border-sand-300 transition-colors">
+                        <p className="text-[11px] text-sand-1000 uppercase tracking-wider">Period</p>
+                        <p className="font-mono text-sm text-foreground">
+                            {formatPeriodLabel(plan.data.terms.periodHours)}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -715,25 +715,22 @@ export function PlanCard({
           : undefined;
 
     const borderClass = planExpired
-        ? 'border-red-500/40 hover:border-red-500/60 shadow-red-500/10'
+        ? 'border border-red-300'
         : isSunset
-          ? sunsetIntensity > 0.6
-              ? 'border-orange-500/40 hover:border-orange-500/60 shadow-orange-500/10'
-              : 'border-amber-500/30 hover:border-amber-500/50 shadow-amber-500/5'
-          : 'border-emerald-500/25 hover:border-emerald-500/45 shadow-emerald-500/5';
+          ? 'border border-amber-300'
+          : 'border-0 border-all-dashed-medium';
 
     return (
         <>
             <Card
                 className={cn(
-                    'w-full bg-gradient-to-br from-slate-900/80 via-emerald-900/20 to-slate-900/80 backdrop-blur-xl shadow-xl hover:shadow-2xl transition-all duration-500 rounded-2xl relative overflow-hidden',
+                    'w-full bg-card transition-all duration-300 rounded-2xl relative overflow-hidden',
                     borderClass,
                 )}
             >
                 {overlayStyle && (
                     <div className="absolute inset-0 pointer-events-none rounded-2xl" style={overlayStyle} />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-transparent pointer-events-none" />
                 <CardContent className="p-6 space-y-5 relative z-10">
                     <div
                         className={cn(variant === 'owner' && onToggleExpand && 'cursor-pointer')}
@@ -741,14 +738,14 @@ export function PlanCard({
                     >
                         <div className="flex items-start justify-between gap-2">
                             <div className="flex items-start gap-3.5 min-w-0">
-                                <div className="rounded-xl bg-emerald-500/15 p-3 shrink-0 ring-1 ring-emerald-500/20">
-                                    <Icon className="h-6 w-6 text-emerald-400" />
+                                <div className="rounded-xl bg-sand-100 p-3 shrink-0 ring-1 ring-sand-300">
+                                    <Icon className="h-6 w-6 text-foreground" />
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="font-bold text-lg text-white tracking-tight truncate">
+                                    <p className="font-bold text-lg text-foreground tracking-tight truncate">
                                         {meta.n || 'Unnamed Plan'}
                                     </p>
-                                    <p className="text-sm text-gray-400 truncate mt-0.5">
+                                    <p className="text-sm text-sand-1100 truncate mt-0.5">
                                         {meta.d || 'No description'}
                                     </p>
                                 </div>
@@ -763,7 +760,7 @@ export function PlanCard({
                                 {variant === 'owner' && onToggleExpand && (
                                     <ChevronDown
                                         className={cn(
-                                            'h-4 w-4 text-gray-500 transition-transform duration-500 ease-out shrink-0',
+                                            'h-4 w-4 text-sand-1000 transition-transform duration-500 ease-out shrink-0',
                                             isExpanded && 'rotate-180',
                                         )}
                                     />
@@ -773,26 +770,26 @@ export function PlanCard({
 
                         <div>
                             <div className="flex items-baseline gap-1.5">
-                                <span className="text-xl sm:text-2xl lg:text-3xl font-black text-emerald-400 tracking-tight">
+                                <span className="text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground tracking-tight">
                                     ${amount}
                                 </span>
-                                <span className="text-base font-medium text-emerald-400/60">/{period}</span>
+                                <span className="text-base font-medium text-sand-1000">/{period}</span>
                             </div>
                             <div className="flex items-center gap-1.5 mt-2">
                                 {hasExpiry ? (
                                     planExpired ? (
-                                        <div className="flex items-center gap-1.5 text-sm text-red-300 bg-red-500/10 px-3 py-1 rounded-lg border border-red-500/25">
-                                            <Clock className="h-3.5 w-3.5 text-red-400" />
+                                        <div className="flex items-center gap-1.5 text-sm text-red-700 bg-red-100 px-3 py-1 rounded-lg border border-red-300">
+                                            <Clock className="h-3.5 w-3.5 text-red-600" />
                                             <span>Expired {fmtDate(Number(plan.data.endTs))}</span>
                                         </div>
                                     ) : (
-                                        <div className="flex items-center gap-1.5 text-sm text-gray-300 bg-slate-800/60 px-3 py-1 rounded-lg border border-emerald-500/15">
-                                            <Clock className="h-3.5 w-3.5 text-emerald-400/70" />
+                                        <div className="flex items-center gap-1.5 text-sm text-sand-1400 bg-sand-200 px-3 py-1 rounded-lg border border-sand-200">
+                                            <Clock className="h-3.5 w-3.5 text-sand-1100" />
                                             <span>Expires {fmtDate(Number(plan.data.endTs))}</span>
                                         </div>
                                     )
                                 ) : (
-                                    <div className="flex items-center gap-1.5 text-sm font-semibold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20">
+                                    <div className="flex items-center gap-1.5 text-sm font-medium text-foreground bg-sand-200 px-3 py-1 rounded-lg border border-sand-300">
                                         <InfinityIcon className="h-4 w-4" />
                                         <span>No expiry</span>
                                     </div>
@@ -801,18 +798,18 @@ export function PlanCard({
                         </div>
 
                         {variant === 'owner' && (
-                            <div className="flex items-center gap-4 text-sm text-gray-400">
+                            <div className="flex items-center gap-4 text-sm text-sand-1100">
                                 <span>
-                                    <span className="font-semibold text-emerald-300">{subscriberCount ?? 0}</span>{' '}
+                                    <span className="font-semibold text-foreground">{subscriberCount ?? 0}</span>{' '}
                                     subscriber{subscriberCount !== 1 ? 's' : ''}
                                 </span>
-                                <span className="text-emerald-800">|</span>
+                                <span className="text-sand-300">|</span>
                                 <span>
-                                    <span className="font-semibold text-emerald-300">{activeDestinations}</span> dest.
+                                    <span className="font-semibold text-foreground">{activeDestinations}</span> dest.
                                 </span>
-                                <span className="text-emerald-800">|</span>
+                                <span className="text-sand-300">|</span>
                                 <span>
-                                    <span className="font-semibold text-emerald-300">{activePullers}</span> puller
+                                    <span className="font-semibold text-foreground">{activePullers}</span> puller
                                     {activePullers !== 1 ? 's' : ''}
                                 </span>
                             </div>
@@ -821,8 +818,8 @@ export function PlanCard({
 
                     {variant === 'owner' && <PlanExpandedDetails plan={plan} isExpanded={isExpanded} />}
 
-                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-emerald-500/10">
-                        <span className="font-mono text-xs text-gray-500 break-all leading-relaxed">
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-sand-200">
+                        <span className="font-mono text-xs text-sand-1000 break-all leading-relaxed">
                             {plan.address}
                         </span>
                         {variant === 'marketplace' && meta.w && (
@@ -830,7 +827,7 @@ export function PlanCard({
                                 href={meta.w}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-1 text-sm text-emerald-400 hover:text-emerald-300 transition-colors shrink-0"
+                                className="flex items-center gap-1 text-sm text-foreground hover:text-sand-1100 transition-colors shrink-0"
                             >
                                 <ExternalLink className="h-3.5 w-3.5" />
                                 Website
@@ -839,7 +836,7 @@ export function PlanCard({
                     </div>
 
                     {variant === 'marketplace' && (
-                        <div className="flex justify-center pt-2 border-t border-emerald-500/10">
+                        <div className="flex justify-center pt-2 border-t border-sand-200">
                             {isCancelledSub ? (
                                 <Badge variant="danger" className="w-full justify-center" style={{ height: '2.25rem' }}>
                                     Cancelled{' '}
@@ -872,7 +869,7 @@ export function PlanCard({
                     )}
 
                     {variant === 'owner' && (
-                        <div className="flex items-center gap-2 pt-2 border-t border-emerald-500/10">
+                        <div className="flex items-center gap-2 pt-2 border-t border-sand-200">
                             {!planExpired && (
                                 <Button
                                     variant="outline"
@@ -882,7 +879,7 @@ export function PlanCard({
                                         setEditOpen(true);
                                     }}
                                     disabled={isSunset}
-                                    className="flex-1 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300"
+                                    className="flex-1 border-foreground bg-foreground text-background hover:bg-foreground/90"
                                 >
                                     <Pencil className="h-3.5 w-3.5 mr-1.5" />
                                     Edit
@@ -895,7 +892,7 @@ export function PlanCard({
                                     e.stopPropagation();
                                     setDeleteOpen(true);
                                 }}
-                                className="flex-1 border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                                className="flex-1 border-red-300 text-red-600 hover:bg-red-100 hover:text-red-700"
                             >
                                 <Trash2 className="h-3.5 w-3.5 mr-1.5" />
                                 Delete

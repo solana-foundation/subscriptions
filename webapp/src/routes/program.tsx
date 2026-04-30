@@ -28,7 +28,7 @@ export function Program() {
     return (
         <div className="space-y-6">
             <div className="flex items-center gap-3">
-                <Code2 className="h-8 w-8 text-purple-400" />
+                <Code2 className="h-8 w-8 text-foreground" />
                 <div>
                     <h1 className="text-2xl font-bold">Program Management</h1>
                     <p className="text-sm text-muted-foreground">Deploy and manage the on-chain program</p>

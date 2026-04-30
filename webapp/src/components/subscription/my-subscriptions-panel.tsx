@@ -32,9 +32,9 @@ function CancelSubscriptionDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="border-amber-500/30 bg-slate-950">
+            <DialogContent className="border-amber-300 bg-bg1">
                 <DialogHeader>
-                    <DialogTitle className="text-amber-400">Unsubscribe</DialogTitle>
+                    <DialogTitle className="text-amber-600">Unsubscribe</DialogTitle>
                     <DialogDescription>
                         Are you sure you want to unsubscribe? Your subscription remains active until end of current
                         billing period.
@@ -56,7 +56,7 @@ function CancelSubscriptionDialog({
                             )
                         }
                         disabled={cancelSubscription.isPending}
-                        className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                        className="border-red-300 text-red-600 hover:bg-red-100 hover:text-red-700"
                     >
                         {cancelSubscription.isPending ? 'Cancelling...' : 'Yes, Unsubscribe'}
                     </Button>
@@ -91,9 +91,9 @@ function RevokeSubscriptionDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="border-red-500/30 bg-slate-950">
+            <DialogContent className="border-red-300 bg-bg1">
                 <DialogHeader>
-                    <DialogTitle className="text-red-400">Delete Subscription</DialogTitle>
+                    <DialogTitle className="text-red-600">Delete Subscription</DialogTitle>
                     <DialogDescription>
                         {canRevoke
                             ? 'This subscription has expired. Deleting will close the account and return rent to your wallet.'
@@ -101,7 +101,7 @@ function RevokeSubscriptionDialog({
                     </DialogDescription>
                 </DialogHeader>
                 {!canRevoke && (
-                    <div className="text-sm text-gray-400 p-3 rounded-lg border border-gray-700 bg-gray-900/50">
+                    <div className="text-sm text-sand-1100 p-3 rounded-lg border border-sand-300 bg-sand-100">
                         Expires on {fmtDateTime(revokedTs)}. You can delete after that.
                     </div>
                 )}
@@ -146,9 +146,9 @@ function CancelAndRevokeDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="border-red-500/30 bg-slate-950">
+            <DialogContent className="border-red-300 bg-bg1">
                 <DialogHeader>
-                    <DialogTitle className="text-red-400">Unsubscribe & Delete</DialogTitle>
+                    <DialogTitle className="text-red-600">Unsubscribe & Delete</DialogTitle>
                     <DialogDescription>
                         {isGhostPlan
                             ? 'The plan terms have changed since you subscribed (ghost plan). Payments cannot be collected. This will cancel and immediately delete the subscription, returning rent to your wallet.'
@@ -236,10 +236,10 @@ function SubscriptionCard({
                 className={cn(
                     'rounded-xl relative overflow-hidden transition-all duration-300',
                     planDeleted
-                        ? 'border-red-500/15 bg-gradient-to-br from-red-950/30 via-gray-900/20 to-gray-950/60 opacity-80'
+                        ? 'border-red-200 bg-gradient-to-br from-red-100 via-sand-100 to-sand-200 opacity-80'
                         : isCancelled
-                          ? 'border-gray-500/20 bg-gradient-to-br from-gray-950/60 via-gray-900/20 to-gray-950/60 opacity-70'
-                          : 'border-teal-500/25 bg-gradient-to-br from-slate-900/80 via-teal-900/15 to-slate-900/80 hover:border-teal-500/45',
+                          ? 'border-sand-300 bg-gradient-to-br from-sand-200 via-sand-100 to-sand-200 opacity-70'
+                          : 'border-0 border-all-dashed-medium bg-card hover:bg-sand-100',
                 )}
             >
                 {!isCancelled && !planDeleted && (
@@ -247,7 +247,7 @@ function SubscriptionCard({
                 )}
                 <CardContent className="p-4 space-y-3 relative z-10">
                     <div className="flex items-center justify-between gap-2">
-                        <p className="font-semibold text-white truncate">{planName}</p>
+                        <p className="font-semibold text-foreground truncate">{planName}</p>
                         {planDeleted ? (
                             <Badge variant="danger" className="shrink-0">
                                 Plan Deleted
@@ -268,28 +268,28 @@ function SubscriptionCard({
                     </div>
 
                     <div className="flex items-baseline gap-1.5">
-                        <span className="text-base sm:text-lg lg:text-xl font-bold text-teal-400">${amount}</span>
-                        <span className="text-sm text-teal-400/60">/{period.toLowerCase()}</span>
+                        <span className="text-base sm:text-lg lg:text-xl font-semibold text-foreground">${amount}</span>
+                        <span className="text-sm text-sand-1000">/{period.toLowerCase()}</span>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-sand-1100">
                         <span className="font-mono">{ellipsify(item.address, 4)}</span>
-                        <span className="text-teal-800">|</span>
-                        <span className="font-bold text-blue-400/50">V{item.subscription.header.version}</span>
-                        <span className="text-teal-800">|</span>
-                        <span className="font-bold text-teal-400/40">ID: {subInitId.toString()}</span>
+                        <span className="text-sand-900">|</span>
+                        <span className="font-semibold text-sand-1000">V{item.subscription.header.version}</span>
+                        <span className="text-sand-900">|</span>
+                        <span className="font-semibold text-sand-1000">ID: {subInitId.toString()}</span>
                         {isStale && (
                             <>
-                                <span className="text-teal-800">|</span>
-                                <span className="font-semibold text-amber-400">Stale</span>
+                                <span className="text-sand-900">|</span>
+                                <span className="font-semibold text-amber-600">Stale</span>
                             </>
                         )}
-                        <span className="text-teal-800">|</span>
+                        <span className="text-sand-900">|</span>
                         <span>Pulled: ${pulled.toFixed(2)}</span>
                         {isCancelled && !planDeleted && (
                             <>
-                                <span className="text-teal-800">|</span>
-                                <span className="flex items-center gap-1 text-red-400">
+                                <span className="text-sand-900">|</span>
+                                <span className="flex items-center gap-1 text-red-600">
                                     <Clock className="h-3 w-3" />
                                     Expires: {fmtDate(revokedTs)}
                                 </span>
@@ -297,13 +297,13 @@ function SubscriptionCard({
                         )}
                     </div>
 
-                    <div className={cn('pt-2 border-t', planDeleted ? 'border-red-500/10' : 'border-teal-500/10')}>
+                    <div className={cn('pt-2 border-t', planDeleted ? 'border-red-200' : 'border-sand-200')}>
                         {(planDeleted || isGhostPlan) && isActive ? (
                             <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setCancelAndRevokeOpen(true)}
-                                className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                                className="w-full border-red-300 text-red-600 hover:bg-red-100 hover:text-red-700"
                             >
                                 <Trash2 className="h-3.5 w-3.5 mr-1.5" />
                                 Unsubscribe & Delete
@@ -321,7 +321,7 @@ function SubscriptionCard({
                                         : setCancelOpen(true)
                                 }
                                 disabled={cancelSubscription.isPending}
-                                className="w-full border-amber-500/30 text-amber-400 hover:bg-amber-500/10 hover:text-amber-300"
+                                className="w-full border-amber-300 text-amber-600 hover:bg-amber-100 hover:text-amber-700"
                             >
                                 {cancelSubscription.isPending ? 'Unsubscribing...' : 'Unsubscribe'}
                             </Button>
@@ -334,8 +334,8 @@ function SubscriptionCard({
                                 className={cn(
                                     'w-full',
                                     isExpired
-                                        ? 'border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300'
-                                        : 'border-gray-600/30 text-gray-500 cursor-not-allowed',
+                                        ? 'border-red-300 text-red-600 hover:bg-red-100 hover:text-red-700'
+                                        : 'border-gray-600/30 text-sand-1000 cursor-not-allowed',
                                 )}
                             >
                                 <Trash2 className="h-3.5 w-3.5 mr-1.5" />
@@ -365,7 +365,7 @@ export function MySubscriptionsPanel() {
 
     if (isLoading) {
         return (
-            <Card className="border-teal-500/20 bg-gradient-to-br from-teal-950/40 via-teal-900/20 to-transparent">
+            <Card className="border-0 border-all-dashed-medium bg-card">
                 <CardContent className="flex items-center justify-center py-12">
                     <div className="animate-pulse text-muted-foreground">Loading subscriptions...</div>
                 </CardContent>
@@ -376,11 +376,11 @@ export function MySubscriptionsPanel() {
     const hasSubs = subscriptions && subscriptions.length > 0;
 
     return (
-        <Card className="relative overflow-hidden border-teal-500/20 bg-gradient-to-br from-teal-950/40 via-teal-900/20 to-transparent hover:border-teal-500/40 transition-all duration-300">
+        <Card className="relative overflow-hidden border-0 border-all-dashed-medium bg-card transition-all duration-300">
             <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <CalendarCheck className="h-5 w-5 text-teal-400" />
+                        <CalendarCheck className="h-5 w-5 text-foreground" />
                         <CardTitle>My Subscriptions</CardTitle>
                     </div>
                     {hasSubs && <Badge variant="info">{subscriptions.length}</Badge>}

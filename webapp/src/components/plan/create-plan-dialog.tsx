@@ -237,9 +237,7 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
                 </DialogHeader>
 
                 <div className="mb-3">
-                    <p className="text-xs font-medium uppercase tracking-wider text-emerald-400 mb-2">
-                        Quick Templates
-                    </p>
+                    <p className="text-xs font-medium uppercase tracking-wider text-sand-1000 mb-2">Quick Templates</p>
                     <div className="flex gap-2 overflow-x-auto pb-1">
                         {PLAN_TEMPLATES.map(t => {
                             const TIcon = PLAN_ICONS.find(i => i.name === t.icon)?.icon;
@@ -248,7 +246,7 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
                                     key={t.label}
                                     type="button"
                                     onClick={() => applyTemplate(t)}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border border-border hover:border-emerald-500 hover:text-emerald-400 transition-colors whitespace-nowrap shrink-0"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border border-border hover:border-foreground hover:text-foreground transition-colors whitespace-nowrap shrink-0"
                                 >
                                     {TIcon && <TIcon className="h-3.5 w-3.5" />}
                                     {t.label}
@@ -261,7 +259,7 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
                 <div className="max-h-[70vh] overflow-y-auto pr-1">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
                         <div className="sm:col-span-2">
-                            <p className="text-xs font-medium uppercase tracking-wider text-emerald-400">Metadata</p>
+                            <p className="text-xs font-medium uppercase tracking-wider text-sand-1000">Metadata</p>
                         </div>
 
                         <div className="grid gap-2">
@@ -325,7 +323,7 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
                         <div className="sm:col-span-2 h-px bg-border" />
 
                         <div className="sm:col-span-2">
-                            <p className="text-xs font-medium uppercase tracking-wider text-emerald-400">
+                            <p className="text-xs font-medium uppercase tracking-wider text-sand-1000">
                                 Plan Parameters
                             </p>
                         </div>
@@ -390,13 +388,13 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
                                             setNoEndDate(e.target.checked);
                                             if (e.target.checked) setEndDate('');
                                         }}
-                                        className="h-4 w-4 rounded border-gray-600 bg-gray-800 text-emerald-500 focus:ring-emerald-500/30"
+                                        className="h-4 w-4 rounded border-sand-400 bg-card text-foreground focus:ring-foreground"
                                     />
                                 </label>
                             </div>
                             {noEndDate ? (
-                                <div className="flex items-center gap-2 rounded-md border border-gray-700/50 bg-gray-900/50 px-3 py-2.5">
-                                    <span className="text-sm text-gray-400">This plan will not have an end date</span>
+                                <div className="flex items-center gap-2 rounded-md border border-sand-300 bg-sand-100 px-3 py-2.5">
+                                    <span className="text-sm text-sand-1100">This plan will not have an end date</span>
                                 </div>
                             ) : (
                                 <>

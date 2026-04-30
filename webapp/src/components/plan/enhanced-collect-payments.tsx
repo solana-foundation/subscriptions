@@ -79,22 +79,22 @@ function CollectSummaryCards({
             {cards.map(card => (
                 <div
                     key={card.title}
-                    className="flex flex-col relative overflow-hidden border border-emerald-500/20 bg-[#12291d]/80 backdrop-blur-xl rounded-2xl shadow-[0_0_15px_rgba(16,185,129,0.1)] transition-all hover:border-emerald-500/40 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)]"
+                    className="flex flex-col relative overflow-hidden border-0 border-all-dashed-medium bg-card rounded-2xl transition-all hover:bg-sand-100"
                 >
                     <div className="p-5 flex-grow">
                         <div className="flex items-center gap-2 mb-6">
-                            <card.icon className="h-5 w-5 text-emerald-400" />
-                            <h3 className="text-[17px] font-semibold text-white tracking-tight">{card.title}</h3>
+                            <card.icon className="h-5 w-5 text-foreground" />
+                            <h3 className="text-[17px] font-semibold text-foreground tracking-tight">{card.title}</h3>
                         </div>
                         <div className="space-y-4">
                             <div className="flex justify-between items-center text-sm">
-                                <span className="text-gray-400">{card.row1Label}</span>
-                                <span className="font-bold text-white text-base">{card.row1Value}</span>
+                                <span className="text-sand-1100">{card.row1Label}</span>
+                                <span className="font-bold text-foreground text-base">{card.row1Value}</span>
                             </div>
-                            <div className="h-px w-full bg-white/5" />
+                            <div className="h-px w-full bg-sand-100" />
                             <div className="flex justify-between items-center text-sm">
-                                <span className="text-gray-400">{card.row2Label}</span>
-                                <span className="font-bold text-white text-base">{card.row2Value}</span>
+                                <span className="text-sand-1100">{card.row2Label}</span>
+                                <span className="font-bold text-foreground text-base">{card.row2Value}</span>
                             </div>
                         </div>
                     </div>
@@ -302,15 +302,15 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
     const periodHoursSec = Number(plan.data.terms.periodHours) * 3600;
 
     return (
-        <div className="border border-emerald-500/15 bg-slate-900/60 rounded-xl overflow-hidden">
+        <div className="border border-sand-200 bg-sand-200 rounded-xl overflow-hidden">
             <button
-                className="w-full p-4 flex items-center justify-between cursor-pointer hover:bg-slate-800/30 transition-colors"
+                className="w-full p-4 flex items-center justify-between cursor-pointer hover:bg-sand-100 transition-colors"
                 onClick={() => setExpanded(!expanded)}
             >
                 <div className="flex items-center gap-3">
-                    <PlanIcon className="h-5 w-5 text-emerald-400" />
+                    <PlanIcon className="h-5 w-5 text-foreground" />
                     <div className="text-left">
-                        <p className="text-white font-medium">{planName}</p>
+                        <p className="text-foreground font-medium">{planName}</p>
                         <p className="text-sm text-slate-400">
                             ${amountUsd.toFixed(2)}/period &middot; {eligible.length}/{currentSubscribers.length}{' '}
                             eligible
@@ -320,7 +320,7 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
                 </div>
                 <div className="flex items-center gap-3">
                     {pendingUsd > 0 && (
-                        <span className="text-emerald-400 font-medium text-sm">${pendingUsd.toFixed(2)} pending</span>
+                        <span className="text-foreground font-medium text-sm">${pendingUsd.toFixed(2)} pending</span>
                     )}
                     <SolanaButton
                         size="sm"
@@ -337,8 +337,8 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
             </button>
 
             {expanded && (
-                <div className="border-t border-emerald-500/10">
-                    <div className="p-2 border-b border-emerald-500/10">
+                <div className="border-t border-sand-200">
+                    <div className="p-2 border-b border-sand-200">
                         <SegmentedControl
                             aria-label="Collection detail view"
                             value={view}
@@ -357,7 +357,7 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
                             ) : (
                                 <Table>
                                     <TableHeader>
-                                        <TableRow className="border-emerald-500/10 hover:bg-transparent">
+                                        <TableRow className="border-sand-200 hover:bg-transparent">
                                             <TableHead className="text-slate-400">Subscriber</TableHead>
                                             <TableHead className="text-slate-400">Status</TableHead>
                                             <TableHead className="text-slate-400">Period</TableHead>
@@ -379,15 +379,12 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
                                                 : null;
 
                                             return (
-                                                <TableRow
-                                                    key={sub.subscriptionAddress}
-                                                    className="border-emerald-500/10"
-                                                >
+                                                <TableRow key={sub.subscriptionAddress} className="border-sand-200">
                                                     <TableCell>
                                                         <ExplorerLink
                                                             address={sub.delegator}
                                                             label={ellipsify(sub.delegator)}
-                                                            className="text-emerald-400 hover:text-emerald-300 text-xs font-mono"
+                                                            className="text-foreground hover:text-sand-1100 text-xs font-mono"
                                                         />
                                                     </TableCell>
                                                     <TableCell>
@@ -407,9 +404,9 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
                                                     </TableCell>
                                                     <TableCell className="text-right">
                                                         {isStale ? (
-                                                            <span className="text-amber-400">Excluded</span>
+                                                            <span className="text-amber-600">Excluded</span>
                                                         ) : collectibleUsd !== null ? (
-                                                            <span className="text-emerald-400 font-medium">
+                                                            <span className="text-foreground font-medium">
                                                                 ${collectibleUsd.toFixed(2)}
                                                             </span>
                                                         ) : (
@@ -444,10 +441,10 @@ function RecentCollections({ version, onClear }: { version: number; onClear: () 
 
     if (history.length === 0) {
         return (
-            <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 via-emerald-900/20 to-transparent">
+            <Card className="border-0 border-all-dashed-medium bg-card">
                 <CardHeader className="pb-4">
                     <div className="flex items-center gap-2">
-                        <Clock className="h-5 w-5 text-emerald-400" />
+                        <Clock className="h-5 w-5 text-sand-1100" />
                         <CardTitle>Recent Collections</CardTitle>
                     </div>
                 </CardHeader>
@@ -460,11 +457,11 @@ function RecentCollections({ version, onClear }: { version: number; onClear: () 
     }
 
     return (
-        <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 via-emerald-900/20 to-transparent">
+        <Card className="border-0 border-all-dashed-medium bg-card">
             <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <Clock className="h-5 w-5 text-emerald-400" />
+                        <Clock className="h-5 w-5 text-sand-1100" />
                         <CardTitle>Recent Collections</CardTitle>
                     </div>
                     <Button
@@ -474,7 +471,7 @@ function RecentCollections({ version, onClear }: { version: number; onClear: () 
                             clearCollectionHistory();
                             onClear();
                         }}
-                        className="text-xs text-muted-foreground hover:text-red-400"
+                        className="text-xs text-muted-foreground hover:text-red-600"
                     >
                         Clear all
                     </Button>
@@ -518,7 +515,7 @@ export function EnhancedCollectPayments() {
 
     if (isLoading) {
         return (
-            <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 via-emerald-900/20 to-transparent">
+            <Card className="border-0 border-all-dashed-medium bg-card">
                 <CardContent className="flex items-center justify-center py-12">
                     <div className="animate-pulse text-muted-foreground">Loading plans...</div>
                 </CardContent>
@@ -529,7 +526,7 @@ export function EnhancedCollectPayments() {
     if (!allPlans || allPlans.length === 0 || plansWithSubs.length === 0) {
         return (
             <div className="space-y-6">
-                <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 via-emerald-900/20 to-transparent">
+                <Card className="border-0 border-all-dashed-medium bg-card">
                     <CardContent className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground">
                         <Banknote className="h-8 w-8" />
                         <p className="text-sm">No plans with active subscribers</p>
