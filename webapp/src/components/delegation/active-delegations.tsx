@@ -1,6 +1,6 @@
 import { RefreshCw, FileX, Coins, ShieldAlert, Power, Trash2 } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@solana/design-system';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
     Dialog,
     DialogContent,
@@ -288,7 +288,7 @@ function FixedDelegationTable({
                 <span className="px-1.5 py-0.5 rounded-full bg-muted text-xs">{delegations.length}</span>
             </div>
             <div className="w-full rounded-2xl overflow-hidden bg-gradient-to-br from-[#121629]/80 to-black/60 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.4)] border border-blue-500/15 overflow-x-auto">
-                <Table className="min-w-[650px] table-fixed">
+                <Table className="min-w-[650px] rounded-none border-0 bg-transparent [&_table]:table-fixed">
                     <TableHeader className="bg-blue-900/30 backdrop-blur-md">
                         <TableRow className="border-none hover:bg-blue-900/30 border-b border-white/5">
                             <TableHead className="text-white font-semibold py-4 text-center" style={{ width: '18%' }}>
@@ -404,7 +404,7 @@ function RecurringDelegationTable({
                 <span className="px-1.5 py-0.5 rounded-full bg-muted text-xs">{delegations.length}</span>
             </div>
             <div className="w-full rounded-2xl overflow-hidden bg-gradient-to-br from-[#121629]/80 to-black/60 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.4)] border border-blue-500/15 overflow-x-auto">
-                <Table className="min-w-[650px] table-fixed">
+                <Table className="min-w-[650px] rounded-none border-0 bg-transparent [&_table]:table-fixed">
                     <TableHeader className="bg-blue-900/30 backdrop-blur-md">
                         <TableRow className="border-none hover:bg-blue-900/30 border-b border-white/5">
                             <TableHead className="text-white font-semibold py-4 text-center" style={{ width: '18%' }}>
