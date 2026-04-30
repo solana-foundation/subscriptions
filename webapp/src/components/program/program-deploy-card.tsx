@@ -9,12 +9,10 @@ import {
     ChevronDown,
     ChevronRight,
     Shield,
-    Copy,
-    Check,
     Send,
 } from 'lucide-react';
+import { CopyButton, TextInput } from '@solana/design-system';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useProgramStatus } from '@/hooks/use-program-status';
 import { useProgramDeploy, type DeployProgress } from '@/hooks/use-program-deploy';
@@ -100,7 +98,6 @@ function TransferAuthoritySection() {
     const [expanded, setExpanded] = useState(false);
     const [newAuthority, setNewAuthority] = useState('');
     const [base58Output, setBase58Output] = useState('');
-    const [copied, setCopied] = useState(false);
     const [generating, setGenerating] = useState(false);
 
     const walletAddress = account;
@@ -152,12 +149,6 @@ function TransferAuthoritySection() {
         }
     };
 
-    const handleCopy = () => {
-        navigator.clipboard.writeText(base58Output);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    };
-
     return (
         <div className="border border-purple-500/10 rounded-lg overflow-hidden">
             <button
@@ -175,14 +166,14 @@ function TransferAuthoritySection() {
                 <div className="px-4 pb-4 space-y-3 border-t border-purple-500/10 pt-3">
                     <div>
                         <label className="text-xs text-gray-500 mb-1 block">New Authority Address</label>
-                        <Input
+                        <TextInput
                             value={newAuthority}
                             onChange={e => {
                                 setNewAuthority(e.target.value);
                                 setBase58Output('');
                             }}
                             placeholder="New authority address..."
-                            className="bg-slate-900/50 border-purple-500/20 text-sm font-mono"
+                            inputClassName="font-mono"
                         />
                     </div>
 
@@ -228,18 +219,7 @@ function TransferAuthoritySection() {
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <span className="text-xs text-gray-500">Raw Transaction (base58)</span>
-                                <Button
-                                    onClick={handleCopy}
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-2 text-gray-400 hover:text-white"
-                                >
-                                    {copied ? (
-                                        <Check className="h-3 w-3 text-emerald-400" />
-                                    ) : (
-                                        <Copy className="h-3 w-3" />
-                                    )}
-                                </Button>
+                                <CopyButton value={base58Output} />
                             </div>
                             <div className="p-3 rounded-lg bg-black/40 border border-purple-500/10 max-h-32 overflow-y-auto">
                                 <code className="text-xs text-purple-300 break-all font-mono leading-relaxed">

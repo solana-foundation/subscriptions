@@ -1,9 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Store, Search, Loader2, X, Clock } from 'lucide-react';
 import { useWallet } from '@solana/connector/react';
+import { Button, TextInput } from '@solana/design-system';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { PlanCard } from '@/components/plan/plan-card';
 import { useMerchantPlans } from '@/hooks/use-plans';
 import { ellipsify } from '@/lib/utils';
@@ -107,7 +106,7 @@ function MarketplaceConnected() {
         <div className="space-y-6">
             <div className="relative" ref={dropdownRef}>
                 <div className="flex gap-2">
-                    <Input
+                    <TextInput
                         value={inputValue}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputValue(e.target.value)}
                         onKeyDown={(e: React.KeyboardEvent) => e.key === 'Enter' && handleSearch()}
@@ -117,10 +116,18 @@ function MarketplaceConnected() {
                             if (r.length > 0) setShowRecent(true);
                         }}
                         placeholder="Enter merchant wallet address"
-                        className="font-mono text-sm"
+                        className="min-w-0 flex-1"
+                        inputClassName="font-mono"
+                        size="lg"
                     />
-                    <Button onClick={handleSearch} disabled={isLoading} variant="outline" className="gap-2 shrink-0">
-                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    <Button
+                        iconLeft={isLoading ? <Loader2 className="animate-spin" /> : <Search />}
+                        onClick={handleSearch}
+                        disabled={isLoading}
+                        variant="secondary"
+                        size="lg"
+                        className="shrink-0"
+                    >
                         Search
                     </Button>
                 </div>

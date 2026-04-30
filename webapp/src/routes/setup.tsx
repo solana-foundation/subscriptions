@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { useCluster, useKitTransactionSigner, useWallet } from '@solana/connector/react';
-import { Button as SolanaButton } from '@solana/design-system';
+import { Button as SolanaButton, TextInput } from '@solana/design-system';
 import {
     appendTransactionMessageInstructions,
     createTransactionMessage,
@@ -29,7 +29,6 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { WalletButton } from '@/components/solana/solana-provider';
 import { useLocalnetSetup, useDevnetSetup, type SetupStep } from '@/hooks/use-setup-wizard';
 import { useProgramDeploy } from '@/hooks/use-program-deploy';
@@ -810,11 +809,12 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                                 <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4 space-y-3">
                                     <p className="text-sm font-medium text-gray-300">Use a different program</p>
                                     <div className="flex gap-2">
-                                        <Input
+                                        <TextInput
                                             value={customProgramAddress}
                                             onChange={e => setCustomProgramAddress(e.target.value)}
                                             placeholder="Program address..."
-                                            className="bg-slate-900/50 border-white/10 text-sm font-mono"
+                                            className="min-w-0 flex-1"
+                                            inputClassName="font-mono"
                                         />
                                         <Button
                                             onClick={() => handleUseExisting(customProgramAddress)}
@@ -909,11 +909,11 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                                             Optional
                                         </span>
                                     </div>
-                                    <Input
+                                    <TextInput
                                         value={multisigAddress}
                                         onChange={e => setMultisigAddress(e.target.value)}
                                         placeholder="New authority address..."
-                                        className="bg-slate-900/50 border-white/10 text-sm font-mono"
+                                        inputClassName="font-mono"
                                     />
                                     <Button
                                         onClick={handleTransferAuthority}
@@ -985,14 +985,15 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                                         <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4 space-y-3">
                                             <p className="text-sm font-medium text-gray-300">Use a different mint</p>
                                             <div className="flex gap-2">
-                                                <Input
+                                                <TextInput
                                                     value={customUsdcAddress}
                                                     onChange={e => {
                                                         setCustomUsdcAddress(e.target.value);
                                                         setUsdcVerifyFailed(false);
                                                     }}
                                                     placeholder="USDC mint address..."
-                                                    className="bg-slate-900/50 border-white/10 text-sm font-mono"
+                                                    className="min-w-0 flex-1"
+                                                    inputClassName="font-mono"
                                                 />
                                                 <Button
                                                     onClick={() => handleUseCustomUsdc(customUsdcAddress)}
