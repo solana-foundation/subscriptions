@@ -1,13 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
-import { X, Plus, ChevronDown } from 'lucide-react';
-import { TextInput } from '@solana/design-system';
+import { X, Plus } from 'lucide-react';
+import { Select, SelectItem, TextInput } from '@solana/design-system';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import {
-    DropdownMenu,
-    DropdownMenuTrigger,
-    DropdownMenuContent,
-    DropdownMenuItem,
-} from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations';
@@ -95,9 +89,6 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
 
     const UNIT_TO_HOURS = { hours: 1, days: 24, weeks: 168, months: 720 } as const;
     const periodHours = Number(periodValue) * UNIT_TO_HOURS[periodUnit];
-
-    const selectedIconEntry = PLAN_ICONS.find(i => i.name === selectedIcon);
-    const SelectedIconComponent = selectedIconEntry?.icon;
 
     const metadataJson = useMemo(() => {
         const meta: Record<string, string> = { n: planName, d: description };
@@ -295,36 +286,17 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
 
                         <div className="grid gap-2">
                             <Label>Icon</Label>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" className="w-full justify-between">
-                                        {SelectedIconComponent ? (
-                                            <span className="flex items-center gap-2">
-                                                <SelectedIconComponent className="h-4 w-4 text-emerald-400" />
-                                                {selectedIconEntry.label}
-                                            </span>
-                                        ) : (
-                                            <span className="text-muted-foreground">Select an icon</span>
-                                        )}
-                                        <ChevronDown className="h-4 w-4 opacity-50" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent className="max-h-60 overflow-y-auto w-56">
-                                    {PLAN_ICONS.map(({ name, label, icon: Icon }) => (
-                                        <DropdownMenuItem
-                                            key={name}
-                                            onClick={() => setSelectedIcon(name)}
-                                            className={cn(
-                                                'flex items-center gap-2 cursor-pointer',
-                                                selectedIcon === name && 'text-emerald-400',
-                                            )}
-                                        >
-                                            <Icon className="h-4 w-4" />
-                                            {label}
-                                        </DropdownMenuItem>
-                                    ))}
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                            <Select
+                                value={selectedIcon || null}
+                                onValueChange={value => setSelectedIcon(value ?? '')}
+                                placeholder="Select an icon"
+                            >
+                                {PLAN_ICONS.map(({ name, label, icon: Icon }) => (
+                                    <SelectItem key={name} value={name} icon={<Icon />}>
+                                        {label}
+                                    </SelectItem>
+                                ))}
+                            </Select>
                         </div>
 
                         <div className="grid gap-2">
