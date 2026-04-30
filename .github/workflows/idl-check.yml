@@ -10,19 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+
       - uses: ./.github/actions/setup
         with:
-          rust-cache-key: idl-check
-      - name: Generate IDL
-        run: cd program && cargo build
-      - name: Generate clients
-        run: pnpm run generate-clients
-      - name: Check for uncommitted changes
-        run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "::error::IDL or generated clients are out of date!"
-            echo "Run: just generate-idl && just generate-client"
-            git status --short
-            git diff
-            exit 1
-          fi
+          install-solana: 'false'
+          rust-cache-key: 'idl-check'
+
+      - name: Check generated files
+        run: just check-generated

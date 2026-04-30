@@ -1,0 +1,70 @@
+name: Test
+
+on:
+  workflow_call:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  unit-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - uses: ./.github/actions/setup
+        with:
+          install-solana: 'false'
+          rust-cache-key: 'unit-test'
+          save-rust-cache: 'true'
+
+      - name: Run unit tests
+        run: just unit-test
+
+  rust-integration-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - uses: ./.github/actions/setup
+        with:
+          rust-cache-key: 'rust-integration-test'
+          solana-version: 'stable'
+
+      - name: Run Rust integration tests
+        run: just integration-test
+
+  typescript-integration-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - uses: ./.github/actions/setup
+        with:
+          enable-rust-cache: 'false'
+          install-surfpool: 'true'
+          rust-cache-key: 'typescript-integration-test'
+          solana-version: 'stable'
+
+      - name: Run TypeScript integration tests
+        run: just test-client
+
+      - name: Kill validator
+        if: always()
+        run: just kill-validator

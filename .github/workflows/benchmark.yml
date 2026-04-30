@@ -1,0 +1,50 @@
+name: Benchmark
+
+on:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  compute-units:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - uses: ./.github/actions/setup
+        with:
+          rust-cache-key: 'benchmark'
+          solana-version: 'stable'
+
+      - name: Run benchmark
+        run: just test-and-benchmark
+
+      - name: Post CU report comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR=${{ github.event.pull_request.number }}
+          MARKER="<!-- cu-report -->"
+          REPORT="$MARKER
+          $(cat tests/integration-tests/cu_report.md)"
+
+          COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${PR}/comments" \
+            --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" | head -1)
+
+          if [ -n "$COMMENT_ID" ]; then
+            gh api "repos/${{ github.repository }}/issues/comments/${COMMENT_ID}" \
+              -X PATCH -f body="$REPORT"
+          else
+            gh api "repos/${{ github.repository }}/issues/${PR}/comments" \
+              -f body="$REPORT"
+          fi
