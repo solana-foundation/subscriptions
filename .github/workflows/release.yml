@@ -24,7 +24,7 @@ concurrency:
 env:
   PROGRAM: subscriptions
   PROGRAM_ID: De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44
-  REPO_URL: https://github.com/solana-program/multi-delegator
+  REPO_URL: https://github.com/solana-program/subscriptions
 
 jobs:
   release:
