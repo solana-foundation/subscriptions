@@ -415,16 +415,31 @@ export function UsdcFaucetCard() {
                         </Button>
                     ))}
                 </div>
-                {isDevnet && <p className="text-xs text-gray-500">Mint authority wallet required</p>}
-                <Button
-                    onClick={handleAirdrop}
-                    disabled={airdrop.isPending}
-                    loading={airdrop.isPending}
-                    radius="round"
-                    style={{ width: '100%' }}
-                >
-                    {isDevnet ? 'Mint USDC' : 'Request Airdrop'}
-                </Button>
+                {isDevnet && import.meta.env.DEV && (
+                    <p className="text-xs text-gray-500">Mint authority wallet required</p>
+                )}
+                {isDevnet && !import.meta.env.DEV ? (
+                    <a
+                        href="https://faucet.circle.com/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: 'block', width: '100%' }}
+                    >
+                        <Button radius="round" style={{ width: '100%' }}>
+                            Get USDC from Circle
+                        </Button>
+                    </a>
+                ) : (
+                    <Button
+                        onClick={handleAirdrop}
+                        disabled={airdrop.isPending}
+                        loading={airdrop.isPending}
+                        radius="round"
+                        style={{ width: '100%' }}
+                    >
+                        {isDevnet ? 'Mint USDC' : 'Request Airdrop'}
+                    </Button>
+                )}
             </CardContent>
         </Card>
     );
