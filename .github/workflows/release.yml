@@ -64,6 +64,9 @@ jobs:
           PUBKEY=$(solana-keygen pubkey /tmp/deployer.json)
           echo "pubkey=$PUBKEY" >> "$GITHUB_OUTPUT"
 
+      - name: Configure Solana CLI
+        run: solana config set --url "$RPC_URL" --keypair "$HOME/.config/solana/id.json"
+
       - name: Generate IDL
         run: just generate-idl
 
