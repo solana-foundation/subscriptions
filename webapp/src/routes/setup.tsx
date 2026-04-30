@@ -845,14 +845,14 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
 
                         {phase === 'deploy' && (
                             <div className="space-y-3">
-                                <Button
+                                <SolanaButton
                                     onClick={handleDeploy}
                                     disabled={isPending}
-                                    className="w-full bg-purple-600 hover:bg-purple-700"
+                                    loading={programDeploy.isPending}
+                                    style={{ width: '100%' }}
                                 >
-                                    {programDeploy.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                                     Begin Deployment
-                                </Button>
+                                </SolanaButton>
 
                                 {programStatus.data?.deployed && programStatus.data?.upgradeAuthority === account && (
                                     <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
@@ -915,14 +915,14 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                                         placeholder="New authority address..."
                                         inputClassName="font-mono"
                                     />
-                                    <Button
+                                    <SolanaButton
                                         onClick={handleTransferAuthority}
                                         disabled={isPending || !isValidBase58Address(multisigAddress)}
-                                        className="w-full bg-amber-600 hover:bg-amber-500"
+                                        loading={isPending}
+                                        style={{ width: '100%' }}
                                     >
-                                        {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                                         Transfer Authority
-                                    </Button>
+                                    </SolanaButton>
                                 </div>
                                 <Button
                                     onClick={() => {
@@ -1034,14 +1034,14 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                                             <div className="flex-1 border-t border-white/5" />
                                         </div>
 
-                                        <Button
+                                        <SolanaButton
                                             onClick={runUsdcFlow}
                                             disabled={isPending}
-                                            className="w-full bg-purple-600 hover:bg-purple-700"
+                                            loading={isPending}
+                                            style={{ width: '100%' }}
                                         >
-                                            {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                                             Create New USDC Mint
-                                        </Button>
+                                        </SolanaButton>
                                     </>
                                 )}
                             </div>

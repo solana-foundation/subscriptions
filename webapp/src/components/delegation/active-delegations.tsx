@@ -1,5 +1,14 @@
 import { RefreshCw, FileX, Coins, ShieldAlert, Power, Trash2 } from 'lucide-react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@solana/design-system';
+import {
+    Button as SolanaButton,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+    TextInput,
+} from '@solana/design-system';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -212,12 +221,11 @@ function TransferDelegationButton({ delegation, tokenMint, disabled, blockTime }
                 <div className="py-4 space-y-4">
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Amount (USDC)</label>
-                        <input
+                        <TextInput
                             type="number"
                             value={amount}
                             onChange={e => setAmount(e.target.value)}
                             placeholder="0.00"
-                            className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm"
                         />
                         <p className="text-xs text-muted-foreground">Available: {availableAmount} USDC</p>
                     </div>
@@ -232,13 +240,13 @@ function TransferDelegationButton({ delegation, tokenMint, disabled, blockTime }
                     <Button variant="outline" onClick={() => setOpen(false)}>
                         Cancel
                     </Button>
-                    <Button
+                    <SolanaButton
                         onClick={handleTransfer}
                         disabled={isPending || !amount || parseFloat(amount) <= 0}
-                        className="bg-green-600 hover:bg-green-700"
+                        loading={isPending}
                     >
-                        {isPending ? 'Transferring...' : 'Transfer'}
-                    </Button>
+                        Transfer
+                    </SolanaButton>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -654,17 +662,18 @@ function InitPrompt({
             {!hasAta && !tokenAccountsLoading && (
                 <p className="text-xs text-destructive">No token account found. Get some USDC first.</p>
             )}
-            <Button
+            <SolanaButton
                 onClick={handleInitialize}
                 disabled={initSubscriptionAuthority.isPending || !hasAta || tokenAccountsLoading}
                 size="sm"
+                loading={initSubscriptionAuthority.isPending}
             >
                 {initSubscriptionAuthority.isPending
                     ? 'Initializing...'
                     : tokenAccountsLoading
                       ? 'Loading...'
                       : 'Enable Delegations'}
-            </Button>
+            </SolanaButton>
         </div>
     );
 }
@@ -748,12 +757,10 @@ function CloseSubscriptionAuthorityDialog({
                         </p>
                         <div className="space-y-1 pt-2">
                             <label className="text-xs text-gray-400">Type CLOSE to confirm</label>
-                            <input
-                                type="text"
+                            <TextInput
                                 value={confirmText}
                                 onChange={e => setConfirmText(e.target.value)}
                                 placeholder="CLOSE"
-                                className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm"
                             />
                         </div>
                     </div>

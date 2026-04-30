@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Coins, RefreshCw, Plus, ArrowLeft } from 'lucide-react';
-import { Select, SelectItem, TextInput } from '@solana/design-system';
+import { Button as SolanaButton, Select, SelectItem, TextInput } from '@solana/design-system';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -169,13 +169,9 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
-                <Button
-                    disabled={disabled}
-                    className="gap-2 rounded-full px-6 h-11 bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.5)] transition-all hover:shadow-[0_0_25px_rgba(16,185,129,0.7)] border border-emerald-500/50"
-                >
-                    <Plus className="h-5 w-5" />
+                <SolanaButton disabled={disabled} iconLeft={<Plus />} radius="round" size="lg">
                     Create Delegation
-                </Button>
+                </SolanaButton>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[480px]">
                 <DialogHeader>
@@ -204,12 +200,9 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
                             />
                         </div>
                         <DialogFooter className="mt-6">
-                            <Button
-                                onClick={handleContinue}
-                                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white"
-                            >
+                            <SolanaButton onClick={handleContinue} style={{ width: '100%' }}>
                                 Continue
-                            </Button>
+                            </SolanaButton>
                         </DialogFooter>
                     </>
                 ) : (
@@ -330,13 +323,14 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
                                 <ArrowLeft className="h-4 w-4 mr-2" />
                                 Back
                             </Button>
-                            <Button
+                            <SolanaButton
                                 onClick={handleSubmit}
                                 disabled={isPending || !isFormValid}
-                                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white"
+                                loading={isPending}
+                                style={{ flex: 1 }}
                             >
-                                {isPending ? 'Creating...' : 'Create Delegation'}
-                            </Button>
+                                Create Delegation
+                            </SolanaButton>
                         </DialogFooter>
                     </>
                 )}
