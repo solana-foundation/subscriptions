@@ -11,7 +11,7 @@ import {
     Shield,
     Send,
 } from 'lucide-react';
-import { CopyButton, TextInput } from '@solana/design-system';
+import { Button as SolanaButton, CopyButton, TextInput } from '@solana/design-system';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useProgramStatus } from '@/hooks/use-program-status';
@@ -182,21 +182,15 @@ function TransferAuthoritySection() {
                     {isValidInput && (
                         <div className="flex gap-2">
                             {isAuthority && (
-                                <Button
+                                <SolanaButton
                                     onClick={() => transferMutation.mutate()}
                                     disabled={transferMutation.isPending}
-                                    className="flex-1 bg-purple-600 hover:bg-purple-500 text-white"
+                                    iconLeft={<Send />}
+                                    loading={transferMutation.isPending}
+                                    style={{ flex: 1 }}
                                 >
-                                    {transferMutation.isPending ? (
-                                        <>
-                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Transferring...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Send className="h-4 w-4 mr-2" /> Sign & Send
-                                        </>
-                                    )}
-                                </Button>
+                                    Sign & Send
+                                </SolanaButton>
                             )}
                             <Button
                                 onClick={handleGenerateBase58}
@@ -287,14 +281,14 @@ export function ProgramDeployCard() {
                 )}
 
                 {!isActive && progress.phase !== 'done' && progress.phase !== 'error' && (
-                    <Button
+                    <SolanaButton
                         onClick={() => handleDeploy()}
                         disabled={!!authorityMismatch}
-                        className="w-full bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-50"
+                        iconLeft={<Rocket />}
+                        style={{ width: '100%' }}
                     >
-                        <Rocket className="h-4 w-4 mr-2" />
                         {isUpgrade ? 'Upgrade Program' : 'Deploy Program'}
-                    </Button>
+                    </SolanaButton>
                 )}
 
                 {(isActive || progress.phase === 'done' || progress.phase === 'error') && (

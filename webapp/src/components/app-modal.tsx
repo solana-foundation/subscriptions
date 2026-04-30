@@ -1,3 +1,4 @@
+import { Button as SolanaButton } from '@solana/design-system';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import React from 'react';
@@ -27,9 +28,9 @@ export function AppModal({
                 <div className="grid gap-4 py-4">{children}</div>
                 <DialogFooter>
                     {submit ? (
-                        <Button type="submit" onClick={submit} disabled={submitDisabled}>
+                        <SolanaButton type="submit" onClick={submit} disabled={submitDisabled}>
                             {submitLabel || 'Save'}
-                        </Button>
+                        </SolanaButton>
                     ) : null}
                 </DialogFooter>
             </DialogContent>

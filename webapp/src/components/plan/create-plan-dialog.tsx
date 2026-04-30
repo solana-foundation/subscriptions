@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { X, Plus } from 'lucide-react';
-import { Select, SelectItem, TextInput } from '@solana/design-system';
+import { Button as SolanaButton, Select, SelectItem, TextInput } from '@solana/design-system';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -453,13 +453,14 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
                 </div>
 
                 <DialogFooter className="mt-4">
-                    <Button
+                    <SolanaButton
                         onClick={handleSubmit}
                         disabled={createPlan.isPending || !isFormValid}
-                        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white"
+                        loading={createPlan.isPending}
+                        style={{ width: '100%' }}
                     >
-                        {createPlan.isPending ? 'Creating...' : 'Create Plan'}
-                    </Button>
+                        Create Plan
+                    </SolanaButton>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

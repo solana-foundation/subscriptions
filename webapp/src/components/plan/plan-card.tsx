@@ -12,7 +12,7 @@ import {
     Plus,
     X,
 } from 'lucide-react';
-import { Badge, Select, SelectItem, TextInput } from '@solana/design-system';
+import { Badge, Button as SolanaButton, Select, SelectItem, TextInput } from '@solana/design-system';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -362,13 +362,13 @@ function EditPlanDialog({
                     <Button variant="outline" onClick={() => onOpenChange(false)}>
                         Cancel
                     </Button>
-                    <Button
+                    <SolanaButton
                         onClick={handleUpdate}
                         disabled={updatePlan.isPending || isSunset || !isFormValid}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                        loading={updatePlan.isPending}
                     >
-                        {updatePlan.isPending ? 'Updating...' : 'Update Plan'}
-                    </Button>
+                        Update Plan
+                    </SolanaButton>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -496,22 +496,21 @@ function SubscribeDialog({
                         <div className="text-sm text-amber-400 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
                             Your SubscriptionAuthority account must be initialized for this token before subscribing.
                         </div>
-                        <Button
+                        <SolanaButton
                             onClick={handleInit}
                             disabled={initSubscriptionAuthority.isPending}
-                            className="w-full bg-amber-600 hover:bg-amber-500 text-white"
+                            loading={initSubscriptionAuthority.isPending}
+                            style={{ width: '100%' }}
                         >
-                            {initSubscriptionAuthority.isPending
-                                ? 'Initializing...'
-                                : 'Initialize SubscriptionAuthority'}
-                        </Button>
+                            Initialize SubscriptionAuthority
+                        </SolanaButton>
                     </div>
                 ) : (
                     <DialogFooter>
                         <Button variant="outline" onClick={() => onOpenChange(false)}>
                             Cancel
                         </Button>
-                        <Button
+                        <SolanaButton
                             onClick={() =>
                                 subscribe.mutate(
                                     {
@@ -526,10 +525,10 @@ function SubscribeDialog({
                                 )
                             }
                             disabled={subscribe.isPending}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                            loading={subscribe.isPending}
                         >
-                            {subscribe.isPending ? 'Subscribing...' : 'Subscribe'}
-                        </Button>
+                            Subscribe
+                        </SolanaButton>
                     </DialogFooter>
                 )}
             </DialogContent>
@@ -854,17 +853,17 @@ export function PlanCard({
                                     Already Subscribed
                                 </Badge>
                             ) : (
-                                <Button
+                                <SolanaButton
                                     size="sm"
                                     onClick={(e: React.MouseEvent) => {
                                         e.stopPropagation();
                                         setSubscribeOpen(true);
                                     }}
                                     disabled={isSunset || planExpired}
-                                    className="w-full h-9 bg-emerald-600 hover:bg-emerald-500 text-white"
+                                    style={{ width: '100%' }}
                                 >
                                     Subscribe
-                                </Button>
+                                </SolanaButton>
                             )}
                         </div>
                     )}

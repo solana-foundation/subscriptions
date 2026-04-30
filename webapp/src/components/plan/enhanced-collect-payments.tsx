@@ -1,6 +1,16 @@
 import { useState, useMemo, useCallback } from 'react';
-import { DollarSign, Users, ClipboardPen, Loader2, Clock, Star, Banknote, RefreshCw } from 'lucide-react';
-import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@solana/design-system';
+import { DollarSign, Users, ClipboardPen, Clock, Star, Banknote, RefreshCw } from 'lucide-react';
+import {
+    Badge,
+    Button as SolanaButton,
+    SegmentedControl,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@solana/design-system';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -198,20 +208,15 @@ function CollectAllButton({
     }, [eligiblePlans, rpcUrl, progAddr, collectAllPlanPayments, onComplete]);
 
     return (
-        <Button
-            className="bg-emerald-600 hover:bg-emerald-500 text-white"
+        <SolanaButton
             disabled={eligiblePlans.length === 0 || collecting}
+            loading={collecting}
             onClick={handleCollectAll}
         >
-            {collecting ? (
-                <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    {progress}
-                </>
-            ) : (
-                `Collect All Pending ($${totalPendingUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`
-            )}
-        </Button>
+            {collecting
+                ? progress || 'Collecting...'
+                : `Collect All Pending ($${totalPendingUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
+        </SolanaButton>
     );
 }
 
@@ -317,43 +322,32 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
                     {pendingUsd > 0 && (
                         <span className="text-emerald-400 font-medium text-sm">${pendingUsd.toFixed(2)} pending</span>
                     )}
-                    <Button
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                    <SolanaButton
                         size="sm"
                         disabled={isCollecting || eligible.length === 0}
+                        loading={isCollecting}
                         onClick={e => {
                             e.stopPropagation();
                             handleCollect();
                         }}
                     >
-                        {isCollecting ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                            `Collect $${pendingUsd.toFixed(2)}`
-                        )}
-                    </Button>
+                        Collect ${pendingUsd.toFixed(2)}
+                    </SolanaButton>
                 </div>
             </button>
 
             {expanded && (
                 <div className="border-t border-emerald-500/10">
-                    <div className="flex gap-1 p-2 border-b border-emerald-500/10">
-                        <Button
-                            variant={view === 'subscribers' ? 'default' : 'ghost'}
-                            size="sm"
-                            className={view === 'subscribers' ? 'bg-emerald-600 hover:bg-emerald-500' : ''}
-                            onClick={() => setView('subscribers')}
-                        >
-                            Subscribers
-                        </Button>
-                        <Button
-                            variant={view === 'history' ? 'default' : 'ghost'}
-                            size="sm"
-                            className={view === 'history' ? 'bg-emerald-600 hover:bg-emerald-500' : ''}
-                            onClick={() => setView('history')}
-                        >
-                            History
-                        </Button>
+                    <div className="p-2 border-b border-emerald-500/10">
+                        <SegmentedControl
+                            aria-label="Collection detail view"
+                            value={view}
+                            onValueChange={value => setView(value as typeof view)}
+                            items={[
+                                { value: 'subscribers', label: 'Subscribers' },
+                                { value: 'history', label: 'History' },
+                            ]}
+                        />
                     </div>
 
                     <div className="p-3">
@@ -563,9 +557,15 @@ export function EnhancedCollectPayments() {
             />
 
             <div className="flex items-center justify-end gap-2">
-                <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={spinning}>
-                    <RefreshCw className={`h-4 w-4 ${spinning ? 'animate-spin' : ''}`} />
-                </Button>
+                <SolanaButton
+                    variant="secondary"
+                    size="sm"
+                    iconOnly
+                    iconLeft={<RefreshCw className={spinning ? 'animate-spin' : ''} />}
+                    aria-label="Refresh collections"
+                    onClick={handleRefresh}
+                    disabled={spinning}
+                />
                 <CollectAllButton
                     plansData={data?.plans ?? []}
                     totalPendingUsd={totalPendingUsd}
