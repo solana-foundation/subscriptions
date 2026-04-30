@@ -166,6 +166,30 @@ ensure-surfpool:
     just kill-validator
     exit 1
 
+# Bootstrap localnet (validator + program + mock USDC) and write webapp/.env.local for pnpm dev (no api server)
+dev-local: ensure-surfpool
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    pushd {{webapp_dir}}/scripts > /dev/null
+    pnpm install --silent
+    NETWORK=localnet RPC_URL=http://127.0.0.1:8899 pnpm run init
+    popd > /dev/null
+
+    PROG_ID=$(just program-id)
+    USDC_MINT=$(node -e "const c=JSON.parse(require('fs').readFileSync('{{webapp_dir}}/config.json'));process.stdout.write(c.networks.localnet.tokens.find(t=>t.symbol==='USDC').mint)")
+
+    {
+        echo "VITE_DEFAULT_CLUSTER=solana:localnet"
+        echo "VITE_LOCALNET_PROGRAM=$PROG_ID"
+        echo "VITE_LOCALNET_USDC_MINT=$USDC_MINT"
+    } > {{webapp_dir}}/.env.local
+    echo "✓ {{webapp_dir}}/.env.local written"
+    echo "    VITE_LOCALNET_PROGRAM=$PROG_ID"
+    echo "    VITE_LOCALNET_USDC_MINT=$USDC_MINT"
+    echo ""
+    echo "Next: pnpm --filter webapp dev"
+
 # Stop all validators
 kill-validator:
     #!/usr/bin/env bash

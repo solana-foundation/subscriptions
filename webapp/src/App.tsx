@@ -1,4 +1,7 @@
+import { lazy, Suspense } from 'react';
 import { Route, Routes, Navigate, useLocation } from 'react-router';
+import { useQuery } from '@tanstack/react-query';
+import { createSolanaRpc } from '@solana/kit';
 import { AppProviders } from '@/components/app-providers';
 import { AppLayout } from '@/components/app-layout';
 import { Dashboard } from '@/routes/dashboard';
@@ -8,13 +11,12 @@ import { Delegations } from '@/routes/delegations';
 import { Subscriptions } from '@/routes/subscriptions';
 import { Plans } from '@/routes/plans';
 import { CollectPayments } from '@/routes/collect-payments';
-import { Program } from '@/routes/program';
-import { Setup } from '@/routes/setup';
 import { useNetworkConfig } from '@/hooks/use-token-config';
-import { clusterIdToNetwork } from '@/lib/api-client';
+import { clusterIdToNetwork } from '@/lib/cluster';
 import { useClusterConfig } from '@/hooks/use-cluster-config';
-import { useQuery } from '@tanstack/react-query';
-import { createSolanaRpc } from '@solana/kit';
+
+const Setup = lazy(() => import('@/routes/setup').then(m => ({ default: m.Setup })));
+const Program = lazy(() => import('@/routes/program').then(m => ({ default: m.Program })));
 
 function useRpcReachable() {
     const { id, url } = useClusterConfig();
@@ -63,7 +65,7 @@ function useIsSetupValid(): { ready: boolean; loading: boolean } {
     return { ready: true, loading: false };
 }
 
-function SetupGuard({ children }: { children: React.ReactNode }) {
+function DevSetupGuard({ children }: { children: React.ReactNode }) {
     const location = useLocation();
     const { ready } = useIsSetupValid();
     if (!ready && location.pathname !== '/setup') {
@@ -72,78 +74,89 @@ function SetupGuard({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
 }
 
+function ProdSetupGuard({ children }: { children: React.ReactNode }) {
+    return <>{children}</>;
+}
+
+const HAS_LOCALNET_CONFIG = !!import.meta.env.VITE_LOCALNET_USDC_MINT;
+const SetupGuard = import.meta.env.DEV && !HAS_LOCALNET_CONFIG ? DevSetupGuard : ProdSetupGuard;
+
 export default function App() {
     return (
         <AppProviders>
             <SetupGuard>
-                <Routes>
-                    <Route path="/setup" element={<Setup />} />
-                    <Route
-                        element={
-                            <AppLayout>
-                                <Dashboard />
-                            </AppLayout>
-                        }
-                        path="/"
-                    />
-                    <Route
-                        element={
-                            <AppLayout>
-                                <Marketplace />
-                            </AppLayout>
-                        }
-                        path="/marketplace"
-                    />
-                    <Route
-                        element={
-                            <AppLayout>
-                                <Delegations />
-                            </AppLayout>
-                        }
-                        path="/delegations"
-                    />
-                    <Route
-                        element={
-                            <AppLayout>
-                                <Subscriptions />
-                            </AppLayout>
-                        }
-                        path="/subscriptions"
-                    />
-                    <Route
-                        element={
-                            <AppLayout>
-                                <Plans />
-                            </AppLayout>
-                        }
-                        path="/plans"
-                    />
-                    <Route
-                        element={
-                            <AppLayout>
-                                <CollectPayments />
-                            </AppLayout>
-                        }
-                        path="/plans/collect"
-                    />
-                    <Route
-                        element={
-                            <AppLayout>
-                                <Faucet />
-                            </AppLayout>
-                        }
-                        path="/faucet"
-                    />
-                    <Route
-                        element={
-                            <AppLayout>
-                                <Program />
-                            </AppLayout>
-                        }
-                        path="/program"
-                    />
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
+                <Suspense fallback={null}>
+                    <Routes>
+                        {import.meta.env.DEV && <Route path="/setup" element={<Setup />} />}
+                        <Route
+                            element={
+                                <AppLayout>
+                                    <Dashboard />
+                                </AppLayout>
+                            }
+                            path="/"
+                        />
+                        <Route
+                            element={
+                                <AppLayout>
+                                    <Marketplace />
+                                </AppLayout>
+                            }
+                            path="/marketplace"
+                        />
+                        <Route
+                            element={
+                                <AppLayout>
+                                    <Delegations />
+                                </AppLayout>
+                            }
+                            path="/delegations"
+                        />
+                        <Route
+                            element={
+                                <AppLayout>
+                                    <Subscriptions />
+                                </AppLayout>
+                            }
+                            path="/subscriptions"
+                        />
+                        <Route
+                            element={
+                                <AppLayout>
+                                    <Plans />
+                                </AppLayout>
+                            }
+                            path="/plans"
+                        />
+                        <Route
+                            element={
+                                <AppLayout>
+                                    <CollectPayments />
+                                </AppLayout>
+                            }
+                            path="/plans/collect"
+                        />
+                        <Route
+                            element={
+                                <AppLayout>
+                                    <Faucet />
+                                </AppLayout>
+                            }
+                            path="/faucet"
+                        />
+                        {import.meta.env.DEV && (
+                            <Route
+                                element={
+                                    <AppLayout>
+                                        <Program />
+                                    </AppLayout>
+                                }
+                                path="/program"
+                            />
+                        )}
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                </Suspense>
             </SetupGuard>
         </AppProviders>
     );

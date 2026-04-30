@@ -24,6 +24,8 @@ config.json
 
 # Environment secrets
 .env
+.env.local
+**/.env.local
 
 keys/
 

@@ -63,7 +63,7 @@ export function AppHeader() {
                 <div className="hidden md:flex items-center gap-4 ml-auto">
                     <TimeTravelButton />
                     <WalletButton />
-                    <NetworkButton />
+                    {import.meta.env.DEV && <NetworkButton />}
                 </div>
 
                 {showMenu && (
@@ -97,7 +97,7 @@ export function AppHeader() {
                             <div className="flex flex-col gap-4">
                                 <TimeTravelButton />
                                 <WalletButton />
-                                <NetworkButton />
+                                {import.meta.env.DEV && <NetworkButton />}
                             </div>
                         </div>
                     </div>
