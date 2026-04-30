@@ -29,3 +29,4 @@ dist-ssr
 
 # Generated code
 src/generated/
+.vercel

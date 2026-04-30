@@ -373,58 +373,79 @@ export function UsdcFaucetCard() {
         });
     };
 
+    const showCircleLink = isDevnet && !import.meta.env.DEV;
+
     return (
-        <Card className="relative overflow-hidden border border-green-500/20 bg-gradient-to-br from-green-950/40 via-green-900/20 to-transparent hover:border-green-500/40 transition-all duration-300">
+        <Card
+            className={`relative overflow-hidden border bg-gradient-to-br transition-all duration-300 ${showCircleLink ? 'border-gray-500/20 from-gray-950/40 via-gray-900/20 to-transparent opacity-60' : 'border-green-500/20 from-green-950/40 via-green-900/20 to-transparent hover:border-green-500/40'}`}
+        >
             <CardHeader className="relative pb-2">
                 <CardTitle className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-400">USDC {isDevnet ? 'Mint' : 'Airdrop'}</span>
-                    <DollarSign className="h-5 w-5 text-green-400" />
+                    <span className="text-sm font-medium text-gray-400">USDC {isDevnet ? 'Faucet' : 'Airdrop'}</span>
+                    <DollarSign className={`h-5 w-5 ${showCircleLink ? 'text-gray-500' : 'text-green-400'}`} />
                 </CardTitle>
             </CardHeader>
             <CardContent className="relative space-y-4">
-                <TextInput
-                    type="number"
-                    placeholder="0"
-                    value={amount}
-                    onChange={e => setAmount(e.target.value)}
-                    min="1"
-                    step="100"
-                    inputClassName="text-3xl font-bold"
-                    size="xl"
-                />
-                {isDevnet && (
-                    <TextInput
-                        type="text"
-                        placeholder={account ?? 'Recipient address (leave empty for self)'}
-                        value={recipient}
-                        onChange={e => setRecipient(e.target.value)}
-                        inputClassName="font-mono text-xs"
-                        size="lg"
-                    />
-                )}
-                <div className="flex flex-wrap gap-2">
-                    {[100, 1000, 5000, 10000].map(v => (
-                        <Button
-                            key={v}
-                            variant="secondary"
-                            size="sm"
-                            radius="round"
-                            onClick={() => setAmount(String(v))}
+                {showCircleLink ? (
+                    <p className="text-sm text-gray-500 py-4">
+                        USDC airdrop is not available on devnet. Use{' '}
+                        <a
+                            href="https://faucet.circle.com/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-400 hover:underline"
                         >
-                            {v.toLocaleString()}
+                            faucet.circle.com
+                        </a>{' '}
+                        instead.
+                    </p>
+                ) : (
+                    <>
+                        <TextInput
+                            type="number"
+                            placeholder="0"
+                            value={amount}
+                            onChange={e => setAmount(e.target.value)}
+                            min="1"
+                            step="100"
+                            inputClassName="text-3xl font-bold"
+                            size="xl"
+                        />
+                        {isDevnet && (
+                            <TextInput
+                                type="text"
+                                placeholder={account ?? 'Recipient address (leave empty for self)'}
+                                value={recipient}
+                                onChange={e => setRecipient(e.target.value)}
+                                inputClassName="font-mono text-xs"
+                                size="lg"
+                            />
+                        )}
+                        <div className="flex flex-wrap gap-2">
+                            {[100, 1000, 5000, 10000].map(v => (
+                                <Button
+                                    key={v}
+                                    variant="secondary"
+                                    size="sm"
+                                    radius="round"
+                                    onClick={() => setAmount(String(v))}
+                                >
+                                    {v.toLocaleString()}
+                                </Button>
+                            ))}
+                        </div>
+                        {isDevnet && <p className="text-xs text-gray-500">Mint authority wallet required</p>}
+                        <Button
+                            onClick={handleAirdrop}
+                            disabled={airdrop.isPending}
+                            loading={airdrop.isPending}
+                            radius="round"
+                            style={{ width: '100%' }}
+                        >
+                            {isDevnet ? 'Mint USDC' : 'Request Airdrop'}
                         </Button>
-                    ))}
-                </div>
-                {isDevnet && <p className="text-xs text-gray-500">Mint authority wallet required</p>}
-                <Button
-                    onClick={handleAirdrop}
-                    disabled={airdrop.isPending}
-                    loading={airdrop.isPending}
-                    radius="round"
-                    style={{ width: '100%' }}
-                >
-                    {isDevnet ? 'Mint USDC' : 'Request Airdrop'}
-                </Button>
+                    </>
+                )}
             </CardContent>
         </Card>
     );
