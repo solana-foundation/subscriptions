@@ -70,7 +70,7 @@ clients/typescript/src/generated/  (auto-generated; wrapped by hand-written SDK 
 
 ### Architecture Decision Records
 
-- [docs/001-multi-delegator-architecture.md](docs/001-multi-delegator-architecture.md) — Subscription Authority + delegations + PDA design
+- [docs/001-program-architecture.md](docs/001-program-architecture.md) — Subscription Authority + delegations + PDA design
 - [docs/002-subscriptions-architecture.md](docs/002-subscriptions-architecture.md) — Plans + pull-payment subscriptions
 - [docs/003-versioning-migration-architecture.md](docs/003-versioning-migration-architecture.md) — Three-tier account versioning/migration
 - [docs/004-program-upgrade-mechanism.md](docs/004-program-upgrade-mechanism.md) — Upgrade authority and deployment

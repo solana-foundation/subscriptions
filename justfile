@@ -337,7 +337,7 @@ verify-mainnet: check-solana-verify
     set -euo pipefail
     PROG_ID=$(sed -n 's/.*declare_id!("\([^"]*\)").*/\1/p' "{{program_dir}}/src/lib.rs")
     solana-verify verify-from-repo \
-        https://github.com/solana-program/multi-delegator \
+        https://github.com/solana-program/subscriptions \
         --program-id "$PROG_ID" \
         --library-name subscriptions \
         --mount-path program \
