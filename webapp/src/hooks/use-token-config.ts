@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 
+import { type NetworkConfig, STATIC_NETWORKS } from '@/config/networks';
 import { useClusterConfig } from '@/hooks/use-cluster-config';
-import { STATIC_NETWORKS, type NetworkConfig } from '@/config/networks';
-import { clusterIdToNetwork } from '@/lib/cluster';
 import { api } from '@/lib/api-client';
+import { clusterIdToNetwork } from '@/lib/cluster';
 
 export function useNetworkConfig() {
     const { id } = useClusterConfig();

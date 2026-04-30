@@ -1,10 +1,10 @@
 import type { Network } from '@/lib/cluster';
 
 export interface TokenConfig {
-    symbol: string;
-    name: string;
-    mint: string;
     decimals: number;
+    mint: string;
+    name: string;
+    symbol: string;
 }
 
 export interface NetworkConfig {
@@ -18,29 +18,29 @@ const DEVNET_USDC = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU';
 const MAINNET_USDC = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 
 export const STATIC_NETWORKS: Record<Network, NetworkConfig> = {
+    devnet: {
+        programAddress: PROGRAM_ID,
+        tokens: [{ decimals: 6, mint: DEVNET_USDC, name: 'USD Coin', symbol: 'USDC' }],
+    },
     localnet: {
         programAddress: import.meta.env.VITE_LOCALNET_PROGRAM ?? PROGRAM_ID,
         tokens: import.meta.env.VITE_LOCALNET_USDC_MINT
             ? [
                   {
-                      symbol: 'USDC',
-                      name: 'USD Coin (mock)',
-                      mint: import.meta.env.VITE_LOCALNET_USDC_MINT,
                       decimals: 6,
+                      mint: import.meta.env.VITE_LOCALNET_USDC_MINT,
+                      name: 'USD Coin (mock)',
+                      symbol: 'USDC',
                   },
               ]
             : [],
     },
-    devnet: {
+    mainnet: {
         programAddress: PROGRAM_ID,
-        tokens: [{ symbol: 'USDC', name: 'USD Coin', mint: DEVNET_USDC, decimals: 6 }],
+        tokens: [{ decimals: 6, mint: MAINNET_USDC, name: 'USD Coin', symbol: 'USDC' }],
     },
     testnet: {
         programAddress: PROGRAM_ID,
         tokens: [],
-    },
-    mainnet: {
-        programAddress: PROGRAM_ID,
-        tokens: [{ symbol: 'USDC', name: 'USD Coin', mint: MAINNET_USDC, decimals: 6 }],
     },
 };
