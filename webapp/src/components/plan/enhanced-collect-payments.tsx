@@ -1,10 +1,9 @@
 import { useState, useMemo, useCallback } from 'react';
 import { DollarSign, Users, ClipboardPen, Loader2, Clock, Star, Banknote, RefreshCw } from 'lucide-react';
-import { Badge } from '@solana/design-system';
+import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@solana/design-system';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { ExplorerLink } from '@/components/cluster/cluster-ui';
 import { HistoryEntry } from '@/components/plan/collect-payments-panel';
 import { useAllPlanSubscribers, type PlanSubscriberData } from '@/hooks/use-plan-subscribers';

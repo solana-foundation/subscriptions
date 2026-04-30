@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Coins, RefreshCw, Plus, ArrowLeft } from 'lucide-react';
+import { Select, SelectItem, TextInput } from '@solana/design-system';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations';
 import { DELEGATION_KINDS, type DelegationKindId } from '@/lib/delegation-kinds';
@@ -217,12 +217,12 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
                         <div className="grid gap-4 py-2">
                             <div className="grid gap-2">
                                 <Label htmlFor="delegatee">Delegatee Address</Label>
-                                <Input
+                                <TextInput
                                     id="delegatee"
                                     value={delegatee}
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDelegatee(e.target.value)}
                                     placeholder="Enter Solana wallet address"
-                                    className="font-mono text-sm"
+                                    inputClassName="font-mono"
                                 />
                                 <p className="text-xs text-muted-foreground">
                                     The wallet address that can withdraw tokens
@@ -233,7 +233,7 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
                                 <Label htmlFor="amount">
                                     {selectedKind === 'fixed' ? 'Total Amount (USDC)' : 'Amount per Period (USDC)'}
                                 </Label>
-                                <Input
+                                <TextInput
                                     id="amount"
                                     type="number"
                                     min="0"
@@ -247,7 +247,7 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
                             {selectedKind === 'recurring' && (
                                 <div className="grid gap-2">
                                     <Label htmlFor="period">Period Length (days)</Label>
-                                    <Input
+                                    <TextInput
                                         id="period"
                                         type="number"
                                         min="1"
@@ -288,7 +288,7 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
                                 ) : (
                                     <>
                                         <div className="flex gap-2">
-                                            <Input
+                                            <TextInput
                                                 id="expiry-date"
                                                 type="date"
                                                 value={expiryDate}
@@ -298,18 +298,19 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
                                                 min={blockDate.toLocaleDateString('en-CA')}
                                                 className="flex-1"
                                             />
-                                            <select
-                                                id="expiry-hour"
+                                            <Select
                                                 value={expiryHour}
-                                                onChange={e => setExpiryHour(e.target.value)}
-                                                className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                                onValueChange={value => {
+                                                    if (value) setExpiryHour(value);
+                                                }}
+                                                className="w-28 shrink-0"
                                             >
                                                 {Array.from({ length: 24 }, (_, i) => (
-                                                    <option key={i} value={i.toString()}>
+                                                    <SelectItem key={i} value={i.toString()}>
                                                         {i.toString().padStart(2, '0')}:00
-                                                    </option>
+                                                    </SelectItem>
                                                 ))}
-                                            </select>
+                                            </Select>
                                         </div>
                                         {expiryDate && !isExpiryValid() && (
                                             <p className="text-xs text-destructive">

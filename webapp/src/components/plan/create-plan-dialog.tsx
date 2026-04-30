@@ -1,14 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
-import { X, Plus, ChevronDown } from 'lucide-react';
+import { X, Plus } from 'lucide-react';
+import { Select, SelectItem, TextInput } from '@solana/design-system';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import {
-    DropdownMenu,
-    DropdownMenuTrigger,
-    DropdownMenuContent,
-    DropdownMenuItem,
-} from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations';
 import { useUsdcMint } from '@/hooks/use-token-config';
@@ -95,9 +89,6 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
 
     const UNIT_TO_HOURS = { hours: 1, days: 24, weeks: 168, months: 720 } as const;
     const periodHours = Number(periodValue) * UNIT_TO_HOURS[periodUnit];
-
-    const selectedIconEntry = PLAN_ICONS.find(i => i.name === selectedIcon);
-    const SelectedIconComponent = selectedIconEntry?.icon;
 
     const metadataJson = useMemo(() => {
         const meta: Record<string, string> = { n: planName, d: description };
@@ -203,13 +194,14 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
             </Label>
             {list.map((addr, i) => (
                 <div key={i} className="flex gap-2">
-                    <Input
+                    <TextInput
                         value={addr}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                             updateAddress(list, setList, i, e.target.value)
                         }
                         placeholder="Solana address"
-                        className="font-mono text-sm flex-1"
+                        className="flex-1"
+                        inputClassName="font-mono"
                     />
                     <Button
                         type="button"
@@ -274,7 +266,7 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
 
                         <div className="grid gap-2">
                             <Label htmlFor="plan-name">Plan Name</Label>
-                            <Input
+                            <TextInput
                                 id="plan-name"
                                 value={planName}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPlanName(e.target.value)}
@@ -284,7 +276,7 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
 
                         <div className="grid gap-2">
                             <Label htmlFor="plan-desc">Description</Label>
-                            <Input
+                            <TextInput
                                 id="plan-desc"
                                 value={description}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDescription(e.target.value)}
@@ -294,43 +286,24 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
 
                         <div className="grid gap-2">
                             <Label>Icon</Label>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" className="w-full justify-between">
-                                        {SelectedIconComponent ? (
-                                            <span className="flex items-center gap-2">
-                                                <SelectedIconComponent className="h-4 w-4 text-emerald-400" />
-                                                {selectedIconEntry.label}
-                                            </span>
-                                        ) : (
-                                            <span className="text-muted-foreground">Select an icon</span>
-                                        )}
-                                        <ChevronDown className="h-4 w-4 opacity-50" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent className="max-h-60 overflow-y-auto w-56">
-                                    {PLAN_ICONS.map(({ name, label, icon: Icon }) => (
-                                        <DropdownMenuItem
-                                            key={name}
-                                            onClick={() => setSelectedIcon(name)}
-                                            className={cn(
-                                                'flex items-center gap-2 cursor-pointer',
-                                                selectedIcon === name && 'text-emerald-400',
-                                            )}
-                                        >
-                                            <Icon className="h-4 w-4" />
-                                            {label}
-                                        </DropdownMenuItem>
-                                    ))}
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                            <Select
+                                value={selectedIcon || null}
+                                onValueChange={value => setSelectedIcon(value ?? '')}
+                                placeholder="Select an icon"
+                            >
+                                {PLAN_ICONS.map(({ name, label, icon: Icon }) => (
+                                    <SelectItem key={name} value={name} icon={<Icon />}>
+                                        {label}
+                                    </SelectItem>
+                                ))}
+                            </Select>
                         </div>
 
                         <div className="grid gap-2">
                             <Label htmlFor="plan-website">
                                 Website URL <span className="text-muted-foreground font-normal">(optional)</span>
                             </Label>
-                            <Input
+                            <TextInput
                                 id="plan-website"
                                 value={website}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWebsite(e.target.value)}
@@ -360,7 +333,7 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
                         <div className="grid gap-2">
                             <Label htmlFor="plan-amount">Amount per Period</Label>
                             <div className="flex gap-2">
-                                <Input
+                                <TextInput
                                     id="plan-amount"
                                     type="number"
                                     min="0"
@@ -379,7 +352,7 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
                         <div className="grid gap-2">
                             <Label htmlFor="plan-period">Billing Period</Label>
                             <div className="flex gap-2">
-                                <Input
+                                <TextInput
                                     id="plan-period"
                                     type="number"
                                     min="1"
@@ -390,16 +363,18 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
                                     placeholder="30"
                                     className="flex-1"
                                 />
-                                <select
+                                <Select
                                     value={periodUnit}
-                                    onChange={e => setPeriodUnit(e.target.value as typeof periodUnit)}
-                                    className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                    onValueChange={value => {
+                                        if (value) setPeriodUnit(value as typeof periodUnit);
+                                    }}
+                                    className="w-32 shrink-0"
                                 >
-                                    <option value="hours">Hours</option>
-                                    <option value="days">Days</option>
-                                    <option value="weeks">Weeks</option>
-                                    <option value="months">Months</option>
-                                </select>
+                                    <SelectItem value="hours">Hours</SelectItem>
+                                    <SelectItem value="days">Days</SelectItem>
+                                    <SelectItem value="weeks">Weeks</SelectItem>
+                                    <SelectItem value="months">Months</SelectItem>
+                                </Select>
                             </div>
                         </div>
 
@@ -426,7 +401,7 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
                             ) : (
                                 <>
                                     <div className="flex gap-2">
-                                        <Input
+                                        <TextInput
                                             type="date"
                                             value={endDate}
                                             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -435,17 +410,19 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
                                             min={new Date(minEndTs * 1000).toLocaleDateString('en-CA')}
                                             className="flex-1"
                                         />
-                                        <select
+                                        <Select
                                             value={endHour}
-                                            onChange={e => setEndHour(e.target.value)}
-                                            className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                            onValueChange={value => {
+                                                if (value) setEndHour(value);
+                                            }}
+                                            className="w-28 shrink-0"
                                         >
                                             {Array.from({ length: 24 }, (_, i) => (
-                                                <option key={i} value={i.toString()}>
+                                                <SelectItem key={i} value={i.toString()}>
                                                     {i.toString().padStart(2, '0')}:00
-                                                </option>
+                                                </SelectItem>
                                             ))}
-                                        </select>
+                                        </Select>
                                     </div>
                                     {endDate && !isEndDateValid && (
                                         <p className="text-xs text-destructive">

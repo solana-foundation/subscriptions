@@ -1,14 +1,12 @@
 import { useCluster, useWallet } from '@solana/connector/react';
 import { address } from '@solana/kit';
 import type { Address, Lamports } from '@solana/kit';
-import { CopyButton } from '@solana/design-system';
+import { Button, CopyButton, TextInput } from '@solana/design-system';
 
 const lamportsToSol = (lamports: bigint | number): number => Number(lamports) / 1e9;
 import { Link } from 'react-router';
-import { Button } from '@/components/ui/button';
 import { AppAlert } from '@/components/app-alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { useEffect, useMemo, useState } from 'react';
 import { RefreshCw, Wallet, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
@@ -42,7 +40,7 @@ export function AccountBalanceCheck({ address: addr }: { address: Address }) {
         return (
             <AppAlert
                 action={
-                    <Button variant="outline" asChild>
+                    <Button variant="secondary" asChild>
                         <Link to="/faucet">Request Airdrop</Link>
                     </Button>
                 }
@@ -154,14 +152,14 @@ export function WalletBalanceCards({ address: addr }: { address: Address }) {
                     )}
                 </div>
                 <Button
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
+                    iconOnly
+                    iconLeft={<RefreshCw className={isRefreshing ? 'animate-spin' : ''} />}
+                    aria-label="Refresh wallet balances"
                     onClick={handleRefresh}
                     disabled={isRefreshing}
-                    className="rounded-full bg-white/5 border-white/10 hover:bg-white/10 text-white"
-                >
-                    <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                </Button>
+                />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -316,22 +314,23 @@ export function SolFaucetCard() {
                     </p>
                 ) : (
                     <>
-                        <Input
+                        <TextInput
                             type="number"
                             placeholder="0"
                             value={amount}
                             onChange={e => setAmount(e.target.value)}
                             min="0.1"
                             step="0.1"
-                            className="text-3xl font-bold h-14 border-purple-500/20 focus-visible:ring-purple-500/40"
+                            inputClassName="text-3xl font-bold"
+                            size="xl"
                         />
                         <div className="flex flex-wrap gap-2">
                             {[1, 2, 5, 10].map(v => (
                                 <Button
                                     key={v}
-                                    variant="outline"
+                                    variant="secondary"
                                     size="sm"
-                                    className="rounded-full text-xs border-purple-500/30 hover:bg-purple-500/10"
+                                    radius="round"
                                     onClick={() => setAmount(String(v))}
                                 >
                                     {v} SOL
@@ -341,9 +340,11 @@ export function SolFaucetCard() {
                         <Button
                             onClick={handleAirdrop}
                             disabled={airdrop.isPending}
-                            className="w-full rounded-full bg-purple-600 hover:bg-purple-500 text-white"
+                            loading={airdrop.isPending}
+                            radius="round"
+                            style={{ width: '100%' }}
                         >
-                            {airdrop.isPending ? 'Requesting...' : 'Request Airdrop'}
+                            Request Airdrop
                         </Button>
                     </>
                 )}
@@ -381,31 +382,33 @@ export function UsdcFaucetCard() {
                 </CardTitle>
             </CardHeader>
             <CardContent className="relative space-y-4">
-                <Input
+                <TextInput
                     type="number"
                     placeholder="0"
                     value={amount}
                     onChange={e => setAmount(e.target.value)}
                     min="1"
                     step="100"
-                    className="text-3xl font-bold h-14 border-green-500/20 focus-visible:ring-green-500/40"
+                    inputClassName="text-3xl font-bold"
+                    size="xl"
                 />
                 {isDevnet && (
-                    <Input
+                    <TextInput
                         type="text"
                         placeholder={account ?? 'Recipient address (leave empty for self)'}
                         value={recipient}
                         onChange={e => setRecipient(e.target.value)}
-                        className="font-mono text-xs h-10 border-green-500/20 focus-visible:ring-green-500/40"
+                        inputClassName="font-mono text-xs"
+                        size="lg"
                     />
                 )}
                 <div className="flex flex-wrap gap-2">
                     {[100, 1000, 5000, 10000].map(v => (
                         <Button
                             key={v}
-                            variant="outline"
+                            variant="secondary"
                             size="sm"
-                            className="rounded-full text-xs border-green-500/30 hover:bg-green-500/10"
+                            radius="round"
                             onClick={() => setAmount(String(v))}
                         >
                             {v.toLocaleString()}
@@ -416,9 +419,11 @@ export function UsdcFaucetCard() {
                 <Button
                     onClick={handleAirdrop}
                     disabled={airdrop.isPending}
-                    className="w-full rounded-full bg-green-600 hover:bg-green-500 text-white"
+                    loading={airdrop.isPending}
+                    radius="round"
+                    style={{ width: '100%' }}
                 >
-                    {airdrop.isPending ? 'Requesting...' : isDevnet ? 'Mint USDC' : 'Request Airdrop'}
+                    {isDevnet ? 'Mint USDC' : 'Request Airdrop'}
                 </Button>
             </CardContent>
         </Card>

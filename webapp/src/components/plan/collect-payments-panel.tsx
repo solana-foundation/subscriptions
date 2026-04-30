@@ -1,9 +1,8 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Banknote, ChevronDown, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
-import { Badge } from '@solana/design-system';
+import { Banknote, ChevronDown, CheckCircle2, XCircle } from 'lucide-react';
+import { Badge, Button } from '@solana/design-system';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { cn, USDC_MULTIPLIER, ellipsify, fmtDateTime } from '@/lib/utils';
 import { ExplorerLink } from '@/components/cluster/cluster-ui';
 import { useMyPlans, type PlanItem } from '@/hooks/use-plans';
@@ -146,19 +145,18 @@ function CollectPlanCard({
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white"
-                        size="sm"
-                        disabled={isCollecting}
-                        onClick={handleCollect}
-                    >
-                        {isCollecting && <Loader2 className="h-4 w-4 animate-spin" />}
+                    <Button size="sm" disabled={isCollecting} loading={isCollecting} onClick={handleCollect}>
                         Collect Payments
                     </Button>
                     {history.length > 0 && (
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExpanded(!expanded)}>
-                            <ChevronDown className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')} />
-                        </Button>
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            iconOnly
+                            iconLeft={<ChevronDown className={cn('transition-transform', expanded && 'rotate-180')} />}
+                            aria-label={expanded ? 'Collapse collection history' : 'Expand collection history'}
+                            onClick={() => setExpanded(!expanded)}
+                        />
                     )}
                 </div>
             </div>
