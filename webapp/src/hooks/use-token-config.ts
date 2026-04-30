@@ -1,16 +1,26 @@
 import { useQuery } from '@tanstack/react-query';
 
+import { type NetworkConfig, STATIC_NETWORKS } from '@/config/networks';
 import { useClusterConfig } from '@/hooks/use-cluster-config';
-import type { NetworkConfigResponse } from '@/lib/api-client';
-import { api, clusterIdToNetwork } from '@/lib/api-client';
+import { api } from '@/lib/api-client';
+import { clusterIdToNetwork } from '@/lib/cluster';
 
 export function useNetworkConfig() {
     const { id } = useClusterConfig();
     const network = clusterIdToNetwork(id);
 
-    return useQuery<NetworkConfigResponse>({
-        queryFn: () => api.config.getNetworkConfig(network),
-        queryKey: ['network-config', network],
+    return useQuery<NetworkConfig>({
+        queryFn: async () => {
+            if (import.meta.env.DEV) {
+                try {
+                    return await api.config.getNetworkConfig(network);
+                } catch {
+                    return STATIC_NETWORKS[network];
+                }
+            }
+            return STATIC_NETWORKS[network];
+        },
+        queryKey: ['network-config', network, import.meta.env.DEV],
         retry: 2,
         staleTime: 30_000,
     });

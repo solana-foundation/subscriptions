@@ -21,5 +21,14 @@ export const NAV_ITEMS: NavItem[] = [
         path: '/plans',
     },
     { clusterFilter: ['solana:localnet', 'solana:devnet'], icon: Droplets, label: 'Faucet', path: '/faucet' },
-    { clusterFilter: ['solana:devnet', 'solana:testnet'], icon: Code2, label: 'Program', path: '/program' },
+    ...(import.meta.env.DEV
+        ? [
+              {
+                  clusterFilter: ['solana:devnet', 'solana:testnet'],
+                  icon: Code2,
+                  label: 'Program',
+                  path: '/program',
+              } satisfies NavItem,
+          ]
+        : []),
 ];

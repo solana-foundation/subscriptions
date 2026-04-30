@@ -27,22 +27,28 @@ import { ellipsify } from '@/lib/utils';
 function defaultClusterId(): SolanaClusterId {
     const stored = localStorage.getItem('setup-cluster');
     const configured = import.meta.env.VITE_DEFAULT_CLUSTER;
-    const id = stored || configured || 'solana:localnet';
-    return id === 'solana:devnet' || id === 'solana:testnet' || id === 'solana:localnet'
+    const id = stored || configured || (import.meta.env.DEV ? 'solana:localnet' : 'solana:devnet');
+    return id === 'solana:devnet' || id === 'solana:testnet' || id === 'solana:localnet' || id === 'solana:mainnet'
         ? (id as SolanaClusterId)
-        : 'solana:localnet';
+        : 'solana:devnet';
 }
 
-function networkFromClusterId(clusterId: SolanaClusterId): 'devnet' | 'localnet' | 'testnet' {
+function networkFromClusterId(clusterId: SolanaClusterId): 'devnet' | 'localnet' | 'mainnet' | 'testnet' {
     if (clusterId === 'solana:devnet') return 'devnet';
     if (clusterId === 'solana:testnet') return 'testnet';
+    if (clusterId === 'solana:mainnet') return 'mainnet';
     return 'localnet';
 }
 
 const clusters = [
-    { id: 'solana:localnet' as const, label: 'Localnet', url: '/rpc' },
+    ...(import.meta.env.DEV ? [{ id: 'solana:localnet' as const, label: 'Localnet', url: '/rpc' }] : []),
     { id: 'solana:devnet' as const, label: 'Devnet', url: 'https://api.devnet.solana.com' },
     { id: 'solana:testnet' as const, label: 'Testnet', url: 'https://api.testnet.solana.com' },
+    {
+        id: 'solana:mainnet' as const,
+        label: 'Mainnet',
+        url: import.meta.env.VITE_MAINNET_RPC_URL ?? 'https://api.mainnet-beta.solana.com',
+    },
 ];
 
 export function WalletButton() {

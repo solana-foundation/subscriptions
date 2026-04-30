@@ -19,3 +19,7 @@ pnpm-lock.yaml
 
 # TypeDoc generated API docs
 clients/typescript/docs/
+
+# Editor / tool config
+.emdash.json
+.vscode/

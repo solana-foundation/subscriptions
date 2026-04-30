@@ -24,6 +24,8 @@ config.json
 
 # Environment secrets
 .env
+.env.local
+**/.env.local
 
 keys/
 
@@ -39,3 +41,7 @@ clients/typescript/docs/
 .vercel
 
 .claude/
+
+# Editor / tool config
+.emdash.json
+.vscode/
