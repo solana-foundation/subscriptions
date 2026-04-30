@@ -55,11 +55,7 @@ export function MyPlansPanel() {
                         <CardTitle>My Plans</CardTitle>
                     </div>
                     <div className="flex items-center gap-2">
-                        {hasPlan && (
-                            <Badge variant="success">
-                                {plans.length}
-                            </Badge>
-                        )}
+                        {hasPlan && <Badge variant="success">{plans.length}</Badge>}
                         <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={spinning}>
                             <RefreshCw className={`h-4 w-4 ${spinning ? 'animate-spin' : ''}`} />
                         </Button>

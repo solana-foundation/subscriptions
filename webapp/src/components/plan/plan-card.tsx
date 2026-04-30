@@ -869,11 +869,7 @@ export function PlanCard({
                     {variant === 'marketplace' && (
                         <div className="flex justify-center pt-2 border-t border-emerald-500/10">
                             {isCancelledSub ? (
-                                <Badge
-                                    variant="danger"
-                                    className="w-full justify-center"
-                                    style={{ height: '2.25rem' }}
-                                >
+                                <Badge variant="danger" className="w-full justify-center" style={{ height: '2.25rem' }}>
                                     Cancelled{' '}
                                     {subDaysLeft !== null && subDaysLeft > 0
                                         ? `\u2014 ${subDaysLeft} days until revoke`

@@ -383,11 +383,7 @@ export function MySubscriptionsPanel() {
                         <CalendarCheck className="h-5 w-5 text-teal-400" />
                         <CardTitle>My Subscriptions</CardTitle>
                     </div>
-                    {hasSubs && (
-                        <Badge variant="info">
-                            {subscriptions.length}
-                        </Badge>
-                    )}
+                    {hasSubs && <Badge variant="info">{subscriptions.length}</Badge>}
                 </div>
             </CardHeader>
             <CardContent>

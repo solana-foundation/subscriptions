@@ -215,9 +215,7 @@ export function CollectPaymentsPanel({ alwaysShow }: { alwaysShow?: boolean } = 
                 <div className="flex items-center gap-2">
                     <Banknote className="h-5 w-5 text-emerald-400" />
                     <CardTitle>Payment Collection</CardTitle>
-                    <Badge variant="success">
-                        {plansWithSubs.length}
-                    </Badge>
+                    <Badge variant="success">{plansWithSubs.length}</Badge>
                 </div>
             </CardHeader>
             <CardContent className="space-y-3">

@@ -399,21 +399,13 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
                                                     </TableCell>
                                                     <TableCell>
                                                         {isStale ? (
-                                                            <Badge variant="warning">
-                                                                Stale Terms
-                                                            </Badge>
+                                                            <Badge variant="warning">Stale Terms</Badge>
                                                         ) : isActive ? (
-                                                            <Badge variant="success">
-                                                                Active
-                                                            </Badge>
+                                                            <Badge variant="success">Active</Badge>
                                                         ) : isCancelled ? (
-                                                            <Badge variant="danger">
-                                                                Cancelled
-                                                            </Badge>
+                                                            <Badge variant="danger">Cancelled</Badge>
                                                         ) : (
-                                                            <Badge>
-                                                                Expired
-                                                            </Badge>
+                                                            <Badge>Expired</Badge>
                                                         )}
                                                     </TableCell>
                                                     <TableCell className="text-slate-300 text-xs">
