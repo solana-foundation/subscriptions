@@ -1,6 +1,7 @@
 import { useCluster, useWallet } from '@solana/connector/react';
 import { address } from '@solana/kit';
 import type { Address, Lamports } from '@solana/kit';
+import { CopyButton } from '@solana/design-system';
 
 const lamportsToSol = (lamports: bigint | number): number => Number(lamports) / 1e9;
 import { Link } from 'react-router';
@@ -9,7 +10,7 @@ import { AppAlert } from '@/components/app-alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useEffect, useMemo, useState } from 'react';
-import { RefreshCw, Wallet, DollarSign, Copy, Check } from 'lucide-react';
+import { RefreshCw, Wallet, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 import type { TokenAccountEntry } from '@/lib/types';
 import { useGetBalanceQuery, useGetTokenAccountsQuery, useAirdropSol, useAirdropUsdc } from './account-data-access';
@@ -123,7 +124,6 @@ export function WalletBalanceCards({ address: addr }: { address: Address }) {
     const delegationId = statusData?.data?.initId ?? null;
 
     const [spinning, setSpinning] = useState(false);
-    const [copiedField, setCopiedField] = useState<string | null>(null);
     const isFetching = solQuery.isFetching || tokenQuery.isFetching;
     const isRefreshing = isFetching || spinning;
 
@@ -144,20 +144,7 @@ export function WalletBalanceCards({ address: addr }: { address: Address }) {
                         <span className="font-mono text-gray-400">
                             {progAddr ? `${progAddr.slice(0, 8)}...${progAddr.slice(-4)}` : '...'}
                         </span>
-                        <button
-                            onClick={() => {
-                                if (progAddr) navigator.clipboard.writeText(progAddr);
-                                setCopiedField('program');
-                                setTimeout(() => setCopiedField(null), 1500);
-                            }}
-                            className="text-gray-600 hover:text-gray-300 transition-colors"
-                        >
-                            {copiedField === 'program' ? (
-                                <Check className="h-3 w-3 text-emerald-400" />
-                            ) : (
-                                <Copy className="h-3 w-3" />
-                            )}
-                        </button>
+                        <CopyButton value={progAddr ?? ''} />
                     </div>
                     {delegationId != null && (
                         <div className="flex items-center gap-1.5 text-xs text-gray-500">
@@ -211,21 +198,7 @@ export function WalletBalanceCards({ address: addr }: { address: Address }) {
                                 {usdcMint && (
                                     <p className="flex items-center gap-1 text-[10px] font-mono text-gray-600 mt-0.5">
                                         {usdcMint.slice(0, 8)}...{usdcMint.slice(-4)}
-                                        <button
-                                            onClick={e => {
-                                                e.stopPropagation();
-                                                navigator.clipboard.writeText(usdcMint);
-                                                setCopiedField('usdc');
-                                                setTimeout(() => setCopiedField(null), 1500);
-                                            }}
-                                            className="text-gray-600 hover:text-gray-300 transition-colors"
-                                        >
-                                            {copiedField === 'usdc' ? (
-                                                <Check className="h-2.5 w-2.5 text-emerald-400" />
-                                            ) : (
-                                                <Copy className="h-2.5 w-2.5" />
-                                            )}
-                                        </button>
+                                        <CopyButton value={usdcMint} />
                                     </p>
                                 )}
                             </div>
