@@ -15,7 +15,7 @@ import { useGetBalanceQuery, useGetTokenAccountsQuery, useAirdropSol, useAirdrop
 import { useDelegations, useIncomingDelegations } from '@/hooks/use-delegations';
 import { useUsdcMint, useUsdcMintRaw } from '@/hooks/use-token-config';
 import { useSubscriptionAuthorityStatus } from '@/hooks/use-subscription-authority-status';
-import { USDC_MULTIPLIER, recurringAvailable } from '@/lib/utils';
+import { USDC_MULTIPLIER, cn, recurringAvailable } from '@/lib/utils';
 import { getBlockTimestamp } from '@/hooks/use-time-travel';
 import { useClusterConfig } from '@/hooks/use-cluster-config';
 import { useProgramAddress } from '@/hooks/use-token-config';
@@ -136,18 +136,18 @@ export function WalletBalanceCards({ address: addr }: { address: Address }) {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                    <h2 className="text-[28px] font-bold tracking-tight text-white">Wallet Overview</h2>
-                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <h2 className="text-[28px] font-bold tracking-tight text-foreground">Wallet Overview</h2>
+                    <div className="flex items-center gap-1.5 text-xs text-sand-1000">
                         <span>Program:</span>
-                        <span className="font-mono text-gray-400">
+                        <span className="font-mono text-sand-1100">
                             {progAddr ? `${progAddr.slice(0, 8)}...${progAddr.slice(-4)}` : '...'}
                         </span>
                         <CopyButton value={progAddr ?? ''} />
                     </div>
                     {delegationId != null && (
-                        <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                        <div className="flex items-center gap-1.5 text-xs text-sand-1000">
                             <span>Delegation ID:</span>
-                            <span className="text-gray-400">{delegationId.toString()}</span>
+                            <span className="text-sand-1100">{delegationId.toString()}</span>
                         </div>
                     )}
                 </div>
@@ -163,75 +163,75 @@ export function WalletBalanceCards({ address: addr }: { address: Address }) {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="relative overflow-hidden border border-purple-500/30 bg-gradient-to-br from-purple-900/40 to-black/60 backdrop-blur-xl shadow-[0_0_30px_rgba(168,85,247,0.15)] rounded-2xl">
+                <Card className="relative overflow-hidden bg-card rounded-2xl border-all-dashed-medium border-0">
                     <CardHeader className="relative pb-2">
                         <CardTitle className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-gray-300">Solana Balance</span>
-                            <div className="p-2 bg-purple-500/20 rounded-lg">
-                                <Wallet className="h-5 w-5 text-purple-400" />
+                            <span className="text-sm font-medium text-sand-1100">Solana Balance</span>
+                            <div className="p-2 bg-sand-100 rounded-lg">
+                                <Wallet className="h-5 w-5 text-foreground" />
                             </div>
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="relative pt-4">
                         <div className="space-y-1">
-                            <div className="text-xl sm:text-3xl lg:text-[40px] leading-tight font-bold tracking-tight text-purple-300">
+                            <div className="text-xl sm:text-3xl lg:text-[40px] leading-tight font-semibold tracking-tight text-foreground">
                                 {solQuery.data?.value ? (
-                                    <span className="drop-shadow-[0_0_10px_rgba(168,85,247,0.5)]">
-                                        {Number(lamportsToSol(solQuery.data.value)).toFixed(4)}
-                                    </span>
+                                    <span>{Number(lamportsToSol(solQuery.data.value)).toFixed(4)}</span>
                                 ) : (
                                     <span className="text-muted-foreground">...</span>
                                 )}
                             </div>
-                            <div className="text-sm font-medium text-gray-500 tracking-wide">SOL</div>
+                            <div className="text-sm font-medium text-sand-1000 tracking-wide">SOL</div>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="relative overflow-hidden border border-emerald-500/30 bg-gradient-to-br from-emerald-900/40 to-black/60 backdrop-blur-xl shadow-[0_0_30px_rgba(16,185,129,0.15)] rounded-2xl">
+                <Card className="relative overflow-hidden bg-card rounded-2xl border-all-dashed-medium border-0">
                     <CardHeader className="relative pb-2">
                         <CardTitle className="flex items-center justify-between">
                             <div>
-                                <span className="text-sm font-medium text-gray-300">USDC Balance</span>
+                                <span className="text-sm font-medium text-sand-1100">USDC Balance</span>
                                 {usdcMint && (
-                                    <p className="flex items-center gap-1 text-[10px] font-mono text-gray-600 mt-0.5">
+                                    <p className="flex items-center gap-1 text-[10px] font-mono text-sand-900 mt-0.5">
                                         {usdcMint.slice(0, 8)}...{usdcMint.slice(-4)}
                                         <CopyButton value={usdcMint} />
                                     </p>
                                 )}
                             </div>
-                            <div className="p-2 bg-emerald-500/20 rounded-lg">
-                                <DollarSign className="h-5 w-5 text-emerald-400" />
+                            <div className="p-2 bg-sand-100 rounded-lg">
+                                <DollarSign className="h-5 w-5 text-foreground" />
                             </div>
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="relative pt-4">
                         <div className="space-y-3">
                             {tokenQuery.isLoading ? (
-                                <div className="text-lg sm:text-2xl lg:text-[36px] leading-tight font-bold text-muted-foreground">
+                                <div className="text-lg sm:text-2xl lg:text-[36px] leading-tight font-semibold text-muted-foreground">
                                     ...
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="min-w-0">
-                                        <div className="text-lg sm:text-2xl lg:text-[36px] leading-tight font-bold tracking-tight text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]">
+                                        <div className="text-lg sm:text-2xl lg:text-[36px] leading-tight font-semibold tracking-tight text-foreground">
                                             {usdcBalance.toLocaleString(undefined, {
                                                 minimumFractionDigits: 2,
                                                 maximumFractionDigits: 2,
                                             })}
                                         </div>
-                                        <div className="text-sm font-medium text-gray-500 tracking-wide">Wallet</div>
+                                        <div className="text-sm font-medium text-sand-1000 tracking-wide">Wallet</div>
                                     </div>
                                     <div className="min-w-0">
-                                        <div className="text-lg sm:text-2xl lg:text-[36px] leading-tight font-bold tracking-tight text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]">
+                                        <div className="text-lg sm:text-2xl lg:text-[36px] leading-tight font-semibold tracking-tight text-foreground">
                                             {(usdcBalance - reservedAmount + incomingAmount).toLocaleString(undefined, {
                                                 minimumFractionDigits: 2,
                                                 maximumFractionDigits: 2,
                                             })}
                                         </div>
-                                        <div className="text-sm font-medium text-gray-500 tracking-wide">Spendable</div>
+                                        <div className="text-sm font-medium text-sand-1000 tracking-wide">
+                                            Spendable
+                                        </div>
                                         {(reservedAmount > 0 || incomingAmount > 0) && (
-                                            <div className="text-xs text-gray-600">incl. delegations</div>
+                                            <div className="text-xs text-sand-900">incl. delegations</div>
                                         )}
                                     </div>
                                 </div>
@@ -239,7 +239,7 @@ export function WalletBalanceCards({ address: addr }: { address: Address }) {
                             {(reservedAmount > 0 || incomingAmount > 0) && (
                                 <div className="flex items-center gap-3 text-sm flex-wrap">
                                     {reservedAmount > 0 && (
-                                        <span className="text-amber-400/80">
+                                        <span className="text-sand-1100">
                                             {reservedAmount.toLocaleString(undefined, {
                                                 minimumFractionDigits: 2,
                                                 maximumFractionDigits: 2,
@@ -248,10 +248,10 @@ export function WalletBalanceCards({ address: addr }: { address: Address }) {
                                         </span>
                                     )}
                                     {reservedAmount > 0 && incomingAmount > 0 && (
-                                        <span className="text-gray-600">|</span>
+                                        <span className="text-sand-900">|</span>
                                     )}
                                     {incomingAmount > 0 && (
-                                        <span className="text-emerald-400/80">
+                                        <span className="text-sand-1100">
                                             {incomingAmount.toLocaleString(undefined, {
                                                 minimumFractionDigits: 2,
                                                 maximumFractionDigits: 2,
@@ -290,23 +290,23 @@ export function SolFaucetCard() {
 
     return (
         <Card
-            className={`relative overflow-hidden border bg-gradient-to-br transition-all duration-300 ${isDevnet ? 'border-gray-500/20 from-gray-950/40 via-gray-900/20 to-transparent opacity-60' : 'border-purple-500/20 from-purple-950/40 via-purple-900/20 to-transparent hover:border-purple-500/40'}`}
+            className={`relative overflow-hidden border bg-gradient-to-br transition-all duration-300 ${isDevnet ? 'border-sand-300 from-sand-100 via-sand-100 to-transparent opacity-60' : 'border-sand-300 from-sand-100 via-sand-50 to-transparent hover:border-sand-400'}`}
         >
             <CardHeader className="relative pb-2">
                 <CardTitle className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-400">SOL Airdrop</span>
-                    <Wallet className={`h-5 w-5 ${isDevnet ? 'text-gray-500' : 'text-purple-400'}`} />
+                    <span className="text-sm font-medium text-sand-1100">SOL Airdrop</span>
+                    <Wallet className={`h-5 w-5 ${isDevnet ? 'text-sand-1000' : 'text-foreground'}`} />
                 </CardTitle>
             </CardHeader>
             <CardContent className="relative space-y-4">
                 {isDevnet ? (
-                    <p className="text-sm text-gray-500 py-4">
+                    <p className="text-sm text-sand-1000 py-4">
                         SOL airdrop is not available on devnet. Use{' '}
                         <a
                             href="https://faucet.solana.com"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-400 hover:underline"
+                            className="text-foreground underline hover:no-underline"
                         >
                             faucet.solana.com
                         </a>{' '}
@@ -377,23 +377,26 @@ export function UsdcFaucetCard() {
 
     return (
         <Card
-            className={`relative overflow-hidden border bg-gradient-to-br transition-all duration-300 ${showCircleLink ? 'border-gray-500/20 from-gray-950/40 via-gray-900/20 to-transparent opacity-60' : 'border-green-500/20 from-green-950/40 via-green-900/20 to-transparent hover:border-green-500/40'}`}
+            className={cn(
+                'relative overflow-hidden border-0 border-all-dashed-medium bg-card transition-all duration-300',
+                showCircleLink && 'opacity-60',
+            )}
         >
             <CardHeader className="relative pb-2">
                 <CardTitle className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-400">USDC {isDevnet ? 'Faucet' : 'Airdrop'}</span>
-                    <DollarSign className={`h-5 w-5 ${showCircleLink ? 'text-gray-500' : 'text-green-400'}`} />
+                    <span className="text-sm font-medium text-sand-1100">USDC {isDevnet ? 'Faucet' : 'Airdrop'}</span>
+                    <DollarSign className="h-5 w-5 text-foreground" />
                 </CardTitle>
             </CardHeader>
             <CardContent className="relative space-y-4">
                 {showCircleLink ? (
-                    <p className="text-sm text-gray-500 py-4">
+                    <p className="text-sm text-sand-1000 py-4">
                         USDC airdrop is not available on devnet. Use{' '}
                         <a
                             href="https://faucet.circle.com/"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-400 hover:underline"
+                            className="text-foreground underline hover:no-underline"
                         >
                             faucet.circle.com
                         </a>{' '}
@@ -434,7 +437,7 @@ export function UsdcFaucetCard() {
                                 </Button>
                             ))}
                         </div>
-                        {isDevnet && <p className="text-xs text-gray-500">Mint authority wallet required</p>}
+                        {isDevnet && <p className="text-xs text-sand-1000">Mint authority wallet required</p>}
                         <Button
                             onClick={handleAirdrop}
                             disabled={airdrop.isPending}

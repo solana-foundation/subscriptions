@@ -84,6 +84,7 @@ export function WalletButton() {
                         disabled={pending}
                         iconLeft={<Wallet />}
                         iconRight={<ChevronDown className="opacity-60" />}
+                        size="sm"
                         variant="secondary"
                     >
                         {ellipsify(account, 4)}
@@ -115,6 +116,7 @@ export function WalletButton() {
                     iconLeft={<Wallet />}
                     iconRight={<ChevronDown className="opacity-60" />}
                     loading={pending}
+                    size="sm"
                     variant="secondary"
                 >
                     Connect Wallet

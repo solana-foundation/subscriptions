@@ -46,23 +46,23 @@ export function SummaryCards() {
             {/* Delegations Card */}
             <Link
                 to="/delegations"
-                className="group flex flex-col relative overflow-hidden border border-blue-500/20 bg-[#121629]/80 backdrop-blur-xl rounded-2xl shadow-[0_0_15px_rgba(59,130,246,0.1)] transition-all hover:border-blue-500/40 hover:shadow-[0_0_20px_rgba(59,130,246,0.2)] cursor-pointer"
+                className="group flex flex-col relative overflow-hidden bg-card border-0 border-all-dashed-medium rounded-2xl transition-all hover:bg-sand-100 cursor-pointer"
             >
                 <div className="p-5 flex-grow">
                     <div className="flex items-center gap-2 mb-6">
-                        <Users className="h-5 w-5 text-blue-400" />
-                        <h3 className="text-[17px] font-semibold text-white tracking-tight">Token Delegations</h3>
+                        <Users className="h-5 w-5 text-sand-1100" />
+                        <h3 className="text-[17px] font-semibold text-foreground tracking-tight">Token Delegations</h3>
                     </div>
 
                     <div className="space-y-4">
                         <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-400">Outgoing</span>
-                            <span className="font-bold text-white text-base">{outgoingCount}</span>
+                            <span className="text-sand-1100">Outgoing</span>
+                            <span className="font-bold text-foreground text-base">{outgoingCount}</span>
                         </div>
-                        <div className="h-px w-full bg-white/5" />
+                        <div className="h-px w-full bg-sand-100" />
                         <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-400">Incoming</span>
-                            <span className="font-bold text-white text-base">{incomingCount}</span>
+                            <span className="text-sand-1100">Incoming</span>
+                            <span className="font-bold text-foreground text-base">{incomingCount}</span>
                         </div>
                     </div>
                 </div>
@@ -71,23 +71,23 @@ export function SummaryCards() {
             {/* Subscriptions Card */}
             <Link
                 to="/subscriptions"
-                className="group flex flex-col relative overflow-hidden border border-amber-500/20 bg-[#291b12]/80 backdrop-blur-xl rounded-2xl shadow-[0_0_15px_rgba(245,158,11,0.1)] transition-all hover:border-amber-500/40 hover:shadow-[0_0_20px_rgba(245,158,11,0.2)] cursor-pointer"
+                className="group flex flex-col relative overflow-hidden bg-card border-0 border-all-dashed-medium rounded-2xl transition-all hover:bg-sand-100 cursor-pointer"
             >
                 <div className="p-5 flex-grow">
                     <div className="flex items-center gap-2 mb-6">
-                        <Calendar className="h-5 w-5 text-amber-500" />
-                        <h3 className="text-[17px] font-semibold text-white tracking-tight">My Subscriptions</h3>
+                        <Calendar className="h-5 w-5 text-sand-1100" />
+                        <h3 className="text-[17px] font-semibold text-foreground tracking-tight">My Subscriptions</h3>
                     </div>
 
                     <div className="space-y-4">
                         <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-400">Active</span>
-                            <span className="font-bold text-white text-base">{subsCounts.active}</span>
+                            <span className="text-sand-1100">Active</span>
+                            <span className="font-bold text-foreground text-base">{subsCounts.active}</span>
                         </div>
-                        <div className="h-px w-full bg-white/5" />
+                        <div className="h-px w-full bg-sand-100" />
                         <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-400">Amount</span>
-                            <span className="font-bold text-white text-sm sm:text-base truncate">
+                            <span className="text-sand-1100">Amount</span>
+                            <span className="font-bold text-foreground text-sm sm:text-base truncate">
                                 $
                                 {subsCounts.totalAmount.toLocaleString(undefined, {
                                     minimumFractionDigits: 2,
@@ -103,23 +103,23 @@ export function SummaryCards() {
             {/* Plans Card */}
             <Link
                 to="/plans"
-                className="group flex flex-col relative overflow-hidden border border-emerald-500/20 bg-[#12291d]/80 backdrop-blur-xl rounded-2xl shadow-[0_0_15px_rgba(16,185,129,0.1)] transition-all hover:border-emerald-500/40 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)] cursor-pointer"
+                className="group flex flex-col relative overflow-hidden bg-card border-0 border-all-dashed-medium rounded-2xl transition-all hover:bg-sand-100 cursor-pointer"
             >
                 <div className="p-5 flex-grow">
                     <div className="flex items-center gap-2 mb-6">
-                        <ClipboardPen className="h-5 w-5 text-emerald-500" />
-                        <h3 className="text-[17px] font-semibold text-white tracking-tight">My Plans</h3>
+                        <ClipboardPen className="h-5 w-5 text-sand-1100" />
+                        <h3 className="text-[17px] font-semibold text-foreground tracking-tight">My Plans</h3>
                     </div>
 
                     <div className="space-y-4">
                         <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-400">Active Plans</span>
-                            <span className="font-bold text-white text-base">{plansCounts.active}</span>
+                            <span className="text-sand-1100">Active Plans</span>
+                            <span className="font-bold text-foreground text-base">{plansCounts.active}</span>
                         </div>
-                        <div className="h-px w-full bg-white/5" />
+                        <div className="h-px w-full bg-sand-100" />
                         <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-400">Total Subscribers</span>
-                            <span className="font-bold text-white text-base">{plansCounts.subs}</span>
+                            <span className="text-sand-1100">Total Subscribers</span>
+                            <span className="font-bold text-foreground text-base">{plansCounts.subs}</span>
                         </div>
                     </div>
                 </div>

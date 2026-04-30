@@ -145,31 +145,31 @@ function TimeTravelButtonInner() {
                     }`}
                     title="Time Travel (Dev)"
                 >
-                    <Clock className={timeTraveled ? 'h-4 w-4 text-green-400' : 'h-4 w-4 text-muted-foreground'} />
+                    <Clock className={timeTraveled ? 'h-4 w-4 text-foreground' : 'h-4 w-4 text-muted-foreground'} />
                     {currentTime !== null && (
                         <span
-                            className={`text-sm font-semibold ${timeTraveled ? 'text-green-400' : 'text-muted-foreground'}`}
+                            className={`text-sm font-semibold ${timeTraveled ? 'text-foreground' : 'text-muted-foreground'}`}
                         >
                             {fmtDate(currentTime)}
                         </span>
                     )}
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 via-slate-950 to-slate-950">
+            <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <Clock className="h-5 w-5 text-emerald-400" />
+                        <Clock className="h-5 w-5 text-sand-1100" />
                         Time Travel
                     </DialogTitle>
                 </DialogHeader>
 
                 <div className="grid gap-4">
-                    <div className="rounded-md bg-neutral-800 p-3 text-sm font-mono text-center">
+                    <div className="rounded-md bg-sand-1400 p-3 text-sm font-mono text-center">
                         {currentTime !== null ? fmtDateTime(currentTime) : 'Fetching...'}
                     </div>
 
                     <div className="grid gap-2">
-                        <Label className="text-xs font-medium uppercase tracking-wider text-emerald-400">
+                        <Label className="text-xs font-medium uppercase tracking-wider text-sand-1000">
                             Quick Jump
                         </Label>
                         <div className="flex gap-2 flex-wrap">
@@ -190,7 +190,7 @@ function TimeTravelButtonInner() {
                     <div className="h-px bg-border" />
 
                     <div className="grid gap-2">
-                        <Label className="text-xs font-medium uppercase tracking-wider text-emerald-400">
+                        <Label className="text-xs font-medium uppercase tracking-wider text-sand-1000">
                             Jump to Date
                         </Label>
                         <div ref={dateDisplayRef} className="flex gap-2">
@@ -199,14 +199,14 @@ function TimeTravelButtonInner() {
                                 value={date}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDate(e.target.value)}
                                 min={currentTime ? new Date(currentTime * 1000).toLocaleDateString('en-CA') : undefined}
-                                className={`flex-1 transition-shadow duration-200 ${animating ? 'ring-2 ring-green-500/30 border-green-500/25 shadow-[0_0_8px_rgba(34,197,94,0.15)] text-green-400' : ''}`}
+                                className={`flex-1 transition-shadow duration-200 ${animating ? 'ring-2 ring-foreground/30 border-foreground/25 text-foreground' : ''}`}
                             />
                             <Select
                                 value={hour}
                                 onValueChange={value => {
                                     if (value) setHour(value);
                                 }}
-                                className={`w-28 shrink-0 transition-shadow duration-200 ${animating ? 'ring-2 ring-green-500/30 border-green-500/25 shadow-[0_0_8px_rgba(34,197,94,0.15)]' : ''}`}
+                                className={`w-28 shrink-0 transition-shadow duration-200 ${animating ? 'ring-2 ring-foreground/30 border-foreground/25' : ''}`}
                             >
                                 {Array.from({ length: 24 }, (_, i) => (
                                     <SelectItem key={i} value={i.toString()}>
@@ -219,7 +219,7 @@ function TimeTravelButtonInner() {
                             variant="outline"
                             disabled={loading || !date}
                             onClick={handleCustomJump}
-                            className={`w-full font-bold text-base h-11 rounded-full border-green-500/30 text-white shadow-[0_0_12px_rgba(34,197,94,0.3)] relative overflow-hidden ${date ? 'bg-transparent' : 'bg-green-600 hover:bg-green-500'}`}
+                            className={`w-full font-semibold text-base h-11 rounded-full border-foreground/30 text-foreground relative overflow-hidden ${date ? 'bg-transparent' : 'bg-foreground hover:bg-foreground/90 text-background'}`}
                         >
                             {date && (
                                 <span className="absolute inset-0 animate-[shimmer_2s_ease-in-out_infinite] bg-[length:200%_100%] bg-gradient-to-r from-green-700 via-green-500 to-green-700" />
@@ -231,13 +231,11 @@ function TimeTravelButtonInner() {
                     {timeTraveled && (
                         <>
                             <div className="h-px bg-border" />
-                            <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-300">
+                            <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-700">
                                 <RotateCcw className="h-4 w-4 mt-0.5 shrink-0" />
                                 <span>
                                     Clock is ahead of system time. Run{' '}
-                                    <code className="px-1 py-0.5 rounded bg-neutral-800 text-xs">
-                                        just webapp-clean
-                                    </code>{' '}
+                                    <code className="px-1 py-0.5 rounded bg-sand-1400 text-xs">just webapp-clean</code>{' '}
                                     and restart to reset.
                                 </span>
                             </div>

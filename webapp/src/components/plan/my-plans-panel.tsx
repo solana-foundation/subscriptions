@@ -35,7 +35,7 @@ export function MyPlansPanel() {
 
     if (isLoading) {
         return (
-            <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 via-emerald-900/20 to-transparent">
+            <Card className="border-0 border-all-dashed-medium bg-card">
                 <CardContent className="flex items-center justify-center py-12">
                     <div className="animate-pulse text-muted-foreground">Loading plans...</div>
                 </CardContent>
@@ -46,11 +46,11 @@ export function MyPlansPanel() {
     const hasPlan = plans && plans.length > 0;
 
     return (
-        <Card className="relative overflow-hidden border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 via-emerald-900/20 to-transparent hover:border-emerald-500/40 transition-all duration-300">
+        <Card className="relative overflow-hidden border-0 border-all-dashed-medium bg-card transition-all duration-300">
             <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <ClipboardPen className="h-5 w-5 text-emerald-400" />
+                        <ClipboardPen className="h-5 w-5 text-foreground" />
                         <CardTitle>My Plans</CardTitle>
                     </div>
                     <div className="flex items-center gap-2">

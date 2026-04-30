@@ -30,12 +30,14 @@ function KindCard({ kind, selected, onClick }: KindCardProps) {
             onClick={onClick}
             className={cn(
                 'flex flex-col items-center p-4 rounded-lg border-2 transition-all duration-200',
-                'hover:border-emerald-500/50',
-                selected ? 'border-emerald-500 bg-emerald-500/10' : 'border-border bg-card hover:bg-accent/50',
+                'hover:border-foreground',
+                selected ? 'border-foreground bg-sand-200' : 'border-border bg-card hover:bg-accent/50',
             )}
         >
-            <Icon className={cn('h-8 w-8 mb-2', selected ? 'text-emerald-400' : 'text-muted-foreground')} />
-            <span className={cn('font-medium', selected ? 'text-emerald-400' : 'text-foreground')}>{config.label}</span>
+            <Icon className={cn('h-8 w-8 mb-2', selected ? 'text-foreground' : 'text-muted-foreground')} />
+            <span className={cn('font-medium', selected ? 'text-foreground font-semibold' : 'text-foreground')}>
+                {config.label}
+            </span>
             <span className="text-xs text-muted-foreground text-center mt-1">{config.description}</span>
         </button>
     );
@@ -184,7 +186,7 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
 
                 {step === 'kind' ? (
                     <>
-                        <p className="text-xs font-medium uppercase tracking-wider text-emerald-400 mb-4">
+                        <p className="text-xs font-medium uppercase tracking-wider text-sand-1000 mb-4">
                             Choose Delegation Type
                         </p>
                         <div className="grid grid-cols-2 gap-4">
@@ -268,13 +270,13 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
                                                 setNoExpiry(e.target.checked);
                                                 if (e.target.checked) setExpiryDate('');
                                             }}
-                                            className="h-4 w-4 rounded border-gray-600 bg-gray-800 text-emerald-500 focus:ring-emerald-500/30"
+                                            className="h-4 w-4 rounded border-sand-400 bg-card text-foreground focus:ring-foreground"
                                         />
                                     </label>
                                 </div>
                                 {noExpiry ? (
-                                    <div className="flex items-center gap-2 rounded-md border border-gray-700/50 bg-gray-900/50 px-3 py-2.5">
-                                        <span className="text-sm text-gray-400">
+                                    <div className="flex items-center gap-2 rounded-md border border-sand-300 bg-sand-100 px-3 py-2.5">
+                                        <span className="text-sm text-sand-1100">
                                             This delegation will not have an expiration time
                                         </span>
                                     </div>

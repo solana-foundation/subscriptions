@@ -3,7 +3,7 @@ import { MySubscriptionsPanel } from '@/components/subscription/my-subscriptions
 export function Subscriptions() {
     return (
         <div className="space-y-6">
-            <h1 className="text-3xl font-bold tracking-tight text-white">Subscriptions</h1>
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">Subscriptions</h1>
             <MySubscriptionsPanel />
         </div>
     );

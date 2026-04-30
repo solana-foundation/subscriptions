@@ -38,31 +38,31 @@ export function ProgramStatusCard() {
 
     if (isLoading)
         return (
-            <Card className="border-purple-500/20 bg-gradient-to-br from-purple-950/30 via-slate-950 to-slate-950">
+            <Card className="border-0 border-all-dashed-medium bg-card">
                 <CardContent className="flex items-center justify-center py-12">
-                    <div className="animate-spin h-6 w-6 border-2 border-purple-500 border-t-transparent rounded-full" />
+                    <div className="animate-spin h-6 w-6 border-2 border-foreground border-t-transparent rounded-full" />
                 </CardContent>
             </Card>
         );
 
     if (error)
         return (
-            <Card className="border-red-500/20 bg-gradient-to-br from-red-950/30 via-slate-950 to-slate-950">
-                <CardContent className="py-6 text-red-400 text-sm">Failed to load program status</CardContent>
+            <Card className="border-red-500/20 bg-gradient-to-br from-red-100 via-white to-white">
+                <CardContent className="py-6 text-red-600 text-sm">Failed to load program status</CardContent>
             </Card>
         );
 
     return (
-        <Card className="border-purple-500/20 bg-gradient-to-br from-purple-950/30 via-slate-950 to-slate-950">
+        <Card className="border-0 border-all-dashed-medium bg-card">
             <CardHeader>
                 <CardTitle className="flex items-center justify-between">
-                    <span className="text-white">Program Status</span>
+                    <span className="text-foreground">Program Status</span>
                     {status && <StatusBadge deployed={status.deployed} upgradeable={status.upgradeable} />}
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
                 <Row label="Program ID">
-                    <span className="font-mono text-sm text-gray-300">
+                    <span className="font-mono text-sm text-sand-1400">
                         {progAddr ? truncateAddress(progAddr, 6) : '...'}
                     </span>
                     {progAddr && <CopyButton value={progAddr} />}
@@ -72,7 +72,7 @@ export function ProgramStatusCard() {
                     <>
                         {status.upgradeAuthority && (
                             <Row label="Upgrade Authority">
-                                <span className="font-mono text-sm text-gray-300">
+                                <span className="font-mono text-sm text-sand-1400">
                                     {truncateAddress(status.upgradeAuthority, 6)}
                                 </span>
                                 <CopyButton value={status.upgradeAuthority} />
@@ -80,19 +80,19 @@ export function ProgramStatusCard() {
                         )}
                         {status.lastDeploySlot && (
                             <Row label="Last Deploy Slot">
-                                <span className="text-sm text-gray-300">{status.lastDeploySlot.toLocaleString()}</span>
+                                <span className="text-sm text-sand-1400">{status.lastDeploySlot.toLocaleString()}</span>
                             </Row>
                         )}
                         {status.lastDeployTime && (
                             <Row label="Deployed At">
-                                <span className="text-sm text-gray-300">
+                                <span className="text-sm text-sand-1400">
                                     {new Date(status.lastDeployTime * 1000).toLocaleString()}
                                 </span>
                             </Row>
                         )}
                         {status.dataSize && (
                             <Row label="Program Data Size">
-                                <span className="text-sm text-gray-300">{(status.dataSize / 1024).toFixed(1)} KB</span>
+                                <span className="text-sm text-sand-1400">{(status.dataSize / 1024).toFixed(1)} KB</span>
                             </Row>
                         )}
                     </>
@@ -101,10 +101,10 @@ export function ProgramStatusCard() {
                 {binaryInfo && (
                     <>
                         <Row label="Binary Size">
-                            <span className="text-sm text-gray-300">{(binaryInfo.size / 1024).toFixed(1)} KB</span>
+                            <span className="text-sm text-sand-1400">{(binaryInfo.size / 1024).toFixed(1)} KB</span>
                         </Row>
                         <Row label="Binary Hash">
-                            <span className="font-mono text-xs text-gray-400">{binaryInfo.hash.slice(0, 16)}...</span>
+                            <span className="font-mono text-xs text-sand-1100">{binaryInfo.hash.slice(0, 16)}...</span>
                             <CopyButton value={binaryInfo.hash} />
                         </Row>
                     </>
@@ -117,7 +117,7 @@ export function ProgramStatusCard() {
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500">{label}</span>
+            <span className="text-sm text-sand-1000">{label}</span>
             <div className="flex items-center gap-2">{children}</div>
         </div>
     );

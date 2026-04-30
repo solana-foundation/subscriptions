@@ -82,17 +82,17 @@ function LogConsole({ logs }: { logs: LogEntry[] }) {
     const lastLog = logs[logs.length - 1];
 
     return (
-        <div className="rounded-lg border border-white/10 bg-black/40 overflow-hidden">
+        <div className="rounded-lg border border-sand-300 bg-sand-100 overflow-hidden">
             <button
                 onClick={() => setExpanded(e => !e)}
-                className="w-full flex items-center gap-2 px-3 py-1.5 border-b border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-1.5 border-b border-sand-200 bg-sand-100 hover:bg-sand-100 transition-colors"
             >
-                <Terminal className="h-3 w-3 text-gray-500" />
-                <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Console</span>
-                <span className="flex-1 text-left text-[10px] text-gray-600 font-mono truncate">
+                <Terminal className="h-3 w-3 text-sand-1000" />
+                <span className="text-[10px] font-medium text-sand-1000 uppercase tracking-wider">Console</span>
+                <span className="flex-1 text-left text-[10px] text-sand-900 font-mono truncate">
                     {!expanded && lastLog ? lastLog.msg : ''}
                 </span>
-                <span className="text-[10px] text-gray-600">{expanded ? '−' : '+'}</span>
+                <span className="text-[10px] text-sand-900">{expanded ? '−' : '+'}</span>
             </button>
             {expanded && (
                 <div className="max-h-48 overflow-y-auto p-3 font-mono text-xs leading-relaxed">
@@ -101,13 +101,13 @@ function LogConsole({ logs }: { logs: LogEntry[] }) {
                             key={i}
                             className={
                                 entry.level === 'error'
-                                    ? 'text-red-400'
+                                    ? 'text-red-600'
                                     : entry.level === 'success'
-                                      ? 'text-emerald-400'
-                                      : 'text-gray-400'
+                                      ? 'text-foreground'
+                                      : 'text-sand-1100'
                             }
                         >
-                            <span className="text-gray-600 select-none">
+                            <span className="text-sand-900 select-none">
                                 {new Date(entry.ts).toLocaleTimeString()}{' '}
                             </span>
                             {entry.msg}
@@ -123,25 +123,25 @@ function LogConsole({ logs }: { logs: LogEntry[] }) {
 function StepIndicator({ step }: { step: SetupStep }) {
     return (
         <div className="flex items-center gap-3 py-2">
-            {step.status === 'pending' && <Circle className="h-5 w-5 text-gray-500" />}
-            {step.status === 'running' && <Loader2 className="h-5 w-5 text-purple-400 animate-spin" />}
-            {step.status === 'done' && <CheckCircle2 className="h-5 w-5 text-emerald-400" />}
-            {step.status === 'error' && <XCircle className="h-5 w-5 text-red-400" />}
+            {step.status === 'pending' && <Circle className="h-5 w-5 text-sand-1000" />}
+            {step.status === 'running' && <Loader2 className="h-5 w-5 text-foreground animate-spin" />}
+            {step.status === 'done' && <CheckCircle2 className="h-5 w-5 text-foreground" />}
+            {step.status === 'error' && <XCircle className="h-5 w-5 text-red-600" />}
             <div className="flex-1 min-w-0">
                 <p
                     className={`text-sm font-medium ${
                         step.status === 'done'
-                            ? 'text-emerald-400'
+                            ? 'text-foreground'
                             : step.status === 'error'
-                              ? 'text-red-400'
+                              ? 'text-red-600'
                               : step.status === 'running'
-                                ? 'text-white'
-                                : 'text-gray-500'
+                                ? 'text-foreground'
+                                : 'text-sand-1000'
                     }`}
                 >
                     {step.label}
                 </p>
-                {step.message && <p className="text-xs text-gray-400 truncate">{step.message}</p>}
+                {step.message && <p className="text-xs text-sand-1100 truncate">{step.message}</p>}
             </div>
         </div>
     );
@@ -154,7 +154,7 @@ function StepProgressBar({ steps }: { steps: SetupStep[] }) {
     return (
         <div className="space-y-2">
             <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-sand-1000">
                     {hasError
                         ? 'Error'
                         : running
@@ -163,7 +163,7 @@ function StepProgressBar({ steps }: { steps: SetupStep[] }) {
                             ? 'Complete'
                             : `Step ${done + 1} of ${steps.length}`}
                 </span>
-                <span className="text-xs text-gray-600">
+                <span className="text-xs text-sand-900">
                     {done}/{steps.length}
                 </span>
             </div>
@@ -173,12 +173,12 @@ function StepProgressBar({ steps }: { steps: SetupStep[] }) {
                         key={s.id}
                         className={`h-1 flex-1 rounded-full transition-colors ${
                             s.status === 'done'
-                                ? 'bg-emerald-500'
+                                ? 'bg-foreground'
                                 : s.status === 'running'
-                                  ? 'bg-purple-500 animate-pulse'
+                                  ? 'bg-foreground animate-pulse'
                                   : s.status === 'error'
                                     ? 'bg-red-500'
-                                    : 'bg-white/10'
+                                    : 'bg-sand-200'
                         }`}
                     />
                 ))}
@@ -198,16 +198,16 @@ function SetupCompleteCard({
 }) {
     return (
         <div className="space-y-4">
-            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-2">
-                <p className="text-sm text-emerald-400 font-medium">Setup complete</p>
-                <div className="text-xs text-gray-400 space-y-1">
+            <div className="rounded-lg border border-sand-300 bg-sand-100 p-4 space-y-2">
+                <p className="text-sm text-foreground font-medium">Setup complete</p>
+                <div className="text-xs text-sand-1100 space-y-1">
                     <p>
                         Program:{' '}
-                        <span className="text-gray-300 font-mono">{truncateAddress(result.programId, 12)}</span>
+                        <span className="text-sand-1400 font-mono">{truncateAddress(result.programId, 12)}</span>
                     </p>
                     <p>
                         USDC Mint:{' '}
-                        <span className="text-gray-300 font-mono">{truncateAddress(result.usdcMint, 12)}</span>
+                        <span className="text-sand-1400 font-mono">{truncateAddress(result.usdcMint, 12)}</span>
                     </p>
                     {extra}
                 </div>
@@ -242,7 +242,7 @@ function NetworkSelection({ onSelect, onSkip }: { onSelect: (n: Network) => void
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] p-4">
+        <div className="min-h-screen flex items-center justify-center bg-bg1 p-4">
             <div className="max-w-2xl w-full space-y-8">
                 <div className="flex justify-end">
                     <SolanaButton
@@ -257,42 +257,42 @@ function NetworkSelection({ onSelect, onSkip }: { onSelect: (n: Network) => void
                 </div>
                 <div className="text-center space-y-3">
                     <div className="flex items-center justify-center gap-3">
-                        <Settings2 className="h-10 w-10 text-purple-400" />
+                        <Settings2 className="h-10 w-10 text-foreground" />
                         <img src={solanaLogo} alt="Solana" className="h-8 w-8" />
                     </div>
-                    <h1 className="text-3xl font-bold text-white">Subscriptions Setup</h1>
-                    <p className="text-gray-400">Choose your network to get started</p>
+                    <h1 className="text-3xl font-bold text-foreground">Subscriptions Setup</h1>
+                    <p className="text-sand-1100">Choose your network to get started</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <button
                         onClick={() => onSelect('localnet')}
-                        className="group relative p-6 rounded-xl border border-white/10 bg-white/[0.02] hover:border-purple-500/40 hover:bg-purple-500/5 transition-all text-left"
+                        className="group relative p-6 rounded-xl border-0 border-all-dashed-medium bg-card hover:bg-sand-100 transition-all text-left"
                     >
                         <div className="space-y-3">
-                            <Monitor className="h-8 w-8 text-purple-400 group-hover:text-purple-300 transition-colors" />
-                            <h3 className="text-lg font-semibold text-white">Localnet</h3>
-                            <p className="text-sm text-gray-400">
+                            <Monitor className="h-8 w-8 text-foreground" />
+                            <h3 className="text-lg font-semibold text-foreground">Localnet</h3>
+                            <p className="text-sm text-sand-1100">
                                 Start a local Surfpool validator with auto-deployed program and mock USDC. Best for
                                 development and testing.
                             </p>
                         </div>
-                        <ArrowRight className="absolute top-6 right-6 h-5 w-5 text-gray-600 group-hover:text-purple-400 transition-colors" />
+                        <ArrowRight className="absolute top-6 right-6 h-5 w-5 text-sand-900 group-hover:text-foreground transition-colors" />
                     </button>
 
                     <button
                         onClick={() => onSelect('devnet')}
-                        className="group relative p-6 rounded-xl border border-white/10 bg-white/[0.02] hover:border-purple-500/40 hover:bg-purple-500/5 transition-all text-left"
+                        className="group relative p-6 rounded-xl border-0 border-all-dashed-medium bg-card hover:bg-sand-100 transition-all text-left"
                     >
                         <div className="space-y-3">
-                            <Globe className="h-8 w-8 text-purple-400 group-hover:text-purple-300 transition-colors" />
-                            <h3 className="text-lg font-semibold text-white">Devnet</h3>
-                            <p className="text-sm text-gray-400">
+                            <Globe className="h-8 w-8 text-foreground" />
+                            <h3 className="text-lg font-semibold text-foreground">Devnet</h3>
+                            <p className="text-sm text-sand-1100">
                                 Deploy program via wallet and create mock USDC from browser. Best for integration
                                 testing.
                             </p>
                         </div>
-                        <ArrowRight className="absolute top-6 right-6 h-5 w-5 text-gray-600 group-hover:text-purple-400 transition-colors" />
+                        <ArrowRight className="absolute top-6 right-6 h-5 w-5 text-sand-900 group-hover:text-foreground transition-colors" />
                     </button>
                 </div>
             </div>
@@ -332,19 +332,19 @@ function LocalnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack
     }, [steps, log]);
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] p-4">
+        <div className="min-h-screen flex items-center justify-center bg-bg1 p-4">
             <div className="max-w-lg w-full space-y-3">
                 <button
                     onClick={onBack}
-                    className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-white transition-colors"
+                    className="flex items-center gap-1.5 text-sm text-sand-1000 hover:text-foreground transition-colors"
                 >
                     <ArrowLeft className="h-3.5 w-3.5" />
                     Back
                 </button>
-                <Card className="w-full border-purple-500/20 bg-slate-950">
+                <Card className="w-full border-0 border-all-dashed-medium bg-card">
                     <CardHeader className="pb-3">
                         <CardTitle className="flex items-center gap-2 text-base">
-                            <Monitor className="h-4 w-4 text-purple-400" />
+                            <Monitor className="h-4 w-4 text-sand-1100" />
                             Localnet Setup
                         </CardTitle>
                         <StepProgressBar steps={steps} />
@@ -364,7 +364,7 @@ function LocalnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack
                                 onComplete={onComplete}
                                 extra={
                                     <p>
-                                        RPC: <span className="text-gray-300 font-mono">http://127.0.0.1:8899</span>
+                                        RPC: <span className="text-sand-1400 font-mono">http://127.0.0.1:8899</span>
                                     </p>
                                 }
                             />
@@ -730,24 +730,24 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
         verifyingUsdc;
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] p-4">
+        <div className="min-h-screen flex items-center justify-center bg-bg1 p-4">
             <div className="max-w-lg w-full space-y-3">
                 <button
                     onClick={onBack}
-                    className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-white transition-colors"
+                    className="flex items-center gap-1.5 text-sm text-sand-1000 hover:text-foreground transition-colors"
                 >
                     <ArrowLeft className="h-3.5 w-3.5" />
                     Back
                 </button>
-                <Card className="w-full border-purple-500/20 bg-slate-950">
+                <Card className="w-full border-0 border-all-dashed-medium bg-card">
                     <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
                             <CardTitle className="flex items-center gap-2 text-base">
-                                <Globe className="h-4 w-4 text-purple-400" />
+                                <Globe className="h-4 w-4 text-sand-1100" />
                                 Devnet Setup
                             </CardTitle>
                             {account && (
-                                <span className="text-xs font-mono text-gray-500">{truncateAddress(account)}</span>
+                                <span className="text-xs font-mono text-sand-1000">{truncateAddress(account)}</span>
                             )}
                         </div>
                         <StepProgressBar steps={steps} />
@@ -755,7 +755,7 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                     <CardContent className="space-y-4">
                         {!account && phase === 'wallet' && (
                             <div className="py-8 text-center space-y-4">
-                                <p className="text-sm text-gray-400">Connect your wallet to get started</p>
+                                <p className="text-sm text-sand-1100">Connect your wallet to get started</p>
                                 <div className="flex justify-center">
                                     <WalletButton />
                                 </div>
@@ -770,44 +770,46 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                                         disabled={verifyingAddress || checkingConfigProgram}
                                         className={`w-full group rounded-lg border p-4 text-left transition-all ${
                                             configProgramOnline === false
-                                                ? 'border-amber-500/20 bg-amber-500/5 hover:border-amber-500/40'
-                                                : 'border-emerald-500/20 bg-emerald-500/5 hover:border-emerald-500/40'
+                                                ? 'border-amber-300 bg-amber-50 hover:border-amber-400'
+                                                : 'border-foreground bg-card hover:bg-sand-100'
                                         }`}
                                     >
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="text-sm font-medium text-white">Use configured program</p>
-                                                <p className="text-xs font-mono text-gray-400 mt-0.5">
+                                                <p className="text-sm font-medium text-foreground">
+                                                    Use configured program
+                                                </p>
+                                                <p className="text-xs font-mono text-sand-1100 mt-0.5">
                                                     {configProgramAddress}
                                                 </p>
                                                 {checkingConfigProgram && (
-                                                    <p className="text-[10px] text-gray-500 mt-1 flex items-center gap-1">
+                                                    <p className="text-[10px] text-sand-1000 mt-1 flex items-center gap-1">
                                                         <Loader2 className="h-3 w-3 animate-spin" /> Checking
                                                         on-chain...
                                                     </p>
                                                 )}
                                                 {!checkingConfigProgram && configProgramOnline === true && (
-                                                    <p className="text-[10px] text-emerald-400 mt-1 flex items-center gap-1">
+                                                    <p className="text-[10px] text-sand-1000 mt-1 flex items-center gap-1">
                                                         <CheckCircle2 className="h-3 w-3" /> Deployed on devnet
                                                     </p>
                                                 )}
                                                 {!checkingConfigProgram && configProgramOnline === false && (
-                                                    <p className="text-[10px] text-amber-400 mt-1 flex items-center gap-1">
+                                                    <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
                                                         <XCircle className="h-3 w-3" /> Not found on-chain
                                                     </p>
                                                 )}
                                             </div>
                                             {verifyingAddress || checkingConfigProgram ? (
-                                                <Loader2 className="h-4 w-4 animate-spin text-gray-400 shrink-0" />
+                                                <Loader2 className="h-4 w-4 animate-spin text-sand-1100 shrink-0" />
                                             ) : (
-                                                <ArrowRight className="h-4 w-4 text-gray-600 group-hover:text-emerald-400 transition-colors shrink-0" />
+                                                <ArrowRight className="h-4 w-4 text-sand-900 group-hover:text-foreground transition-colors shrink-0" />
                                             )}
                                         </div>
                                     </button>
                                 )}
 
-                                <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4 space-y-3">
-                                    <p className="text-sm font-medium text-gray-300">Use a different program</p>
+                                <div className="rounded-lg border border-sand-300 bg-sand-100 p-4 space-y-3">
+                                    <p className="text-sm font-medium text-sand-1400">Use a different program</p>
                                     <div className="flex gap-2">
                                         <TextInput
                                             value={customProgramAddress}
@@ -820,7 +822,7 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                                             onClick={() => handleUseExisting(customProgramAddress)}
                                             disabled={!isValidBase58Address(customProgramAddress) || verifyingAddress}
                                             variant="outline"
-                                            className="border-white/10 shrink-0"
+                                            className="border-sand-300 shrink-0"
                                         >
                                             {verifyingAddress ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Use'}
                                         </Button>
@@ -828,15 +830,15 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                                 </div>
 
                                 <div className="relative flex items-center gap-3">
-                                    <div className="flex-1 border-t border-white/5" />
-                                    <span className="text-[10px] text-gray-600 uppercase tracking-wider">or</span>
-                                    <div className="flex-1 border-t border-white/5" />
+                                    <div className="flex-1 border-t border-sand-200" />
+                                    <span className="text-[10px] text-sand-900 uppercase tracking-wider">or</span>
+                                    <div className="flex-1 border-t border-sand-200" />
                                 </div>
 
                                 <Button
                                     onClick={() => setPhase('deploy')}
                                     variant="outline"
-                                    className="w-full border-purple-500/30 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300"
+                                    className="w-full border-sand-400 text-foreground hover:bg-sand-100"
                                 >
                                     Deploy New Program
                                 </Button>
@@ -858,15 +860,15 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                                     <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
-                                                <Trash2 className="h-3 w-3 text-red-400" />
-                                                <span className="text-xs text-red-400">Close existing program</span>
+                                                <Trash2 className="h-3 w-3 text-red-600" />
+                                                <span className="text-xs text-red-600">Close existing program</span>
                                             </div>
                                             {!confirmClose ? (
                                                 <Button
                                                     onClick={() => setConfirmClose(true)}
                                                     variant="ghost"
                                                     size="sm"
-                                                    className="text-red-400 hover:text-red-300 text-xs h-6 px-2"
+                                                    className="text-red-600 hover:text-red-700 text-xs h-6 px-2"
                                                 >
                                                     Close...
                                                 </Button>
@@ -887,7 +889,7 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                                                         onClick={() => setConfirmClose(false)}
                                                         variant="ghost"
                                                         size="sm"
-                                                        className="text-gray-500 text-xs h-6 px-2"
+                                                        className="text-sand-1000 text-xs h-6 px-2"
                                                     >
                                                         Cancel
                                                     </Button>
@@ -901,11 +903,11 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
 
                         {phase === 'transfer-authority' && (
                             <div className="space-y-3">
-                                <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4 space-y-3">
+                                <div className="rounded-lg border border-sand-300 bg-sand-100 p-4 space-y-3">
                                     <div className="flex items-center gap-2">
-                                        <Shield className="h-4 w-4 text-purple-400" />
-                                        <span className="text-sm font-medium text-white">Transfer Authority</span>
-                                        <span className="text-[10px] text-gray-600 uppercase tracking-wider">
+                                        <Shield className="h-4 w-4 text-sand-1100" />
+                                        <span className="text-sm font-medium text-foreground">Transfer Authority</span>
+                                        <span className="text-[10px] text-sand-900 uppercase tracking-wider">
                                             Optional
                                         </span>
                                     </div>
@@ -930,7 +932,7 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                                         setPhase('usdc');
                                     }}
                                     variant="ghost"
-                                    className="w-full text-gray-500 hover:text-white text-xs"
+                                    className="w-full text-sand-1000 hover:text-foreground text-xs"
                                 >
                                     Skip
                                 </Button>
@@ -940,7 +942,7 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                         {phase === 'usdc' && (
                             <div className="space-y-4">
                                 {checkingUsdc && (
-                                    <div className="flex items-center gap-2 py-4 justify-center text-gray-400">
+                                    <div className="flex items-center gap-2 py-4 justify-center text-sand-1100">
                                         <Loader2 className="h-4 w-4 animate-spin" />
                                         <span className="text-sm">Checking for existing USDC...</span>
                                     </div>
@@ -952,38 +954,38 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                                         disabled={isPending}
                                         className={`w-full group rounded-lg border p-4 text-left transition-all ${
                                             configUsdcOnline === false
-                                                ? 'border-amber-500/20 bg-amber-500/5 hover:border-amber-500/40'
-                                                : 'border-emerald-500/20 bg-emerald-500/5 hover:border-emerald-500/40'
+                                                ? 'border-amber-300 bg-amber-50 hover:border-amber-400'
+                                                : 'border-foreground bg-card hover:bg-sand-100'
                                         }`}
                                     >
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="text-sm font-medium text-white">
+                                                <p className="text-sm font-medium text-foreground">
                                                     Use configured USDC mint
                                                 </p>
-                                                <p className="text-xs font-mono text-gray-400 mt-0.5">
+                                                <p className="text-xs font-mono text-sand-1100 mt-0.5">
                                                     {existingUsdcMint}
                                                 </p>
                                                 {configUsdcOnline === true && (
-                                                    <p className="text-[10px] text-emerald-400 mt-1 flex items-center gap-1">
+                                                    <p className="text-[10px] text-sand-1000 mt-1 flex items-center gap-1">
                                                         <CheckCircle2 className="h-3 w-3" /> Verified on devnet
                                                     </p>
                                                 )}
                                                 {configUsdcOnline === false && (
-                                                    <p className="text-[10px] text-amber-400 mt-1 flex items-center gap-1">
+                                                    <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
                                                         <XCircle className="h-3 w-3" /> Not found on-chain
                                                     </p>
                                                 )}
                                             </div>
-                                            <ArrowRight className="h-4 w-4 text-gray-600 group-hover:text-emerald-400 transition-colors shrink-0" />
+                                            <ArrowRight className="h-4 w-4 text-sand-900 group-hover:text-foreground transition-colors shrink-0" />
                                         </div>
                                     </button>
                                 )}
 
                                 {!checkingUsdc && (
                                     <>
-                                        <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4 space-y-3">
-                                            <p className="text-sm font-medium text-gray-300">Use a different mint</p>
+                                        <div className="rounded-lg border border-sand-300 bg-sand-100 p-4 space-y-3">
+                                            <p className="text-sm font-medium text-sand-1400">Use a different mint</p>
                                             <div className="flex gap-2">
                                                 <TextInput
                                                     value={customUsdcAddress}
@@ -999,7 +1001,7 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                                                     onClick={() => handleUseCustomUsdc(customUsdcAddress)}
                                                     disabled={!isValidBase58Address(customUsdcAddress) || isPending}
                                                     variant="outline"
-                                                    className="border-white/10 shrink-0"
+                                                    className="border-sand-300 shrink-0"
                                                 >
                                                     {verifyingUsdc ? (
                                                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -1009,8 +1011,8 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                                                 </Button>
                                             </div>
                                             {usdcVerifyFailed && isValidBase58Address(customUsdcAddress) && (
-                                                <div className="flex items-center justify-between rounded-md border border-amber-500/20 bg-amber-500/5 px-3 py-2">
-                                                    <span className="text-xs text-amber-400">
+                                                <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2">
+                                                    <span className="text-xs text-amber-600">
                                                         Could not verify on-chain
                                                     </span>
                                                     <Button
@@ -1018,7 +1020,7 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                                                         disabled={isPending}
                                                         variant="ghost"
                                                         size="sm"
-                                                        className="text-amber-400 hover:text-amber-300 text-xs h-6 px-2"
+                                                        className="text-amber-600 hover:text-amber-700 text-xs h-6 px-2"
                                                     >
                                                         Use anyway
                                                     </Button>
@@ -1027,11 +1029,11 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                                         </div>
 
                                         <div className="relative flex items-center gap-3">
-                                            <div className="flex-1 border-t border-white/5" />
-                                            <span className="text-[10px] text-gray-600 uppercase tracking-wider">
+                                            <div className="flex-1 border-t border-sand-200" />
+                                            <span className="text-[10px] text-sand-900 uppercase tracking-wider">
                                                 or
                                             </span>
-                                            <div className="flex-1 border-t border-white/5" />
+                                            <div className="flex-1 border-t border-sand-200" />
                                         </div>
 
                                         <SolanaButton
