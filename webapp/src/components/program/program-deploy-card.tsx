@@ -13,8 +13,8 @@ import {
     Check,
     Send,
 } from 'lucide-react';
+import { TextInput } from '@solana/design-system';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useProgramStatus } from '@/hooks/use-program-status';
 import { useProgramDeploy, type DeployProgress } from '@/hooks/use-program-deploy';
@@ -175,14 +175,14 @@ function TransferAuthoritySection() {
                 <div className="px-4 pb-4 space-y-3 border-t border-purple-500/10 pt-3">
                     <div>
                         <label className="text-xs text-gray-500 mb-1 block">New Authority Address</label>
-                        <Input
+                        <TextInput
                             value={newAuthority}
                             onChange={e => {
                                 setNewAuthority(e.target.value);
                                 setBase58Output('');
                             }}
                             placeholder="New authority address..."
-                            className="bg-slate-900/50 border-purple-500/20 text-sm font-mono"
+                            inputClassName="font-mono"
                         />
                     </div>
 
