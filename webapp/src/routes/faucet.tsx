@@ -1,9 +1,10 @@
 import { Droplets } from 'lucide-react';
-import { useWalletUi } from '@wallet-ui/react';
+import { useCluster, useWallet } from '@solana/connector/react';
 import { SolFaucetCard, UsdcFaucetCard } from '../components/account/account-ui';
 
 export function Faucet() {
-    const { account, cluster } = useWalletUi();
+    const { account } = useWallet();
+    const { cluster } = useCluster();
 
     if (!account) {
         return (
@@ -14,7 +15,7 @@ export function Faucet() {
         );
     }
 
-    if (cluster.id === 'solana:mainnet') {
+    if (cluster?.id === 'solana:mainnet') {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
                 <h1 className="text-2xl font-bold">Faucet not available on Mainnet</h1>

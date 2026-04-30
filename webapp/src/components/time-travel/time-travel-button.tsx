@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Clock, RotateCcw } from 'lucide-react';
-import { useWalletUi } from '@wallet-ui/react';
+import { useCluster } from '@solana/connector/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -248,7 +248,7 @@ function TimeTravelButtonInner() {
 }
 
 export function TimeTravelButton() {
-    const { cluster } = useWalletUi();
-    if (cluster.id !== 'solana:localnet') return null;
+    const { cluster } = useCluster();
+    if (cluster?.id !== 'solana:localnet') return null;
     return <TimeTravelButtonInner />;
 }

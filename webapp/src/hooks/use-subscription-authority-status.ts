@@ -1,9 +1,9 @@
+import { useCluster, useWallet } from '@solana/connector/react';
 import { address, createSolanaRpc } from '@solana/kit';
 import { findAssociatedTokenPda, TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
 import { fetchMaybeSubscriptionAuthority, findSubscriptionAuthorityPda } from '@subscriptions/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useWalletUi } from '@wallet-ui/react';
 
 import { useClusterConfig } from '@/hooks/use-cluster-config';
 import { useProgramAddress } from '@/hooks/use-token-config';
@@ -31,22 +31,23 @@ export interface SubscriptionAuthorityStatus {
  * @param tokenMint - The token mint address to check initialization for
  */
 export function useSubscriptionAuthorityStatus(tokenMint: string | null) {
-    const { account, cluster } = useWalletUi();
+    const { account } = useWallet();
+    const { cluster } = useCluster();
     const clusterConfig = useClusterConfig();
     const progAddr = useProgramAddress();
     const queryClient = useQueryClient();
 
     const query = useQuery({
-        enabled: !!account?.address && !!tokenMint && !!progAddr,
+        enabled: !!account && !!tokenMint && !!progAddr,
         queryFn: async (): Promise<SubscriptionAuthorityStatus> => {
-            if (!account?.address || !tokenMint) {
+            if (!account || !tokenMint) {
                 return { approved: false, data: null, initialized: false, pda: null };
             }
 
             const rpc = createSolanaRpc(clusterConfig.url);
             const progId = progAddr ? address(progAddr) : undefined;
             const [pda] = await findSubscriptionAuthorityPda(
-                { tokenMint: address(tokenMint), user: address(account.address) },
+                { tokenMint: address(tokenMint), user: address(account) },
                 { programAddress: progId },
             );
             const subscriptionAuthority = await fetchMaybeSubscriptionAuthority(rpc, pda);
@@ -58,7 +59,7 @@ export function useSubscriptionAuthorityStatus(tokenMint: string | null) {
             if (exists) {
                 try {
                     const mint = address(tokenMint);
-                    const owner = address(account.address);
+                    const owner = address(account);
                     const tokenPrograms = [TOKEN_2022_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS];
 
                     for (const tokenProgram of tokenPrograms) {
@@ -89,14 +90,14 @@ export function useSubscriptionAuthorityStatus(tokenMint: string | null) {
                 pda: pda,
             };
         },
-        queryKey: ['subscriptionAuthorityStatus', account?.address, tokenMint, cluster.id],
+        queryKey: ['subscriptionAuthorityStatus', account, tokenMint, cluster?.id],
         retry: 2,
         retryDelay: attempt => Math.min(1000 * 2 ** attempt, 5000),
     });
 
     const refetch = async () => {
         await queryClient.invalidateQueries({
-            queryKey: ['subscriptionAuthorityStatus', account?.address, tokenMint, cluster.id],
+            queryKey: ['subscriptionAuthorityStatus', account, tokenMint, cluster?.id],
         });
     };
 

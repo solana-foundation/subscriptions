@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { Instruction, TransactionSendingSigner } from '@solana/kit';
+import type { Instruction, TransactionSigner } from '@solana/kit';
 import {
     appendTransactionMessageInstructions,
     createSolanaRpc,
@@ -9,23 +9,15 @@ import {
     pipe,
     setTransactionMessageFeePayerSigner,
     setTransactionMessageLifetimeUsingBlockhash,
-    signAndSendTransactionMessageWithSigners,
-    getBase58Decoder,
+    signTransactionMessageWithSigners,
 } from '@solana/kit';
 import { useClusterConfig } from '@/hooks/use-cluster-config';
 
-/**
- * Hook to build, sign via wallet, and send transactions.
- * Mirrors the working perena pattern:
- * - build a full kit transaction message
- * - (best-effort) simulate via RPC
- * - request wallet sign+send
- */
 export function useWalletTransactionSignAndSend() {
     const clusterConfig = useClusterConfig();
     const rpc = useMemo(() => createSolanaRpc(clusterConfig.url), [clusterConfig.url]);
 
-    return async (ix: Instruction | Instruction[], signer: TransactionSendingSigner): Promise<string> => {
+    return async (ix: Instruction | Instruction[], signer: TransactionSigner): Promise<string> => {
         const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
         const instructions = Array.isArray(ix) ? ix : [ix];
 
@@ -36,7 +28,6 @@ export function useWalletTransactionSignAndSend() {
             tx => appendTransactionMessageInstructions(instructions, tx),
         );
 
-        // Best-effort simulate before asking wallet to sign+send
         try {
             const compiledTx = compileTransaction(transaction);
             const base64Tx = getBase64EncodedWireTransaction(compiledTx);
@@ -57,7 +48,10 @@ export function useWalletTransactionSignAndSend() {
             }
         }
 
-        const signatureBytes = await signAndSendTransactionMessageWithSigners(transaction);
-        return getBase58Decoder().decode(signatureBytes);
+        const signedTransaction = await signTransactionMessageWithSigners(transaction);
+        const signature = await rpc
+            .sendTransaction(getBase64EncodedWireTransaction(signedTransaction), { encoding: 'base64' })
+            .send();
+        return String(signature);
     };
 }

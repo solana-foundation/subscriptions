@@ -6,12 +6,6 @@
   "workspaces": [
     "clients/*"
   ],
-  "pnpm": {
-    "patchedDependencies": {
-      "@wallet-standard/react-core@1.0.1": "webapp/patches/@wallet-standard__react-core@1.0.1.patch",
-      "@wallet-ui/react@3.2.0": "webapp/patches/@wallet-ui+react+3.2.0.patch"
-    }
-  },
   "scripts": {
     "format": "prettier --write .",
     "format:check": "prettier --check .",

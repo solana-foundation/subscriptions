@@ -1,33 +1,151 @@
 import type { ReactNode } from 'react';
+import { useMemo } from 'react';
 import {
-    createSolanaDevnet,
-    createSolanaTestnet,
-    createWalletUiConfig,
-    WalletUi,
-    WalletUiClusterDropdown,
-    WalletUiDropdown,
-} from '@wallet-ui/react';
-import { WalletSignerProvider } from './use-wallet-ui-signer';
+    AppProvider,
+    getDefaultConfig,
+    useConnectWallet,
+    useDisconnectWallet,
+    useWallet,
+    useWalletConnectors,
+    useWalletInfo,
+    type SolanaClusterId,
+} from '@solana/connector/react';
+import { ChevronDown, LogOut, Wallet } from 'lucide-react';
+import { toast } from 'sonner';
 
-export { WalletUiDropdown as WalletButton, WalletUiClusterDropdown as ClusterButton };
+import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { ellipsify } from '@/lib/utils';
 
-const defaultClusterId =
-    localStorage.getItem('setup-cluster') || import.meta.env.VITE_DEFAULT_CLUSTER || 'solana:localnet';
+function defaultClusterId(): SolanaClusterId {
+    const stored = localStorage.getItem('setup-cluster');
+    const configured = import.meta.env.VITE_DEFAULT_CLUSTER;
+    const id = stored || configured || 'solana:localnet';
+    return id === 'solana:devnet' || id === 'solana:testnet' || id === 'solana:localnet'
+        ? (id as SolanaClusterId)
+        : 'solana:localnet';
+}
 
-const allClusters = [
-    createSolanaDevnet(),
-    createSolanaTestnet(),
+function networkFromClusterId(clusterId: SolanaClusterId): 'devnet' | 'localnet' | 'testnet' {
+    if (clusterId === 'solana:devnet') return 'devnet';
+    if (clusterId === 'solana:testnet') return 'testnet';
+    return 'localnet';
+}
+
+const clusters = [
     { id: 'solana:localnet' as const, label: 'Localnet', url: '/rpc' },
+    { id: 'solana:devnet' as const, label: 'Devnet', url: 'https://api.devnet.solana.com' },
+    { id: 'solana:testnet' as const, label: 'Testnet', url: 'https://api.testnet.solana.com' },
 ];
 
-const config = createWalletUiConfig({
-    clusters: allClusters.sort((a, b) => (a.id === defaultClusterId ? -1 : b.id === defaultClusterId ? 1 : 0)),
-});
+export function WalletButton() {
+    const { account, isConnected, isConnecting } = useWallet();
+    const connectors = useWalletConnectors();
+    const { connect, isConnecting: connectPending } = useConnectWallet();
+    const { disconnect, isDisconnecting } = useDisconnectWallet();
+    const walletInfo = useWalletInfo();
+
+    const pending = isConnecting || connectPending || isDisconnecting;
+
+    async function handleConnect(connectorId: (typeof connectors)[number]['id']) {
+        try {
+            await connect(connectorId);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Wallet connection failed');
+        }
+    }
+
+    async function handleDisconnect() {
+        try {
+            await disconnect();
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Wallet disconnect failed');
+        }
+    }
+
+    if (isConnected && account) {
+        return (
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="gap-2">
+                        <Wallet className="h-4 w-4" />
+                        {ellipsify(account, 4)}
+                        <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                    <DropdownMenuLabel className="space-y-1">
+                        <div className="text-sm">{walletInfo.name ?? 'Connected wallet'}</div>
+                        <div className="font-mono text-xs text-muted-foreground">{account}</div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        disabled={pending}
+                        onClick={() => void handleDisconnect()}
+                    >
+                        <LogOut className="h-4 w-4" />
+                        Disconnect
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        );
+    }
+
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button disabled={pending} variant="outline" className="gap-2">
+                    <Wallet className="h-4 w-4" />
+                    {pending ? 'Connecting...' : 'Connect Wallet'}
+                    <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel>Connect wallet</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {connectors.length === 0 && (
+                    <DropdownMenuItem disabled>No Wallet Standard wallets detected</DropdownMenuItem>
+                )}
+                {connectors.map(walletConnector => (
+                    <DropdownMenuItem
+                        disabled={pending || !walletConnector.ready}
+                        key={walletConnector.id}
+                        onClick={() => void handleConnect(walletConnector.id)}
+                    >
+                        {walletConnector.icon && (
+                            <img src={walletConnector.icon} alt="" className="h-4 w-4 rounded-sm" />
+                        )}
+                        <span>{walletConnector.name}</span>
+                        {!walletConnector.ready && (
+                            <span className="ml-auto text-xs text-muted-foreground">Not ready</span>
+                        )}
+                    </DropdownMenuItem>
+                ))}
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+}
 
 export function SolanaProvider({ children }: { children: ReactNode }) {
-    return (
-        <WalletUi config={config}>
-            <WalletSignerProvider>{children}</WalletSignerProvider>
-        </WalletUi>
-    );
+    const connectorConfig = useMemo(() => {
+        const initialCluster = defaultClusterId();
+        return getDefaultConfig({
+            appName: 'Subscriptions',
+            autoConnect: true,
+            clusters,
+            enableMobile: true,
+            network: networkFromClusterId(initialCluster),
+            persistClusterSelection: false,
+        });
+    }, []);
+
+    return <AppProvider connectorConfig={connectorConfig}>{children}</AppProvider>;
 }

@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
-import { useWalletUi, useWalletUiCluster } from '@wallet-ui/react';
+import { useCluster, useKitTransactionSigner, useWallet } from '@solana/connector/react';
 import {
     appendTransactionMessageInstructions,
     createTransactionMessage,
+    getBase64EncodedWireTransaction,
     pipe,
     setTransactionMessageFeePayerSigner,
     setTransactionMessageLifetimeUsingBlockhash,
-    signAndSendTransactionMessageWithSigners,
+    signTransactionMessageWithSigners,
     type Address,
 } from '@solana/kit';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -35,7 +36,6 @@ import { useProgramStatus } from '@/hooks/use-program-status';
 import { useCreateToken } from '@/hooks/use-create-token';
 import { buildSetAuthorityIx } from '@/lib/bpf-loader-browser';
 import { useProgramAddress } from '@/hooks/use-token-config';
-import { useWalletUiSigner } from '@/components/solana/use-wallet-ui-signer';
 import { useClusterConfig } from '@/hooks/use-cluster-config';
 import { buildCloseProgramIx, deriveProgramDataAddress } from '@/lib/bpf-loader-browser';
 import { useWalletTransactionSignAndSend } from '@/components/solana/use-wallet-transaction-sign-and-send';
@@ -303,12 +303,12 @@ function NetworkSelection({ onSelect, onSkip }: { onSelect: (n: Network) => void
 
 function LocalnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: () => void }) {
     const { steps, run, isComplete, result } = useLocalnetSetup();
-    const { setCluster } = useWalletUiCluster();
+    const { setCluster } = useCluster();
     const startedRef = useRef(false);
     const { logs, log } = useLogConsole();
 
     useEffect(() => {
-        setCluster('solana:localnet');
+        void setCluster('solana:localnet');
     }, [setCluster]);
 
     useEffect(() => {
@@ -382,14 +382,14 @@ function LocalnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack
 function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: () => void }) {
     const { steps, isComplete, result, markStepDone, markStepError, markStepRunning, completeSetup, setResult } =
         useDevnetSetup();
-    const { account } = useWalletUi();
-    const { setCluster } = useWalletUiCluster();
-    const walletSigner = useWalletUiSigner();
+    const { account } = useWallet();
+    const { setCluster } = useCluster();
+    const { signer: walletSigner } = useKitTransactionSigner();
     const { id: clusterId } = useClusterConfig();
     const queryClient = useQueryClient();
 
     useEffect(() => {
-        setCluster('solana:devnet');
+        void setCluster('solana:devnet');
     }, [setCluster]);
     const { deploy: programDeploy, progress: deployProgress } = useProgramDeploy();
     const programStatus = useProgramStatus();
@@ -433,7 +433,8 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                 m => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
                 m => appendTransactionMessageInstructions([closeIx], m),
             );
-            await signAndSendTransactionMessageWithSigners(tx);
+            const signedTx = await signTransactionMessageWithSigners(tx);
+            await rpc.sendTransaction(getBase64EncodedWireTransaction(signedTx), { encoding: 'base64' }).send();
         },
         onSuccess: () => {
             log('success', 'Program closed, SOL reclaimed');
@@ -447,8 +448,8 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
 
     useEffect(() => {
         if (account && phase === 'wallet') {
-            log('success', `Wallet connected: ${account.address}`);
-            markStepDone('connect-wallet', `Connected: ${account.address.slice(0, 8)}...`);
+            log('success', `Wallet connected: ${account}`);
+            markStepDone('connect-wallet', `Connected: ${account.slice(0, 8)}...`);
             setPhase('program-choice');
         }
     }, [account, phase, markStepDone, log]);
@@ -747,9 +748,7 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                                 Devnet Setup
                             </CardTitle>
                             {account && (
-                                <span className="text-xs font-mono text-gray-500">
-                                    {truncateAddress(account.address)}
-                                </span>
+                                <span className="text-xs font-mono text-gray-500">{truncateAddress(account)}</span>
                             )}
                         </div>
                         <StepProgressBar steps={steps} />
@@ -855,49 +854,48 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                                     Begin Deployment
                                 </Button>
 
-                                {programStatus.data?.deployed &&
-                                    programStatus.data?.upgradeAuthority === account?.address && (
-                                        <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    <Trash2 className="h-3 w-3 text-red-400" />
-                                                    <span className="text-xs text-red-400">Close existing program</span>
-                                                </div>
-                                                {!confirmClose ? (
+                                {programStatus.data?.deployed && programStatus.data?.upgradeAuthority === account && (
+                                    <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Trash2 className="h-3 w-3 text-red-400" />
+                                                <span className="text-xs text-red-400">Close existing program</span>
+                                            </div>
+                                            {!confirmClose ? (
+                                                <Button
+                                                    onClick={() => setConfirmClose(true)}
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-red-400 hover:text-red-300 text-xs h-6 px-2"
+                                                >
+                                                    Close...
+                                                </Button>
+                                            ) : (
+                                                <div className="flex gap-1.5">
                                                     <Button
-                                                        onClick={() => setConfirmClose(true)}
+                                                        onClick={() => closeProgram.mutate()}
+                                                        disabled={closeProgram.isPending}
+                                                        size="sm"
+                                                        className="bg-red-600 hover:bg-red-500 text-xs h-6 px-2"
+                                                    >
+                                                        {closeProgram.isPending ? (
+                                                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                                        ) : null}
+                                                        Confirm
+                                                    </Button>
+                                                    <Button
+                                                        onClick={() => setConfirmClose(false)}
                                                         variant="ghost"
                                                         size="sm"
-                                                        className="text-red-400 hover:text-red-300 text-xs h-6 px-2"
+                                                        className="text-gray-500 text-xs h-6 px-2"
                                                     >
-                                                        Close...
+                                                        Cancel
                                                     </Button>
-                                                ) : (
-                                                    <div className="flex gap-1.5">
-                                                        <Button
-                                                            onClick={() => closeProgram.mutate()}
-                                                            disabled={closeProgram.isPending}
-                                                            size="sm"
-                                                            className="bg-red-600 hover:bg-red-500 text-xs h-6 px-2"
-                                                        >
-                                                            {closeProgram.isPending ? (
-                                                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                                                            ) : null}
-                                                            Confirm
-                                                        </Button>
-                                                        <Button
-                                                            onClick={() => setConfirmClose(false)}
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="text-gray-500 text-xs h-6 px-2"
-                                                        >
-                                                            Cancel
-                                                        </Button>
-                                                    </div>
-                                                )}
-                                            </div>
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -1061,14 +1059,14 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
 export function Setup() {
     const [network, setNetwork] = useState<Network>(null);
     const navigate = useNavigate();
-    const { setCluster } = useWalletUiCluster();
+    const { setCluster } = useCluster();
 
     const handleComplete = useCallback(
         (net: string) => {
             const clusterId = net === 'localnet' ? 'solana:localnet' : 'solana:devnet';
             localStorage.setItem(`setup-complete-${net}`, 'true');
             localStorage.setItem('setup-cluster', clusterId);
-            setCluster(clusterId);
+            void setCluster(clusterId);
             navigate('/');
         },
         [navigate, setCluster],

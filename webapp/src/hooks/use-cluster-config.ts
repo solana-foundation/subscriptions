@@ -1,8 +1,9 @@
-import { useWalletUi } from '@wallet-ui/react';
+import { useCluster } from '@solana/connector/react';
 
 import type { ClusterWithUrl } from '@/lib/types';
 
 export function useClusterConfig(): ClusterWithUrl {
-    const { cluster } = useWalletUi();
-    return cluster as unknown as ClusterWithUrl;
+    const { cluster } = useCluster();
+    if (!cluster) return { id: 'solana:localnet', label: 'Localnet', url: '/rpc' };
+    return { id: cluster.id, label: cluster.label, url: cluster.url };
 }

@@ -1,8 +1,8 @@
+import { useWallet } from '@solana/connector/react';
 import { address, createSolanaRpc } from '@solana/kit';
 import type { PlanData } from '@subscriptions/client';
 import { fetchPlansForOwner } from '@subscriptions/client';
 import { useQuery } from '@tanstack/react-query';
-import { useWalletUi } from '@wallet-ui/react';
 
 import { useClusterConfig } from '@/hooks/use-cluster-config';
 import { useProgramAddress } from '@/hooks/use-token-config';
@@ -38,13 +38,13 @@ export function useMerchantPlans(merchantAddress: string | null) {
 }
 
 export function useMyPlans() {
-    const { account } = useWalletUi();
+    const { account } = useWallet();
     const clusterConfig = useClusterConfig();
     const progAddr = useProgramAddress();
 
     return useQuery({
-        enabled: !!account?.address && !!progAddr,
-        queryFn: () => fetchPlansByMerchant(clusterConfig.url, account!.address, progAddr!),
-        queryKey: ['plans', 'my', account?.address, clusterConfig.id],
+        enabled: !!account && !!progAddr,
+        queryFn: () => fetchPlansByMerchant(clusterConfig.url, account!, progAddr!),
+        queryKey: ['plans', 'my', account, clusterConfig.id],
     });
 }

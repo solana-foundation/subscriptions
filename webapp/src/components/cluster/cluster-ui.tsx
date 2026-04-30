@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import type { Address } from '@solana/kit';
 import { Button } from '@/components/ui/button';
 import { AppAlert } from '@/components/app-alert';
-import { useWalletUi } from '@wallet-ui/react';
+import { useCluster } from '@solana/connector/react';
 import { useClusterVersion } from './use-cluster-version';
 
 const SURFPOOL_STUDIO = 'http://127.0.0.1:18488';
@@ -36,10 +36,10 @@ export function ExplorerLink({
     className?: string;
     label: string;
 }) {
-    const { cluster } = useWalletUi();
+    const { cluster } = useCluster();
     return (
         <a
-            href={getExplorerUrl(link, cluster.id)}
+            href={getExplorerUrl(link, cluster?.id ?? 'solana:localnet')}
             target="_blank"
             rel="noopener noreferrer"
             className={className ? className : `link font-mono`}
@@ -50,7 +50,7 @@ export function ExplorerLink({
 }
 
 export function ClusterChecker({ children }: { children: ReactNode }) {
-    const { cluster } = useWalletUi();
+    const { cluster } = useCluster();
     const query = useClusterVersion();
 
     if (query.isLoading) {
@@ -67,7 +67,7 @@ export function ClusterChecker({ children }: { children: ReactNode }) {
                 }
                 className="mb-4"
             >
-                Error connecting to cluster <span className="font-bold">{cluster.label}</span>.
+                Error connecting to cluster <span className="font-bold">{cluster?.label ?? 'Unknown'}</span>.
             </AppAlert>
         );
     }

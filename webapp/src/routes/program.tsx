@@ -1,10 +1,11 @@
 import { Code2 } from 'lucide-react';
-import { useWalletUi } from '@wallet-ui/react';
+import { useCluster, useWallet } from '@solana/connector/react';
 import { ProgramStatusCard } from '@/components/program/program-status-card';
 import { ProgramDeployCard } from '@/components/program/program-deploy-card';
 
 export function Program() {
-    const { account, cluster } = useWalletUi();
+    const { account } = useWallet();
+    const { cluster } = useCluster();
 
     if (!account) {
         return (
@@ -15,7 +16,7 @@ export function Program() {
         );
     }
 
-    if (cluster.id === 'solana:localnet') {
+    if (cluster?.id === 'solana:localnet') {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
                 <h1 className="text-2xl font-bold">Program Management not available on Localnet</h1>

@@ -4,7 +4,7 @@ import { Menu, X, Settings2 } from 'lucide-react';
 import { WalletButton } from './solana/solana-provider';
 import { TimeTravelButton } from './time-travel/time-travel-button';
 import { Link, useLocation, useNavigate } from 'react-router';
-import { useWalletUi } from '@wallet-ui/react';
+import { useCluster } from '@solana/connector/react';
 import { NAV_ITEMS } from './nav-items';
 import { CURRENT_PROGRAM_VERSION } from '@subscriptions/client';
 
@@ -32,9 +32,11 @@ function NetworkButton() {
 
 export function AppHeader() {
     const { pathname } = useLocation();
-    const { cluster } = useWalletUi();
+    const { cluster } = useCluster();
     const [showMenu, setShowMenu] = useState(false);
-    const filteredItems = NAV_ITEMS.filter(item => !item.clusterFilter || item.clusterFilter.includes(cluster.id));
+    const filteredItems = NAV_ITEMS.filter(
+        item => !item.clusterFilter || item.clusterFilter.includes(cluster?.id ?? ''),
+    );
 
     function isActive(path: string) {
         return path === '/' ? pathname === '/' : pathname.startsWith(path);

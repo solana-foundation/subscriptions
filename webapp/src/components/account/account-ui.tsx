@@ -1,4 +1,4 @@
-import { useWalletUi } from '@wallet-ui/react';
+import { useCluster, useWallet } from '@solana/connector/react';
 import { address } from '@solana/kit';
 import type { Address, Lamports } from '@solana/kit';
 
@@ -22,22 +22,22 @@ import { useClusterConfig } from '@/hooks/use-cluster-config';
 import { useProgramAddress } from '@/hooks/use-token-config';
 
 export function AccountChecker() {
-    const { account } = useWalletUi();
+    const { account } = useWallet();
     if (!account) {
         return null;
     }
-    return <AccountBalanceCheck address={address(account.address)} />;
+    return <AccountBalanceCheck address={address(account)} />;
 }
 
 export function AccountBalanceCheck({ address: addr }: { address: Address }) {
-    const { cluster } = useWalletUi();
+    const { cluster } = useCluster();
     const query = useGetBalanceQuery({ address: addr });
 
     if (query.isLoading) {
         return null;
     }
     if (query.isError || !query.data?.value) {
-        if (cluster.id !== 'solana:localnet' && cluster.id !== 'solana:devnet') return null;
+        if (cluster?.id !== 'solana:localnet' && cluster?.id !== 'solana:devnet') return null;
         return (
             <AppAlert
                 action={
@@ -46,7 +46,8 @@ export function AccountBalanceCheck({ address: addr }: { address: Address }) {
                     </Button>
                 }
             >
-                You are connected to <strong>{cluster.label}</strong> but your account is not found on this cluster.
+                You are connected to <strong>{cluster?.label ?? 'this cluster'}</strong> but your account is not found
+                on this cluster.
             </AppAlert>
         );
     }
@@ -299,8 +300,8 @@ export function WalletBalanceCards({ address: addr }: { address: Address }) {
 
 export function SolFaucetCard() {
     const [amount, setAmount] = useState('1');
-    const { cluster } = useWalletUi();
-    const isDevnet = cluster.id === 'solana:devnet';
+    const { cluster } = useCluster();
+    const isDevnet = cluster?.id === 'solana:devnet';
     const airdrop = useAirdropSol();
 
     const handleAirdrop = async () => {
@@ -381,8 +382,9 @@ export function SolFaucetCard() {
 export function UsdcFaucetCard() {
     const [amount, setAmount] = useState('1000');
     const [recipient, setRecipient] = useState('');
-    const { cluster, account } = useWalletUi();
-    const isDevnet = cluster.id === 'solana:devnet';
+    const { account } = useWallet();
+    const { cluster } = useCluster();
+    const isDevnet = cluster?.id === 'solana:devnet';
     const airdrop = useAirdropUsdc();
 
     const handleAirdrop = async () => {
@@ -418,7 +420,7 @@ export function UsdcFaucetCard() {
                 {isDevnet && (
                     <Input
                         type="text"
-                        placeholder={account?.address ?? 'Recipient address (leave empty for self)'}
+                        placeholder={account ?? 'Recipient address (leave empty for self)'}
                         value={recipient}
                         onChange={e => setRecipient(e.target.value)}
                         className="font-mono text-xs h-10 border-green-500/20 focus-visible:ring-green-500/40"

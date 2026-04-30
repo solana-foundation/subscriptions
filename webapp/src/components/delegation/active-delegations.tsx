@@ -13,7 +13,7 @@ import {
 import { useDelegations, useIncomingDelegations, type DelegationItem } from '@/hooks/use-delegations';
 import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations';
 import { useGetTokenAccountsQuery } from '@/components/account/account-data-access';
-import { useWalletUi } from '@wallet-ui/react';
+import { useWallet } from '@solana/connector/react';
 import { address } from '@solana/kit';
 import { useMemo, useState } from 'react';
 import {
@@ -586,11 +586,11 @@ function InitPrompt({
     subscriptionAuthorityInitId?: bigint | null;
     compact?: boolean;
 }) {
-    const { account } = useWalletUi();
+    const { account } = useWallet();
     const { initSubscriptionAuthority } = useSubscriptionsMutations();
     const queryClient = useQueryClient();
 
-    const walletAddress = account?.address;
+    const walletAddress = account;
     const { data: tokenAccounts, isLoading: tokenAccountsLoading } = useGetTokenAccountsQuery({
         address: walletAddress ? address(walletAddress) : address('11111111111111111111111111111111'),
     });

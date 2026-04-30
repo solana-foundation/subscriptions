@@ -1,3 +1,4 @@
+import { useWallet } from '@solana/connector/react';
 import { address, createSolanaRpc } from '@solana/kit';
 import type { Plan, SubscriptionDelegation } from '@subscriptions/client';
 import {
@@ -10,7 +11,6 @@ import {
     toEncodedAccount,
 } from '@subscriptions/client';
 import { useQuery } from '@tanstack/react-query';
-import { useWalletUi } from '@wallet-ui/react';
 
 import { useClusterConfig } from '@/hooks/use-cluster-config';
 import { useProgramAddress } from '@/hooks/use-token-config';
@@ -106,14 +106,14 @@ export async function fetchPlanSubscriptions(
 }
 
 export function useMySubscriptions() {
-    const { account } = useWalletUi();
+    const { account } = useWallet();
     const clusterConfig = useClusterConfig();
     const progAddr = useProgramAddress();
 
     return useQuery({
-        enabled: !!account?.address && !!progAddr,
-        queryFn: () => fetchMySubscriptions(clusterConfig.url, account!.address, progAddr!),
-        queryKey: ['subscriptions', 'my', account?.address, clusterConfig.id],
+        enabled: !!account && !!progAddr,
+        queryFn: () => fetchMySubscriptions(clusterConfig.url, account!, progAddr!),
+        queryKey: ['subscriptions', 'my', account, clusterConfig.id],
     });
 }
 

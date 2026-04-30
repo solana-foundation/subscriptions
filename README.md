@@ -223,7 +223,7 @@ import { SubscriptionsClient } from '@subscriptions/client';
 
 The demo app in `webapp/` provides a local UI and API for development flows.
 
-**Tech stack**: React 19, Vite, Tailwind CSS, Radix UI, TanStack Query, Jotai, Solana Kit, Wallet UI.
+**Tech stack**: React 19, Vite, Tailwind CSS, Radix UI, TanStack Query, Jotai, Solana Kit, ConnectorKit.
 
 ```bash
 just build          # build program + clients

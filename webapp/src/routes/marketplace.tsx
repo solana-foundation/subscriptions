@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Store, Search, Loader2, X, Clock } from 'lucide-react';
-import { useWalletUi } from '@wallet-ui/react';
+import { useWallet } from '@solana/connector/react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -212,7 +212,7 @@ function MarketplaceConnected() {
 }
 
 export function Marketplace() {
-    const { account } = useWalletUi();
+    const { account } = useWallet();
 
     if (!account) {
         return (

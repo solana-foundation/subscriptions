@@ -1,20 +1,20 @@
-import { useWalletUi } from '@wallet-ui/react';
+import { useWallet } from '@solana/connector/react';
 import { address } from '@solana/kit';
 import { WalletBalanceCards } from '../components/account/account-ui';
 import { SummaryCards } from '@/components/dashboard/summary-cards';
 
 function DashboardConnected() {
-    const { account } = useWalletUi();
+    const { account } = useWallet();
     return (
         <div className="space-y-8 max-w-5xl mx-auto">
-            {account && <WalletBalanceCards address={address(account.address)} />}
+            {account && <WalletBalanceCards address={address(account)} />}
             <SummaryCards />
         </div>
     );
 }
 
 export function Dashboard() {
-    const { account } = useWalletUi();
+    const { account } = useWallet();
 
     if (!account) {
         return (
