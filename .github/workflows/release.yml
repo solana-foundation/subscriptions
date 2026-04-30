@@ -118,7 +118,7 @@ jobs:
           network: devnet
           mount-path: program
           commit-hash: ${{ github.sha }}
-          skip-build: 'true'
+          skip-build: 'false'
 
       # ============================================
       # mainnet: bundle into Squads multisig proposal
