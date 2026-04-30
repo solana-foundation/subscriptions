@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { CalendarCheck, Trash2, Clock } from 'lucide-react';
+import { Badge } from '@solana/design-system';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
     Dialog,
     DialogContent,
@@ -249,19 +249,19 @@ function SubscriptionCard({
                     <div className="flex items-center justify-between gap-2">
                         <p className="font-semibold text-white truncate">{planName}</p>
                         {planDeleted ? (
-                            <Badge variant="outline" className="text-red-400 border-red-400/30 text-xs shrink-0">
+                            <Badge variant="danger" className="shrink-0">
                                 Plan Deleted
                             </Badge>
                         ) : isGhostPlan ? (
-                            <Badge variant="outline" className="text-amber-400 border-amber-400/30 text-xs shrink-0">
+                            <Badge variant="warning" className="shrink-0">
                                 Ghost Plan
                             </Badge>
                         ) : isActive ? (
-                            <Badge variant="outline" className="text-teal-400 border-teal-400/30 text-xs shrink-0">
+                            <Badge variant="info" className="shrink-0">
                                 Active
                             </Badge>
                         ) : (
-                            <Badge variant="outline" className="text-red-400 border-red-400/30 text-xs shrink-0">
+                            <Badge variant="danger" className="shrink-0">
                                 Cancelled
                             </Badge>
                         )}
@@ -384,7 +384,7 @@ export function MySubscriptionsPanel() {
                         <CardTitle>My Subscriptions</CardTitle>
                     </div>
                     {hasSubs && (
-                        <Badge variant="outline" className="text-teal-400 border-teal-400/30">
+                        <Badge variant="info">
                             {subscriptions.length}
                         </Badge>
                     )}

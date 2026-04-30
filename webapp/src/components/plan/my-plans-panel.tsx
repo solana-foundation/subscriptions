@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { ClipboardPen, Plus, RefreshCw } from 'lucide-react';
+import { Badge } from '@solana/design-system';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PlanCard } from './plan-card';
 import { CreatePlanDialog } from './create-plan-dialog';
@@ -56,7 +56,7 @@ export function MyPlansPanel() {
                     </div>
                     <div className="flex items-center gap-2">
                         {hasPlan && (
-                            <Badge variant="outline" className="text-emerald-400 border-emerald-400/30">
+                            <Badge variant="success">
                                 {plans.length}
                             </Badge>
                         )}

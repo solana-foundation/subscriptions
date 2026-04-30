@@ -12,9 +12,9 @@ import {
     Plus,
     X,
 } from 'lucide-react';
+import { Badge } from '@solana/design-system';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -783,7 +783,7 @@ export function PlanCard({
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                                 {isSunset && (
-                                    <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30 shrink-0">
+                                    <Badge variant="warning" className="shrink-0">
                                         <Sunset className="h-3 w-3 mr-1" />
                                         Sunset
                                     </Badge>
@@ -870,8 +870,9 @@ export function PlanCard({
                         <div className="flex justify-center pt-2 border-t border-emerald-500/10">
                             {isCancelledSub ? (
                                 <Badge
-                                    variant="outline"
-                                    className="w-full justify-center text-red-400 border-red-400/30 text-sm h-9"
+                                    variant="danger"
+                                    className="w-full justify-center"
+                                    style={{ height: '2.25rem' }}
                                 >
                                     Cancelled{' '}
                                     {subDaysLeft !== null && subDaysLeft > 0
@@ -880,8 +881,9 @@ export function PlanCard({
                                 </Badge>
                             ) : isSubscribed ? (
                                 <Badge
-                                    variant="outline"
-                                    className="w-full justify-center text-amber-400 border-amber-400/30 text-sm h-9"
+                                    variant="warning"
+                                    className="w-full justify-center"
+                                    style={{ height: '2.25rem' }}
                                 >
                                     Already Subscribed
                                 </Badge>

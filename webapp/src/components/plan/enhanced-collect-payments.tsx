@@ -1,8 +1,8 @@
 import { useState, useMemo, useCallback } from 'react';
 import { DollarSign, Users, ClipboardPen, Loader2, Clock, Star, Banknote, RefreshCw } from 'lucide-react';
+import { Badge } from '@solana/design-system';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { ExplorerLink } from '@/components/cluster/cluster-ui';
@@ -399,19 +399,19 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
                                                     </TableCell>
                                                     <TableCell>
                                                         {isStale ? (
-                                                            <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
+                                                            <Badge variant="warning">
                                                                 Stale Terms
                                                             </Badge>
                                                         ) : isActive ? (
-                                                            <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                                                            <Badge variant="success">
                                                                 Active
                                                             </Badge>
                                                         ) : isCancelled ? (
-                                                            <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
+                                                            <Badge variant="danger">
                                                                 Cancelled
                                                             </Badge>
                                                         ) : (
-                                                            <Badge className="bg-slate-500/20 text-slate-400 border-slate-500/30">
+                                                            <Badge>
                                                                 Expired
                                                             </Badge>
                                                         )}
@@ -498,7 +498,7 @@ function RecentCollections({ version, onClear }: { version: number; onClear: () 
             <CardContent className="space-y-2">
                 {history.slice(0, 15).map(record => (
                     <div key={record.id} className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-emerald-400 border-emerald-400/30 text-xs shrink-0">
+                        <Badge variant="success" className="shrink-0">
                             {record.planName}
                         </Badge>
                         <div className="flex-1 min-w-0">

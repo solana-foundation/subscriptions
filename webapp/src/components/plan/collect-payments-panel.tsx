@@ -1,8 +1,8 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Banknote, ChevronDown, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Badge } from '@solana/design-system';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn, USDC_MULTIPLIER, ellipsify, fmtDateTime } from '@/lib/utils';
 import { ExplorerLink } from '@/components/cluster/cluster-ui';
@@ -215,7 +215,7 @@ export function CollectPaymentsPanel({ alwaysShow }: { alwaysShow?: boolean } = 
                 <div className="flex items-center gap-2">
                     <Banknote className="h-5 w-5 text-emerald-400" />
                     <CardTitle>Payment Collection</CardTitle>
-                    <Badge variant="outline" className="text-emerald-400 border-emerald-400/30">
+                    <Badge variant="success">
                         {plansWithSubs.length}
                     </Badge>
                 </div>
