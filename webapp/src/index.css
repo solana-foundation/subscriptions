@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import '@solana/design-system/defaults.css';
 @import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));

@@ -10,10 +10,10 @@ import {
     useWalletInfo,
     type SolanaClusterId,
 } from '@solana/connector/react';
+import { Button } from '@solana/design-system';
 import { ChevronDown, LogOut, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -74,10 +74,13 @@ export function WalletButton() {
         return (
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="gap-2">
-                        <Wallet className="h-4 w-4" />
+                    <Button
+                        disabled={pending}
+                        iconLeft={<Wallet />}
+                        iconRight={<ChevronDown className="opacity-60" />}
+                        variant="secondary"
+                    >
                         {ellipsify(account, 4)}
-                        <ChevronDown className="h-3.5 w-3.5 opacity-60" />
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-64">
@@ -102,10 +105,13 @@ export function WalletButton() {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button disabled={pending} variant="outline" className="gap-2">
-                    <Wallet className="h-4 w-4" />
-                    {pending ? 'Connecting...' : 'Connect Wallet'}
-                    <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                <Button
+                    iconLeft={<Wallet />}
+                    iconRight={<ChevronDown className="opacity-60" />}
+                    loading={pending}
+                    variant="secondary"
+                >
+                    Connect Wallet
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64">

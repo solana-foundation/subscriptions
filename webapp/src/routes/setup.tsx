@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { useCluster, useKitTransactionSigner, useWallet } from '@solana/connector/react';
+import { Button as SolanaButton } from '@solana/design-system';
 import {
     appendTransactionMessageInstructions,
     createTransactionMessage,
@@ -212,10 +213,9 @@ function SetupCompleteCard({
                     {extra}
                 </div>
             </div>
-            <Button onClick={onComplete} className="w-full bg-purple-600 hover:bg-purple-700">
+            <SolanaButton iconRight={<ArrowRight />} onClick={onComplete} size="lg" style={{ width: '100%' }}>
                 Go to App
-                <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
+            </SolanaButton>
         </div>
     );
 }
@@ -246,15 +246,15 @@ function NetworkSelection({ onSelect, onSkip }: { onSelect: (n: Network) => void
         <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] p-4">
             <div className="max-w-2xl w-full space-y-8">
                 <div className="flex justify-end">
-                    <Button
+                    <SolanaButton
+                        iconRight={<ArrowRight />}
+                        loading={skipping}
                         onClick={handleSkip}
-                        disabled={skipping}
-                        className="rounded-full bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 text-sm font-medium"
+                        radius="round"
+                        size="md"
                     >
-                        {skipping ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                         Skip to App
-                        <ArrowRight className="h-4 w-4 ml-2" />
-                    </Button>
+                    </SolanaButton>
                 </div>
                 <div className="text-center space-y-3">
                     <div className="flex items-center justify-center gap-3">
