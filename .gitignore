@@ -27,12 +27,10 @@ config.json
 
 keys/
 
-# Playwright output
-apps/web/playwright-report/
-apps/web/test-results/
-
-# TypeScript incremental build cache
-apps/web/tsconfig.tsbuildinfo
+# Webapp output
+webapp/playwright-report/
+webapp/test-results/
+webapp/tsconfig.tsbuildinfo
 
 # TypeDoc generated API docs
 clients/typescript/docs/

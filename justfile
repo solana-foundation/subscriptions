@@ -48,15 +48,6 @@ program-id:
 # Build recipes
 # ============================================
 
-# Check if rebuild is needed (exits 0 if rebuild needed, 1 if up-to-date)
-[private]
-needs-rebuild target source:
-    #!/usr/bin/env bash
-    if [[ -f "{{target}}" ]] && [[ "{{source}}" -ot "{{target}}" ]]; then
-        echo "✓ {{target}} is up-to-date"
-        exit 1
-    fi
-
 # Build everything (program + clients)
 build: build-program build-client
 
@@ -96,14 +87,8 @@ generate-client: generate-clients
 
 # Build TypeScript client
 build-client: generate-clients
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    if just needs-rebuild "{{ts_client_dir}}/dist/index.js" "clients/typescript/src/generated/index.ts" 2>/dev/null; then
-        cd {{ts_client_dir}}
-        pnpm run build
-        echo "✓ TypeScript client built"
-    fi
+    cd {{ts_client_dir}} && pnpm run build
+    @echo "✓ TypeScript client built"
 
 # ============================================
 # Test recipes
@@ -240,11 +225,10 @@ clean:
     pkill -f "solana-test-validator" 2>/dev/null || true
     pkill -f "surfpool" 2>/dev/null || true
 
-    echo "Cleaning program..."
+    echo "Cleaning program build artifacts..."
     cargo clean
-    rm -f {{idl_file}}
 
-    echo "Cleaning client..."
+    echo "Cleaning client build artifacts..."
     cd {{ts_client_dir}} && pnpm run clean || true
     cd -
 
