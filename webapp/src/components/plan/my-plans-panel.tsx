@@ -1,8 +1,7 @@
 import { useState, useMemo } from 'react';
 import { ClipboardPen, Plus, RefreshCw } from 'lucide-react';
-import { Badge } from '@solana/design-system';
+import { Badge, Button } from '@solana/design-system';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { PlanCard } from './plan-card';
 import { CreatePlanDialog } from './create-plan-dialog';
 import { useMyPlans } from '@/hooks/use-plans';
@@ -56,9 +55,15 @@ export function MyPlansPanel() {
                     </div>
                     <div className="flex items-center gap-2">
                         {hasPlan && <Badge variant="success">{plans.length}</Badge>}
-                        <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={spinning}>
-                            <RefreshCw className={`h-4 w-4 ${spinning ? 'animate-spin' : ''}`} />
-                        </Button>
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            iconOnly
+                            iconLeft={<RefreshCw className={spinning ? 'animate-spin' : ''} />}
+                            aria-label="Refresh plans"
+                            onClick={handleRefresh}
+                            disabled={spinning}
+                        />
                     </div>
                 </div>
             </CardHeader>
@@ -83,11 +88,7 @@ export function MyPlansPanel() {
                     </div>
                 )}
                 <div className="flex justify-end pt-2">
-                    <Button
-                        className="gap-2 rounded-full px-6 h-11 bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.5)] transition-all hover:shadow-[0_0_25px_rgba(16,185,129,0.7)] border border-emerald-500/50"
-                        onClick={() => setDialogOpen(true)}
-                    >
-                        <Plus className="h-5 w-5" />
+                    <Button radius="round" size="lg" iconLeft={<Plus />} onClick={() => setDialogOpen(true)}>
                         Create Plan
                     </Button>
                 </div>
