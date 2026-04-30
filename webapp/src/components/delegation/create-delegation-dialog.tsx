@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Coins, RefreshCw, Plus, ArrowLeft } from 'lucide-react';
-import { TextInput } from '@solana/design-system';
+import { Select, SelectItem, TextInput } from '@solana/design-system';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -298,18 +298,19 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
                                                 min={blockDate.toLocaleDateString('en-CA')}
                                                 className="flex-1"
                                             />
-                                            <select
-                                                id="expiry-hour"
+                                            <Select
                                                 value={expiryHour}
-                                                onChange={e => setExpiryHour(e.target.value)}
-                                                className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                                onValueChange={value => {
+                                                    if (value) setExpiryHour(value);
+                                                }}
+                                                className="w-28 shrink-0"
                                             >
                                                 {Array.from({ length: 24 }, (_, i) => (
-                                                    <option key={i} value={i.toString()}>
+                                                    <SelectItem key={i} value={i.toString()}>
                                                         {i.toString().padStart(2, '0')}:00
-                                                    </option>
+                                                    </SelectItem>
                                                 ))}
-                                            </select>
+                                            </Select>
                                         </div>
                                         {expiryDate && !isExpiryValid() && (
                                             <p className="text-xs text-destructive">

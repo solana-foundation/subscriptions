@@ -363,16 +363,18 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
                                     placeholder="30"
                                     className="flex-1"
                                 />
-                                <select
+                                <Select
                                     value={periodUnit}
-                                    onChange={e => setPeriodUnit(e.target.value as typeof periodUnit)}
-                                    className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                    onValueChange={value => {
+                                        if (value) setPeriodUnit(value as typeof periodUnit);
+                                    }}
+                                    className="w-32 shrink-0"
                                 >
-                                    <option value="hours">Hours</option>
-                                    <option value="days">Days</option>
-                                    <option value="weeks">Weeks</option>
-                                    <option value="months">Months</option>
-                                </select>
+                                    <SelectItem value="hours">Hours</SelectItem>
+                                    <SelectItem value="days">Days</SelectItem>
+                                    <SelectItem value="weeks">Weeks</SelectItem>
+                                    <SelectItem value="months">Months</SelectItem>
+                                </Select>
                             </div>
                         </div>
 
@@ -408,17 +410,19 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
                                             min={new Date(minEndTs * 1000).toLocaleDateString('en-CA')}
                                             className="flex-1"
                                         />
-                                        <select
+                                        <Select
                                             value={endHour}
-                                            onChange={e => setEndHour(e.target.value)}
-                                            className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                            onValueChange={value => {
+                                                if (value) setEndHour(value);
+                                            }}
+                                            className="w-28 shrink-0"
                                         >
                                             {Array.from({ length: 24 }, (_, i) => (
-                                                <option key={i} value={i.toString()}>
+                                                <SelectItem key={i} value={i.toString()}>
                                                     {i.toString().padStart(2, '0')}:00
-                                                </option>
+                                                </SelectItem>
                                             ))}
-                                        </select>
+                                        </Select>
                                     </div>
                                     {endDate && !isEndDateValid && (
                                         <p className="text-xs text-destructive">

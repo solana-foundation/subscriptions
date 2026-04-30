@@ -244,18 +244,20 @@ function EditPlanDialog({
                                     className="flex-1"
                                     disabled={isSunset}
                                 />
-                                <select
+                                <Select
                                     value={endHour}
-                                    onChange={e => setEndHour(e.target.value)}
                                     disabled={isSunset}
-                                    className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    onValueChange={value => {
+                                        if (value) setEndHour(value);
+                                    }}
+                                    className="w-28 shrink-0"
                                 >
                                     {Array.from({ length: 24 }, (_, i) => (
-                                        <option key={i} value={i.toString()}>
+                                        <SelectItem key={i} value={i.toString()}>
                                             {i.toString().padStart(2, '0')}:00
-                                        </option>
+                                        </SelectItem>
                                     ))}
-                                </select>
+                                </Select>
                             </div>
                             {endDate && !isEndDateValid && (
                                 <p className="text-xs text-destructive">

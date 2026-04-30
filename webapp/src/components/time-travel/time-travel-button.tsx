@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Clock, RotateCcw } from 'lucide-react';
 import { useCluster } from '@solana/connector/react';
-import { TextInput } from '@solana/design-system';
+import { Select, SelectItem, TextInput } from '@solana/design-system';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -201,17 +201,19 @@ function TimeTravelButtonInner() {
                                 min={currentTime ? new Date(currentTime * 1000).toLocaleDateString('en-CA') : undefined}
                                 className={`flex-1 transition-shadow duration-200 ${animating ? 'ring-2 ring-green-500/30 border-green-500/25 shadow-[0_0_8px_rgba(34,197,94,0.15)] text-green-400' : ''}`}
                             />
-                            <select
+                            <Select
                                 value={hour}
-                                onChange={e => setHour(e.target.value)}
-                                className={`h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-shadow duration-200 ${animating ? 'ring-2 ring-green-500/30 border-green-500/25 shadow-[0_0_8px_rgba(34,197,94,0.15)] text-green-400' : ''}`}
+                                onValueChange={value => {
+                                    if (value) setHour(value);
+                                }}
+                                className={`w-28 shrink-0 transition-shadow duration-200 ${animating ? 'ring-2 ring-green-500/30 border-green-500/25 shadow-[0_0_8px_rgba(34,197,94,0.15)]' : ''}`}
                             >
                                 {Array.from({ length: 24 }, (_, i) => (
-                                    <option key={i} value={i.toString()}>
+                                    <SelectItem key={i} value={i.toString()}>
                                         {i.toString().padStart(2, '0')}:00
-                                    </option>
+                                    </SelectItem>
                                 ))}
-                            </select>
+                            </Select>
                         </div>
                         <Button
                             variant="outline"
