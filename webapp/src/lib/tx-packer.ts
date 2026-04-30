@@ -7,7 +7,7 @@ import {
     setTransactionMessageFeePayerSigner,
     setTransactionMessageLifetimeUsingBlockhash,
     type Instruction,
-    type TransactionSendingSigner,
+    type TransactionSigner,
 } from '@solana/kit';
 
 const MAX_TX_BYTES = 1232;
@@ -17,7 +17,7 @@ function base64ByteLength(b64: string): number {
     return (b64.length * 3) / 4 - padding;
 }
 
-function txByteSize(instructions: Instruction[], feePayer: TransactionSendingSigner): number {
+function txByteSize(instructions: Instruction[], feePayer: TransactionSigner): number {
     try {
         const tx = pipe(
             createTransactionMessage({ version: 0 }),
@@ -43,7 +43,7 @@ export type InstructionBatch<T> = {
 
 export function packInstructionBatchesWithItems<T extends { instruction: Instruction }>(
     items: T[],
-    feePayer: TransactionSendingSigner,
+    feePayer: TransactionSigner,
     prefixIxs: Instruction[] = [],
 ): InstructionBatch<T>[] {
     if (items.length === 0) {
@@ -78,7 +78,7 @@ export function packInstructionBatchesWithItems<T extends { instruction: Instruc
 
 export function packInstructionBatches(
     ixs: Instruction[],
-    feePayer: TransactionSendingSigner,
+    feePayer: TransactionSigner,
     prefixIxs: Instruction[] = [],
 ): Instruction[][] {
     return packInstructionBatchesWithItems(

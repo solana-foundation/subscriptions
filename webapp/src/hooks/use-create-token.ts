@@ -1,13 +1,15 @@
+import { useKitTransactionSigner } from '@solana/connector/react';
 import {
     type Address,
     appendTransactionMessageInstructions,
     createSignerFromKeyPair,
     createTransactionMessage,
     generateKeyPair,
+    getBase64EncodedWireTransaction,
     pipe,
     setTransactionMessageFeePayerSigner,
     setTransactionMessageLifetimeUsingBlockhash,
-    signAndSendTransactionMessageWithSigners,
+    signTransactionMessageWithSigners,
 } from '@solana/kit';
 import { findAssociatedTokenPda, getCreateAssociatedTokenIdempotentInstruction } from '@solana-program/token';
 import {
@@ -18,15 +20,19 @@ import {
 } from '@solana-program/token-2022';
 import { useMutation } from '@tanstack/react-query';
 
-import { useWalletUiSigner } from '@/components/solana/use-wallet-ui-signer';
 import { useTransactionToast } from '@/components/use-transaction-toast';
 import { useRpc } from '@/hooks/use-rpc';
 import { buildCreateAccountIx, SYSTEM_PROGRAM } from '@/lib/bpf-loader-browser';
 
 export function useCreateToken() {
-    const walletSigner = useWalletUiSigner();
+    const { signer: walletSigner } = useKitTransactionSigner();
     const toast = useTransactionToast();
     const rpc = useRpc();
+
+    async function signAndSendTransaction(tx: Parameters<typeof signTransactionMessageWithSigners>[0]) {
+        const signedTx = await signTransactionMessageWithSigners(tx);
+        await rpc.sendTransaction(getBase64EncodedWireTransaction(signedTx), { encoding: 'base64' }).send();
+    }
 
     const createToken = useMutation({
         mutationFn: async ({ decimals = 6 }: { decimals?: number } = {}) => {
@@ -60,7 +66,7 @@ export function useCreateToken() {
                 m => appendTransactionMessageInstructions([createAccIx, initMintIx], m),
             );
 
-            await signAndSendTransactionMessageWithSigners(tx);
+            await signAndSendTransaction(tx);
 
             return { mint: mintKp.address as Address };
         },
@@ -107,7 +113,7 @@ export function useCreateToken() {
                 m => appendTransactionMessageInstructions([createAtaIx, mintToIx], m),
             );
 
-            await signAndSendTransactionMessageWithSigners(tx);
+            await signAndSendTransaction(tx);
             return { ata };
         },
         onError: e => toast.onError(e),

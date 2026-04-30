@@ -1,13 +1,15 @@
 import { Link, useLocation } from 'react-router';
-import { useWalletUi } from '@wallet-ui/react';
+import { useCluster } from '@solana/connector/react';
 import { NAV_ITEMS, type NavItem } from './nav-items';
 import solanaLogo from '@/assets/solana-logo.svg';
 import { CURRENT_PROGRAM_VERSION } from '@subscriptions/client';
 
 export function AppSidebar() {
     const { pathname } = useLocation();
-    const { cluster } = useWalletUi();
-    const filteredItems = NAV_ITEMS.filter(item => !item.clusterFilter || item.clusterFilter.includes(cluster.id));
+    const { cluster } = useCluster();
+    const filteredItems = NAV_ITEMS.filter(
+        item => !item.clusterFilter || item.clusterFilter.includes(cluster?.id ?? ''),
+    );
 
     function isActive(path: string) {
         return path === '/' ? pathname === '/' : pathname === path;

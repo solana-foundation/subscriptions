@@ -29,4 +29,4 @@ From the project root, `just webapp-run` builds the program and clients, starts 
 
 ## Tech Stack
 
-React 19, TypeScript, Vite, Tailwind CSS, Radix UI, jotai (state), TanStack Query (data fetching), Solana Kit, Wallet UI adapter.
+React 19, TypeScript, Vite, Tailwind CSS, Radix UI, jotai (state), TanStack Query (data fetching), Solana Kit, ConnectorKit.

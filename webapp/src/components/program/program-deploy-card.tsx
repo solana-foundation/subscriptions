@@ -20,8 +20,7 @@ import { useProgramStatus } from '@/hooks/use-program-status';
 import { useProgramDeploy, type DeployProgress } from '@/hooks/use-program-deploy';
 import { useProgramAddress } from '@/hooks/use-token-config';
 import { useClusterConfig } from '@/hooks/use-cluster-config';
-import { useWalletUi } from '@wallet-ui/react';
-import { useWalletUiSigner } from '@/components/solana/use-wallet-ui-signer';
+import { useKitTransactionSigner, useWallet } from '@solana/connector/react';
 import { useWalletTransactionSignAndSend } from '@/components/solana/use-wallet-transaction-sign-and-send';
 import { useTransactionToast } from '@/components/use-transaction-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -89,8 +88,8 @@ function PhaseDisplay({ progress }: { progress: DeployProgress }) {
 
 function TransferAuthoritySection() {
     const { data: status } = useProgramStatus();
-    const { account } = useWalletUi();
-    const signer = useWalletUiSigner();
+    const { account } = useWallet();
+    const { signer } = useKitTransactionSigner();
     const signAndSend = useWalletTransactionSignAndSend();
     const toast = useTransactionToast();
     const queryClient = useQueryClient();
@@ -104,7 +103,7 @@ function TransferAuthoritySection() {
     const [copied, setCopied] = useState(false);
     const [generating, setGenerating] = useState(false);
 
-    const walletAddress = account?.address;
+    const walletAddress = account;
     const isAuthority = !!(walletAddress && status?.upgradeAuthority === walletAddress);
     const isValidInput = isValidBase58Address(newAuthority);
     const programAddress = progAddr ?? '';
@@ -265,7 +264,7 @@ function TransferAuthoritySection() {
 export function ProgramDeployCard() {
     const { data: status } = useProgramStatus();
     const { deploy, progress, resetProgress, closeBuffer } = useProgramDeploy();
-    const { account } = useWalletUi();
+    const { account } = useWallet();
     const isActive = deploy.isPending;
     const isUpgrade = status?.deployed ?? false;
     const [lastFailedChunk, setLastFailedChunk] = useState<number | null>(null);
@@ -274,7 +273,7 @@ export function ProgramDeployCard() {
         progressRef.current = progress;
     }, [progress]);
 
-    const walletAddress = account?.address;
+    const walletAddress = account;
     const authorityMismatch =
         isUpgrade && status?.upgradeAuthority && walletAddress && status.upgradeAuthority !== walletAddress;
 

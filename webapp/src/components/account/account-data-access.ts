@@ -1,9 +1,9 @@
+import { useCluster, useWallet } from '@solana/connector/react';
 import type { Address } from '@solana/kit';
 import { createSolanaRpc } from '@solana/kit';
 import { TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useWalletUi } from '@wallet-ui/react';
 import { toast } from 'sonner';
 
 import { useClusterConfig } from '@/hooks/use-cluster-config';
@@ -78,10 +78,11 @@ export function useRequestAirdropMutation({ address: addr }: { address: Address 
 }
 
 export function useAirdropSol() {
-    const { account, cluster } = useWalletUi();
+    const { account } = useWallet();
+    const { cluster } = useCluster();
     const rpc = useRpc();
     const queryClient = useQueryClient();
-    const isDevnet = cluster.id === 'solana:devnet';
+    const isDevnet = cluster?.id === 'solana:devnet';
 
     return useMutation({
         mutationFn: async (amount: number) => {
@@ -89,10 +90,10 @@ export function useAirdropSol() {
             if (isDevnet) {
                 const lamports = BigInt(Math.round(amount * LAMPORTS_PER_SOL));
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                await rpc.requestAirdrop(account.address as Address, lamports as any).send();
+                await rpc.requestAirdrop(account as Address, lamports as any).send();
                 return { message: `Airdropped ${amount} SOL on devnet` };
             }
-            return await api.airdrop.sol({ amount, recipient: account.address });
+            return await api.airdrop.sol({ amount, recipient: account });
         },
         onError: error => {
             toast.error(`SOL airdrop failed: ${error.message}`);
@@ -105,11 +106,12 @@ export function useAirdropSol() {
 }
 
 export function useAirdropUsdc() {
-    const { account, cluster } = useWalletUi();
+    const { account } = useWallet();
+    const { cluster } = useCluster();
     const queryClient = useQueryClient();
     const usdcMint = useUsdcMint();
     const { mintTo } = useCreateToken();
-    const isDevnet = cluster.id === 'solana:devnet';
+    const isDevnet = cluster?.id === 'solana:devnet';
 
     return useMutation({
         mutationFn: async ({ amount, recipient }: { amount: number; recipient?: string }) => {
@@ -117,7 +119,7 @@ export function useAirdropUsdc() {
             if (isDevnet) {
                 if (!usdcMint) throw new Error('USDC mint not configured');
                 const rawAmount = BigInt(Math.round(amount * 1_000_000));
-                const target = (recipient || account.address) as Address;
+                const target = (recipient || account) as Address;
                 await mintTo.mutateAsync({
                     amount: rawAmount,
                     mint: usdcMint as Address,
@@ -125,7 +127,7 @@ export function useAirdropUsdc() {
                 });
                 return { message: `Minted ${amount} USDC to ${target.slice(0, 8)}...` };
             }
-            return await api.airdrop.usdc({ amount, recipient: account.address });
+            return await api.airdrop.usdc({ amount, recipient: account });
         },
         onError: error => {
             toast.error(`USDC airdrop failed: ${error.message}`);

@@ -11,16 +11,16 @@ function WalletErrorFallback({ error }: { error: unknown }) {
     } else {
         console.error('WalletErrorFallback caught non-Error:', error);
     }
-    // The cached wallet account is what's throwing (e.g. it doesn't support the
-    // current chain). Reloading alone re-hydrates the same account and re-throws,
-    // trapping the user. Disconnect clears wallet-ui's persisted account/cluster
-    // so the next load comes up unconnected.
+    // The cached wallet account can keep throwing across reloads, so clear
+    // ConnectorKit's persisted wallet state before reloading.
     const disconnectAndReload = () => {
         try {
-            localStorage.removeItem('wallet-ui:account');
-            localStorage.removeItem('wallet-ui:cluster');
+            localStorage.removeItem('connector-kit:v1:account');
+            localStorage.removeItem('connector-kit:v1:wallet');
+            localStorage.removeItem('connector-kit:v1:wallet-state');
         } catch {
-            // ignore storage failures; reload is still useful
+            window.location.reload();
+            return;
         }
         window.location.reload();
     };

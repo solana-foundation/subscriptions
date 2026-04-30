@@ -36,7 +36,7 @@ import { cn, ellipsify, USDC_MULTIPLIER, fmtDate, fmtDateTime, formatPeriod, for
 import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations';
 import { useSubscriptionAuthorityStatus } from '@/hooks/use-subscription-authority-status';
 import { useTimeTravel } from '@/hooks/use-time-travel';
-import { useWalletUi } from '@wallet-ui/react';
+import { useWallet } from '@solana/connector/react';
 import { address } from '@solana/kit';
 import { findAssociatedTokenPda } from '@solana-program/token';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
@@ -486,15 +486,15 @@ function SubscribeDialog({
         isLoading: statusLoading,
         refetch: refetchStatus,
     } = useSubscriptionAuthorityStatus(plan.data.mint);
-    const { account } = useWalletUi();
+    const { account } = useWallet();
     const amount = Number(plan.data.terms.amount) / USDC_MULTIPLIER;
 
     const handleInit = async () => {
-        if (!account?.address) return;
+        if (!account) return;
         const mint = address(plan.data.mint);
         const [userAta] = await findAssociatedTokenPda({
             mint,
-            owner: address(account.address),
+            owner: address(account),
             tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
         });
         initSubscriptionAuthority.mutate(

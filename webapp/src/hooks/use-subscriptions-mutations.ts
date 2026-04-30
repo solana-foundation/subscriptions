@@ -1,3 +1,4 @@
+import { useKitTransactionSigner } from '@solana/connector/react';
 import { address, createSolanaRpc, type Instruction } from '@solana/kit';
 import { findAssociatedTokenPda, getCreateAssociatedTokenIdempotentInstruction } from '@solana-program/token';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
@@ -39,11 +40,10 @@ import { packInstructionBatches } from '@/lib/tx-packer';
 import { invalidateWithDelay } from '@/lib/utils';
 
 import { useWalletTransactionSignAndSend } from '../components/solana/use-wallet-transaction-sign-and-send';
-import { useWalletUiSigner } from '../components/solana/use-wallet-ui-signer';
 import { useTransactionToast } from '../components/use-transaction-toast';
 
 export function useSubscriptionsMutations() {
-    const signer = useWalletUiSigner();
+    const { signer } = useKitTransactionSigner();
     const signAndSend = useWalletTransactionSignAndSend();
     const queryClient = useQueryClient();
     const toast = useTransactionToast();

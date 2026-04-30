@@ -1,7 +1,7 @@
+import { useCluster, useWallet } from '@solana/connector/react';
 import { address, createSolanaRpc } from '@solana/kit';
 import { type Delegation, fetchDelegationsByDelegatee, fetchDelegationsByDelegator } from '@subscriptions/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useWalletUi } from '@wallet-ui/react';
 
 import { useClusterConfig } from '@/hooks/use-cluster-config';
 import { useProgramAddress } from '@/hooks/use-token-config';
@@ -73,27 +73,28 @@ async function fetchDelegationsByRole(
 }
 
 function useDelegationsByRole(role: DelegationRole) {
-    const { account, cluster } = useWalletUi();
+    const { account } = useWallet();
+    const { cluster } = useCluster();
     const clusterConfig = useClusterConfig();
     const progAddr = useProgramAddress();
     const queryClient = useQueryClient();
 
     const query = useQuery({
-        enabled: !!account?.address && !!progAddr,
+        enabled: !!account && !!progAddr,
         queryFn: async (): Promise<GroupedDelegations> => {
-            if (!account?.address) {
+            if (!account) {
                 return { all: [], fixed: [], recurring: [] };
             }
-            return await fetchDelegationsByRole(clusterConfig.url, account.address, role, progAddr!);
+            return await fetchDelegationsByRole(clusterConfig.url, account, role, progAddr!);
         },
-        queryKey: ['delegations', role, account?.address, cluster.id],
+        queryKey: ['delegations', role, account, cluster?.id],
         retry: 1,
         staleTime: 15_000,
     });
 
     const refetch = async () => {
         await queryClient.invalidateQueries({
-            queryKey: ['delegations', role, account?.address, cluster.id],
+            queryKey: ['delegations', role, account, cluster?.id],
         });
         await query.refetch();
     };

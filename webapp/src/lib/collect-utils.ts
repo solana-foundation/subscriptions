@@ -4,7 +4,7 @@ import {
     getProgramDerivedAddress,
     type Address,
     type Instruction,
-    type TransactionSendingSigner,
+    type TransactionSigner,
 } from '@solana/kit';
 import { findAssociatedTokenPda } from '@solana-program/token';
 import { packInstructionBatches } from './tx-packer';
@@ -193,7 +193,7 @@ export async function sendBatchedSubscriberInstructions<TSubscriber extends Coll
     sendInstructions,
 }: {
     transfers: SubscriberTransfer<TSubscriber>[];
-    feePayer: TransactionSendingSigner;
+    feePayer: TransactionSigner;
     sendInstructions: (instructions: Instruction[]) => Promise<string>;
 }): Promise<SubscriberInstructionSendResult<TSubscriber>> {
     const signatures: string[] = [];

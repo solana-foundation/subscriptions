@@ -1,3 +1,4 @@
+import { useKitTransactionSigner } from '@solana/connector/react';
 import {
     address,
     appendTransactionMessageInstructions,
@@ -8,16 +9,13 @@ import {
     createTransactionMessage,
     generateKeyPair,
     getAddressEncoder,
-    getBase58Decoder,
     getBase64EncodedWireTransaction,
     type Instruction,
     type KeyPairSigner,
     pipe,
     setTransactionMessageFeePayerSigner,
     setTransactionMessageLifetimeUsingBlockhash,
-    signAndSendTransactionMessageWithSigners,
     signTransactionMessageWithSigners,
-    type TransactionSendingSigner,
     type TransactionSigner,
 } from '@solana/kit';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -34,7 +32,6 @@ const buildV0Tx = (
         m => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
         m => appendTransactionMessageInstructions(instructions, m),
     );
-import { useWalletUiSigner } from '@/components/solana/use-wallet-ui-signer';
 import { useTransactionToast } from '@/components/use-transaction-toast';
 import { useClusterConfig } from '@/hooks/use-cluster-config';
 import { useRpc } from '@/hooks/use-rpc';
@@ -67,7 +64,7 @@ async function createKeypairSigner(bytes: Uint8Array): Promise<KeyPairSigner> {
 }
 
 export function useProgramDeploy() {
-    const walletSigner = useWalletUiSigner();
+    const { signer: walletSigner } = useKitTransactionSigner();
     const { url: rpcUrl, id: clusterId } = useClusterConfig();
     const queryClient = useQueryClient();
     const toast = useTransactionToast();
@@ -90,7 +87,7 @@ export function useProgramDeploy() {
     }, []);
 
     async function fetchOrResumePlan(
-        signer: TransactionSendingSigner,
+        signer: TransactionSigner,
         isUpgrade: boolean,
         resumeFrom?: number,
     ): Promise<{ bufferKpSigner: KeyPairSigner; plan: DeployPlan }> {
@@ -109,7 +106,7 @@ export function useProgramDeploy() {
     }
 
     async function fundBufferAndFeePayer(
-        signer: TransactionSendingSigner,
+        signer: TransactionSigner,
         plan: DeployPlan,
         bufferKpSigner: KeyPairSigner,
         feePayerKp: KeyPairSigner,
@@ -156,7 +153,8 @@ export function useProgramDeploy() {
             const initBufferIx = buildInitializeBufferIx(bufferKpSigner.address, bufferKpSigner.address);
 
             const initTx = buildV0Tx(signer, latestBlockhash, [fundFeePayerIx, createAccIx, initBufferIx]);
-            await signAndSendTransactionMessageWithSigners(initTx);
+            const signedInitTx = await signTransactionMessageWithSigners(initTx);
+            await rpc.sendTransaction(getBase64EncodedWireTransaction(signedInitTx), { encoding: 'base64' }).send();
 
             setProgress({ current: 0, message: 'Waiting for confirmation...', phase: 'funding', total: totalChunks });
             for (let attempt = 0; attempt < 60; attempt++) {
@@ -178,7 +176,8 @@ export function useProgramDeploy() {
                 const fundTx = buildV0Tx(signer, latestBlockhash, [
                     buildTransferIx(signer, feePayerKp.address, feeBudget),
                 ]);
-                await signAndSendTransactionMessageWithSigners(fundTx);
+                const signedFundTx = await signTransactionMessageWithSigners(fundTx);
+                await rpc.sendTransaction(getBase64EncodedWireTransaction(signedFundTx), { encoding: 'base64' }).send();
                 for (let attempt = 0; attempt < 30; attempt++) {
                     const bal = await rpc.getBalance(feePayerKp.address).send();
                     if (bal.value >= feeBudget) break;
@@ -237,7 +236,7 @@ export function useProgramDeploy() {
     }
 
     async function transferBufferAuthority(
-        signer: TransactionSendingSigner,
+        signer: TransactionSigner,
         bufferKpSigner: KeyPairSigner,
         feePayerKp: KeyPairSigner,
     ) {
@@ -263,7 +262,7 @@ export function useProgramDeploy() {
     }
 
     async function finalizeDeployment(
-        signer: TransactionSendingSigner,
+        signer: TransactionSigner,
         plan: DeployPlan,
         bufferKpSigner: KeyPairSigner,
         isUpgrade: boolean,
@@ -317,11 +316,14 @@ export function useProgramDeploy() {
             console.warn('Pre-simulation skipped:', simErr);
         }
 
-        const finalSigBytes = await signAndSendTransactionMessageWithSigners(finalTx);
-        return getBase58Decoder().decode(finalSigBytes);
+        const signedFinalTx = await signTransactionMessageWithSigners(finalTx);
+        const finalSignature = await rpc
+            .sendTransaction(getBase64EncodedWireTransaction(signedFinalTx), { encoding: 'base64' })
+            .send();
+        return String(finalSignature);
     }
 
-    async function reclaimFeePayerSol(feePayerKp: KeyPairSigner, signer: TransactionSendingSigner) {
+    async function reclaimFeePayerSol(feePayerKp: KeyPairSigner, signer: TransactionSigner) {
         try {
             const fpBal = await rpc.getBalance(feePayerKp.address).send();
             if (fpBal.value > 5000n) {
@@ -348,7 +350,8 @@ export function useProgramDeploy() {
 
             const closeIx = buildCloseBufferIx(bufferKp.address, signer.address, bufferKp);
             const closeTx = buildV0Tx(signer, latestBlockhash, [closeIx]);
-            await signAndSendTransactionMessageWithSigners(closeTx);
+            const signedCloseTx = await signTransactionMessageWithSigners(closeTx);
+            await rpc.sendTransaction(getBase64EncodedWireTransaction(signedCloseTx), { encoding: 'base64' }).send();
             bufferSignerRef.current = null;
         },
         onError: e => toast.onError(e),
