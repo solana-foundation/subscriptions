@@ -1,0 +1,176 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      network:
+        description: Target network
+        type: choice
+        options: [devnet, mainnet]
+        required: true
+      priority-fee:
+        description: Priority fee (microlamports per CU)
+        type: string
+        default: '100000'
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.network }}
+  cancel-in-progress: false
+
+env:
+  PROGRAM: subscriptions
+  PROGRAM_ID: De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44
+  REPO_URL: https://github.com/solana-program/subscriptions
+
+jobs:
+  release:
+    name: Release ${{ inputs.network }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Load deploy config from Doppler
+        uses: dopplerhq/secrets-fetch-action@451892f16195f9ac360e1a5bcbf0b5fd0e957534 # v2.0.0
+        with:
+          auth-method: oidc
+          doppler-identity-id: ${{ vars.DOPPLER_SERVICE_IDENTITY_ID }}
+          doppler-project: subscriptions
+          doppler-config: ${{ inputs.network == 'mainnet' && 'prd_github' || 'stg_github' }}
+          inject-env-vars: true
+
+      - uses: ./.github/actions/setup
+        with:
+          rust-cache-key: 'release-${{ inputs.network }}'
+          solana-version: 'stable'
+
+      - name: Install solana-verify
+        run: cargo install solana-verify --locked
+
+      - name: Materialize deployer keypair
+        run: |
+          install -m 600 /dev/null /tmp/deployer.json
+          printf '%s' "$DEPLOYER_KEYPAIR" > /tmp/deployer.json
+
+      - name: Build verified program
+        uses: solana-developers/github-actions/build-verified@eb606791e11d06eb92593dfd3404bf0d4c809121
+        with:
+          program: ${{ env.PROGRAM }}
+
+      - name: Generate IDL
+        run: just generate-idl
+
+      - id: write-buffer
+        name: Write program buffer
+        uses: solana-developers/github-actions/write-program-buffer@eb606791e11d06eb92593dfd3404bf0d4c809121
+        with:
+          program: ${{ env.PROGRAM }}
+          program-id: ${{ env.PROGRAM_ID }}
+          rpc-url: ${{ env.RPC_URL }}
+          keypair: /tmp/deployer.json
+          buffer-authority-address: ${{ inputs.network == 'mainnet' && env.SQUADS_VAULT || '' }}
+          priority-fee: ${{ inputs.priority-fee }}
+
+      # ============================================
+      # devnet: direct upgrade by deployer
+      # ============================================
+      - if: inputs.network == 'devnet'
+        name: Upgrade program (devnet)
+        uses: solana-developers/github-actions/program-upgrade@eb606791e11d06eb92593dfd3404bf0d4c809121
+        with:
+          program: ${{ env.PROGRAM }}
+          program-id: ${{ env.PROGRAM_ID }}
+          buffer: ${{ steps.write-buffer.outputs.buffer }}
+          rpc-url: ${{ env.RPC_URL }}
+          keypair: /tmp/deployer.json
+
+      - if: inputs.network == 'devnet'
+        name: Upload IDL via program-metadata (devnet)
+        uses: solana-developers/github-actions/metadata-upload@eb606791e11d06eb92593dfd3404bf0d4c809121
+        with:
+          program-id: ${{ env.PROGRAM_ID }}
+          rpc-url: ${{ env.RPC_URL }}
+          keypair: /tmp/deployer.json
+          idl-path: idl/subscriptions.json
+          priority-fees: ${{ inputs.priority-fee }}
+
+      - if: inputs.network == 'devnet'
+        name: Verify build (devnet)
+        uses: solana-developers/github-actions/verify-build@eb606791e11d06eb92593dfd3404bf0d4c809121
+        with:
+          program: ${{ env.PROGRAM }}
+          program-id: ${{ env.PROGRAM_ID }}
+          rpc-url: ${{ env.RPC_URL }}
+          keypair: /tmp/deployer.json
+          repo-url: ${{ env.REPO_URL }}
+          network: devnet
+          mount-path: program
+          commit-hash: ${{ github.sha }}
+          skip-build: 'true'
+
+      # ============================================
+      # mainnet: bundle into Squads multisig proposal
+      # ============================================
+      - if: inputs.network == 'mainnet'
+        id: metadata-buffer
+        name: Write IDL metadata buffer (mainnet)
+        uses: solana-developers/github-actions/write-metadata-buffer@eb606791e11d06eb92593dfd3404bf0d4c809121
+        with:
+          idl-path: idl/subscriptions.json
+          rpc-url: ${{ env.RPC_URL }}
+          keypair: /tmp/deployer.json
+          buffer-authority: ${{ env.SQUADS_VAULT }}
+          priority-fees: ${{ inputs.priority-fee }}
+
+      - if: inputs.network == 'mainnet'
+        id: verify-pda
+        name: Build verify PDA transaction (mainnet)
+        uses: solana-developers/github-actions/verify-build@eb606791e11d06eb92593dfd3404bf0d4c809121
+        with:
+          program: ${{ env.PROGRAM }}
+          program-id: ${{ env.PROGRAM_ID }}
+          rpc-url: ${{ env.RPC_URL }}
+          keypair: /tmp/deployer.json
+          repo-url: ${{ env.REPO_URL }}
+          network: mainnet
+          mount-path: program
+          commit-hash: ${{ github.sha }}
+          use-squads: 'true'
+          vault-address: ${{ env.SQUADS_VAULT }}
+          skip-build: 'true'
+
+      - if: inputs.network == 'mainnet'
+        name: Propose Squads upgrade transaction (mainnet)
+        uses: solana-developers/squads-program-action@1b4575c62c01ffc5fae9316f61486f7d37cb7b91 # v0.4.3
+        with:
+          rpc: ${{ env.RPC_URL }}
+          program: ${{ env.PROGRAM_ID }}
+          buffer: ${{ steps.write-buffer.outputs.buffer }}
+          metadata-buffer: ${{ steps.metadata-buffer.outputs.buffer }}
+          multisig: ${{ env.SQUADS_MULTISIG }}
+          keypair: /tmp/deployer.json
+          priority-fee: ${{ inputs.priority-fee }}
+          pda-tx: ${{ steps.verify-pda.outputs.pda_tx }}
+
+      - name: Cleanup keypair
+        if: always()
+        run: rm -f /tmp/deployer.json
+
+      - name: Summary
+        run: |
+          echo "## Release: ${{ inputs.network }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Program: \`${{ env.PROGRAM_ID }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Buffer: \`${{ steps.write-buffer.outputs.buffer }}\`" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ inputs.network }}" = "mainnet" ]; then
+            echo "- IDL buffer: \`${{ steps.metadata-buffer.outputs.buffer }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- Squads multisig: \`${{ env.SQUADS_MULTISIG }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Action required**: review + approve transaction in Squads UI" >> $GITHUB_STEP_SUMMARY
+          fi
