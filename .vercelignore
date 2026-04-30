@@ -1,0 +1,17 @@
+**/target
+**/node_modules
+**/dist
+**/.next
+**/test-ledger
+.validator-ledger
+.surfpool
+.claude
+.git
+.emdash.json
+.vscode
+audits
+runbooks
+program/target
+clients/rust/target
+*.log
+**/cu_report.md
