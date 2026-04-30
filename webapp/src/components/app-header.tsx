@@ -1,33 +1,70 @@
-import { useState } from 'react';
-import { Button } from '@solana/design-system';
-import { Menu, X, Settings2 } from 'lucide-react';
-import { WalletButton } from './solana/solana-provider';
-import { TimeTravelButton } from './time-travel/time-travel-button';
-import { Link, useLocation, useNavigate } from 'react-router';
 import { useCluster } from '@solana/connector/react';
-import { NAV_ITEMS } from './nav-items';
+import { Button } from '@solana/design-system';
+import { ChevronDown, Menu, RotateCcw, Settings2, X } from 'lucide-react';
+import { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router';
+
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { CURRENT_PROGRAM_VERSION } from '@subscriptions/client';
 
-function NetworkButton() {
+import { NAV_ITEMS } from './nav-items';
+import { WalletButton } from './solana/solana-provider';
+import { TimeTravelButton } from './time-travel/time-travel-button';
+
+function ClusterButton() {
+    const { cluster, clusters, setCluster } = useCluster();
     const navigate = useNavigate();
-    const setupCluster = localStorage.getItem('setup-cluster') ?? '';
-    const label =
-        setupCluster === 'solana:devnet' ? 'Devnet' : setupCluster === 'solana:testnet' ? 'Testnet' : 'Localnet';
 
     return (
-        <Button
-            iconLeft={<Settings2 />}
-            onClick={() => {
-                localStorage.removeItem('setup-complete-localnet');
-                localStorage.removeItem('setup-complete-devnet');
-                localStorage.removeItem('setup-cluster');
-                navigate('/setup');
-            }}
-            size="sm"
-            variant="secondary"
-        >
-            {label}
-        </Button>
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button
+                    iconLeft={<Settings2 />}
+                    iconRight={<ChevronDown className="opacity-60" />}
+                    size="sm"
+                    variant="secondary"
+                >
+                    {cluster?.label ?? 'Network'}
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuLabel>Network</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {clusters.map(c => (
+                    <DropdownMenuItem
+                        key={c.id}
+                        onClick={() => {
+                            void setCluster(c.id);
+                        }}
+                    >
+                        {c.label}
+                    </DropdownMenuItem>
+                ))}
+                {import.meta.env.DEV && (
+                    <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                            onClick={() => {
+                                localStorage.removeItem('setup-complete-localnet');
+                                localStorage.removeItem('setup-complete-devnet');
+                                localStorage.removeItem('setup-cluster');
+                                navigate('/setup');
+                            }}
+                        >
+                            <RotateCcw className="mr-2 h-4 w-4" />
+                            Rerun setup
+                        </DropdownMenuItem>
+                    </>
+                )}
+            </DropdownMenuContent>
+        </DropdownMenu>
     );
 }
 
@@ -63,7 +100,7 @@ export function AppHeader() {
                 <div className="hidden md:flex items-center gap-4 ml-auto">
                     <TimeTravelButton />
                     <WalletButton />
-                    {import.meta.env.DEV && <NetworkButton />}
+                    <ClusterButton />
                 </div>
 
                 {showMenu && (
@@ -97,7 +134,7 @@ export function AppHeader() {
                             <div className="flex flex-col gap-4">
                                 <TimeTravelButton />
                                 <WalletButton />
-                                {import.meta.env.DEV && <NetworkButton />}
+                                <ClusterButton />
                             </div>
                         </div>
                     </div>
