@@ -58,13 +58,13 @@ jobs:
           install -m 600 /dev/null /tmp/deployer.json
           printf '%s' "$DEPLOYER_KEYPAIR" > /tmp/deployer.json
 
+      - name: Generate IDL
+        run: just generate-idl
+
       - name: Build verified program
         uses: solana-developers/github-actions/build-verified@eb606791e11d06eb92593dfd3404bf0d4c809121
         with:
           program: ${{ env.PROGRAM }}
-
-      - name: Generate IDL
-        run: just generate-idl
 
       - id: write-buffer
         name: Write program buffer
