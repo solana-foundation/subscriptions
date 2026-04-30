@@ -1,6 +1,6 @@
 import { Shield, ShieldOff, ShieldQuestion } from 'lucide-react';
+import { Badge, CopyButton } from '@solana/design-system';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CopyButton } from '@/components/ui/copy-button';
 import { truncateAddress } from '@/lib/format';
 import { useProgramStatus, useBinaryInfo } from '@/hooks/use-program-status';
 import { useProgramAddress } from '@/hooks/use-token-config';
@@ -8,20 +8,26 @@ import { useProgramAddress } from '@/hooks/use-token-config';
 function StatusBadge({ deployed, upgradeable }: { deployed: boolean; upgradeable: boolean }) {
     if (!deployed)
         return (
-            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
-                <ShieldOff className="h-3 w-3" /> Not Deployed
-            </span>
+            <Badge variant="danger">
+                <span className="inline-flex items-center gap-1.5">
+                    <ShieldOff className="h-3 w-3" /> Not Deployed
+                </span>
+            </Badge>
         );
     if (upgradeable)
         return (
-            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">
-                <Shield className="h-3 w-3" /> Upgradeable
-            </span>
+            <Badge variant="info">
+                <span className="inline-flex items-center gap-1.5">
+                    <Shield className="h-3 w-3" /> Upgradeable
+                </span>
+            </Badge>
         );
     return (
-        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <ShieldQuestion className="h-3 w-3" /> Immutable
-        </span>
+        <Badge variant="success">
+            <span className="inline-flex items-center gap-1.5">
+                <ShieldQuestion className="h-3 w-3" /> Immutable
+            </span>
+        </Badge>
     );
 }
 
@@ -59,7 +65,7 @@ export function ProgramStatusCard() {
                     <span className="font-mono text-sm text-gray-300">
                         {progAddr ? truncateAddress(progAddr, 6) : '...'}
                     </span>
-                    {progAddr && <CopyButton text={progAddr} />}
+                    {progAddr && <CopyButton value={progAddr} />}
                 </Row>
 
                 {status?.deployed && (
@@ -69,7 +75,7 @@ export function ProgramStatusCard() {
                                 <span className="font-mono text-sm text-gray-300">
                                     {truncateAddress(status.upgradeAuthority, 6)}
                                 </span>
-                                <CopyButton text={status.upgradeAuthority} />
+                                <CopyButton value={status.upgradeAuthority} />
                             </Row>
                         )}
                         {status.lastDeploySlot && (
@@ -99,7 +105,7 @@ export function ProgramStatusCard() {
                         </Row>
                         <Row label="Binary Hash">
                             <span className="font-mono text-xs text-gray-400">{binaryInfo.hash.slice(0, 16)}...</span>
-                            <CopyButton text={binaryInfo.hash} />
+                            <CopyButton value={binaryInfo.hash} />
                         </Row>
                     </>
                 )}
