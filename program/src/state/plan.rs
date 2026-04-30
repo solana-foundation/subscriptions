@@ -94,8 +94,17 @@ impl Plan {
     /// Zero-padded slots are skipped so they cannot match a zero-owned receiver.
     pub fn check_destination(&self, receiver_owner: &Address) -> Result<(), ProgramError> {
         let zero = Address::default();
-        let mut configured = self.data.destinations.iter().filter(|d| **d != zero);
-        if configured.clone().next().is_some() && !configured.any(|d| d == receiver_owner) {
+        let mut has_configured = false;
+        for d in self.data.destinations.iter() {
+            if *d == zero {
+                continue;
+            }
+            if d == receiver_owner {
+                return Ok(());
+            }
+            has_configured = true;
+        }
+        if has_configured {
             return Err(SubscriptionsError::UnauthorizedDestination.into());
         }
         Ok(())

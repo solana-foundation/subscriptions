@@ -36,6 +36,16 @@ pub struct PlanTerms {
     pub created_at: i64,
 }
 
+impl PlanTerms {
+    /// Returns the period length in seconds.
+    ///
+    /// Overflow is impossible because `period_hours` is bounded by [`MAX_PLAN_PERIOD_HOURS`]
+    /// (validated at plan creation in [`PlanData::validate`]); the maximum result is well below `u64::MAX`.
+    pub fn period_length_secs(&self) -> u64 {
+        self.period_hours * crate::constants::SECS_PER_HOUR
+    }
+}
+
 /// Configuration data embedded in a [`Plan`] account and supplied when creating one.
 #[repr(C, packed)]
 #[derive(Debug, Clone, CodamaType)]

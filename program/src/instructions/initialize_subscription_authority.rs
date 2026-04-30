@@ -9,10 +9,10 @@ use pinocchio_token::instructions::Approve as ApproveSpl;
 use pinocchio_token_2022::instructions::Approve as Approve2022;
 
 use crate::{
-    check_token_account_mint, check_token_account_owner, constants::TOKEN_2022_PROGRAM_ID, AccountCheck,
-    AssociatedTokenAccount, AssociatedTokenAccountCheck, MintInterface, ProgramAccount, ProgramAccountInit,
-    SignerAccount, SubscriptionAuthority, SubscriptionsError, SystemAccount, TokenAccountInterface,
-    TokenProgramInterface, WritableAccount,
+    check_token_account_mint, check_token_account_owner, constants::TOKEN_2022_PROGRAM_ID,
+    helpers::system::resolve_optional_payer, AccountCheck, AssociatedTokenAccount, AssociatedTokenAccountCheck,
+    MintInterface, ProgramAccount, ProgramAccountInit, SignerAccount, SubscriptionAuthority, SubscriptionsError,
+    SystemAccount, TokenAccountInterface, TokenProgramInterface, WritableAccount,
 };
 
 /// Validated accounts for the [`InitSubscriptionAuthority`](crate::SubscriptionsInstruction::InitSubscriptionAuthority) instruction.
@@ -45,13 +45,7 @@ impl<'a> TryFrom<&'a [AccountView]> for InitializeSubscriptionAuthorityAccounts<
         TokenProgramInterface::check(token_program)?;
         SystemAccount::check(system_program)?;
 
-        let payer = if let Some(payer) = rem.first() {
-            SignerAccount::check(payer)?;
-            WritableAccount::check(payer)?;
-            payer
-        } else {
-            user
-        };
+        let payer = resolve_optional_payer(user, rem)?;
 
         Ok(Self { subscription_authority, user, token_mint, user_ata, system_program, token_program, payer })
     }

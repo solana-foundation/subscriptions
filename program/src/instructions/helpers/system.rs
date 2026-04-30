@@ -39,6 +39,20 @@ impl AccountCheck for SystemAccount {
     }
 }
 
+/// Returns the optional sponsor (signer + writable) from the trailing remainder if present, else falls back to `primary`.
+pub fn resolve_optional_payer<'a>(
+    primary: &'a AccountView,
+    rem: &'a [AccountView],
+) -> Result<&'a AccountView, ProgramError> {
+    if let Some(payer) = rem.first() {
+        SignerAccount::check(payer)?;
+        WritableAccount::check(payer)?;
+        Ok(payer)
+    } else {
+        Ok(primary)
+    }
+}
+
 /// Validates that the account is a program-owned [`SubscriptionAuthority`] PDA with the correct
 /// discriminator and size.
 pub struct SubscriptionAuthorityAccount;

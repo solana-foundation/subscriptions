@@ -1,5 +1,6 @@
 use pinocchio::{
     cpi::{Seed, Signer},
+    error::ProgramError,
     AccountView, Address, ProgramResult,
 };
 use pinocchio_token_2022::instructions::Transfer;
@@ -8,7 +9,8 @@ use crate::{
     constants::{
         TOKEN_ACCOUNT_MINT_END, TOKEN_ACCOUNT_MINT_OFFSET, TOKEN_ACCOUNT_OWNER_END, TOKEN_ACCOUNT_OWNER_OFFSET,
     },
-    SubscriptionAuthority, SubscriptionsError,
+    AccountCheck, ProgramAccount, SignerAccount, SubscriptionAuthority, SubscriptionAuthorityAccount,
+    SubscriptionsError, TokenAccountInterface, TokenProgramInterface, WritableAccount,
 };
 
 /// Verifies that the token account's owner field matches `expected`.
@@ -41,6 +43,50 @@ pub fn get_token_account_owner(data: &[u8]) -> Result<Address, SubscriptionsErro
     let mut owner = [0u8; 32];
     owner.copy_from_slice(&data[TOKEN_ACCOUNT_OWNER_OFFSET..TOKEN_ACCOUNT_OWNER_END]);
     Ok(Address::from(owner))
+}
+
+/// Validated accounts shared by `TransferFixed` and `TransferRecurring` (identical layouts).
+pub struct DelegationTransferAccounts<'a> {
+    pub delegation_pda: &'a AccountView,
+    pub subscription_authority: &'a AccountView,
+    pub delegator_ata: &'a AccountView,
+    pub receiver_ata: &'a AccountView,
+    pub token_program: &'a AccountView,
+    pub delegatee: &'a AccountView,
+    pub event_authority: &'a AccountView,
+    pub self_program: &'a AccountView,
+}
+
+impl<'a> TryFrom<&'a [AccountView]> for DelegationTransferAccounts<'a> {
+    type Error = ProgramError;
+
+    fn try_from(accounts: &'a [AccountView]) -> Result<Self, Self::Error> {
+        let [delegation_pda, subscription_authority, delegator_ata, receiver_ata, token_program, delegatee, event_authority, self_program] =
+            accounts
+        else {
+            return Err(SubscriptionsError::NotEnoughAccountKeys.into());
+        };
+
+        ProgramAccount::check(delegation_pda)?;
+        WritableAccount::check(delegation_pda)?;
+        WritableAccount::check(delegator_ata)?;
+        WritableAccount::check(receiver_ata)?;
+        SubscriptionAuthorityAccount::check(subscription_authority)?;
+        TokenProgramInterface::check(token_program)?;
+        TokenAccountInterface::check_accounts_with_program(token_program, &[delegator_ata, receiver_ata])?;
+        SignerAccount::check(delegatee)?;
+
+        Ok(Self {
+            delegation_pda,
+            subscription_authority,
+            delegator_ata,
+            receiver_ata,
+            token_program,
+            delegatee,
+            event_authority,
+            self_program,
+        })
+    }
 }
 
 /// Accounts required to execute a delegated token transfer.

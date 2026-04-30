@@ -4,7 +4,7 @@ use codama::CodamaType;
 use pinocchio::error::ProgramError;
 use pinocchio::Address;
 
-use crate::SubscriptionsError;
+use crate::{constants::SECS_PER_HOUR, SubscriptionsError};
 
 /// PDA seed prefix used for delegation accounts (fixed, recurring).
 pub const DELEGATE_BASE_SEED: &[u8] = b"delegation";
@@ -139,7 +139,7 @@ pub fn find_plan_pda(owner: &Address, plan_id: u64) -> (Address, u8) {
 /// Rejects non-zero `end_ts` that falls within one billing period of `current_time`.
 pub fn validate_plan_end_ts(end_ts: i64, period_hours: u64, current_time: i64) -> Result<(), SubscriptionsError> {
     if end_ts != 0 {
-        let period_secs = (period_hours as i64) * 3600;
+        let period_secs = (period_hours * SECS_PER_HOUR) as i64;
         if current_time + period_secs > end_ts {
             return Err(SubscriptionsError::InvalidEndTs);
         }
@@ -169,7 +169,7 @@ mod tests {
     fn end_ts_exactly_one_period_ahead() {
         let current = 1_000_000i64;
         let period_hours = 720u64;
-        let end_ts = current + (period_hours as i64) * 3600;
+        let end_ts = current + (period_hours * SECS_PER_HOUR) as i64;
         assert!(validate_plan_end_ts(end_ts, period_hours, current).is_ok());
     }
 
@@ -177,7 +177,7 @@ mod tests {
     fn end_ts_less_than_one_period_ahead() {
         let current = 1_000_000i64;
         let period_hours = 720u64;
-        let end_ts = current + (period_hours as i64) * 3600 - 1;
+        let end_ts = current + (period_hours * SECS_PER_HOUR) as i64 - 1;
         assert!(validate_plan_end_ts(end_ts, period_hours, current).is_err());
     }
 
@@ -185,7 +185,7 @@ mod tests {
     fn end_ts_well_beyond_period() {
         let current = 1_000_000i64;
         let period_hours = 720u64;
-        let end_ts = current + (period_hours as i64) * 3600 * 2;
+        let end_ts = current + (period_hours * SECS_PER_HOUR * 2) as i64;
         assert!(validate_plan_end_ts(end_ts, period_hours, current).is_ok());
     }
 
