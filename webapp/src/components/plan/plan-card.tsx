@@ -32,7 +32,8 @@ import { useTimeTravel } from '@/hooks/use-time-travel';
 import { useWallet } from '@solana/connector/react';
 import { address } from '@solana/kit';
 import { findAssociatedTokenPda } from '@solana-program/token';
-import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
+import { useClusterConfig } from '@/hooks/use-cluster-config';
+import { resolveTokenProgram } from '@/lib/token-program';
 import type { PlanItem } from '@/hooks/use-plans';
 import { useMySubscriptions, useSubscriberCount } from '@/hooks/use-subscriptions';
 import { PLAN_ICONS, ICON_MAP, parsePlanMeta, type PlanMeta } from '@/lib/plan-constants';
@@ -457,21 +458,23 @@ function SubscribeDialog({
         refetch: refetchStatus,
     } = useSubscriptionAuthorityStatus(plan.data.mint);
     const { account } = useWallet();
+    const { url: rpcUrl } = useClusterConfig();
     const amount = Number(plan.data.terms.amount) / USDC_MULTIPLIER;
 
     const handleInit = async () => {
         if (!account) return;
         const mint = address(plan.data.mint);
+        const tokenProgram = await resolveTokenProgram(rpcUrl, mint);
         const [userAta] = await findAssociatedTokenPda({
             mint,
             owner: address(account),
-            tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+            tokenProgram,
         });
         initSubscriptionAuthority.mutate(
             {
                 tokenMint: plan.data.mint,
                 userAta: userAta,
-                tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+                tokenProgram,
             },
             { onSuccess: () => refetchStatus() },
         );

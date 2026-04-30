@@ -1,7 +1,6 @@
 import { useKitTransactionSigner } from '@solana/connector/react';
-import { address, createSolanaRpc, type Instruction } from '@solana/kit';
+import { type Address, address, createSolanaRpc, type Instruction } from '@solana/kit';
 import { findAssociatedTokenPda, getCreateAssociatedTokenIdempotentInstruction } from '@solana-program/token';
-import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
 import {
     fetchMaybeSubscriptionAuthority,
     findSubscriptionAuthorityPda,
@@ -36,6 +35,7 @@ import {
     type SubscriberPaymentFailure,
     type SubscriberTransfer,
 } from '@/lib/collect-utils';
+import { resolveTokenProgram } from '@/lib/token-program';
 import { packInstructionBatches } from '@/lib/tx-packer';
 import { invalidateWithDelay } from '@/lib/utils';
 
@@ -51,6 +51,7 @@ export function useSubscriptionsMutations() {
     const programAddress = useProgramAddress();
 
     const progId = programAddress ? address(programAddress) : undefined;
+    const resolveTokenProgramForMint = (mint: Address) => resolveTokenProgram(rpcUrl, mint);
 
     const initSubscriptionAuthority = useMutation({
         mutationFn: async ({
@@ -242,11 +243,12 @@ export function useSubscriptionsMutations() {
         if (!progId) throw new Error('Program address not configured');
 
         const mint = address(params.tokenMint);
+        const tokenProgram = await resolveTokenProgramForMint(mint);
         const delegatorAddr = address(params.delegator);
         const [delegatorAta] = await findAssociatedTokenPda({
             mint,
             owner: delegatorAddr,
-            tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+            tokenProgram,
         });
         const receiver = params.receiverAta
             ? address(params.receiverAta)
@@ -254,7 +256,7 @@ export function useSubscriptionsMutations() {
                   await findAssociatedTokenPda({
                       mint,
                       owner: signer.address,
-                      tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+                      tokenProgram,
                   })
               )[0];
 
@@ -263,7 +265,7 @@ export function useSubscriptionsMutations() {
             mint,
             owner: signer.address,
             payer: signer,
-            tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+            tokenProgram,
         });
 
         const buildFn =
@@ -277,7 +279,7 @@ export function useSubscriptionsMutations() {
             programAddress: progId,
             receiverAta: receiver,
             tokenMint: mint,
-            tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+            tokenProgram,
         });
 
         return { instructions: [createAtaIx, transferIx], signer };
@@ -334,18 +336,20 @@ export function useSubscriptionsMutations() {
             if (!signer) throw new Error('Wallet not connected');
             if (!progId) throw new Error('Program address not configured');
 
+            const mintAddr = address(mint);
+            const tokenProgram = await resolveTokenProgramForMint(mintAddr);
             const instruction = await getCreatePlanOverlayInstructionAsync({
                 amount,
                 destinations: destinations.map(d => address(d)),
                 endTs: BigInt(endTs),
                 metadataUri,
-                mint: address(mint),
+                mint: mintAddr,
                 owner: signer,
                 periodHours: BigInt(periodHours),
                 planId,
                 programAddress: progId,
                 pullers: pullers.map(p => address(p)),
-                tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+                tokenProgram,
             });
 
             const signature = await signAndSend([instruction], signer);
@@ -564,6 +568,7 @@ export function useSubscriptionsMutations() {
             if (!progId) throw new Error('Program address not configured');
 
             const mintAddr = address(mint);
+            const tokenProgram = await resolveTokenProgramForMint(mintAddr);
             const planPda = address(planAddress);
             const rpc = createSolanaRpc(rpcUrl);
 
@@ -572,7 +577,7 @@ export function useSubscriptionsMutations() {
             const [receiverAta] = await findAssociatedTokenPda({
                 mint: mintAddr,
                 owner: receiverOwner,
-                tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+                tokenProgram,
             });
 
             const createAtaIx = getCreateAssociatedTokenIdempotentInstruction({
@@ -580,7 +585,7 @@ export function useSubscriptionsMutations() {
                 mint: mintAddr,
                 owner: receiverOwner,
                 payer: signer,
-                tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+                tokenProgram,
             });
 
             const { payable, failures: preflightFailures } = await filterPayableSubscribers({
@@ -588,7 +593,7 @@ export function useSubscriptionsMutations() {
                 programAddress: progId,
                 rpc,
                 subscribers,
-                tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+                tokenProgram,
             });
 
             const transferEntries: SubscriberTransfer[] = await Promise.all(
@@ -602,7 +607,7 @@ export function useSubscriptionsMutations() {
                         receiverAta,
                         subscriptionPda: address(sub.subscriptionAddress),
                         tokenMint: mintAddr,
-                        tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+                        tokenProgram,
                     });
                     return { instruction, subscriber: sub };
                 }),
@@ -682,6 +687,7 @@ export function useSubscriptionsMutations() {
 
             for (const plan of plans) {
                 const mintAddr = address(plan.mint);
+                const tokenProgram = await resolveTokenProgramForMint(mintAddr);
                 const planPda = address(plan.planAddress);
                 const subscribersWithPlan = plan.subscribers.map(sub => ({
                     ...sub,
@@ -692,7 +698,7 @@ export function useSubscriptionsMutations() {
                     programAddress: progId,
                     rpc,
                     subscribers: subscribersWithPlan,
-                    tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+                    tokenProgram,
                 });
                 preflightFailures.push(...failures);
                 if (payable.length === 0) continue;
@@ -702,7 +708,7 @@ export function useSubscriptionsMutations() {
                 const [receiverAta] = await findAssociatedTokenPda({
                     mint: mintAddr,
                     owner: receiverOwner,
-                    tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+                    tokenProgram,
                 });
 
                 const ataKey = receiverAta.toString();
@@ -714,7 +720,7 @@ export function useSubscriptionsMutations() {
                             mint: mintAddr,
                             owner: receiverOwner,
                             payer: signer,
-                            tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+                            tokenProgram,
                         }),
                     );
                 }
@@ -729,7 +735,7 @@ export function useSubscriptionsMutations() {
                         receiverAta,
                         subscriptionPda: address(sub.subscriptionAddress),
                         tokenMint: mintAddr,
-                        tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+                        tokenProgram,
                     });
                     transferEntries.push({ instruction, subscriber: sub });
                 }
