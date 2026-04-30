@@ -1,9 +1,9 @@
 use pinocchio::{cpi::Seed, error::ProgramError, AccountView, Address};
 
 use crate::{
-    state::common::find_delegation_pda, AccountCheck, AccountDiscriminator, Header, ProgramAccount, ProgramAccountInit,
-    SignerAccount, SubscriptionAuthority, SubscriptionAuthorityAccount, SubscriptionsError, SystemAccount,
-    WritableAccount, CURRENT_VERSION, DELEGATE_BASE_SEED,
+    helpers::system::resolve_optional_payer, state::common::find_delegation_pda, AccountCheck, Header, ProgramAccount,
+    ProgramAccountInit, SignerAccount, SubscriptionAuthority, SubscriptionAuthorityAccount, SubscriptionsError,
+    SystemAccount, WritableAccount, DELEGATE_BASE_SEED,
 };
 
 /// Validated accounts shared by `CreateFixedDelegation` and `CreateRecurringDelegation`.
@@ -37,13 +37,7 @@ impl<'a> TryFrom<&'a [AccountView]> for CreateDelegationAccounts<'a> {
         SystemAccount::check(system_program)?;
         SubscriptionAuthorityAccount::check(subscription_authority)?;
 
-        let payer = if let Some(payer) = rem.first() {
-            SignerAccount::check(payer)?;
-            WritableAccount::check(payer)?;
-            payer
-        } else {
-            delegator
-        };
+        let payer = resolve_optional_payer(delegator, rem)?;
 
         Ok(Self { delegator, subscription_authority, delegation_account, delegatee, system_program, payer })
     }
@@ -98,25 +92,6 @@ pub fn create_delegation_account(
     ProgramAccount::init::<()>(accounts.payer, accounts.delegation_account, &seeds, space)?;
 
     Ok((bump, init_id, mint))
-}
-
-/// Populates a delegation [`Header`] with the standard fields.
-pub fn init_header(
-    header: &mut Header,
-    discriminator: AccountDiscriminator,
-    bump: u8,
-    delegator: &Address,
-    delegatee: &Address,
-    payer: &Address,
-    init_id: i64,
-) {
-    header.version = CURRENT_VERSION;
-    header.discriminator = discriminator.into();
-    header.bump = bump;
-    header.delegator = *delegator;
-    header.delegatee = *delegatee;
-    header.payer = *payer;
-    header.init_id = init_id;
 }
 
 /// Authorization checker for delegation transfers.

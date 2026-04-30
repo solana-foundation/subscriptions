@@ -13,6 +13,7 @@ use pinocchio::Address;
 use crate::{
     event_engine::{self, EventSerialize},
     events::SubscriptionCreatedEvent,
+    helpers::system::resolve_optional_payer,
     state::{
         common::{find_subscription_pda, AccountDiscriminator, PlanStatus},
         plan::Plan,
@@ -79,10 +80,6 @@ pub fn process(accounts: &[AccountView], data: &SubscribeData) -> ProgramResult 
     {
         let plan_data = accounts_struct.plan_pda.try_borrow()?;
         let plan = Plan::load(&plan_data)?;
-
-        if data.plan_bump != plan.bump {
-            return Err(SubscriptionsError::InvalidPlanPda.into());
-        }
 
         if PlanStatus::try_from(plan.status)? != PlanStatus::Active {
             return Err(SubscriptionsError::PlanSunset.into());
@@ -217,13 +214,7 @@ impl<'a> TryFrom<&'a [AccountView]> for SubscribeAccounts<'a> {
         SubscriptionAuthorityAccount::check(subscription_authority_pda)?;
         SystemAccount::check(system_program)?;
 
-        let payer = if let Some(payer) = rem.first() {
-            SignerAccount::check(payer)?;
-            WritableAccount::check(payer)?;
-            payer
-        } else {
-            subscriber
-        };
+        let payer = resolve_optional_payer(subscriber, rem)?;
 
         Ok(Self {
             subscriber,

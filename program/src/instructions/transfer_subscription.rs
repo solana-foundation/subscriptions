@@ -30,7 +30,7 @@ pub fn process(accounts: &[AccountView], transfer_data: &TransferData) -> Progra
 
     let current_ts = Clock::get()?.unix_timestamp;
 
-    // Load Plan (immutable borrow) — extract needed data, then drop borrow
+    // Plan and SubscriptionDelegation are loaded in separate borrow scopes so the immutable plan borrow drops before the mutable subscription borrow.
     let plan_terms: crate::instructions::create_plan::PlanTerms;
     let plan_end_ts: i64;
     let receiver_owner: Address;
@@ -49,7 +49,6 @@ pub fn process(accounts: &[AccountView], transfer_data: &TransferData) -> Progra
 
         plan.can_pull(accounts_struct.caller.address())?;
 
-        // Validate destination: read receiver_ata owner from token account data
         let receiver_data = accounts_struct.receiver_ata.try_borrow()?;
         receiver_owner = get_token_account_owner(&receiver_data)?;
         plan.check_destination(&receiver_owner)?;
@@ -57,7 +56,6 @@ pub fn process(accounts: &[AccountView], transfer_data: &TransferData) -> Progra
         plan_terms = plan.data.terms;
     }
 
-    // Load SubscriptionDelegation (mutable borrow)
     let amount_per_period: u64;
     let period_length_s: u64;
     let period_start: i64;
@@ -72,26 +70,23 @@ pub fn process(accounts: &[AccountView], transfer_data: &TransferData) -> Progra
 
         let delegator = subscription.header.delegator;
 
-        // The delegatee must match the plan PDA passed into the instruction
         if subscription.header.delegatee != *accounts_struct.plan_pda.address() {
             return Err(SubscriptionsError::SubscriptionPlanMismatch.into());
         }
 
-        // Verify delegator matches transfer data
         if delegator != transfer_data.delegator {
             return Err(SubscriptionsError::Unauthorized.into());
         }
 
-        // Check cancellation — expires_at_ts is pre-computed at cancellation time
+        // expires_at_ts is pre-computed at cancellation time so the transfer path stays branch-light.
         let expires_at_ts = subscription.expires_at_ts;
         if expires_at_ts != 0 && current_ts >= expires_at_ts {
             return Err(SubscriptionsError::SubscriptionCancelled.into());
         }
 
         amount_per_period = subscription.terms.amount;
-        period_length_s = subscription.terms.period_hours * 3600;
+        period_length_s = subscription.terms.period_length_secs();
 
-        // Validate recurring transfer
         let mut ps = subscription.current_period_start_ts;
         let mut pulled = subscription.amount_pulled_in_period;
         validate_recurring_transfer(
@@ -111,7 +106,6 @@ pub fn process(accounts: &[AccountView], transfer_data: &TransferData) -> Progra
         init_id = subscription.header.init_id;
     }
 
-    // Execute transfer
     transfer_with_delegate(
         transfer_data.amount,
         &transfer_data.delegator,
@@ -125,7 +119,6 @@ pub fn process(accounts: &[AccountView], transfer_data: &TransferData) -> Progra
         },
     )?;
 
-    // Emit TransferSuccess event via self-CPI
     let period_end_ts = {
         let end = period_start + period_length_s as i64;
         if plan_end_ts != 0 && end > plan_end_ts {

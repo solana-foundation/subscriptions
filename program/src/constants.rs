@@ -30,3 +30,6 @@ pub const TOKEN_ACCOUNT_OWNER_OFFSET: usize = 32;
 
 /// Byte offset one past the end of the `owner` pubkey (i.e., `OWNER_OFFSET + 32`).
 pub const TOKEN_ACCOUNT_OWNER_END: usize = TOKEN_ACCOUNT_OWNER_OFFSET + 32;
+
+/// Number of seconds in one hour. Used to convert plan/subscription period (hours) to seconds.
+pub const SECS_PER_HOUR: u64 = 3600;

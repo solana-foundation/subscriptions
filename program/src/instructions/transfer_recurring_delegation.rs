@@ -1,15 +1,15 @@
 use crate::{
     check_and_update_version,
-    constants::{TOKEN_ACCOUNT_OWNER_END, TOKEN_ACCOUNT_OWNER_OFFSET},
     event_engine::{self, EventSerialize},
     events::RecurringTransferEvent,
-    helpers::{transfer_with_delegate, validate_recurring_transfer, Delegation, TransferAccounts, TransferData},
+    helpers::{
+        get_token_account_owner, transfer_with_delegate, validate_recurring_transfer, Delegation,
+        DelegationTransferAccounts, TransferAccounts, TransferData,
+    },
     state::RecurringDelegation,
-    AccountCheck, ProgramAccount, SignerAccount, SubscriptionAuthorityAccount, SubscriptionsError,
-    TokenAccountInterface, TokenProgramInterface, WritableAccount,
+    SubscriptionsError,
 };
 use pinocchio::{
-    error::ProgramError,
     sysvars::{clock::Clock, Sysvar},
     AccountView, Address, ProgramResult,
 };
@@ -23,7 +23,7 @@ pub const DISCRIMINATOR: &u8 = &5;
 /// necessary, performs the SPL token transfer via the [`SubscriptionAuthority`](crate::SubscriptionAuthority)
 /// PDA, and emits a [`RecurringTransferEvent`].
 pub fn process(accounts: &[AccountView], transfer_data: &TransferData) -> ProgramResult {
-    let accounts_struct = RecurringTransferAccounts::try_from(accounts)?;
+    let accounts_struct = DelegationTransferAccounts::try_from(accounts)?;
 
     let current_ts = Clock::get()?.unix_timestamp;
     let period_start: i64;
@@ -36,7 +36,6 @@ pub fn process(accounts: &[AccountView], transfer_data: &TransferData) -> Progra
         check_and_update_version(&mut binding)?;
         let delegation_mut = RecurringDelegation::load_mut(&mut binding)?;
 
-        // Fail fast: Check authorization first
         Delegation::check(&delegation_mut.header, &transfer_data.delegator, accounts_struct.delegatee.address())?;
         if delegation_mut.subscription_authority != *accounts_struct.subscription_authority.address() {
             return Err(SubscriptionsError::InvalidDelegatePda.into());
@@ -67,17 +66,10 @@ pub fn process(accounts: &[AccountView], transfer_data: &TransferData) -> Progra
         init_id = delegation_mut.header.init_id;
     }
 
-    // Extract receiver owner from token account data
-    let receiver_owner: Address;
-    {
+    let receiver_owner: Address = {
         let receiver_data = accounts_struct.receiver_ata.try_borrow()?;
-        if receiver_data.len() < TOKEN_ACCOUNT_OWNER_END {
-            return Err(SubscriptionsError::InvalidAccountData.into());
-        }
-        let mut owner_bytes = [0u8; 32];
-        owner_bytes.copy_from_slice(&receiver_data[TOKEN_ACCOUNT_OWNER_OFFSET..TOKEN_ACCOUNT_OWNER_END]);
-        receiver_owner = Address::from(owner_bytes);
-    }
+        get_token_account_owner(&receiver_data)?
+    };
 
     transfer_with_delegate(
         transfer_data.amount,
@@ -92,7 +84,6 @@ pub fn process(accounts: &[AccountView], transfer_data: &TransferData) -> Progra
         },
     )?;
 
-    // Emit RecurringTransferEvent via self-CPI
     let period_end_ts = period_start + period_length_s as i64;
     let event = RecurringTransferEvent::new(
         *accounts_struct.delegation_pda.address(),
@@ -109,48 +100,4 @@ pub fn process(accounts: &[AccountView], transfer_data: &TransferData) -> Progra
     event_engine::emit_event(&crate::ID, accounts_struct.event_authority, accounts_struct.self_program, &event_data)?;
 
     Ok(())
-}
-
-/// Validated accounts for the [`TransferRecurring`](crate::SubscriptionsInstruction::TransferRecurring) instruction.
-pub struct RecurringTransferAccounts<'a> {
-    pub delegation_pda: &'a AccountView,
-    pub subscription_authority: &'a AccountView,
-    pub delegator_ata: &'a AccountView,
-    pub receiver_ata: &'a AccountView,
-    pub token_program: &'a AccountView,
-    pub delegatee: &'a AccountView,
-    pub event_authority: &'a AccountView,
-    pub self_program: &'a AccountView,
-}
-
-impl<'a> TryFrom<&'a [AccountView]> for RecurringTransferAccounts<'a> {
-    type Error = ProgramError;
-
-    fn try_from(accounts: &'a [AccountView]) -> Result<Self, Self::Error> {
-        let [delegation_pda, subscription_authority, delegator_ata, receiver_ata, token_program, delegatee, event_authority, self_program] =
-            accounts
-        else {
-            return Err(SubscriptionsError::NotEnoughAccountKeys.into());
-        };
-
-        ProgramAccount::check(delegation_pda)?;
-        WritableAccount::check(delegation_pda)?;
-        WritableAccount::check(delegator_ata)?;
-        WritableAccount::check(receiver_ata)?;
-        SubscriptionAuthorityAccount::check(subscription_authority)?;
-        TokenProgramInterface::check(token_program)?;
-        TokenAccountInterface::check_accounts_with_program(token_program, &[delegator_ata, receiver_ata])?;
-        SignerAccount::check(delegatee)?;
-
-        Ok(Self {
-            delegation_pda,
-            subscription_authority,
-            delegator_ata,
-            receiver_ata,
-            token_program,
-            delegatee,
-            event_authority,
-            self_program,
-        })
-    }
 }
