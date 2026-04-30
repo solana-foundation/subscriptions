@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { Address } from '@solana/kit';
-import { Button } from '@/components/ui/button';
+import { Button } from '@solana/design-system';
 import { AppAlert } from '@/components/app-alert';
 import { useCluster } from '@solana/connector/react';
 import { useClusterVersion } from './use-cluster-version';
@@ -61,7 +61,7 @@ export function ClusterChecker({ children }: { children: ReactNode }) {
         return (
             <AppAlert
                 action={
-                    <Button variant="outline" onClick={() => query.refetch()}>
+                    <Button size="sm" variant="secondary" onClick={() => query.refetch()}>
                         Refresh
                     </Button>
                 }

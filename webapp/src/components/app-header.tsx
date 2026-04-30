@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button } from './ui/button';
+import { Button } from '@solana/design-system';
 import { Menu, X, Settings2 } from 'lucide-react';
 import { WalletButton } from './solana/solana-provider';
 import { TimeTravelButton } from './time-travel/time-travel-button';
@@ -15,18 +15,19 @@ function NetworkButton() {
         setupCluster === 'solana:devnet' ? 'Devnet' : setupCluster === 'solana:testnet' ? 'Testnet' : 'Localnet';
 
     return (
-        <button
+        <Button
+            iconLeft={<Settings2 />}
             onClick={() => {
                 localStorage.removeItem('setup-complete-localnet');
                 localStorage.removeItem('setup-complete-devnet');
                 localStorage.removeItem('setup-cluster');
                 navigate('/setup');
             }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border border-white/10 bg-white/5 hover:bg-white/10 transition-colors text-gray-300 hover:text-white"
+            size="sm"
+            variant="secondary"
         >
-            <Settings2 className="h-3.5 w-3.5" />
             {label}
-        </button>
+        </Button>
     );
 }
 
@@ -49,9 +50,15 @@ export function AppHeader() {
                     Subscriptions <span className="text-sm font-bold text-blue-400/60">v{CURRENT_PROGRAM_VERSION}</span>
                 </span>
 
-                <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setShowMenu(!showMenu)}>
-                    {showMenu ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-                </Button>
+                <Button
+                    aria-label={showMenu ? 'Close navigation menu' : 'Open navigation menu'}
+                    className="md:hidden"
+                    iconLeft={showMenu ? <X /> : <Menu />}
+                    iconOnly
+                    onClick={() => setShowMenu(!showMenu)}
+                    size="lg"
+                    variant="secondary"
+                />
 
                 <div className="hidden md:flex items-center gap-4 ml-auto">
                     <TimeTravelButton />
