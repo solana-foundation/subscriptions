@@ -284,17 +284,18 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
 
                         <div className="grid gap-2">
                             <Label>Icon</Label>
-                            <Select
-                                value={selectedIcon || null}
-                                onValueChange={value => setSelectedIcon(value ?? '')}
-                                placeholder="Select an icon"
+                            <select
+                                value={selectedIcon}
+                                onChange={e => setSelectedIcon(e.target.value)}
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
-                                {PLAN_ICONS.map(({ name, label, icon: Icon }) => (
-                                    <SelectItem key={name} value={name} icon={<Icon />}>
+                                <option value="">Select an icon</option>
+                                {PLAN_ICONS.map(({ name, label }) => (
+                                    <option key={name} value={name}>
                                         {label}
-                                    </SelectItem>
+                                    </option>
                                 ))}
-                            </Select>
+                            </select>
                         </div>
 
                         <div className="grid gap-2">
