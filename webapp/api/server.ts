@@ -16,6 +16,7 @@ const CONFIG_PATH = join(__dirname, '../config.json');
 
 let surfpoolProcess: ChildProcess | null = null;
 let startingValidator = false;
+let deployingProgram = false;
 
 const MIN_SOL_AIRDROP = 0.1;
 const MAX_SOL_AIRDROP = 10;
@@ -333,6 +334,70 @@ async function handleStartValidator(): Promise<Response> {
     });
 }
 
+async function deployProgramViaSurfnet(): Promise<boolean> {
+    if (deployingProgram) return false;
+    deployingProgram = true;
+    try {
+        const soBytes = await readFile(SO_PATH);
+        const hexData = soBytes.toString('hex');
+        log('info', 'Deploying program via surfnet_writeProgram fallback', { size: soBytes.length });
+
+        const res = await fetch('http://127.0.0.1:8899', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                jsonrpc: '2.0',
+                id: 1,
+                method: 'surfnet_writeProgram',
+                params: [PROGRAM_ADDRESS, hexData, 0],
+            }),
+            signal: AbortSignal.timeout(30_000),
+        });
+        const json = (await res.json()) as { result?: unknown; error?: { message?: string } };
+        if (json.error) {
+            log('error', 'surfnet_writeProgram failed', { error: json.error.message });
+            return false;
+        }
+        log('info', 'Program deployed via surfnet_writeProgram');
+
+        // Register IDL if available
+        const IDL_PATH = join(__dirname, '../../idl/subscriptions.json');
+        try {
+            const idlJson = JSON.parse(await readFile(IDL_PATH, 'utf-8'));
+            // surfnet_registerIdl expects an 'address' field at the top level
+            if (!idlJson.address) {
+                idlJson.address = PROGRAM_ID;
+            }
+            const idlRes = await fetch('http://127.0.0.1:8899', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: 1,
+                    method: 'surfnet_registerIdl',
+                    params: [idlJson],
+                }),
+                signal: AbortSignal.timeout(10_000),
+            });
+            const idlResult = (await idlRes.json()) as { result?: unknown; error?: { message?: string } };
+            if (idlResult.error) {
+                log('error', 'surfnet_registerIdl failed', { error: idlResult.error.message });
+            } else {
+                log('info', 'IDL registered via surfnet_registerIdl');
+            }
+        } catch (err) {
+            log('info', 'IDL registration skipped (file not found or RPC error)', { error: String(err) });
+        }
+
+        return true;
+    } catch (err) {
+        log('error', 'Fallback program deploy failed', { error: String(err) });
+        return false;
+    } finally {
+        deployingProgram = false;
+    }
+}
+
 async function handleValidatorStatus(): Promise<Response> {
     let validatorRunning = false;
     let programDeployed = false;
@@ -366,6 +431,12 @@ async function handleValidatorStatus(): Promise<Response> {
             });
             const acctJson = (await acctRes.json()) as { result?: { value?: { executable?: boolean } } };
             programDeployed = acctJson.result?.value?.executable === true;
+
+            // Fallback: if runbook didn't deploy, do it via RPC cheatcode
+            if (!programDeployed && !deployingProgram) {
+                programDeployed = await deployProgramViaSurfnet();
+            }
+
             if (programDeployed) {
                 const config = await readConfig();
                 if (config.networks['localnet']?.programAddress !== programAddress) {
