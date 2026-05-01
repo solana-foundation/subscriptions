@@ -10,6 +10,5 @@ action "install_subscriptions" "svm::setup_surfnet" {
     deploy_program {
         program_id = "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44"
         binary_path = "target/deploy/subscriptions.so"
-        idl_path = "idl/subscriptions.json"
     }
 }
