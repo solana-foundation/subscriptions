@@ -366,7 +366,7 @@ async function deployProgramViaSurfnet(): Promise<boolean> {
             const idlJson = JSON.parse(await readFile(IDL_PATH, 'utf-8'));
             // surfnet_registerIdl expects an 'address' field at the top level
             if (!idlJson.address) {
-                idlJson.address = PROGRAM_ID;
+                idlJson.address = PROGRAM_ADDRESS;
             }
             const idlRes = await fetch('http://127.0.0.1:8899', {
                 method: 'POST',
@@ -432,9 +432,10 @@ async function handleValidatorStatus(): Promise<Response> {
             const acctJson = (await acctRes.json()) as { result?: { value?: { executable?: boolean } } };
             programDeployed = acctJson.result?.value?.executable === true;
 
-            // Fallback: if runbook didn't deploy, do it via RPC cheatcode
+            // Fallback: if runbook didn't deploy, kick off RPC cheatcode deploy
+            // without blocking status response. Next poll will see executable=true.
             if (!programDeployed && !deployingProgram) {
-                programDeployed = await deployProgramViaSurfnet();
+                void deployProgramViaSurfnet();
             }
 
             if (programDeployed) {
