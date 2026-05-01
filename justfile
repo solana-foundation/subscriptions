@@ -148,7 +148,7 @@ ensure-surfpool:
         > /tmp/surfpool.log 2>&1 &
     echo $! > .surfpool/pid.txt
 
-    for i in {1..7}; do
+    for i in {1..30}; do
         if curl -sf -X POST http://localhost:8899 \
             -H "Content-Type: application/json" \
             -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getAccountInfo\",\"params\":[\"$PROG_ID\",{\"encoding\":\"base64\"}]}" \
@@ -156,8 +156,8 @@ ensure-surfpool:
             echo "✓ Program deployed successfully ($PROG_ID)"
             exit 0
         fi
-        echo "Waiting for program deployment... ($i/7)"
-        sleep 1
+        echo "Waiting for program deployment... ($i/30)"
+        sleep 2
     done
 
     echo "Error: Program deployment failed"
