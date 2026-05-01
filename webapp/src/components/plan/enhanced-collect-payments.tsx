@@ -303,9 +303,18 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
 
     return (
         <div className="border border-sand-200 bg-sand-200 rounded-xl overflow-hidden">
-            <button
+            <div
+                role="button"
+                tabIndex={0}
+                aria-expanded={expanded}
                 className="w-full p-4 flex items-center justify-between cursor-pointer hover:bg-sand-100 transition-colors"
                 onClick={() => setExpanded(!expanded)}
+                onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setExpanded(!expanded);
+                    }
+                }}
             >
                 <div className="flex items-center gap-3">
                     <PlanIcon className="h-5 w-5 text-foreground" />
@@ -334,7 +343,7 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
                         Collect ${pendingUsd.toFixed(2)}
                     </SolanaButton>
                 </div>
-            </button>
+            </div>
 
             {expanded && (
                 <div className="border-t border-sand-200">
