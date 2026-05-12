@@ -1,0 +1,8 @@
+{
+  "title": "Developer Guide",
+  "pages": [
+    "setup",
+    "project-structure",
+    "architecture"
+  ]
+}

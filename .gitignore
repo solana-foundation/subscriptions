@@ -3,6 +3,7 @@
 **/node_modules
 dist
 .next
+.source
 bun.lockb
 
 **/generated/
@@ -33,6 +34,7 @@ keys/
 webapp/playwright-report/
 webapp/test-results/
 webapp/tsconfig.tsbuildinfo
+docs/tsconfig.tsbuildinfo
 
 # TypeDoc generated API docs
 clients/typescript/docs/
