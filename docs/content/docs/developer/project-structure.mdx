@@ -2,3 +2,43 @@
 title: Project Structure
 description: Developer guide for the repository structure.
 ---
+
+## Repository Components
+
+This repository includes:
+
+- A Rust Solana program built with Pinocchio
+- IDL generation through Codama
+- Generated TypeScript and Rust clients
+- A local demo webapp for delegation and subscription flows
+- CI workflows for build, test, lint, format, IDL freshness, and compute-unit benchmarking
+
+## Directory Layout
+
+```text
+subscriptions/
+├── program/                       # Rust Solana program
+│   ├── src/
+│   │   ├── instructions/          # Instruction handlers
+│   │   │   └── helpers/           # Transfer validation, token helpers, traits
+│   │   ├── state/                 # Account types (SA, fixed, recurring, plan, subscription)
+│   │   │   └── versioning/        # Version checks and migration logic
+│   │   ├── events/                # On-chain event definitions
+│   │   ├── event_engine.rs        # Self-CPI event emission
+│   │   ├── errors.rs              # Error codes
+│   │   ├── constants.rs           # Program constants
+│   │   └── tests/                 # Rust unit tests
+├── idl/                           # Generated IDL
+├── clients/
+│   ├── typescript/                # TypeScript SDK and integration tests
+│   └── rust/                      # Rust generated client
+├── webapp/                        # Demo UI and local API server
+│   ├── src/                       # React app
+│   ├── api/                       # Node.js API server
+│   └── scripts/                   # Environment scripts
+├── docs/                          # Fumadocs site and architecture documents
+├── runbooks/                      # Surfpool deployment runbooks
+├── scripts/                       # Validator and generation scripts
+├── justfile                       # Build/test/dev task runner
+└── txtx.yml                       # Surfpool runbook config
+```

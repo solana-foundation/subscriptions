@@ -3,7 +3,7 @@ import { source } from '@/lib/source';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/layouts/docs/page';
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 
 type PageProps = {
   params: Promise<{
@@ -13,6 +13,8 @@ type PageProps = {
 
 export default async function Page(props: PageProps) {
   const params = await props.params;
+  if (!params.slug) redirect('/docs/program');
+
   const page = source.getPage(params.slug);
   if (!page) notFound();
 
@@ -39,6 +41,12 @@ export function generateStaticParams() {
 
 export async function generateMetadata(props: PageProps): Promise<Metadata> {
   const params = await props.params;
+  if (!params.slug) {
+    return {
+      title: 'Program Overview',
+    };
+  }
+
   const page = source.getPage(params.slug);
   if (!page) notFound();
 
