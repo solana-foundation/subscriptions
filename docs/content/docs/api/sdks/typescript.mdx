@@ -2,3 +2,257 @@
 title: TypeScript SDK
 description: API guide for the TypeScript SDK.
 ---
+
+The TypeScript SDK is published from `clients/typescript` and exports a Solana Kit plugin, higher-level instruction overlays, generated Codama account helpers, PDA helpers, and query helpers.
+
+## Relevant Types
+
+| Type or class | Source | Purpose |
+| --- | --- | --- |
+| `Address` | `@solana/kit` | Base58 address string type used for accounts, mints, and PDAs. |
+| `TransactionSigner` | `@solana/kit` | Signer object used for fee payers, wallet authorities, delegatees, merchants, and subscribers. |
+| `Instruction` | `@solana/kit` | Transaction instruction returned by overlay builders and plugin methods before sending. |
+| `Rpc<GetProgramAccountsApi>` | `@solana/kit` | RPC client shape required by query helpers that scan program accounts. |
+| `RawProgramAccount` | `@subscriptions/client` | Raw `getProgramAccounts` result shape used by decoder helpers. |
+| `Delegation` | `@subscriptions/client` | Discriminated union for kind, address, and decoded account data. |
+| `PlanWithAddress` | `@subscriptions/client` | Decoded plan account paired with its on-chain address. |
+| `ValidationError` | `@subscriptions/client` | Client-side validation error thrown before building invalid plan or delegation instructions. |
+| `FixedDelegation` | Generated export | Decoded fixed delegation account data. |
+| `RecurringDelegation` | Generated export | Decoded recurring delegation account data. |
+| `SubscriptionDelegation` | Generated export | Decoded subscription delegation account data. |
+| `SubscriptionAuthority` | Generated export | Decoded Subscription Authority account data. |
+| `Plan` | Generated export | Decoded subscription plan account data. |
+| `PlanStatus` | Generated export | Plan lifecycle enum. `Active` accepts subscribers; `Sunset` blocks new subscribers. |
+| `CreateFixedDelegationInput` | `@subscriptions/client` | Input object for fixed delegation overlay builders. |
+| `CreateRecurringDelegationInput` | `@subscriptions/client` | Input object for recurring delegation overlay builders. |
+| `CreatePlanInput` | `@subscriptions/client` | Input object for creating merchant plans. |
+| `SubscribeInput` | `@subscriptions/client` | Input object for subscriber plan acceptance. |
+| `TransferDelegationInput` | `@subscriptions/client` | Shared input object for fixed and recurring delegation transfers. |
+| `TransferSubscriptionInput` | `@subscriptions/client` | Input object for subscription payment collection. |
+| `SubscriptionsPlugin` | `@subscriptions/client` | Plugin surface added to a Kit client at `client.subscriptions`. |
+| `SubscriptionsPluginInstructions` | `@subscriptions/client` | Type for `client.subscriptions.instructions`. |
+| `SubscriptionsPluginQueries` | `@subscriptions/client` | Type for `client.subscriptions.queries`. |
+
+## Functions
+
+### `subscriptionsProgram()`
+
+Installs the subscriptions plugin on a Solana Kit client.
+
+| Field | Type | Purpose |
+| --- | --- | --- |
+| None | `() => plugin` | Use with `createClient().use(subscriptionsProgram())`. |
+
+### `initSubscriptionAuthority(input)`
+
+Available as `client.subscriptions.instructions.initSubscriptionAuthority(input)` or `getInitSubscriptionAuthorityOverlayInstructionAsync(input)`.
+
+| Field | Type | Purpose |
+| --- | --- | --- |
+| `owner` | `TransactionSigner` | User who owns the token account. Optional on plugin method; defaults to `client.identity`. |
+| `payer` | `TransactionSigner | undefined` | Optional rent and fee payer for sponsor flows. |
+| `tokenMint` | `Address` | Token mint covered by the Subscription Authority. |
+| `tokenProgram` | `Address` | SPL Token or Token-2022 program address. |
+| `userAta` | `Address` | User token account that will approve the Subscription Authority as delegate. |
+| `programAddress` | `Address | undefined` | Optional program ID override. |
+
+### `closeSubscriptionAuthority(input)`
+
+Available as `client.subscriptions.instructions.closeSubscriptionAuthority(input)` or `getCloseSubscriptionAuthorityOverlayInstructionAsync(input)`.
+
+| Field | Type | Purpose |
+| --- | --- | --- |
+| `user` | `TransactionSigner` | User closing their Subscription Authority. Optional on plugin method; defaults to `client.identity`. |
+| `tokenMint` | `Address` | Mint used to derive the Subscription Authority PDA. |
+| `receiver` | `Address | undefined` | Optional rent receiver. |
+| `programAddress` | `Address | undefined` | Optional program ID override. |
+
+### `createFixedDelegation(input)`
+
+Available as `client.subscriptions.instructions.createFixedDelegation(input)` or `getCreateFixedDelegationOverlayInstructionAsync(input)`.
+
+| Field | Type | Purpose |
+| --- | --- | --- |
+| `delegator` | `TransactionSigner` | User authorizing the delegatee. Optional on plugin method; defaults to `client.identity`. |
+| `payer` | `TransactionSigner | undefined` | Optional rent and fee payer for sponsor flows. |
+| `tokenMint` | `Address` | Mint being delegated. |
+| `delegatee` | `Address` | Wallet or service allowed to pull tokens. |
+| `nonce` | `bigint | number` | PDA disambiguator for multiple delegations to the same delegatee. |
+| `amount` | `bigint | number` | Total delegated amount in base units. |
+| `expiryTs` | `bigint | number` | Unix timestamp when the delegation expires. Use `0` for no expiry. |
+| `programAddress` | `Address | undefined` | Optional program ID override. |
+
+### `createRecurringDelegation(input)`
+
+Available as `client.subscriptions.instructions.createRecurringDelegation(input)` or `getCreateRecurringDelegationOverlayInstructionAsync(input)`.
+
+| Field | Type | Purpose |
+| --- | --- | --- |
+| `delegator` | `TransactionSigner` | User authorizing the delegatee. Optional on plugin method; defaults to `client.identity`. |
+| `payer` | `TransactionSigner | undefined` | Optional rent and fee payer for sponsor flows. |
+| `tokenMint` | `Address` | Mint being delegated. |
+| `delegatee` | `Address` | Wallet or service allowed to pull tokens. |
+| `nonce` | `bigint | number` | PDA disambiguator for multiple delegations to the same delegatee. |
+| `amountPerPeriod` | `bigint | number` | Maximum amount available per period in base units. |
+| `periodLengthS` | `bigint | number` | Period length in seconds. |
+| `startTs` | `bigint | number` | Unix timestamp when the first period starts. |
+| `expiryTs` | `bigint | number` | Unix timestamp when the delegation expires. Use `0` for no expiry. |
+| `programAddress` | `Address | undefined` | Optional program ID override. |
+
+### `revokeDelegation(input)`
+
+Available as `client.subscriptions.instructions.revokeDelegation(input)` or `getRevokeDelegationOverlayInstruction(input)`.
+
+| Field | Type | Purpose |
+| --- | --- | --- |
+| `authority` | `TransactionSigner` | Authority closing the delegation. Optional on plugin method; defaults to `client.identity`. |
+| `delegationAccount` | `Address` | Fixed or recurring delegation PDA to close. |
+| `receiver` | `Address | undefined` | Optional rent receiver. |
+| `programAddress` | `Address | undefined` | Optional program ID override. |
+
+### `transferFixed(input)` and `transferRecurring(input)`
+
+Available as plugin methods or `getTransferFixedOverlayInstructionAsync(input)` and `getTransferRecurringOverlayInstructionAsync(input)`.
+
+| Field | Type | Purpose |
+| --- | --- | --- |
+| `delegatee` | `TransactionSigner` | Delegatee signing the transfer. Optional on plugin method; defaults to `client.identity`. |
+| `delegator` | `Address` | Token owner whose token account is debited. |
+| `delegatorAta` | `Address` | Delegator token account to transfer from. |
+| `receiverAta` | `Address` | Receiver token account to transfer to. |
+| `delegationPda` | `Address` | Fixed or recurring delegation PDA. |
+| `tokenMint` | `Address` | Mint being transferred. |
+| `tokenProgram` | `Address` | SPL Token or Token-2022 program address. |
+| `amount` | `bigint | number` | Amount to transfer in base units. |
+| `programAddress` | `Address | undefined` | Optional program ID override. |
+
+### `createPlan(input)`
+
+Available as `client.subscriptions.instructions.createPlan(input)` or `getCreatePlanOverlayInstructionAsync(input)`.
+
+| Field | Type | Purpose |
+| --- | --- | --- |
+| `owner` | `TransactionSigner` | Merchant creating the plan. Optional on plugin method; defaults to `client.identity`. |
+| `planId` | `bigint | number` | Merchant-scoped plan identifier. |
+| `mint` | `Address` | Token mint charged by the plan. |
+| `amount` | `bigint | number` | Maximum amount collectible per billing period. |
+| `periodHours` | `bigint | number` | Billing period length in hours. |
+| `endTs` | `bigint | number` | Optional plan end timestamp. Use `0` for no scheduled end. |
+| `destinations` | `Address[]` | Optional destination whitelist. Up to 4 entries. |
+| `pullers` | `Address[]` | Optional puller whitelist. Up to 4 entries. |
+| `metadataUri` | `string` | UTF-8 metadata URI. Maximum 128 bytes. |
+| `tokenProgram` | `Address | undefined` | Optional token program override. Defaults to SPL Token. |
+| `programAddress` | `Address | undefined` | Optional program ID override. |
+
+### `updatePlan(input)`
+
+Available as `client.subscriptions.instructions.updatePlan(input)` or `getUpdatePlanOverlayInstruction(input)`.
+
+| Field | Type | Purpose |
+| --- | --- | --- |
+| `owner` | `TransactionSigner` | Merchant that owns the plan. Optional on plugin method; defaults to `client.identity`. |
+| `planPda` | `Address` | Plan PDA being updated. |
+| `status` | `PlanStatus` | New plan status. |
+| `endTs` | `bigint | number` | New plan end timestamp. Required for sunset. |
+| `pullers` | `Address[] | undefined` | Optional replacement puller whitelist. |
+| `metadataUri` | `string` | Replacement metadata URI. Maximum 128 bytes. |
+| `programAddress` | `Address | undefined` | Optional program ID override. |
+
+### `deletePlan(input)`
+
+Available as `client.subscriptions.instructions.deletePlan(input)` or `getDeletePlanOverlayInstruction(input)`.
+
+| Field | Type | Purpose |
+| --- | --- | --- |
+| `owner` | `TransactionSigner` | Merchant that owns the expired plan. Optional on plugin method; defaults to `client.identity`. |
+| `planPda` | `Address` | Plan PDA to delete. |
+| `programAddress` | `Address | undefined` | Optional program ID override. |
+
+### `subscribe(input)`
+
+Available as `client.subscriptions.instructions.subscribe(input)` or `getSubscribeOverlayInstructionAsync(input)`.
+
+| Field | Type | Purpose |
+| --- | --- | --- |
+| `subscriber` | `TransactionSigner` | User accepting the plan. Optional on plugin method; defaults to `client.identity`. |
+| `payer` | `TransactionSigner | undefined` | Optional rent and fee payer for sponsor flows. |
+| `merchant` | `Address` | Merchant that owns the plan. |
+| `planId` | `bigint | number` | Merchant-scoped plan identifier. |
+| `tokenMint` | `Address` | Mint charged by the plan. |
+| `expectedAmount` | `bigint | number | undefined` | Plan amount the subscriber consented to. Plugin method fetches if omitted. |
+| `expectedPeriodHours` | `bigint | number | undefined` | Plan period the subscriber consented to. Plugin method fetches if omitted. |
+| `expectedCreatedAt` | `bigint | number | undefined` | Plan creation timestamp the subscriber consented to. Plugin method fetches if omitted. |
+| `programAddress` | `Address | undefined` | Optional program ID override. |
+
+### `cancelSubscription(input)`
+
+Available as `client.subscriptions.instructions.cancelSubscription(input)` or `getCancelSubscriptionOverlayInstructionAsync(input)`.
+
+| Field | Type | Purpose |
+| --- | --- | --- |
+| `subscriber` | `TransactionSigner` | Subscriber cancelling the subscription. Optional on plugin method; defaults to `client.identity`. |
+| `planPda` | `Address` | Plan PDA for the subscription. |
+| `subscriptionPda` | `Address | undefined` | Subscription PDA. If omitted, the overlay derives it. |
+| `programAddress` | `Address | undefined` | Optional program ID override. |
+
+### `revokeSubscription(input)`
+
+Available as `client.subscriptions.instructions.revokeSubscription(input)` or `getRevokeSubscriptionOverlayInstruction(input)`.
+
+| Field | Type | Purpose |
+| --- | --- | --- |
+| `authority` | `TransactionSigner` | Subscriber or authorized account closing the subscription PDA. Optional on plugin method; defaults to `client.identity`. |
+| `subscriptionPda` | `Address` | Subscription delegation PDA to close. |
+| `planPda` | `Address` | Plan PDA associated with the subscription. |
+| `receiver` | `Address | undefined` | Optional rent receiver. |
+| `programAddress` | `Address | undefined` | Optional program ID override. |
+
+### `transferSubscription(input)`
+
+Available as `client.subscriptions.instructions.transferSubscription(input)` or `getTransferSubscriptionOverlayInstructionAsync(input)`.
+
+| Field | Type | Purpose |
+| --- | --- | --- |
+| `caller` | `TransactionSigner` | Merchant or whitelisted puller signing the collection transaction. Optional on plugin method; defaults to `client.identity`. |
+| `delegator` | `Address` | Subscriber whose token account is debited. |
+| `planPda` | `Address` | Plan PDA that owns the subscription terms. |
+| `subscriptionPda` | `Address` | Subscription delegation PDA. |
+| `receiverAta` | `Address` | Token account receiving funds. |
+| `tokenMint` | `Address` | Mint being transferred. |
+| `tokenProgram` | `Address` | SPL Token or Token-2022 program address. |
+| `amount` | `bigint | number` | Amount to collect in base units. |
+| `programAddress` | `Address | undefined` | Optional program ID override. |
+
+### Query Helpers
+
+| Function | Parameters | Purpose |
+| --- | --- | --- |
+| `fetchDelegationsByDelegator` | `rpc`, `wallet`, `programAddress?` | Fetch all fixed, recurring, and subscription delegations owned by `wallet`. |
+| `fetchDelegationsByDelegatee` | `rpc`, `wallet`, `programAddress?` | Fetch all delegations where `wallet` is the delegatee or plan PDA. |
+| `fetchPlansForOwner` | `rpc`, `owner`, `programAddress?` | Fetch all plans owned by a merchant. |
+| `fetchSubscriptionsForUser` | `rpc`, `user`, `programAddress?` | Fetch all subscription delegation accounts for a subscriber. |
+| `decodeDelegationAccount` | `raw`, `programAddress` | Decode a raw program account into a `Delegation` union. |
+| `toEncodedAccount` | `raw`, `programAddress` | Convert a raw RPC account into Kit `EncodedAccount` format. |
+
+### Plugin Query Methods
+
+| Function | Parameters | Purpose |
+| --- | --- | --- |
+| `activeDelegationSummary` | `wallet: Address` | Count active fixed, recurring, and subscription delegations for a delegator. |
+| `delegationsByDelegatee` | `wallet: Address` | Fetch delegations where the wallet is the delegatee. |
+| `delegationsByDelegator` | `wallet: Address` | Fetch delegations where the wallet is the delegator. |
+| `isSubscriptionAuthorityInitialized` | `user: Address`, `tokenMint: Address`, `programAddress?: Address` | Check whether the Subscription Authority PDA exists. |
+| `plansForOwner` | `owner: Address` | Fetch plans owned by a merchant. |
+
+### PDA Helpers
+
+Generated PDA helpers are re-exported from the package.
+
+| Function | Parameters | Purpose |
+| --- | --- | --- |
+| `findSubscriptionAuthorityPda` | `user`, `tokenMint` | Derive the Subscription Authority PDA. |
+| `findFixedDelegationPda` | `subscriptionAuthority`, `delegator`, `delegatee`, `nonce` | Derive a fixed delegation PDA. |
+| `findRecurringDelegationPda` | `subscriptionAuthority`, `delegator`, `delegatee`, `nonce` | Derive a recurring delegation PDA. |
+| `findPlanPda` | `owner`, `planId` | Derive a merchant plan PDA. |
+| `findSubscriptionDelegationPda` | `planPda`, `subscriber` | Derive a subscription delegation PDA. |
+| `findEventAuthorityPda` | No seed fields | Derive the event authority PDA. |
