@@ -2,3 +2,297 @@
 title: Architecture Documentation
 description: Developer guide for architecture documentation.
 ---
+
+import { Mermaid } from '@/components/mermaid';
+
+The subscriptions program lets one token account support multiple limited transfer authorizations. A user initializes one Subscription Authority PDA for a token mint, approves that PDA as the token account delegate, and then creates separate delegation accounts that define who can pull funds and under what limits.
+
+## Core Model
+
+Solana token accounts only support one delegate at a time. The program works around that limitation by making the program-controlled Subscription Authority the only token-account delegate. The Subscription Authority receives `u64::MAX` approval, but it can only transfer when a delegation account allows the transfer.
+
+| Component | Purpose |
+| --- | --- |
+| `SubscriptionAuthority` PDA | Program-controlled token delegate for one `(user, mint)` pair. |
+| `FixedDelegation` PDA | One-time allowance with optional expiry. |
+| `RecurringDelegation` PDA | Per-period allowance with start time, period length, and optional expiry. |
+| `Plan` PDA | Merchant-owned reusable billing terms for subscription products. |
+| `SubscriptionDelegation` PDA | Per-subscriber billing state tied to a plan. |
+
+<Mermaid chart={`
+graph TB
+    B[Bob] -->|transfer_fixed| FD
+    A[Alice] -->|initialize_subscription_authority| SA[SubscriptionAuthority PDA]
+    A -->|create_fixed_delegation| FD[Fixed Delegation PDA]
+    FD -->|authorizes transfer| SA
+    SA -->|CPI transfer| TP[Token Program]
+    TP -->|Transfers from Alice ATA to Bob ATA| B
+`} />
+
+## Subscription Authority Initialization
+
+The user creates a Subscription Authority for each token mint they want to authorize. The program derives the PDA from `['SubscriptionAuthority', user, mint]`, creates the account, and approves that PDA as the delegate on the user's token account.
+
+<Mermaid chart={`
+sequenceDiagram
+    participant U as User
+    participant P as Program
+    participant S as SVM
+    participant T as Token Program
+
+    U->>P: initialize_subscription_authority(user, mint, user_ata)
+    Note over P: Validate PDA from ['SubscriptionAuthority', user, mint]
+    P->>S: Create SubscriptionAuthority account
+    S->>P: Account created
+    P->>T: Approve(user_ata, SubscriptionAuthority, u64::MAX)
+    T->>P: Delegate approved
+    P->>U: Ready for delegations
+`} />
+
+## Fixed Delegation
+
+A fixed delegation lets a delegatee pull up to a total amount. Each successful transfer reduces the remaining allowance. If `expiry_ts` is non-zero, transfers are rejected after that timestamp.
+
+<Mermaid chart={`
+sequenceDiagram
+    participant A as Alice
+    participant P as Program
+    participant S as Sponsor
+    participant B as Bob
+
+    Note over A,S: Sponsor is optional and can pay rent
+    A->>P: create_fixed_delegation(bob, nonce, amount, expiry_ts)
+    Note over P: Validate SubscriptionAuthority exists
+    P->>P: Derive ['delegation', SA, alice, bob, nonce]
+    P->>P: Create FixedDelegation PDA
+    P->>A: Delegation created
+    Note over B: Bob can pull up to amount until expiry_ts
+`} />
+
+### Fixed Transfer
+
+<Mermaid chart={`
+sequenceDiagram
+    participant B as Bob
+    participant P as Program
+    participant SA as SubscriptionAuthority
+    participant T as Token Program
+
+    B->>P: transfer_fixed(delegation_pda, amount)
+    Note over P: Load FixedDelegation
+    alt Not expired and amount within allowance
+        P->>P: Validate delegatee, mint, and allowance
+        P->>T: Transfer from Alice ATA to receiver ATA using SA
+        T->>B: Tokens transferred
+        P->>P: Subtract amount from remaining allowance
+    else Expired or amount too large
+        P->>B: Error
+    end
+`} />
+
+## Recurring Delegation
+
+A recurring delegation lets a delegatee pull up to a limit each period. The program tracks the current period start time and the amount already pulled in that period.
+
+<Mermaid chart={`
+sequenceDiagram
+    participant A as Alice
+    participant P as Program
+    participant S as Sponsor
+    participant B as Bob
+
+    Note over A,S: Sponsor is optional and can pay rent
+    A->>P: create_recurring_delegation(bob, nonce, amount_per_period, period_length_s, start_ts, expiry_ts)
+    Note over P: Validate SubscriptionAuthority exists
+    P->>P: Derive ['delegation', SA, alice, bob, nonce]
+    P->>P: Create RecurringDelegation PDA
+    P->>A: Delegation created
+    Note over B: Bob can pull amount_per_period each period
+`} />
+
+Recurring transfer validation checks the delegatee, mint, start time, expiry, period length, and amount already pulled in the current period. When the current time moves into a new period, the program advances the period and resets the pulled amount for that period.
+
+## Revocation
+
+Revocation closes a delegation PDA and returns rent. The delegator can revoke their own delegation. A sponsor can reclaim rent after expiry, but cannot independently revoke a no-expiry delegation.
+
+<Mermaid chart={`
+sequenceDiagram
+    participant A as Alice
+    participant P as Program
+    participant S as Sponsor
+
+    alt Delegator revokes
+        A->>P: revoke_delegation(delegation_pda)
+        P->>P: Close PDA and return rent
+    else Sponsor revokes after expiry
+        S->>P: revoke_delegation(delegation_pda)
+        P->>P: Close PDA and return rent to payer
+    end
+`} />
+
+## Subscription Plans
+
+Plans add merchant-published billing terms on top of the same Subscription Authority infrastructure. Direct delegations still work unchanged. Plans are useful when many subscribers should accept the same merchant terms.
+
+<Mermaid chart={`
+graph TB
+    subgraph Core[Core Delegation Infrastructure]
+        User[Alice] -->|initialize_subscription_authority| SA[SubscriptionAuthority PDA]
+        SA -.->|Used by| Transfers[Transfer Validation]
+        SA -->|create_fixed_delegation| FD[FixedDelegation PDA]
+        SA -->|create_recurring_delegation| RD[RecurringDelegation PDA]
+    end
+
+    subgraph Plans[Plan-Based Subscriptions]
+        Merchant[Merchant] -->|create_plan| Plan[Plan PDA]
+        Alice[Alice] -->|subscribe| SD1[SubscriptionDelegation PDA]
+        Bob[Bob] -->|subscribe| SD2[SubscriptionDelegation PDA]
+        Plan -.-> SD1
+        Plan -.-> SD2
+    end
+
+    SD1 -->|transfer_subscription| Transfers
+    SD2 -->|transfer_subscription| Transfers
+    FD -->|transfer_fixed| Transfers
+    RD -->|transfer_recurring| Transfers
+    Transfers --> SA
+    SA -->|CPI transfer| TokenProg[Token Program]
+`} />
+
+### Plan Lifecycle
+
+1. Merchant creates a `Plan` PDA with amount, period, mint, metadata, destinations, and pullers.
+2. Subscriber initializes their Subscription Authority for the plan mint.
+3. Subscriber calls `subscribe`, creating a `SubscriptionDelegation` PDA.
+4. The subscription stores a snapshot of the plan terms accepted by the subscriber.
+5. Merchant or whitelisted puller calls `transfer_subscription` to collect funds each billing period.
+6. Subscriber calls `cancel_subscription` to set an expiration for the subscription.
+7. Subscriber calls `revoke_delegation` when the subscription can be closed.
+
+### Plan Terms And Billing State
+
+| Account | Stores |
+| --- | --- |
+| `Plan` | Merchant owner, status, mint, immutable billing terms, end timestamp, destinations, pullers, metadata URI. |
+| `SubscriptionDelegation` | Subscriber, plan PDA, accepted terms snapshot, amount pulled in current period, current period start, cancellation expiration. |
+
+The subscriber snapshots plan terms at subscribe time. During `transfer_subscription`, the program compares the subscription snapshot against the live plan. This blocks ghost-account attacks where a merchant deletes and recreates a plan at the same PDA with different terms.
+
+## PDA Seeds
+
+| Account | Seeds |
+| --- | --- |
+| `SubscriptionAuthority` | `['SubscriptionAuthority', user, token_mint]` |
+| `FixedDelegation` | `['delegation', subscription_authority, delegator, delegatee, nonce]` |
+| `RecurringDelegation` | `['delegation', subscription_authority, delegator, delegatee, nonce]` |
+| `Plan` | `['plan', owner, plan_id]` |
+| `SubscriptionDelegation` | `['subscription', plan_pda, subscriber]` |
+| `EventAuthority` | `['event_authority']` |
+
+## Account Layouts
+
+### Discriminators
+
+| Account | Discriminator |
+| --- | --- |
+| `SubscriptionAuthority` | `0` |
+| `Plan` | `1` |
+| `FixedDelegation` | `2` |
+| `RecurringDelegation` | `3` |
+| `SubscriptionDelegation` | `4` |
+
+### Shared Delegation Header
+
+All delegation accounts share a header.
+
+| Byte range | Field | Purpose |
+| --- | --- | --- |
+| `0` | `discriminator` | Account kind. |
+| `1` | `version` | Account schema version. |
+| `2` | `bump` | PDA bump seed. |
+| `3..34` | `delegator` | User granting transfer authority. |
+| `35..66` | `delegatee` | Beneficiary, puller, or plan PDA. |
+| `67..98` | `payer` | Account that paid rent. |
+| `99..106` | `init_id` | Subscription Authority generation identifier. |
+
+The `init_id` is copied from the Subscription Authority when a delegation is created. If a user closes and reinitializes their Subscription Authority, the new `init_id` makes old delegations stale and non-transferable.
+
+### Plan Data
+
+| Field | Size | Purpose |
+| --- | --- | --- |
+| `plan_id` | 8 bytes | Merchant-scoped identifier. |
+| `mint` | 32 bytes | Token mint charged by the plan. |
+| `terms.amount` | 8 bytes | Amount per billing period. |
+| `terms.period_hours` | 8 bytes | Billing period length. |
+| `terms.created_at` | 8 bytes | Program-set creation timestamp. |
+| `end_ts` | 8 bytes | Optional plan expiration. |
+| `destinations` | 128 bytes | Up to 4 whitelisted destinations. |
+| `pullers` | 128 bytes | Up to 4 whitelisted pullers. |
+| `metadata_uri` | 128 bytes | Fixed-size metadata URI. |
+
+## Versioning And Migration
+
+Delegation accounts include a version byte so the program can safely handle old account layouts after upgrades. The migration strategy has three fallback tiers.
+
+<Mermaid chart={`
+flowchart TD
+    A[Account version below CURRENT] --> B{Lazy update possible?}
+    B -- yes --> C[Tier 1: lazy in-place update]
+    B -- no --> D{Explicit migrate instruction exists?}
+    D -- yes --> E[Tier 2: user calls migrate instruction]
+    D -- no --> F[Tier 3: revoke or close and recreate]
+    C --> G[Account at CURRENT_VERSION]
+    E --> G
+    F --> H[New account at CURRENT_VERSION]
+`} />
+
+### Version Check Flow
+
+<Mermaid chart={`
+flowchart TD
+    A[check_and_update_version] --> B{data too short?}
+    B -- yes --> C[Err InvalidAccountData]
+    B -- no --> D{version == CURRENT?}
+    D -- yes --> E[Ok fast path]
+    D -- no --> F{version > CURRENT?}
+    F -- yes --> G[Err DelegationVersionMismatch]
+    F -- no --> H[try_lazy_update]
+    H --> I{migration arm exists?}
+    I -- yes --> J[run migration chain]
+    J --> K[write CURRENT_VERSION]
+    K --> E
+    I -- no --> L[Err MigrationRequired]
+`} />
+
+Normal instructions check the raw version byte before loading typed account data. Defensive paths use minimum-size loading so old accounts do not trap rent.
+
+## Upgrade Governance
+
+Program upgrades are governed by a Squads multisig and deployed with Surfpool/txtx runbooks.
+
+| Environment | Payer | Authority |
+| --- | --- | --- |
+| Localnet | `svm::secret_key` | `svm::secret_key` |
+| Devnet | `svm::web_wallet` | `svm::squads` |
+| Mainnet | `svm::web_wallet` | `svm::squads` |
+
+### Upgrade Verification
+
+Before approving a Squads proposal, multisig members verify that the proposed buffer matches the source build.
+
+```bash
+git checkout <COMMIT_HASH>
+solana-verify build
+solana-verify get-executable-hash target/deploy/subscriptions.so
+solana-verify get-buffer-hash -u <RPC_URL> <BUFFER_ADDRESS>
+```
+
+After deployment, anyone can verify the on-chain program against the public repository.
+
+```bash
+solana-verify verify-from-repo \
+  --program-id <PROGRAM_ID> \
+  --url https://github.com/solana-program/subscriptions
+```

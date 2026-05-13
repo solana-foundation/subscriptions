@@ -13,6 +13,7 @@
     "fumadocs-core": "latest",
     "fumadocs-mdx": "latest",
     "fumadocs-ui": "latest",
+    "mermaid": "latest",
     "next": "latest",
     "react": "latest",
     "react-dom": "latest"
