@@ -2,3 +2,329 @@
 title: Program Instructions
 description: API guide for the program instructions.
 ---
+
+Every instruction starts with a one-byte `u8` discriminator at offset `0`, followed by the instruction-specific payload if one exists. Integer fields are little-endian. `Address` and `Pubkey` fields are 32 bytes.
+
+## 0. Init Subscription Authority
+
+**Discriminator:** `0`
+
+Creates the user's Subscription Authority PDA for a token mint and approves it as the delegate on the user's token account.
+
+### Accounts
+
+| Account | Account type | Description |
+| --- | --- | --- |
+| `owner` | `SignerAccount`, writable | User that owns the token account and signs the setup transaction. |
+| `subscriptionAuthority` | PDA, writable | Subscription Authority PDA derived for `(owner, tokenMint)`. |
+| `tokenMint` | Mint account, readonly | Token mint covered by this authority. |
+| `userAta` | Token account, writable | User token account that will approve the Subscription Authority as delegate. |
+| `systemProgram` | Program account, readonly | System Program used to create the PDA. |
+| `tokenProgram` | Program account, readonly | SPL Token or Token-2022 program for the mint. |
+
+### Data Layout
+
+| Field | Rust type equivalent | Number of bytes | Description |
+| --- | --- | --- | --- |
+| `discriminator` | `u8` | 1 | Instruction selector. Must be `0`. |
+
+## 1. Create Fixed Delegation
+
+**Discriminator:** `1`
+
+Creates a fixed delegation PDA that lets a delegatee transfer up to a total amount before expiry.
+
+### Accounts
+
+| Account | Account type | Description |
+| --- | --- | --- |
+| `delegator` | `SignerAccount`, writable | User creating the delegation. |
+| `subscriptionAuthority` | PDA, readonly | Existing Subscription Authority PDA for this user and mint. |
+| `delegationAccount` | PDA, writable | Fixed delegation PDA being created. |
+| `delegatee` | System account / wallet, readonly | Wallet or service receiving transfer rights. |
+| `systemProgram` | Program account, readonly | System Program used to create the PDA. |
+
+### Data Layout
+
+| Field | Rust type equivalent | Number of bytes | Description |
+| --- | --- | --- | --- |
+| `discriminator` | `u8` | 1 | Instruction selector. Must be `1`. |
+| `fixedDelegation.nonce` | `u64` | 8 | Client-chosen nonce for deriving a unique delegation PDA. |
+| `fixedDelegation.amount` | `u64` | 8 | Total token amount the delegatee can transfer. |
+| `fixedDelegation.expiryTs` | `i64` | 8 | Unix timestamp after which transfers are rejected. Use `0` for no expiry. |
+
+## 2. Create Recurring Delegation
+
+**Discriminator:** `2`
+
+Creates a recurring delegation PDA with a per-period transfer allowance.
+
+### Accounts
+
+| Account | Account type | Description |
+| --- | --- | --- |
+| `delegator` | `SignerAccount`, writable | User creating the delegation. |
+| `subscriptionAuthority` | PDA, readonly | Existing Subscription Authority PDA for this user and mint. |
+| `delegationAccount` | PDA, writable | Recurring delegation PDA being created. |
+| `delegatee` | System account / wallet, readonly | Wallet or service receiving transfer rights. |
+| `systemProgram` | Program account, readonly | System Program used to create the PDA. |
+
+### Data Layout
+
+| Field | Rust type equivalent | Number of bytes | Description |
+| --- | --- | --- | --- |
+| `discriminator` | `u8` | 1 | Instruction selector. Must be `2`. |
+| `recurringDelegation.nonce` | `u64` | 8 | Client-chosen nonce for deriving a unique delegation PDA. |
+| `recurringDelegation.amountPerPeriod` | `u64` | 8 | Maximum token amount the delegatee can transfer per period. |
+| `recurringDelegation.periodLengthS` | `u64` | 8 | Period length in seconds. Must be greater than zero. |
+| `recurringDelegation.startTs` | `i64` | 8 | Unix timestamp when the first period starts. |
+| `recurringDelegation.expiryTs` | `i64` | 8 | Unix timestamp after which transfers are rejected. Use `0` for no expiry. |
+
+## 3. Revoke Delegation
+
+**Discriminator:** `3`
+
+Closes a fixed, recurring, or eligible subscription delegation account and returns rent to the payer or optional receiver supplied by the SDK overlay.
+
+### Accounts
+
+| Account | Account type | Description |
+| --- | --- | --- |
+| `authority` | `SignerAccount`, writable | Authority allowed to revoke the delegation. Usually the delegator/subscriber. |
+| `delegationAccount` | PDA, writable | Delegation PDA to close. |
+
+### Data Layout
+
+| Field | Rust type equivalent | Number of bytes | Description |
+| --- | --- | --- | --- |
+| `discriminator` | `u8` | 1 | Instruction selector. Must be `3`. |
+
+## 4. Transfer Fixed
+
+**Discriminator:** `4`
+
+Transfers tokens through a fixed delegation and reduces the remaining allowance.
+
+### Accounts
+
+| Account | Account type | Description |
+| --- | --- | --- |
+| `delegationPda` | PDA, writable | Fixed delegation PDA to spend from. |
+| `subscriptionAuthority` | PDA, readonly | Subscription Authority PDA that is the token account delegate. |
+| `delegatorAta` | Token account, writable | Delegator token account debited by the transfer. |
+| `receiverAta` | Token account, writable | Receiver token account credited by the transfer. |
+| `tokenProgram` | Program account, readonly | SPL Token or Token-2022 program. |
+| `delegatee` | `SignerAccount`, readonly | Delegatee signing the transfer. |
+| `eventAuthority` | PDA, readonly | Event authority PDA used for self-CPI event emission. |
+| `selfProgram` | Program account, readonly | This program, used for self-CPI event emission. |
+
+### Data Layout
+
+| Field | Rust type equivalent | Number of bytes | Description |
+| --- | --- | --- | --- |
+| `discriminator` | `u8` | 1 | Instruction selector. Must be `4`. |
+| `transferData.amount` | `u64` | 8 | Token amount to transfer. |
+| `transferData.delegator` | `Address` | 32 | User whose token account is debited. |
+| `transferData.mint` | `Address` | 32 | Token mint being transferred. |
+
+## 5. Transfer Recurring
+
+**Discriminator:** `5`
+
+Transfers tokens through a recurring delegation and updates the amount pulled in the current period.
+
+### Accounts
+
+| Account | Account type | Description |
+| --- | --- | --- |
+| `delegationPda` | PDA, writable | Recurring delegation PDA to spend from. |
+| `subscriptionAuthority` | PDA, readonly | Subscription Authority PDA that is the token account delegate. |
+| `delegatorAta` | Token account, writable | Delegator token account debited by the transfer. |
+| `receiverAta` | Token account, writable | Receiver token account credited by the transfer. |
+| `tokenProgram` | Program account, readonly | SPL Token or Token-2022 program. |
+| `delegatee` | `SignerAccount`, readonly | Delegatee signing the transfer. |
+| `eventAuthority` | PDA, readonly | Event authority PDA used for self-CPI event emission. |
+| `selfProgram` | Program account, readonly | This program, used for self-CPI event emission. |
+
+### Data Layout
+
+| Field | Rust type equivalent | Number of bytes | Description |
+| --- | --- | --- | --- |
+| `discriminator` | `u8` | 1 | Instruction selector. Must be `5`. |
+| `transferData.amount` | `u64` | 8 | Token amount to transfer. |
+| `transferData.delegator` | `Address` | 32 | User whose token account is debited. |
+| `transferData.mint` | `Address` | 32 | Token mint being transferred. |
+
+## 6. Close Subscription Authority
+
+**Discriminator:** `6`
+
+Closes a user's Subscription Authority PDA. This acts as a kill switch because existing delegations tied to the old authority can no longer transfer.
+
+### Accounts
+
+| Account | Account type | Description |
+| --- | --- | --- |
+| `user` | `SignerAccount`, writable | User that owns the Subscription Authority and receives rent by default. |
+| `subscriptionAuthority` | PDA, writable | Subscription Authority PDA to close. |
+
+### Data Layout
+
+| Field | Rust type equivalent | Number of bytes | Description |
+| --- | --- | --- | --- |
+| `discriminator` | `u8` | 1 | Instruction selector. Must be `6`. |
+
+## 7. Create Plan
+
+**Discriminator:** `7`
+
+Creates a merchant-owned subscription plan with immutable billing terms and mutable puller/metadata fields.
+
+### Accounts
+
+| Account | Account type | Description |
+| --- | --- | --- |
+| `merchant` | `SignerAccount`, writable | Merchant creating and owning the plan. |
+| `planPda` | PDA, writable | Plan PDA being created. |
+| `tokenMint` | Mint account, readonly | Token mint charged by the plan. |
+| `systemProgram` | Program account, readonly | System Program used to create the PDA. |
+| `tokenProgram` | Program account, readonly | SPL Token or Token-2022 program. |
+
+### Data Layout
+
+| Field | Rust type equivalent | Number of bytes | Description |
+| --- | --- | --- | --- |
+| `discriminator` | `u8` | 1 | Instruction selector. Must be `7`. |
+| `planData.planId` | `u64` | 8 | Merchant-scoped plan identifier. |
+| `planData.mint` | `Address` | 32 | Token mint charged by the plan. |
+| `planData.terms.amount` | `u64` | 8 | Maximum token amount that can be pulled each billing period. |
+| `planData.terms.periodHours` | `u64` | 8 | Billing period length in hours. |
+| `planData.terms.createdAt` | `i64` | 8 | Creation timestamp. Supplied as `0`; set by the program at creation. |
+| `planData.endTs` | `i64` | 8 | Optional plan end timestamp. `0` means no scheduled end. |
+| `planData.destinations` | `[Address; 4]` | 128 | Optional destination whitelist. Zero addresses are ignored. |
+| `planData.pullers` | `[Address; 4]` | 128 | Optional wallets authorized to pull funds in addition to the merchant. |
+| `planData.metadataUri` | `[u8; 128]` | 128 | Fixed-size UTF-8 metadata URI, zero-padded. |
+
+## 8. Update Plan
+
+**Discriminator:** `8`
+
+Updates mutable fields on an active plan.
+
+### Accounts
+
+| Account | Account type | Description |
+| --- | --- | --- |
+| `owner` | `SignerAccount`, readonly | Plan owner authorizing the update. |
+| `planPda` | PDA, writable | Plan PDA being updated. |
+
+### Data Layout
+
+| Field | Rust type equivalent | Number of bytes | Description |
+| --- | --- | --- | --- |
+| `discriminator` | `u8` | 1 | Instruction selector. Must be `8`. |
+| `updatePlanData.status` | `u8` | 1 | New plan status. `0` is sunset, `1` is active. |
+| `updatePlanData.endTs` | `i64` | 8 | New end timestamp. Required when sunsetting a plan. |
+| `updatePlanData.pullers` | `[Address; 4]` | 128 | Updated puller whitelist. Zero addresses are ignored. |
+| `updatePlanData.metadataUri` | `[u8; 128]` | 128 | Updated fixed-size UTF-8 metadata URI, zero-padded. |
+
+## 9. Delete Plan
+
+**Discriminator:** `9`
+
+Deletes an expired plan and returns rent.
+
+### Accounts
+
+| Account | Account type | Description |
+| --- | --- | --- |
+| `owner` | `SignerAccount`, writable | Plan owner deleting the plan and receiving rent by default. |
+| `planPda` | PDA, writable | Plan PDA being deleted. |
+
+### Data Layout
+
+| Field | Rust type equivalent | Number of bytes | Description |
+| --- | --- | --- | --- |
+| `discriminator` | `u8` | 1 | Instruction selector. Must be `9`. |
+
+## 10. Transfer Subscription
+
+**Discriminator:** `10`
+
+Collects tokens from a subscriber according to an active subscription plan.
+
+### Accounts
+
+| Account | Account type | Description |
+| --- | --- | --- |
+| `subscriptionPda` | PDA, writable | Subscription delegation PDA tracking plan terms and period usage. |
+| `planPda` | PDA, readonly | Plan PDA that owns the subscription terms. |
+| `subscriptionAuthority` | PDA, readonly | Subscriber's Subscription Authority PDA for the plan mint. |
+| `delegatorAta` | Token account, writable | Subscriber token account debited by the transfer. |
+| `receiverAta` | Token account, writable | Receiver token account credited by the transfer. |
+| `caller` | `SignerAccount`, readonly | Authorized puller, either the plan owner or a whitelisted puller. |
+| `tokenProgram` | Program account, readonly | SPL Token or Token-2022 program. |
+| `eventAuthority` | PDA, readonly | Event authority PDA used for self-CPI event emission. |
+| `selfProgram` | Program account, readonly | This program, used for self-CPI event emission. |
+
+### Data Layout
+
+| Field | Rust type equivalent | Number of bytes | Description |
+| --- | --- | --- | --- |
+| `discriminator` | `u8` | 1 | Instruction selector. Must be `10`. |
+| `transferData.amount` | `u64` | 8 | Token amount to transfer. |
+| `transferData.delegator` | `Address` | 32 | Subscriber whose token account is debited. |
+| `transferData.mint` | `Address` | 32 | Token mint being transferred. |
+
+## 11. Subscribe
+
+**Discriminator:** `11`
+
+Creates a subscription delegation PDA that binds a subscriber to the current plan terms.
+
+### Accounts
+
+| Account | Account type | Description |
+| --- | --- | --- |
+| `subscriber` | `SignerAccount`, writable | Subscriber creating the subscription and paying rent by default. |
+| `merchant` | System account / wallet, readonly | Merchant that owns the plan. |
+| `planPda` | PDA, readonly | Plan PDA being subscribed to. |
+| `subscriptionPda` | PDA, writable | Subscription PDA being created for `(planPda, subscriber)`. |
+| `subscriptionAuthorityPda` | PDA, readonly | Subscriber's Subscription Authority PDA for the plan mint. |
+| `systemProgram` | Program account, readonly | System Program used to create the PDA. |
+| `eventAuthority` | PDA, readonly | Event authority PDA used for self-CPI event emission. |
+| `selfProgram` | Program account, readonly | This program, used for self-CPI event emission. |
+
+### Data Layout
+
+| Field | Rust type equivalent | Number of bytes | Description |
+| --- | --- | --- | --- |
+| `discriminator` | `u8` | 1 | Instruction selector. Must be `11`. |
+| `subscribeData.planId` | `u64` | 8 | Merchant-scoped plan identifier used to verify the plan PDA. |
+| `subscribeData.planBump` | `u8` | 1 | Plan PDA bump used to avoid an on-chain PDA search. |
+| `subscribeData.expectedMint` | `Address` | 32 | Plan mint the subscriber consented to. |
+| `subscribeData.expectedAmount` | `u64` | 8 | Billing amount the subscriber consented to. |
+| `subscribeData.expectedPeriodHours` | `u64` | 8 | Billing period length the subscriber consented to. |
+| `subscribeData.expectedCreatedAt` | `i64` | 8 | Plan creation timestamp the subscriber consented to. |
+
+## 12. Cancel Subscription
+
+**Discriminator:** `12`
+
+Marks a subscription as cancelled. The subscription remains valid until the current billing period rules allow it to expire.
+
+### Accounts
+
+| Account | Account type | Description |
+| --- | --- | --- |
+| `subscriber` | `SignerAccount`, readonly | Subscriber cancelling their subscription. |
+| `planPda` | PDA, readonly | Plan PDA for the subscription. |
+| `subscriptionPda` | PDA, writable | Subscription PDA being cancelled. |
+| `eventAuthority` | PDA, readonly | Event authority PDA used for self-CPI event emission. |
+| `selfProgram` | Program account, readonly | This program, used for self-CPI event emission. |
+
+### Data Layout
+
+| Field | Rust type equivalent | Number of bytes | Description |
+| --- | --- | --- | --- |
+| `discriminator` | `u8` | 1 | Instruction selector. Must be `12`. |
