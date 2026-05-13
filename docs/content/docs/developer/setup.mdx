@@ -2,3 +2,190 @@
 title: Setup, Dependencies, and Testing
 description: Developer guide for setting up the project, installing dependencies, and testing.
 ---
+
+This repository uses `just` as the main command runner for setup, builds, tests, formatting, linting, and local validator workflows.
+
+## Required Versions
+
+| Tool | Version source | Purpose |
+| --- | --- | --- |
+| Rust | `rust-toolchain.toml` (`1.92`) | Builds the Pinocchio program, Rust client, and integration tests. |
+| Node.js | `.nvmrc` (`24.13.0`) | Runs scripts, client generation, docs, and webapp tooling. |
+| pnpm | `package.json` `packageManager` | Installs and runs JavaScript workspace dependencies. |
+| Solana CLI | Installed separately | Provides `solana-keygen` and Solana program build tooling. |
+| Surfpool | Installed separately | Runs the local validator used by TypeScript client integration tests. |
+| just | Installed separately | Provides the repository task runner. |
+
+## Install Tooling
+
+Install Rust:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+Install the Solana CLI:
+
+```bash
+sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
+```
+
+Install pnpm:
+
+```bash
+curl -fsSL https://get.pnpm.io/install.sh | sh -
+```
+
+Install `just`:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to ~/.local/bin
+```
+
+Install Surfpool:
+
+```bash
+curl -sL https://run.surfpool.run/ | bash
+```
+
+Use the repository Node.js version:
+
+```bash
+nvm use
+```
+
+## Initial Setup
+
+Clone the repository and run setup:
+
+```bash
+git clone git@github.com:solana-program/subscriptions.git
+cd subscriptions
+just setup
+```
+
+`just setup` checks that `pnpm`, `cargo`, `solana-keygen`, and `surfpool` are installed, configures the repository git hooks, and runs `pnpm install`.
+
+## Program ID
+
+Print the configured program ID:
+
+```bash
+just program-id
+```
+
+Local Surfpool workflows install the program at the canonical program ID declared in `program/src/lib.rs`.
+
+## Build
+
+Use `just build` for the normal full build:
+
+```bash
+just build
+```
+
+Build commands:
+
+| Command | Purpose |
+| --- | --- |
+| `just build` | Build the program, regenerate clients, and build the TypeScript client. |
+| `just build-program` | Compile the Solana SBF program. |
+| `just generate-idl` | Regenerate `idl/subscriptions.json` from Rust source. |
+| `just generate-clients` | Regenerate TypeScript and Rust clients from the IDL. |
+| `just build-client` | Build `clients/typescript` into `dist`. |
+| `just check-generated` | Fail if committed IDL or generated clients are stale. |
+
+## Test
+
+Run all tests:
+
+```bash
+just test
+```
+
+Test commands:
+
+| Command | Purpose |
+| --- | --- |
+| `just unit-test` | Run Rust unit tests for the program crate. |
+| `just test-program` | Backwards-compatible alias for `just unit-test`. |
+| `just integration-test` | Build the program and run Rust LiteSVM integration tests. |
+| `just test-client` | Build the program, generate clients, start Surfpool if needed, and run TypeScript client integration tests. |
+| `just test-and-benchmark` | Run Rust integration tests with compute-unit reporting enabled. |
+
+## Validator Modes
+
+There are two local validator workflows:
+
+| Workflow | Validator | Purpose |
+| --- | --- | --- |
+| `just test-client` | Surfpool | Runs TypeScript SDK integration tests against a local Surfpool validator. |
+| `just webapp-run` | `solana-test-validator` | Starts the demo stack, deploys the program, initializes mock local state, and serves the webapp. |
+
+Both default to `http://localhost:8899`.
+
+Start only the Surfpool localnet and write webapp local environment values:
+
+```bash
+just dev-local
+```
+
+## Code Quality
+
+Run all format and lint checks:
+
+```bash
+just check
+```
+
+Code quality commands:
+
+| Command | Purpose |
+| --- | --- |
+| `just fmt-check` | Check Rust and TypeScript formatting. |
+| `just fmt` | Format Rust and TypeScript files. |
+| `just lint-check` | Run Rust clippy and TypeScript lint checks. |
+| `just lint` | Run Rust clippy and TypeScript lint with auto-fix where supported. |
+| `just check` | Run `fmt-check` and `lint-check`. |
+
+## Cleanup
+
+Stop local validators:
+
+```bash
+just kill-validator
+```
+
+Cleanup commands:
+
+| Command | Purpose |
+| --- | --- |
+| `just kill-validator` | Stop Surfpool and `solana-test-validator`, then remove local validator state. |
+| `just webapp-clean` | Stop webapp processes and remove webapp-generated state. |
+| `just clean` | Stop services and remove Rust, client, webapp, and validator artifacts. |
+
+## Common Development Loops
+
+Program-only changes:
+
+```bash
+just build-program
+just unit-test
+just integration-test
+```
+
+IDL or SDK changes:
+
+```bash
+just generate-clients
+just build-client
+just test-client
+```
+
+Full pre-push check:
+
+```bash
+just build
+just test
+just check
+```
