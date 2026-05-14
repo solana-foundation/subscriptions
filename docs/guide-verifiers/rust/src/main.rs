@@ -39,6 +39,9 @@ fn main() -> Result<()> {
     assert_sponsor_funded(&rpc, &sponsor)?;
     log_address("sponsor wallet", &sponsor.pubkey());
 
+    if selected_flow == "all" || selected_flow == "authority" {
+        test_subscription_authority_lifecycle(&rpc, &sponsor)?;
+    }
     if selected_flow == "all" || selected_flow == "fixed" {
         test_fixed_delegation(&rpc, &sponsor)?;
     }
@@ -50,6 +53,22 @@ fn main() -> Result<()> {
     }
 
     println!("Rust guide devnet checks passed.");
+    Ok(())
+}
+
+fn test_subscription_authority_lifecycle(rpc: &RpcClient, sponsor: &Keypair) -> Result<()> {
+    log_section("Subscription Authority Lifecycle");
+
+    let user = Keypair::new();
+    log_address("user wallet", &user.pubkey());
+    fund_from_sponsor(rpc, sponsor, &user.pubkey())?;
+
+    let token_mint = create_mint(rpc, &user)?;
+    let user_ata = create_ata_and_mint(rpc, &user, &user.pubkey(), &token_mint, STARTING_TOKEN_BALANCE)?;
+    let subscription_authority = ensure_subscription_authority(rpc, &user, &token_mint, &user_ata)?;
+
+    anyhow::ensure!(rpc.get_account(&subscription_authority).is_ok(), "subscription authority init check failed");
+    close_subscription_authority(rpc, &user, &token_mint, "standalone ")?;
     Ok(())
 }
 
@@ -101,6 +120,16 @@ fn test_fixed_delegation(rpc: &RpcClient, sponsor: &Keypair) -> Result<()> {
     anyhow::ensure!(after - before == 100_000, "fixed delegation transfer balance check failed");
     let delegation = decode_account::<FixedDelegation>(rpc, &delegation_pda)?;
     anyhow::ensure!(delegation.amount == amount - 100_000, "fixed delegation remaining amount check failed");
+
+    let revoke_ix = RevokeDelegationBuilder::new()
+        .authority(user.pubkey())
+        .delegation_account(delegation_pda)
+        .instruction();
+    let signature = send(rpc, &[revoke_ix], &user, &[&user])?;
+    log_signature("revoke fixed delegation tx", &signature);
+    anyhow::ensure!(rpc.get_account(&delegation_pda).is_err(), "fixed delegation revoke check failed");
+
+    close_subscription_authority(rpc, &user, &token_mint, "fixed delegation ")?;
     Ok(())
 }
 
@@ -161,6 +190,16 @@ fn test_recurring_delegation(rpc: &RpcClient, sponsor: &Keypair) -> Result<()> {
     anyhow::ensure!(after - before == 100_000, "recurring delegation transfer balance check failed");
     let delegation = decode_account::<RecurringDelegation>(rpc, &delegation_pda)?;
     anyhow::ensure!(delegation.amount_pulled_in_period == 100_000, "recurring delegation period amount check failed");
+
+    let revoke_ix = RevokeDelegationBuilder::new()
+        .authority(user.pubkey())
+        .delegation_account(delegation_pda)
+        .instruction();
+    let signature = send(rpc, &[revoke_ix], &user, &[&user])?;
+    log_signature("revoke recurring delegation tx", &signature);
+    anyhow::ensure!(rpc.get_account(&delegation_pda).is_err(), "recurring delegation revoke check failed");
+
+    close_subscription_authority(rpc, &user, &token_mint, "recurring delegation ")?;
     Ok(())
 }
 
@@ -249,6 +288,17 @@ fn test_subscription_plan(rpc: &RpcClient, sponsor: &Keypair) -> Result<()> {
     anyhow::ensure!(after - before == 200_000, "subscription transfer balance check failed");
     let subscription = decode_account::<SubscriptionDelegation>(rpc, &subscription_pda)?;
     anyhow::ensure!(subscription.amount_pulled_in_period == 200_000, "subscription pulled amount check failed");
+
+    let cancel_ix = CancelSubscriptionBuilder::new()
+        .subscriber(subscriber.pubkey())
+        .plan_pda(plan_pda)
+        .subscription_pda(subscription_pda)
+        .instruction();
+    let signature = send(rpc, &[cancel_ix], &subscriber, &[&subscriber])?;
+    log_signature("cancel subscription tx", &signature);
+
+    let subscription_after_cancel = decode_account::<SubscriptionDelegation>(rpc, &subscription_pda)?;
+    anyhow::ensure!(subscription_after_cancel.expires_at_ts != 0, "subscription cancel check failed");
     Ok(())
 }
 
@@ -348,6 +398,18 @@ fn ensure_subscription_authority(
     }
     log_address("subscription authority PDA", &subscription_authority);
     Ok(subscription_authority)
+}
+
+fn close_subscription_authority(rpc: &RpcClient, user: &Keypair, token_mint: &Pubkey, label: &str) -> Result<()> {
+    let subscription_authority = subscription_authority_pda(&user.pubkey(), token_mint);
+    let close_ix = CloseSubscriptionAuthorityBuilder::new()
+        .user(user.pubkey())
+        .subscription_authority(subscription_authority)
+        .instruction();
+    let signature = send(rpc, &[close_ix], user, &[user])?;
+    log_signature(&format!("{label}close subscription authority tx"), &signature);
+    anyhow::ensure!(rpc.get_account(&subscription_authority).is_err(), "{label}subscription authority close check failed");
+    Ok(())
 }
 
 fn send(rpc: &RpcClient, instructions: &[Instruction], payer: &Keypair, signers: &[&Keypair]) -> Result<Signature> {

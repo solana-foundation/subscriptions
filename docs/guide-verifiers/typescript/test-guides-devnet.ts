@@ -7,6 +7,8 @@ import os from 'node:os';
 import path from 'node:path';
 import {
     fetchFixedDelegation,
+    fetchMaybeFixedDelegation,
+    fetchMaybeRecurringDelegation,
     fetchMaybeSubscriptionAuthority,
     fetchRecurringDelegation,
     fetchSubscriptionDelegation,
@@ -170,6 +172,23 @@ async function ensureSubscriptionAuthority(client: GuideClient, user: KeyPairSig
     return subscriptionAuthorityPda;
 }
 
+async function closeSubscriptionAuthority(client: GuideClient, user: KeyPairSigner, tokenMint: Address, label = '') {
+    const [subscriptionAuthorityPda] = await findSubscriptionAuthorityPda({
+        tokenMint,
+        user: user.address,
+    });
+    const signature = await client.subscriptions.instructions
+        .closeSubscriptionAuthority({
+            tokenMint,
+            user,
+        })
+        .sendTransaction();
+    logSignature(`${label}close subscription authority tx`, signature);
+
+    const subscriptionAuthority = await fetchMaybeSubscriptionAuthority(client.rpc, subscriptionAuthorityPda);
+    if (subscriptionAuthority.exists) throw new Error(`${label}subscription authority close check failed`);
+}
+
 async function testFixedDelegation(sponsorClient: GuideClient) {
     logSection('Fixed Delegation');
 
@@ -232,6 +251,38 @@ async function testFixedDelegation(sponsorClient: GuideClient) {
 
     const delegation = await fetchFixedDelegation(userClient.rpc, delegationPda);
     if (delegation.data.amount !== amount - 100_000n) throw new Error('fixed delegation remaining amount check failed');
+
+    const revokeSignature = await userClient.subscriptions.instructions
+        .revokeDelegation({
+            authority: userSigner,
+            delegationAccount: delegationPda,
+        })
+        .sendTransaction();
+    logSignature('revoke fixed delegation tx', revokeSignature);
+
+    const revokedDelegation = await fetchMaybeFixedDelegation(userClient.rpc, delegationPda);
+    if (revokedDelegation.exists) throw new Error('fixed delegation revoke check failed');
+
+    await closeSubscriptionAuthority(userClient, userSigner, tokenMint, 'fixed delegation ');
+}
+
+async function testSubscriptionAuthorityLifecycle(sponsorClient: GuideClient) {
+    logSection('Subscription Authority Lifecycle');
+
+    const userSigner = await generateKeyPairSigner();
+    const userClient = createGuideClient(userSigner);
+    logAddress('user wallet', userSigner.address);
+
+    await fundFromSponsor(sponsorClient, userSigner.address);
+
+    const tokenMint = await createMint(userClient, userSigner);
+    const userAta = await mintToAta(userClient, tokenMint, userSigner.address, STARTING_TOKEN_BALANCE);
+    const subscriptionAuthorityPda = await ensureSubscriptionAuthority(userClient, userSigner, tokenMint, userAta);
+
+    const subscriptionAuthority = await fetchMaybeSubscriptionAuthority(userClient.rpc, subscriptionAuthorityPda);
+    if (!subscriptionAuthority.exists) throw new Error('subscription authority init check failed');
+
+    await closeSubscriptionAuthority(userClient, userSigner, tokenMint, 'standalone ');
 }
 
 async function testRecurringDelegation(sponsorClient: GuideClient) {
@@ -303,6 +354,19 @@ async function testRecurringDelegation(sponsorClient: GuideClient) {
     if (delegation.data.amountPulledInPeriod !== 100_000n) {
         throw new Error('recurring delegation period amount check failed');
     }
+
+    const revokeSignature = await userClient.subscriptions.instructions
+        .revokeDelegation({
+            authority: userSigner,
+            delegationAccount: delegationPda,
+        })
+        .sendTransaction();
+    logSignature('revoke recurring delegation tx', revokeSignature);
+
+    const revokedDelegation = await fetchMaybeRecurringDelegation(userClient.rpc, delegationPda);
+    if (revokedDelegation.exists) throw new Error('recurring delegation revoke check failed');
+
+    await closeSubscriptionAuthority(userClient, userSigner, tokenMint, 'recurring delegation ');
 }
 
 async function testSubscriptionPlan(sponsorClient: GuideClient) {
@@ -386,6 +450,18 @@ async function testSubscriptionPlan(sponsorClient: GuideClient) {
     if (subscription.data.amountPulledInPeriod !== 200_000n) {
         throw new Error('subscription pulled amount check failed');
     }
+
+    const cancelSignature = await subscriberClient.subscriptions.instructions
+        .cancelSubscription({
+            planPda,
+            subscriber: subscriberSigner,
+            subscriptionPda,
+        })
+        .sendTransaction();
+    logSignature('cancel subscription tx', cancelSignature);
+
+    const subscriptionAfterCancel = await fetchSubscriptionDelegation(subscriberClient.rpc, subscriptionPda);
+    if (subscriptionAfterCancel.data.expiresAtTs === 0n) throw new Error('subscription cancel check failed');
 }
 
 async function main() {
@@ -398,6 +474,7 @@ async function main() {
     await assertSponsorFunded(sponsorClient, sponsor);
     logAddress('sponsor wallet', sponsor.address);
 
+    if (selectedGuide === 'all' || selectedGuide === 'authority') await testSubscriptionAuthorityLifecycle(sponsorClient);
     if (selectedGuide === 'all' || selectedGuide === 'fixed') await testFixedDelegation(sponsorClient);
     if (selectedGuide === 'all' || selectedGuide === 'recurring') await testRecurringDelegation(sponsorClient);
     if (selectedGuide === 'all' || selectedGuide === 'plan') await testSubscriptionPlan(sponsorClient);
