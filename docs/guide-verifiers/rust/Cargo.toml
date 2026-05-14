@@ -1,0 +1,16 @@
+[package]
+name = "rust-guide-verifier"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+anyhow = "1"
+borsh = "1"
+solana-client = "^2"
+solana-sdk = "^2"
+spl-associated-token-account = "7.0.0"
+spl-token = "^8"
+subscriptions-client = { path = "../../../clients/rust" }

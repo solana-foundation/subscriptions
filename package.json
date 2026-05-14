@@ -8,6 +8,10 @@
     "format:check": "prettier --check .",
     "generate-idl": "cd program && GENERATE_IDL=1 cargo check",
     "generate-clients": "tsx ./scripts/generate-clients.ts",
+    "generate-clients:unformatted": "SKIP_RUST_FORMAT=1 tsx ./scripts/generate-clients.ts",
+    "test:guides:devnet": "pnpm run test:guides:devnet:typescript",
+    "test:guides:devnet:typescript": "pnpm run generate-clients:unformatted && pnpm --filter @subscriptions/client build && tsx docs/guide-verifiers/typescript/test-guides-devnet.ts",
+    "test:guides:devnet:rust": "RUSTUP_TOOLCHAIN=${RUSTUP_TOOLCHAIN:-stable} cargo run --manifest-path docs/guide-verifiers/rust/Cargo.toml",
     "lint": "pnpm run generate-clients && pnpm --filter @subscriptions/client build && eslint .",
     "lint:fix": "pnpm run generate-clients && pnpm --filter @subscriptions/client build && eslint . --fix"
   },

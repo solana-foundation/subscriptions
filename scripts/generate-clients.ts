@@ -29,12 +29,13 @@ const typescriptClientsDir = path.join(projectRoot, 'clients', 'typescript');
 const codama = createFromJson(JSON.stringify(idl));
 
 const cargoToml = preserveConfigFiles(rustClientsDir);
+const skipRustFormat = process.env.SKIP_RUST_FORMAT === '1';
 
 void codama.accept(
     renderRustVisitor(path.join(rustClientsDir, 'src', 'generated'), {
         crateFolder: rustClientsDir,
         deleteFolderBeforeRendering: true,
-        formatCode: true,
+        formatCode: !skipRustFormat,
     }),
 );
 

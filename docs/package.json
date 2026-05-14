@@ -19,6 +19,11 @@
     "react-dom": "latest"
   },
   "devDependencies": {
+    "@solana-program/token": "^0.13.0",
+    "@solana/kit": "^6.8.0",
+    "@solana/kit-plugin-rpc": "^0.10.0",
+    "@solana/kit-plugin-signer": "^0.10.0",
+    "@subscriptions/client": "workspace:*",
     "@tailwindcss/postcss": "latest",
     "@types/mdx": "latest",
     "@types/react": "latest",
