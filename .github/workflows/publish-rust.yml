@@ -37,10 +37,16 @@ jobs:
               ;;
           esac
 
-  publish:
-    name: Publish subscriptions-client crate
-    runs-on: ubuntu-latest
+  test:
+    name: Run release tests
     needs: guard-allowed-branch
+    uses: ./.github/workflows/test.yml
+    secrets: inherit
+
+  publish:
+    name: Publish subscriptions crate
+    runs-on: ubuntu-latest
+    needs: [guard-allowed-branch, test]
     defaults:
       run:
         working-directory: clients/rust
@@ -61,15 +67,36 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate IDL and clients
+        working-directory: .
+        run: |
+          cd program && cargo build
+          cd .. && pnpm run generate-clients
+
       - name: Build check
         run: cargo build
+
+      - name: Verify crate package
+        run: cargo publish --dry-run --locked --allow-dirty
 
       - name: Get current version
         id: version
         run: |
           VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Publishing subscriptions-client v$VERSION"
+          echo "Publishing subscriptions v$VERSION"
 
       - name: Check if prerelease
         id: prerelease
@@ -79,6 +106,17 @@ jobs:
           else
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
           fi
+
+      - name: Authenticate crates.io trusted publisher
+        if: ${{ inputs.publish-to-crates }}
+        id: crates_io_auth
+        uses: rust-lang/crates-io-auth-action@bbd81622f20ce9e2dd9622e3218b975523e45bbe # v1.0.4
+
+      - name: Publish to crates.io
+        if: ${{ inputs.publish-to-crates }}
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.crates_io_auth.outputs.token }}
+        run: cargo publish --locked --allow-dirty
 
       - name: Create and push tag
         working-directory: .
@@ -91,14 +129,6 @@ jobs:
             echo "Created tag $TAG"
           fi
           git push origin "$TAG" 2>/dev/null || echo "Tag already pushed"
-
-      - name: Authenticate crates.io trusted publisher
-        if: ${{ inputs.publish-to-crates }}
-        uses: rust-lang/crates-io-auth-action@bbd81622f20ce9e2dd9622e3218b975523e45bbe # v1.0.4
-
-      - name: Publish to crates.io
-        if: ${{ inputs.publish-to-crates }}
-        run: cargo publish --locked
 
       - name: Create GitHub Release
         if: ${{ inputs.create-github-release }}
@@ -127,20 +157,20 @@ jobs:
               repo: context.repo.repo,
               tag_name: tagName,
               name: releaseName,
-              body: `Release of subscriptions-client v${{ steps.version.outputs.version }}\n\n**crates.io:** https://crates.io/crates/subscriptions-client/${{ steps.version.outputs.version }}`,
+              body: `Release of subscriptions v${{ steps.version.outputs.version }}\n\n**crates.io:** https://crates.io/crates/subscriptions/${{ steps.version.outputs.version }}`,
               draft: false,
               prerelease: isPrerelease,
             });
 
       - name: Publish summary
         run: |
-          echo "## subscriptions-client Published" >> $GITHUB_STEP_SUMMARY
+          echo "## subscriptions Published" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Version**: \`${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Tag**: \`rust-client-v${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ inputs.publish-to-crates }}" == "true" ]; then
-            echo "Published to crates.io: https://crates.io/crates/subscriptions-client/${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "Published to crates.io: https://crates.io/crates/subscriptions/${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           else
             echo "Skipped crates.io publish" >> $GITHUB_STEP_SUMMARY
           fi

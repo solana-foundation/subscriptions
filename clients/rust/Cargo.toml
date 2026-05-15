@@ -1,9 +1,11 @@
 [package]
-name = "subscriptions-client"
+name = "subscriptions"
 version = "0.1.0"
 edition = "2021"
+description = "Rust client for the Subscriptions Solana program"
 license = { workspace = true }
 repository = { workspace = true }
+include = ["Cargo.toml", "src/**/*.rs"]
 
 [lints]
 workspace = true

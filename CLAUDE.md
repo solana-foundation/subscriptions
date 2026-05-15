@@ -102,8 +102,8 @@ Audited by Cantina. See [audits/AUDIT_STATUS.md](audits/AUDIT_STATUS.md) for the
 
 ## Workspace Structure
 
-- `program/` — Pinocchio program (workspace member `subscriptions`)
-- `clients/rust/` — Codama-generated Rust client (`subscriptions-client`)
+- `program/` — Pinocchio program (workspace member `subscriptions-program`)
+- `clients/rust/` — Codama-generated Rust client (`subscriptions`)
 - `clients/typescript/` — Hand-written SDK wrapping Codama-generated TS (`@solana/subscriptions`)
 - `webapp/` — Vite + React 19 + Node API demo (faucet, deploy wizard, marketplace)
 - `docs/` — Numbered ADRs

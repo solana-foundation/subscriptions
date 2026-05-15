@@ -5289,23 +5289,6 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 name = "subscriptions"
 version = "0.1.0"
 dependencies = [
- "codama",
- "const-crypto",
- "pinocchio",
- "pinocchio-associated-token-account",
- "pinocchio-system",
- "pinocchio-token",
- "pinocchio-token-2022",
- "serde_json",
- "solana-address",
- "solana-security-txt",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "subscriptions-client"
-version = "0.1.0"
-dependencies = [
  "borsh 1.6.0",
  "num-derive",
  "num-traits",
@@ -5317,6 +5300,23 @@ dependencies = [
  "solana-program-error 2.2.2",
  "solana-pubkey",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "subscriptions-program"
+version = "0.1.0"
+dependencies = [
+ "codama",
+ "const-crypto",
+ "pinocchio",
+ "pinocchio-associated-token-account",
+ "pinocchio-system",
+ "pinocchio-token",
+ "pinocchio-token-2022",
+ "serde_json",
+ "solana-address",
+ "solana-security-txt",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -5424,7 +5424,7 @@ dependencies = [
  "spl-associated-token-account",
  "spl-token",
  "spl-token-2022",
- "subscriptions",
+ "subscriptions-program",
  "tabled",
 ]
 

@@ -9,7 +9,7 @@ repository = { workspace = true }
 workspace = true
 
 [dependencies]
-subscriptions = { path = "../../program", features = ["no-entrypoint"] }
+subscriptions = { package = "subscriptions-program", path = "../../program", features = ["no-entrypoint"] }
 pinocchio = { workspace = true }
 pinocchio-associated-token-account = { workspace = true }
 pinocchio-system = { workspace = true }

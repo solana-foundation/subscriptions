@@ -99,7 +99,7 @@ test *args: unit-test (integration-test args) test-client
 
 # Run Rust unit tests
 unit-test:
-    cargo test -p subscriptions
+    cargo test -p subscriptions-program
 
 # Backwards-compatible alias for the old recipe name
 test-program: unit-test
@@ -270,7 +270,7 @@ clean:
 # Check formatting without fixing
 fmt-check:
     @echo "Checking Rust formatting..."
-    @cargo fmt -p subscriptions -p tests-subscriptions --check
+    @cargo fmt -p subscriptions-program -p tests-subscriptions --check
     @echo "Checking TypeScript formatting..."
     @pnpm run format:check
     @echo "✓ Format check passed"
@@ -278,7 +278,7 @@ fmt-check:
 # Auto-format all code
 fmt:
     @echo "Formatting Rust..."
-    @cargo fmt -p subscriptions -p tests-subscriptions
+    @cargo fmt -p subscriptions-program -p tests-subscriptions
     @echo "Formatting TypeScript..."
     @pnpm run format
     @echo "✓ Code formatted"
@@ -286,7 +286,7 @@ fmt:
 # Lint with auto-fix
 lint:
     @echo "Linting Rust..."
-    @cargo clippy --workspace --exclude subscriptions-client --all-targets --no-deps --fix -- -D warnings
+    @cargo clippy --workspace --exclude subscriptions --all-targets --no-deps --fix -- -D warnings
     @echo "Linting TypeScript..."
     @pnpm run lint:fix
     @echo "✓ Code linted"
@@ -294,7 +294,7 @@ lint:
 # Check linting without fixing
 lint-check:
     @echo "Checking Rust lint..."
-    @cargo clippy --workspace --exclude subscriptions-client --all-targets --no-deps -- -D warnings
+    @cargo clippy --workspace --exclude subscriptions --all-targets --no-deps -- -D warnings
     @echo "Checking TypeScript lint..."
     @pnpm run lint
     @echo "✓ Lint check passed"
