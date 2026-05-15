@@ -1,6 +1,6 @@
 import { createClient, generateKeyPairSigner, type Address, type KeyPairSigner } from '@solana/kit';
 import { solanaDevnetRpc } from '@solana/kit-plugin-rpc';
-import { signer, signerFromFile } from '@solana/kit-plugin-signer';
+import { identity, payer, signer, signerFromFile } from '@solana/kit-plugin-signer';
 import { findAssociatedTokenPda, TOKEN_PROGRAM_ADDRESS, tokenProgram } from '@solana-program/token';
 import { execFileSync } from 'node:child_process';
 import os from 'node:os';
@@ -10,6 +10,7 @@ import {
     fetchMaybeFixedDelegation,
     fetchMaybeRecurringDelegation,
     fetchMaybeSubscriptionAuthority,
+    fetchPlan,
     fetchRecurringDelegation,
     fetchSubscriptionDelegation,
     findFixedDelegationPda,
@@ -17,6 +18,7 @@ import {
     findRecurringDelegationPda,
     findSubscriptionAuthorityPda,
     findSubscriptionDelegationPda,
+    PlanStatus,
     subscriptionsProgram,
 } from '@subscriptions/client';
 
@@ -66,6 +68,15 @@ function signatureFromResult(result: unknown): string {
 function createGuideClient(identity: KeyPairSigner) {
     return createClient()
         .use(signer(identity))
+        .use(solanaDevnetRpc({ rpcUrl: RPC_URL }))
+        .use(tokenProgram())
+        .use(subscriptionsProgram());
+}
+
+function createSponsoredGuideClient(user: KeyPairSigner, feePayer: KeyPairSigner) {
+    return createClient()
+        .use(identity(user))
+        .use(payer(feePayer))
         .use(solanaDevnetRpc({ rpcUrl: RPC_URL }))
         .use(tokenProgram())
         .use(subscriptionsProgram());
@@ -172,13 +183,20 @@ async function ensureSubscriptionAuthority(client: GuideClient, user: KeyPairSig
     return subscriptionAuthorityPda;
 }
 
-async function closeSubscriptionAuthority(client: GuideClient, user: KeyPairSigner, tokenMint: Address, label = '') {
+async function closeSubscriptionAuthority(
+    client: GuideClient,
+    user: KeyPairSigner,
+    tokenMint: Address,
+    label = '',
+    receiver?: Address,
+) {
     const [subscriptionAuthorityPda] = await findSubscriptionAuthorityPda({
         tokenMint,
         user: user.address,
     });
     const signature = await client.subscriptions.instructions
         .closeSubscriptionAuthority({
+            receiver,
             tokenMint,
             user,
         })
@@ -270,7 +288,7 @@ async function testSubscriptionAuthorityLifecycle(sponsorClient: GuideClient) {
     logSection('Subscription Authority Lifecycle');
 
     const userSigner = await generateKeyPairSigner();
-    const userClient = createGuideClient(userSigner);
+    const userClient = createSponsoredGuideClient(userSigner, sponsorClient.identity);
     logAddress('user wallet', userSigner.address);
 
     await fundFromSponsor(sponsorClient, userSigner.address);
@@ -282,7 +300,12 @@ async function testSubscriptionAuthorityLifecycle(sponsorClient: GuideClient) {
     const subscriptionAuthority = await fetchMaybeSubscriptionAuthority(userClient.rpc, subscriptionAuthorityPda);
     if (!subscriptionAuthority.exists) throw new Error('subscription authority init check failed');
 
-    await closeSubscriptionAuthority(userClient, userSigner, tokenMint, 'standalone ');
+    const sponsorBalanceBefore = await userClient.rpc.getBalance(sponsorClient.identity.address).send();
+    await closeSubscriptionAuthority(userClient, userSigner, tokenMint, 'standalone ', sponsorClient.identity.address);
+    const sponsorBalanceAfter = await userClient.rpc.getBalance(sponsorClient.identity.address).send();
+    if (sponsorBalanceAfter.value <= sponsorBalanceBefore.value) {
+        throw new Error('subscription authority rent receiver check failed');
+    }
 }
 
 async function testRecurringDelegation(sponsorClient: GuideClient) {
@@ -410,6 +433,25 @@ async function testSubscriptionPlan(sponsorClient: GuideClient) {
         planId,
     });
     logAddress('plan PDA', planPda);
+
+    const newPuller = await generateKeyPairSigner();
+    await fundFromSponsor(sponsorClient, newPuller.address);
+    const updatedMetadataUri = 'https://example.com/updated-plan.json';
+    const updatePlanSignature = await merchantClient.subscriptions.instructions
+        .updatePlan({
+            owner: merchantSigner,
+            planPda,
+            status: PlanStatus.Active,
+            endTs: 0n,
+            pullers: [newPuller.address],
+            metadataUri: updatedMetadataUri,
+        })
+        .sendTransaction();
+    logSignature('update plan tx', updatePlanSignature);
+
+    const updatedPlan = await fetchPlan(merchantClient.rpc, planPda);
+    if (updatedPlan.data.data.pullers[0] !== newPuller.address) throw new Error('plan update puller check failed');
+    if (updatedPlan.data.data.metadataUri !== updatedMetadataUri) throw new Error('plan update metadata check failed');
 
     await ensureSubscriptionAuthority(subscriberClient, subscriberSigner, tokenMint, subscriberAta);
 

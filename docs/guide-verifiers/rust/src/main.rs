@@ -1,8 +1,9 @@
 use anyhow::{anyhow, Context, Result};
+use solana_address::Address;
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::{
     commitment_config::CommitmentConfig,
-    instruction::Instruction,
+    instruction::{AccountMeta, Instruction},
     native_token::LAMPORTS_PER_SOL,
     pubkey::Pubkey,
     signature::{read_keypair_file, Keypair, Signature, Signer},
@@ -65,10 +66,10 @@ fn test_subscription_authority_lifecycle(rpc: &RpcClient, sponsor: &Keypair) -> 
 
     let token_mint = create_mint(rpc, &user)?;
     let user_ata = create_ata_and_mint(rpc, &user, &user.pubkey(), &token_mint, STARTING_TOKEN_BALANCE)?;
-    let subscription_authority = ensure_subscription_authority(rpc, &user, &token_mint, &user_ata)?;
+    let subscription_authority = ensure_subscription_authority(rpc, &user, &token_mint, &user_ata, Some(sponsor))?;
 
     anyhow::ensure!(rpc.get_account(&subscription_authority).is_ok(), "subscription authority init check failed");
-    close_subscription_authority(rpc, &user, &token_mint, "standalone ")?;
+    close_subscription_authority(rpc, &user, &token_mint, Some(&sponsor.pubkey()), "standalone ")?;
     Ok(())
 }
 
@@ -89,7 +90,7 @@ fn test_fixed_delegation(rpc: &RpcClient, sponsor: &Keypair) -> Result<()> {
     let nonce = unix_timestamp()? as u64;
     let amount = 1_000_000;
     let expiry_ts = unix_timestamp()? + 60 * 60;
-    let subscription_authority = ensure_subscription_authority(rpc, &user, &token_mint, &user_ata)?;
+    let subscription_authority = ensure_subscription_authority(rpc, &user, &token_mint, &user_ata, None)?;
     let delegation_pda = fixed_delegation_pda(&subscription_authority, &user.pubkey(), &delegatee.pubkey(), nonce);
 
     let create_ix = CreateFixedDelegationBuilder::new()
@@ -121,15 +122,13 @@ fn test_fixed_delegation(rpc: &RpcClient, sponsor: &Keypair) -> Result<()> {
     let delegation = decode_account::<FixedDelegation>(rpc, &delegation_pda)?;
     anyhow::ensure!(delegation.amount == amount - 100_000, "fixed delegation remaining amount check failed");
 
-    let revoke_ix = RevokeDelegationBuilder::new()
-        .authority(user.pubkey())
-        .delegation_account(delegation_pda)
-        .instruction();
+    let revoke_ix =
+        RevokeDelegationBuilder::new().authority(user.pubkey()).delegation_account(delegation_pda).instruction();
     let signature = send(rpc, &[revoke_ix], &user, &[&user])?;
     log_signature("revoke fixed delegation tx", &signature);
     anyhow::ensure!(rpc.get_account(&delegation_pda).is_err(), "fixed delegation revoke check failed");
 
-    close_subscription_authority(rpc, &user, &token_mint, "fixed delegation ")?;
+    close_subscription_authority(rpc, &user, &token_mint, None, "fixed delegation ")?;
     Ok(())
 }
 
@@ -153,7 +152,7 @@ fn test_recurring_delegation(rpc: &RpcClient, sponsor: &Keypair) -> Result<()> {
     let period_length_s = 86_400;
     let start_ts = now;
     let expiry_ts = now + period_length_s as i64 * 30;
-    let subscription_authority = ensure_subscription_authority(rpc, &user, &token_mint, &user_ata)?;
+    let subscription_authority = ensure_subscription_authority(rpc, &user, &token_mint, &user_ata, None)?;
     let delegation_pda = fixed_delegation_pda(&subscription_authority, &user.pubkey(), &delegatee.pubkey(), nonce);
     log_address("recurring delegation PDA", &delegation_pda);
 
@@ -191,15 +190,13 @@ fn test_recurring_delegation(rpc: &RpcClient, sponsor: &Keypair) -> Result<()> {
     let delegation = decode_account::<RecurringDelegation>(rpc, &delegation_pda)?;
     anyhow::ensure!(delegation.amount_pulled_in_period == 100_000, "recurring delegation period amount check failed");
 
-    let revoke_ix = RevokeDelegationBuilder::new()
-        .authority(user.pubkey())
-        .delegation_account(delegation_pda)
-        .instruction();
+    let revoke_ix =
+        RevokeDelegationBuilder::new().authority(user.pubkey()).delegation_account(delegation_pda).instruction();
     let signature = send(rpc, &[revoke_ix], &user, &[&user])?;
     log_signature("revoke recurring delegation tx", &signature);
     anyhow::ensure!(rpc.get_account(&delegation_pda).is_err(), "recurring delegation revoke check failed");
 
-    close_subscription_authority(rpc, &user, &token_mint, "recurring delegation ")?;
+    close_subscription_authority(rpc, &user, &token_mint, None, "recurring delegation ")?;
     Ok(())
 }
 
@@ -215,7 +212,8 @@ fn test_subscription_plan(rpc: &RpcClient, sponsor: &Keypair) -> Result<()> {
 
     let token_mint = create_mint(rpc, &merchant)?;
     let merchant_ata = create_ata_and_mint(rpc, &merchant, &merchant.pubkey(), &token_mint, 0)?;
-    let subscriber_ata = create_ata_and_mint(rpc, &merchant, &subscriber.pubkey(), &token_mint, STARTING_TOKEN_BALANCE)?;
+    let subscriber_ata =
+        create_ata_and_mint(rpc, &merchant, &subscriber.pubkey(), &token_mint, STARTING_TOKEN_BALANCE)?;
 
     let plan_id = unix_timestamp()? as u64;
     let (plan_pda, plan_bump) = plan_pda(&merchant.pubkey(), plan_id);
@@ -248,7 +246,31 @@ fn test_subscription_plan(rpc: &RpcClient, sponsor: &Keypair) -> Result<()> {
     log_signature("create plan tx", &signature);
     log_address("plan PDA", &plan_pda);
 
-    let subscription_authority = ensure_subscription_authority(rpc, &subscriber, &token_mint, &subscriber_ata)?;
+    let new_puller = Keypair::new();
+    fund_from_sponsor(rpc, sponsor, &new_puller.pubkey())?;
+    let mut updated_pullers = [Pubkey::default(); 4];
+    updated_pullers[0] = new_puller.pubkey();
+    let mut updated_metadata_uri = [0u8; 128];
+    let updated_metadata_bytes = b"https://example.com/updated-plan.json";
+    updated_metadata_uri[..updated_metadata_bytes.len()].copy_from_slice(updated_metadata_bytes);
+    let update_plan_ix = UpdatePlanBuilder::new()
+        .owner(merchant.pubkey())
+        .plan_pda(plan_pda)
+        .update_plan_data(UpdatePlanData {
+            status: PlanStatus::Active as u8,
+            end_ts: 0,
+            pullers: updated_pullers,
+            metadata_uri: updated_metadata_uri,
+        })
+        .instruction();
+    let signature = send(rpc, &[update_plan_ix], &merchant, &[&merchant])?;
+    log_signature("update plan tx", &signature);
+
+    let updated_plan = decode_account::<Plan>(rpc, &plan_pda)?;
+    anyhow::ensure!(updated_plan.data.pullers[0] == new_puller.pubkey(), "plan update puller check failed");
+    anyhow::ensure!(updated_plan.data.metadata_uri == updated_metadata_uri, "plan update metadata check failed");
+
+    let subscription_authority = ensure_subscription_authority(rpc, &subscriber, &token_mint, &subscriber_ata, None)?;
     let subscription_pda = subscription_pda(&plan_pda, &subscriber.pubkey());
     let fetched_plan = decode_account::<Plan>(rpc, &plan_pda)?;
     let subscribe_ix = SubscribeBuilder::new()
@@ -383,32 +405,56 @@ fn ensure_subscription_authority(
     user: &Keypair,
     token_mint: &Pubkey,
     user_ata: &Pubkey,
+    payer: Option<&Keypair>,
 ) -> Result<Pubkey> {
     let subscription_authority = subscription_authority_pda(&user.pubkey(), token_mint);
     if rpc.get_account(&subscription_authority).is_err() {
-        let init_ix = InitSubscriptionAuthorityBuilder::new()
+        let mut builder = InitSubscriptionAuthorityBuilder::new();
+        builder
             .owner(user.pubkey())
             .subscription_authority(subscription_authority)
             .token_mint(*token_mint)
             .user_ata(*user_ata)
-            .token_program(spl_token::id())
-            .instruction();
-        let signature = send(rpc, &[init_ix], user, &[user])?;
+            .token_program(spl_token::id());
+        let signature = if let Some(payer) = payer {
+            builder.add_remaining_account(AccountMeta::new(payer.pubkey(), true));
+            let init_ix = builder.instruction();
+            send(rpc, &[init_ix], user, &[user, payer])?
+        } else {
+            let init_ix = builder.instruction();
+            send(rpc, &[init_ix], user, &[user])?
+        };
         log_signature("init subscription authority tx", &signature);
     }
     log_address("subscription authority PDA", &subscription_authority);
     Ok(subscription_authority)
 }
 
-fn close_subscription_authority(rpc: &RpcClient, user: &Keypair, token_mint: &Pubkey, label: &str) -> Result<()> {
+fn close_subscription_authority(
+    rpc: &RpcClient,
+    user: &Keypair,
+    token_mint: &Pubkey,
+    rent_receiver: Option<&Pubkey>,
+    label: &str,
+) -> Result<()> {
     let subscription_authority = subscription_authority_pda(&user.pubkey(), token_mint);
-    let close_ix = CloseSubscriptionAuthorityBuilder::new()
-        .user(user.pubkey())
-        .subscription_authority(subscription_authority)
-        .instruction();
+    let receiver_balance_before = rent_receiver.map(|receiver| rpc.get_balance(receiver)).transpose()?;
+    let mut builder = CloseSubscriptionAuthorityBuilder::new();
+    builder.user(user.pubkey()).subscription_authority(subscription_authority);
+    if let Some(receiver) = rent_receiver {
+        builder.add_remaining_account(AccountMeta::new(*receiver, false));
+    }
+    let close_ix = builder.instruction();
     let signature = send(rpc, &[close_ix], user, &[user])?;
     log_signature(&format!("{label}close subscription authority tx"), &signature);
-    anyhow::ensure!(rpc.get_account(&subscription_authority).is_err(), "{label}subscription authority close check failed");
+    anyhow::ensure!(
+        rpc.get_account(&subscription_authority).is_err(),
+        "{label}subscription authority close check failed"
+    );
+    if let (Some(receiver), Some(before)) = (rent_receiver, receiver_balance_before) {
+        let after = rpc.get_balance(receiver)?;
+        anyhow::ensure!(after > before, "{label}subscription authority rent receiver check failed");
+    }
     Ok(())
 }
 
@@ -457,35 +503,59 @@ fn decode_account<T: DecodeAccount>(rpc: &RpcClient, address: &Pubkey) -> Result
 }
 
 fn subscription_authority_pda(user: &Pubkey, mint: &Pubkey) -> Pubkey {
-    Pubkey::find_program_address(&[b"SubscriptionAuthority", user.as_ref(), mint.as_ref()], &SUBSCRIPTIONS_ID).0
+    to_pubkey(
+        Address::find_program_address(
+            &[b"SubscriptionAuthority", user.as_ref(), mint.as_ref()],
+            &to_address(SUBSCRIPTIONS_ID),
+        )
+        .0,
+    )
 }
 
 fn fixed_delegation_pda(subscription_authority: &Pubkey, delegator: &Pubkey, delegatee: &Pubkey, nonce: u64) -> Pubkey {
-    Pubkey::find_program_address(
-        &[
-            b"delegation",
-            subscription_authority.as_ref(),
-            delegator.as_ref(),
-            delegatee.as_ref(),
-            &nonce.to_le_bytes(),
-        ],
-        &SUBSCRIPTIONS_ID,
+    to_pubkey(
+        Address::find_program_address(
+            &[
+                b"delegation",
+                subscription_authority.as_ref(),
+                delegator.as_ref(),
+                delegatee.as_ref(),
+                &nonce.to_le_bytes(),
+            ],
+            &to_address(SUBSCRIPTIONS_ID),
+        )
+        .0,
     )
-    .0
 }
 
 fn plan_pda(merchant: &Pubkey, plan_id: u64) -> (Pubkey, u8) {
-    Pubkey::find_program_address(&[b"plan", merchant.as_ref(), &plan_id.to_le_bytes()], &SUBSCRIPTIONS_ID)
+    let (address, bump) = Address::find_program_address(
+        &[b"plan", merchant.as_ref(), &plan_id.to_le_bytes()],
+        &to_address(SUBSCRIPTIONS_ID),
+    );
+    (to_pubkey(address), bump)
 }
 
 fn subscription_pda(plan_pda: &Pubkey, subscriber: &Pubkey) -> Pubkey {
-    Pubkey::find_program_address(&[b"subscription", plan_pda.as_ref(), subscriber.as_ref()], &SUBSCRIPTIONS_ID).0
+    to_pubkey(
+        Address::find_program_address(
+            &[b"subscription", plan_pda.as_ref(), subscriber.as_ref()],
+            &to_address(SUBSCRIPTIONS_ID),
+        )
+        .0,
+    )
+}
+
+fn to_address(pubkey: Pubkey) -> Address {
+    Address::new_from_array(pubkey.to_bytes())
+}
+
+fn to_pubkey(address: Address) -> Pubkey {
+    Pubkey::new_from_array(address.to_bytes())
 }
 
 fn unix_timestamp() -> Result<i64> {
-    Ok(std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)?
-        .as_secs() as i64)
+    Ok(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_secs() as i64)
 }
 
 fn explorer_address(address: &Pubkey) -> String {

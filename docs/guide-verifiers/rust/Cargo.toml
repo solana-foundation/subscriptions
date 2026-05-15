@@ -9,6 +9,7 @@ publish = false
 [dependencies]
 anyhow = "1"
 borsh = "1"
+solana-address = { version = "2", features = ["curve25519"] }
 solana-client = "^2"
 solana-sdk = "^2"
 spl-associated-token-account = "7.0.0"
