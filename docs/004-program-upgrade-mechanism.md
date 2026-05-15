@@ -1,6 +1,6 @@
 # Program Upgrade Mechanism
 
-Program upgrades are governed by a [Squads](https://squads.xyz/) multisig and deployed via [txtx/Surfpool](https://docs.surfpool.run/).
+Program upgrades are governed by a [Squads](https://squads.xyz/) multisig. Mainnet CI only writes upgrade buffers and transfers buffer authority to the Squads vault; it does not use a Squads member keypair.
 
 ## Signer Configuration
 
@@ -22,6 +22,14 @@ signer "authority" "svm::squads" {
 ```
 
 ## Deploying / Upgrading
+
+### Mainnet CI
+
+Run the `Release` GitHub Actions workflow with `network = mainnet`. The workflow loads the deployer keypair from Doppler, builds the verified program, writes the program buffer, writes the program-metadata IDL buffer, and transfers both buffer authorities to the Squads vault.
+
+The CI keypair is only a fee payer and buffer writer. It does not need to be a Squads member. After CI finishes, create the Squads upgrade proposal manually using the program buffer and IDL metadata buffer from the workflow summary.
+
+### Surfpool Runbooks
 
 Run the deployment runbook with the appropriate environment:
 
@@ -50,7 +58,7 @@ solana-verify get-executable-hash target/deploy/subscriptions.so
 
 ### 3. Hash the on-chain buffer
 
-The buffer address is shown in the Squads proposal.
+The buffer address is shown in the GitHub Actions release summary and in the Squads proposal.
 
 ```bash
 solana-verify get-buffer-hash -u <RPC_URL> <BUFFER_ADDRESS>

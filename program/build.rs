@@ -22,7 +22,10 @@ fn generate_idl() -> Result<(), Box<dyn std::error::Error>> {
     let idl_json = codama.get_json_idl()?;
 
     // Parse and format the JSON with pretty printing.
-    let parsed: serde_json::Value = serde_json::from_str(&idl_json)?;
+    let mut parsed: serde_json::Value = serde_json::from_str(&idl_json)?;
+    if let Some(program) = parsed.get_mut("program").and_then(serde_json::Value::as_object_mut) {
+        program.insert("name".to_string(), serde_json::Value::String("subscriptions".to_string()));
+    }
     let mut formatted_json = serde_json::to_string_pretty(&parsed)?;
     formatted_json.push('\n');
 

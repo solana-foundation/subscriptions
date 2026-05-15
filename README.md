@@ -22,11 +22,11 @@ Delegation accounts include a version field and the program implements a three-t
 
 This repository contains:
 
-- A Rust Solana program built with [Pinocchio](https://github.com/febo/pinocchio)
+- A Rust Solana program built with [Pinocchio](https://github.com/anza-xyz/pinocchio)
 - IDL generation via [Codama](https://github.com/codama-idl/codama)
 - Generated clients via Codama:
     - TypeScript client (`@solana/subscriptions`) in `clients/typescript`
-    - Rust client (`subscriptions-client`) in `clients/rust`
+    - Rust client (`subscriptions`) in `clients/rust`
 - A local demo webapp in `webapp/`
 - CI pipeline with build, test, lint, and CU benchmarking
 

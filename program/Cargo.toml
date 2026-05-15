@@ -1,11 +1,12 @@
 [package]
-name = "subscriptions"
+name = "subscriptions-program"
 version = { workspace = true }
 edition = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
 
 [lib]
+name = "subscriptions"
 crate-type = ["lib", "cdylib"]
 
 [lints]
