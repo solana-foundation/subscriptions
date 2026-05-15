@@ -123,7 +123,7 @@ jobs:
           skip-build: 'false'
 
       # ============================================
-      # mainnet: bundle into Squads multisig proposal
+      # mainnet: prepare Squads-owned buffers
       # ============================================
       - if: inputs.network == 'mainnet'
         id: metadata-buffer
@@ -137,34 +137,11 @@ jobs:
           priority-fees: ${{ inputs.priority-fee }}
 
       - if: inputs.network == 'mainnet'
-        id: verify-pda
-        name: Build verify PDA transaction (mainnet)
-        uses: solana-developers/github-actions/verify-build@eb606791e11d06eb92593dfd3404bf0d4c809121
-        with:
-          program: ${{ env.PROGRAM }}
-          program-id: ${{ env.PROGRAM_ID }}
-          rpc-url: ${{ env.RPC_URL }}
-          keypair: ${{ env.DEPLOYER_KEYPAIR }}
-          repo-url: ${{ env.REPO_URL }}
-          network: mainnet
-          mount-path: program
-          commit-hash: ${{ github.sha }}
-          use-squads: 'true'
-          vault-address: ${{ env.SQUADS_VAULT }}
-          skip-build: 'true'
-
-      - if: inputs.network == 'mainnet'
-        name: Propose Squads upgrade transaction (mainnet)
-        uses: solana-developers/squads-program-action@1b4575c62c01ffc5fae9316f61486f7d37cb7b91 # v0.4.3
-        with:
-          rpc: ${{ env.RPC_URL }}
-          program: ${{ env.PROGRAM_ID }}
-          buffer: ${{ steps.write-buffer.outputs.buffer }}
-          metadata-buffer: ${{ steps.metadata-buffer.outputs.buffer }}
-          multisig: ${{ env.SQUADS_MULTISIG }}
-          keypair: /tmp/deployer.json
-          priority-fee: ${{ inputs.priority-fee }}
-          pda-tx: ${{ steps.verify-pda.outputs.pda_tx }}
+        name: Confirm mainnet buffer handoff
+        run: |
+          : "${SQUADS_VAULT:?Set SQUADS_VAULT in Doppler prd_github}"
+          echo "Program buffer authority assigned to Squads vault: $SQUADS_VAULT"
+          echo "IDL metadata buffer authority assigned to Squads vault: $SQUADS_VAULT"
 
       - name: Cleanup keypair
         if: always()
@@ -179,6 +156,7 @@ jobs:
           echo "- Buffer: \`${{ steps.write-buffer.outputs.buffer }}\`" >> $GITHUB_STEP_SUMMARY
           if [ "${{ inputs.network }}" = "mainnet" ]; then
             echo "- IDL buffer: \`${{ steps.metadata-buffer.outputs.buffer }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- Squads multisig: \`${{ env.SQUADS_MULTISIG }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- **Action required**: review + approve transaction in Squads UI" >> $GITHUB_STEP_SUMMARY
+            echo "- Buffer authority: \`${{ env.SQUADS_VAULT }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Action required**: create the Squads upgrade proposal using the listed buffers" >> $GITHUB_STEP_SUMMARY
+            echo "- CI keypair role: fee payer and buffer writer only; it does not need Squads membership" >> $GITHUB_STEP_SUMMARY
           fi
