@@ -1,7 +1,7 @@
 import { useWallet } from '@solana/connector/react';
 import { address, createSolanaRpc } from '@solana/kit';
-import type { PlanData } from '@subscriptions/client';
-import { fetchPlansForOwner } from '@subscriptions/client';
+import type { PlanData } from '@solana/subscriptions';
+import { fetchPlansForOwner } from '@solana/subscriptions';
 import { useQuery } from '@tanstack/react-query';
 
 import { useClusterConfig } from '@/hooks/use-cluster-config';

@@ -1,6 +1,6 @@
 import { useCluster, useWallet } from '@solana/connector/react';
 import { address, createSolanaRpc } from '@solana/kit';
-import { type Delegation, fetchDelegationsByDelegatee, fetchDelegationsByDelegator } from '@subscriptions/client';
+import { type Delegation, fetchDelegationsByDelegatee, fetchDelegationsByDelegator } from '@solana/subscriptions';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useClusterConfig } from '@/hooks/use-cluster-config';

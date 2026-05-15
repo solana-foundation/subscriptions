@@ -20,7 +20,7 @@ import {
     getUpdatePlanOverlayInstruction,
     PlanStatus,
     ZERO_ADDRESS,
-} from '@subscriptions/client';
+} from '@solana/subscriptions';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast as sonnerToast } from 'sonner';
 

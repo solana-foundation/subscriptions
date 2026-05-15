@@ -2,7 +2,7 @@ import { useCluster, useWallet } from '@solana/connector/react';
 import { address, createSolanaRpc } from '@solana/kit';
 import { findAssociatedTokenPda, TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
-import { fetchMaybeSubscriptionAuthority, findSubscriptionAuthorityPda } from '@subscriptions/client';
+import { fetchMaybeSubscriptionAuthority, findSubscriptionAuthorityPda } from '@solana/subscriptions';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useClusterConfig } from '@/hooks/use-cluster-config';

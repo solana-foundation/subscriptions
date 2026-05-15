@@ -1,5 +1,5 @@
 {
-    "name": "@subscriptions/client",
+    "name": "@solana/subscriptions",
     "version": "0.1.0",
     "type": "module",
     "exports": {

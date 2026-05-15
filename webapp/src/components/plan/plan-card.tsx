@@ -24,7 +24,7 @@ import {
     DialogDescription,
     DialogFooter,
 } from '@/components/ui/dialog';
-import { ZERO_ADDRESS, PlanStatus } from '@subscriptions/client';
+import { ZERO_ADDRESS, PlanStatus } from '@solana/subscriptions';
 import { cn, ellipsify, USDC_MULTIPLIER, fmtDate, fmtDateTime, formatPeriod, formatPeriodLabel } from '@/lib/utils';
 import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations';
 import { useSubscriptionAuthorityStatus } from '@/hooks/use-subscription-authority-status';

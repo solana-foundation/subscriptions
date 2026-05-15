@@ -1,6 +1,6 @@
 import { useWallet } from '@solana/connector/react';
 import { address, createSolanaRpc } from '@solana/kit';
-import type { Plan, SubscriptionDelegation } from '@subscriptions/client';
+import type { Plan, SubscriptionDelegation } from '@solana/subscriptions';
 import {
     decodeSubscriptionDelegation,
     DELEGATEE_OFFSET,
@@ -9,7 +9,7 @@ import {
     type RawProgramAccount,
     SUBSCRIPTION_SIZE,
     toEncodedAccount,
-} from '@subscriptions/client';
+} from '@solana/subscriptions';
 import { useQuery } from '@tanstack/react-query';
 
 import { useClusterConfig } from '@/hooks/use-cluster-config';
