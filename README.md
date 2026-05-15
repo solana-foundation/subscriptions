@@ -25,7 +25,7 @@ This repository contains:
 - A Rust Solana program built with [Pinocchio](https://github.com/febo/pinocchio)
 - IDL generation via [Codama](https://github.com/codama-idl/codama)
 - Generated clients via Codama:
-    - TypeScript client (`@subscriptions/client`) in `clients/typescript`
+    - TypeScript client (`@solana/subscriptions`) in `clients/typescript`
     - Rust client (`subscriptions-client`) in `clients/rust`
 - A local demo webapp in `webapp/`
 - CI pipeline with build, test, lint, and CU benchmarking
@@ -188,7 +188,7 @@ Both default to `http://localhost:8899`.
 
 ## TypeScript Client SDK
 
-The `@subscriptions/client` package in `clients/typescript` provides a high-level `SubscriptionsClient` class wrapping all program instructions:
+The `@solana/subscriptions` package in `clients/typescript` provides a high-level `SubscriptionsClient` class wrapping all program instructions:
 
 | Method                                                      | Purpose                                                        |
 | ----------------------------------------------------------- | -------------------------------------------------------------- |
@@ -206,11 +206,11 @@ PDA derivation helpers are exported from `pdas.ts`: `getSubscriptionAuthorityPDA
 Install and use:
 
 ```bash
-pnpm add @subscriptions/client
+pnpm add @solana/subscriptions
 ```
 
 ```typescript
-import { SubscriptionsClient } from '@subscriptions/client';
+import { SubscriptionsClient } from '@solana/subscriptions';
 ```
 
 ## Webapp Demo

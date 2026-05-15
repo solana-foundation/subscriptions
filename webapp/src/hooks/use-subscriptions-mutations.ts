@@ -1,6 +1,5 @@
 import { useKitTransactionSigner } from '@solana/connector/react';
 import { type Address, address, createSolanaRpc, type Instruction } from '@solana/kit';
-import { findAssociatedTokenPda, getCreateAssociatedTokenIdempotentInstruction } from '@solana-program/token';
 import {
     fetchMaybeSubscriptionAuthority,
     findSubscriptionAuthorityPda,
@@ -20,7 +19,8 @@ import {
     getUpdatePlanOverlayInstruction,
     PlanStatus,
     ZERO_ADDRESS,
-} from '@subscriptions/client';
+} from '@solana/subscriptions';
+import { findAssociatedTokenPda, getCreateAssociatedTokenIdempotentInstruction } from '@solana-program/token';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast as sonnerToast } from 'sonner';
 

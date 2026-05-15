@@ -8,5 +8,5 @@
     "excludeInternal": true,
     "excludeExternals": true,
     "readme": "none",
-    "name": "@subscriptions/client"
+    "name": "@solana/subscriptions"
 }

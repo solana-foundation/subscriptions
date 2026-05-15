@@ -1,11 +1,13 @@
-# @subscriptions/client
+# @solana/subscriptions
 
-TypeScript SDK for the Subscriptions Solana program: token delegation, recurring payments, and subscriptions.
+TypeScript SDK for the [Subscriptions Solana program](https://github.com/solana-program/subscriptions): token delegation, recurring payments, and subscriptions. Ships as a [`@solana/kit`](https://github.com/anza-xyz/kit) plugin.
+
+**Source & issues:** https://github.com/solana-program/subscriptions
 
 ## Installation
 
 ```bash
-npm install @subscriptions/client
+npm install @solana/subscriptions
 ```
 
 ## Quick Start
@@ -16,7 +18,7 @@ The SDK exports a `subscriptionsProgram()` Kit plugin. The plugin derives progra
 import { address, createClient } from '@solana/kit';
 import { solanaLocalRpc } from '@solana/kit-plugin-rpc';
 import { signer } from '@solana/kit-plugin-signer';
-import { subscriptionsProgram } from '@subscriptions/client';
+import { subscriptionsProgram } from '@solana/subscriptions';
 
 const client = createClient()
     .use(signer(walletSigner))

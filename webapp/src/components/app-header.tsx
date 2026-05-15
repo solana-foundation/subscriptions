@@ -12,7 +12,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { CURRENT_PROGRAM_VERSION } from '@subscriptions/client';
+import { CURRENT_PROGRAM_VERSION } from '@solana/subscriptions';
 import solanaLogo from '@/assets/solana-logo.svg';
 import { cn } from '@/lib/utils';
 

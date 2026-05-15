@@ -14,7 +14,7 @@
  * import { createClient } from '@solana/kit';
  * import { signer } from '@solana/kit-plugin-signer';
  * import { solanaLocalRpc } from '@solana/kit-plugin-rpc';
- * import { subscriptionsProgram } from '@subscriptions/client';
+ * import { subscriptionsProgram } from '@solana/subscriptions';
  *
  * const client = createClient()
  *   .use(signer(mySigner))
