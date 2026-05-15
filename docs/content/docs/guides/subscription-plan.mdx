@@ -12,14 +12,14 @@ This guide shows the full flow as building blocks. The merchant creates a plan, 
 <Tabs items={["TypeScript", "Rust"]}>
   <Tab value="TypeScript">
     ```bash
-    pnpm add @subscriptions/client @solana/kit @solana/kit-plugin-rpc @solana/kit-plugin-signer @solana-program/token
+    pnpm add @solana/subscriptions @solana/kit @solana/kit-plugin-rpc @solana/kit-plugin-signer @solana-program/token
     ```
   </Tab>
 
   <Tab value="Rust">
     ```toml
     [dependencies]
-    subscriptions-client = { path = "clients/rust" }
+    subscriptions = "^0.1"
     solana-instruction = "^2"
     solana-address = { version = "^2", features = ["curve25519"] }
     ```
@@ -36,7 +36,7 @@ The merchant owns the plan. The plan PDA is derived from the merchant address an
     import { address, createClient } from '@solana/kit';
     import { solanaLocalRpc } from '@solana/kit-plugin-rpc';
     import { signer } from '@solana/kit-plugin-signer';
-    import { findPlanPda, subscriptionsProgram } from '@subscriptions/client';
+    import { findPlanPda, subscriptionsProgram } from '@solana/subscriptions';
 
     const merchantClient = createClient()
       .use(signer(merchantSigner))
@@ -74,7 +74,7 @@ The merchant owns the plan. The plan PDA is derived from the merchant address an
   <Tab value="Rust">
     ```rust
     use solana_address::{address, Address};
-    use subscriptions_client::{generated::{instructions::*, types::*}, SUBSCRIPTIONS_ID};
+    use subscriptions::{generated::{instructions::*, types::*}, SUBSCRIPTIONS_ID};
 
     const TOKEN_PROGRAM_ID: Address = address!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 
@@ -127,7 +127,7 @@ The merchant can update mutable plan fields after creation. Existing subscribers
 <Tabs items={["TypeScript", "Rust"]}>
   <Tab value="TypeScript">
     ```ts
-    import { PlanStatus } from '@subscriptions/client';
+    import { PlanStatus } from '@solana/subscriptions';
 
     const updatedMetadataUri = 'https://example.com/updated-plan.json';
     const updatedPullers = [address('NEW_PULLER_WALLET_ADDRESS_HERE')];
@@ -185,7 +185,7 @@ The subscriber accepts the current plan terms. The subscription PDA is derived f
       findSubscriptionAuthorityPda,
       findSubscriptionDelegationPda,
       subscriptionsProgram,
-    } from '@subscriptions/client';
+    } from '@solana/subscriptions';
 
     const subscriberClient = createClient()
       .use(signer(subscriberSigner))
@@ -235,7 +235,7 @@ The subscriber accepts the current plan terms. The subscription PDA is derived f
 
   <Tab value="Rust">
     ```rust
-    use subscriptions_client::{accounts::Plan, generated::{instructions::*, types::*}};
+    use subscriptions::{accounts::Plan, generated::{instructions::*, types::*}};
 
     const SYSTEM_PROGRAM_ID: Address = address!("11111111111111111111111111111111");
 
@@ -314,7 +314,7 @@ The merchant or a whitelisted puller signs collection. When the plan uses a dest
 
   <Tab value="Rust">
     ```rust
-    use subscriptions_client::{TransferData, TransferSubscriptionBuilder};
+    use subscriptions::{TransferData, TransferSubscriptionBuilder};
 
     let merchant_or_puller: Address = merchant;
     let receiver_ata: Address = merchant_token_account;
@@ -362,7 +362,7 @@ Cancelling marks the subscription as ending. Revoking closes the subscription PD
   <Tab value="Rust">
     ```rust
     use solana_instruction::AccountMeta;
-    use subscriptions_client::generated::instructions::*;
+    use subscriptions::generated::instructions::*;
 
     let cancel_ix = CancelSubscriptionBuilder::new()
         .subscriber(subscriber)

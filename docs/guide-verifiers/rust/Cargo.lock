@@ -2786,7 +2786,7 @@ dependencies = [
  "solana-sdk",
  "spl-associated-token-account",
  "spl-token",
- "subscriptions-client",
+ "subscriptions",
 ]
 
 [[package]]
@@ -5665,8 +5665,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
-name = "subscriptions-client"
+name = "subscriptions"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4174a765f0d12aa42001b125cbcb0e615e137ff999322f9391ea58a295b38275"
 dependencies = [
  "borsh 1.6.1",
  "num-derive",

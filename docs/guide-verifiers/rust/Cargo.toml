@@ -14,4 +14,4 @@ solana-client = "^2"
 solana-sdk = "^2"
 spl-associated-token-account = "7.0.0"
 spl-token = "^8"
-subscriptions-client = { path = "../../../clients/rust" }
+subscriptions = "^0.1"

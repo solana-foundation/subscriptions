@@ -20,7 +20,7 @@ The user's token account must already exist. Initialization creates the Subscrip
       fetchMaybeSubscriptionAuthority,
       findSubscriptionAuthorityPda,
       subscriptionsProgram,
-    } from '@subscriptions/client';
+    } from '@solana/subscriptions';
 
     const client = createClient()
       .use(signer(userSigner))
@@ -59,7 +59,7 @@ The user's token account must already exist. Initialization creates the Subscrip
   <Tab value="Rust">
     ```rust
     use solana_address::{address, Address};
-    use subscriptions_client::{generated::instructions::*, SUBSCRIPTIONS_ID};
+    use subscriptions::{generated::instructions::*, SUBSCRIPTIONS_ID};
 
     const SYSTEM_PROGRAM_ID: Address = address!("11111111111111111111111111111111");
     const TOKEN_PROGRAM_ID: Address = address!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");

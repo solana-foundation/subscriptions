@@ -10,7 +10,7 @@ use solana_sdk::{
     system_instruction,
     transaction::Transaction,
 };
-use subscriptions_client::{
+use subscriptions::{
     accounts::{FixedDelegation, Plan, RecurringDelegation, SubscriptionDelegation},
     generated::{instructions::*, types::*},
     SUBSCRIPTIONS_ID,

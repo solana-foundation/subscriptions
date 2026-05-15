@@ -20,7 +20,7 @@ import {
     findSubscriptionDelegationPda,
     PlanStatus,
     subscriptionsProgram,
-} from '@subscriptions/client';
+} from '@solana/subscriptions';
 
 const RPC_URL = process.env.GUIDE_DEVNET_RPC_URL ?? 'https://api.devnet.solana.com';
 const KEYPAIR_PATH = process.env.GUIDE_DEVNET_KEYPAIR ?? path.join(os.homedir(), '.config', 'solana', 'id.json');
