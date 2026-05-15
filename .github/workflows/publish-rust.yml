@@ -94,9 +94,22 @@ jobs:
       - name: Get current version
         id: version
         run: |
-          VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+          VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "subscriptions") | .version')
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not find subscriptions crate version"
+            exit 1
+          fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Publishing subscriptions v$VERSION"
+
+      - name: Check crates.io version availability
+        if: ${{ inputs.publish-to-crates }}
+        run: |
+          REGISTRY_CHECK_DIR="${RUNNER_TEMP:-/tmp}"
+          if (cd "$REGISTRY_CHECK_DIR" && cargo info "subscriptions@${{ steps.version.outputs.version }}" >/dev/null 2>&1); then
+            echo "::error::subscriptions v${{ steps.version.outputs.version }} already exists on crates.io. Bump clients/rust/Cargo.toml before publishing."
+            exit 1
+          fi
 
       - name: Check if prerelease
         id: prerelease
