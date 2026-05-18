@@ -29,6 +29,6 @@ spl-associated-token-account = "7.0.0"
 spl-token-2022 = "^8"
 spl-token = "^8"
 serde_json = { workspace = true }
-rstest = "0.24"
+rstest = "0.26"
 tabled = "0.20"
 ctor = "0.2"
