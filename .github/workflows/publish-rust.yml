@@ -73,7 +73,7 @@ jobs:
           node-version-file: '.nvmrc'
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6.0.7
 
       - name: Install dependencies
         working-directory: .
@@ -145,7 +145,7 @@ jobs:
 
       - name: Create GitHub Release
         if: ${{ inputs.create-github-release }}
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
