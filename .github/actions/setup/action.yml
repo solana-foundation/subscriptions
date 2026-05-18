@@ -23,9 +23,9 @@ inputs:
     required: false
     default: 'true'
   solana-version:
-    description: "Solana CLI version to install (e.g., 'stable', 'v1.18.23')"
+    description: "Solana CLI version to install (e.g., '4.0.0')"
     required: false
-    default: 'stable'
+    default: '4.0.0'
 
 runs:
   using: 'composite'
@@ -45,6 +45,17 @@ runs:
         save-if: ${{ inputs.save-rust-cache }}
         cache-on-failure: true
 
+    - name: Resolve Solana release
+      if: inputs.install-solana == 'true'
+      id: solana-release
+      shell: bash
+      run: |
+        version='${{ inputs.solana-version }}'
+        if [[ "$version" =~ ^[0-9] ]]; then
+          version="v$version"
+        fi
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+
     - name: Cache Solana CLI
       if: inputs.install-solana == 'true'
       id: solana-cache
@@ -59,7 +70,7 @@ runs:
       if: inputs.install-solana == 'true' && steps.solana-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        sh -c "$(curl -sSfL https://release.anza.xyz/${{ inputs.solana-version }}/install)"
+        curl -sSfL "https://release.anza.xyz/${{ steps.solana-release.outputs.version }}/install" | sh
 
     - name: Add Solana to PATH
       if: inputs.install-solana == 'true'

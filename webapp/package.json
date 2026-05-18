@@ -20,7 +20,7 @@
     "@solana/connector": "^0.2.4",
     "@solana/design-system": "^1.0.1",
     "@solana/kit": "^6.8.0",
-    "@solana/subscriptions": "file:../clients/typescript",
+    "@solana/subscriptions": "workspace:*",
     "@tailwindcss/postcss": "^4.1.18",
     "@tanstack/react-query": "^5.90.20",
     "class-variance-authority": "^0.7.1",
@@ -38,7 +38,7 @@
     "tw-animate-css": "^1.3.6"
   },
   "devDependencies": {
-    "@types/node": "^24.10.1",
+    "@types/node": "^25.6.2",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
