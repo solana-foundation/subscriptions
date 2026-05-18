@@ -28,7 +28,7 @@ pinocchio = { version = "0.10.2", features = ["cpi", "copy"] }
 pinocchio-associated-token-account = "0.3.0"
 pinocchio-system = "0.5.0"
 pinocchio-token = "0.5.0"
-pinocchio-token-2022 = "0.2.0"
+pinocchio-token-2022 = "0.3.1"
 serde_json = "1"
 solana-address = { version = "2", features = ["curve25519"] }
 solana-security-txt = "1.1.3"
