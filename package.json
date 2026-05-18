@@ -14,7 +14,7 @@
   "devDependencies": {
     "@codama/nodes-from-anchor": "^1.4.1",
     "@codama/renderers-js": "^2.2.0",
-    "@codama/renderers-rust": "^1.2.9",
+    "@codama/renderers-rust": "^3.1.0",
     "@eslint/js": "^9.39.2",
     "@solana/eslint-config-solana": "6.0.0",
     "@solana/prettier-config-solana": "^0.0.6",
