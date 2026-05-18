@@ -12,7 +12,7 @@ include = ["Cargo.toml", "../../README.md", "src/**/*.rs"]
 workspace = true
 
 [dependencies]
-borsh = { version = "1.0", features = ["derive"] }
+borsh = { version = "1.6", features = ["derive"] }
 thiserror = "1.0"
 num-derive = "0.4"
 num-traits = "0.2"
@@ -25,7 +25,7 @@ solana-cpi = "^2"
 
 # Serde support
 serde = { version = "1.0", features = ["derive"], optional = true }
-serde_with = { version = "3.0", optional = true }
+serde_with = { version = "3.20", optional = true }
 
 [features]
 default = []
