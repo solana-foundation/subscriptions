@@ -55,13 +55,13 @@ impl UpdatePlanData {
 /// Validated accounts for the [`UpdatePlan`](crate::SubscriptionsInstruction::UpdatePlan) instruction.
 pub struct UpdatePlanAccounts<'a> {
     pub owner: &'a AccountView,
-    pub plan_pda: &'a AccountView,
+    pub plan_pda: &'a mut AccountView,
 }
 
-impl<'a> TryFrom<&'a [AccountView]> for UpdatePlanAccounts<'a> {
+impl<'a> TryFrom<&'a mut [AccountView]> for UpdatePlanAccounts<'a> {
     type Error = ProgramError;
 
-    fn try_from(accounts: &'a [AccountView]) -> Result<Self, Self::Error> {
+    fn try_from(accounts: &'a mut [AccountView]) -> Result<Self, Self::Error> {
         let [owner, plan_pda] = accounts else {
             return Err(SubscriptionsError::NotEnoughAccountKeys.into());
         };
@@ -80,7 +80,7 @@ pub const DISCRIMINATOR: &u8 = &8;
 /// Updates the mutable fields of an existing [`Plan`].
 ///
 /// Only the plan owner may call this. Plans in `Sunset` status are immutable.
-pub fn process(accounts: &[AccountView], data: &UpdatePlanData) -> ProgramResult {
+pub fn process(accounts: &mut [AccountView], data: &UpdatePlanData) -> ProgramResult {
     let accounts = UpdatePlanAccounts::try_from(accounts)?;
     let account_data = &mut accounts.plan_pda.try_borrow_mut()?;
     let plan = Plan::load_mut(account_data)?;

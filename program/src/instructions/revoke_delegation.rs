@@ -74,7 +74,8 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
     let accounts = RevokeDelegationAccounts::try_from(accounts)?;
 
     let destination = {
-        let mut data = accounts.delegation_account.try_borrow_mut()?;
+        let mut delegation_account = *accounts.delegation_account;
+        let mut data = delegation_account.try_borrow_mut()?;
 
         if data.len() < Header::LEN {
             return Err(SubscriptionsError::InvalidHeaderData.into());
@@ -82,7 +83,7 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
 
         let kind = AccountDiscriminator::try_from(data[DISCRIMINATOR_OFFSET])?;
 
-        let receiver = match kind {
+        match kind {
             AccountDiscriminator::SubscriptionDelegation => {
                 check_and_update_version(&mut data)?;
                 let subscription = SubscriptionDelegation::load_with_min_size(&data)?;
@@ -127,7 +128,7 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
                     }
                 }
 
-                receiver
+                resolve_destination(&data, accounts.authority, receiver)?
             }
             AccountDiscriminator::FixedDelegation | AccountDiscriminator::RecurringDelegation => {
                 let is_sponsor = check_is_sponsor(&data, accounts.authority)?;
@@ -144,12 +145,10 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
                     }
                 }
 
-                accounts.rem.first()
+                resolve_destination(&data, accounts.authority, accounts.rem.first())?
             }
             _ => return Err(SubscriptionsError::InvalidAccountDiscriminator.into()),
-        };
-
-        resolve_destination(&data, accounts.authority, receiver)?
+        }
     };
 
     ProgramAccount::close(accounts.delegation_account, destination)

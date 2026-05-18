@@ -449,7 +449,7 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
         if (account && phase === 'wallet') {
             log('success', `Wallet connected: ${account}`);
             markStepDone('connect-wallet', `Connected: ${account.slice(0, 8)}...`);
-            setPhase('program-choice');
+            queueMicrotask(() => setPhase('program-choice'));
         }
     }, [account, phase, markStepDone, log]);
 

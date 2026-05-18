@@ -9,7 +9,11 @@ use crate::instructions::{
 
 entrypoint!(process_instruction);
 
-pub fn process_instruction(program_id: &Address, accounts: &[AccountView], instruction_data: &[u8]) -> ProgramResult {
+pub fn process_instruction(
+    program_id: &Address,
+    accounts: &mut [AccountView],
+    instruction_data: &[u8],
+) -> ProgramResult {
     let instruction = SubscriptionsInstruction::from_bytes(instruction_data)?;
 
     match instruction {

@@ -20,8 +20,8 @@ use solana_instruction::{AccountMeta, Instruction};
 use solana_keypair::Keypair;
 use solana_pubkey::Pubkey;
 use solana_signer::Signer;
-use spl_associated_token_account::get_associated_token_address_with_program_id;
-use spl_token::instruction::TokenInstruction::Approve;
+use spl_associated_token_account_interface::address::get_associated_token_address_with_program_id;
+use spl_token_interface::instruction::TokenInstruction::Approve;
 
 fn setup_fixed_delegation(
     amount: u64,

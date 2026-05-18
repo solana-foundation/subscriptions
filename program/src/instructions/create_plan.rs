@@ -106,7 +106,7 @@ pub const DISCRIMINATOR: &u8 = &7;
 ///
 /// Validates the plan data, creates the plan account via CPI, and initializes
 /// its fields including owner, status, and the embedded [`PlanData`].
-pub fn process(accounts: &[AccountView], data: &PlanData) -> ProgramResult {
+pub fn process(accounts: &mut [AccountView], data: &PlanData) -> ProgramResult {
     let current_ts = Clock::get()?.unix_timestamp;
     data.validate(current_ts)?;
 

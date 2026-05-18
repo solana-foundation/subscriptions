@@ -84,7 +84,7 @@ export function useSubscriptionAuthorityStatus(tokenMint: string | null) {
                 approved,
                 data:
                     exists && subscriptionAuthority && 'data' in subscriptionAuthority
-                        ? (subscriptionAuthority.data as unknown as SubscriptionAuthorityData)
+                        ? subscriptionAuthority.data
                         : null,
                 initialized: exists,
                 pda: pda,

@@ -23,7 +23,7 @@ pub const DISCRIMINATOR: &u8 = &4;
 /// Validates authorization and remaining allowance, decrements the delegation's
 /// `amount`, performs the SPL token transfer via the [`SubscriptionAuthority`](crate::SubscriptionAuthority)
 /// PDA, and emits a [`FixedTransferEvent`].
-pub fn process(accounts: &[AccountView], transfer: &TransferData) -> ProgramResult {
+pub fn process(accounts: &mut [AccountView], transfer: &TransferData) -> ProgramResult {
     let accounts_struct = DelegationTransferAccounts::try_from(accounts)?;
 
     let remaining_amount: u64;

@@ -64,7 +64,7 @@ impl SubscribeData {
 /// [`SubscriptionAuthority`] matches the plan's mint, creates
 /// the subscription account, and emits a
 /// [`SubscriptionCreatedEvent`].
-pub fn process(accounts: &[AccountView], data: &SubscribeData) -> ProgramResult {
+pub fn process(accounts: &mut [AccountView], data: &SubscribeData) -> ProgramResult {
     let accounts_struct = SubscribeAccounts::try_from(accounts)?;
     let current_ts = Clock::get()?.unix_timestamp;
 
@@ -188,7 +188,7 @@ pub struct SubscribeAccounts<'a> {
     pub subscriber: &'a AccountView,
     pub merchant: &'a AccountView,
     pub plan_pda: &'a AccountView,
-    pub subscription_pda: &'a AccountView,
+    pub subscription_pda: &'a mut AccountView,
     pub subscription_authority_pda: &'a AccountView,
     pub system_program: &'a AccountView,
     pub event_authority: &'a AccountView,
@@ -197,10 +197,10 @@ pub struct SubscribeAccounts<'a> {
     pub payer: &'a AccountView,
 }
 
-impl<'a> TryFrom<&'a [AccountView]> for SubscribeAccounts<'a> {
+impl<'a> TryFrom<&'a mut [AccountView]> for SubscribeAccounts<'a> {
     type Error = ProgramError;
 
-    fn try_from(accounts: &'a [AccountView]) -> Result<Self, Self::Error> {
+    fn try_from(accounts: &'a mut [AccountView]) -> Result<Self, Self::Error> {
         let [subscriber, merchant, plan_pda, subscription_pda, subscription_authority_pda, system_program, event_authority, self_program, rem @ ..] =
             accounts
         else {

@@ -3,7 +3,7 @@ use solana_account::Account;
 use solana_instruction::{AccountMeta, Instruction};
 use solana_pubkey::Pubkey;
 use solana_signer::Signer;
-use spl_token_2022::extension::ExtensionType;
+use spl_token_2022_interface::extension::ExtensionType;
 
 use crate::{
     instructions::initialize_subscription_authority,
@@ -42,7 +42,7 @@ fn initialize_subscription_authority() {
     assert!(subscription_authority.init_id >= 0);
 
     // Verify delegation
-    let ata_account = fetch_account::<spl_token_2022::state::Account>(litesvm, &user_ata);
+    let ata_account = fetch_account::<spl_token_2022_interface::state::Account>(litesvm, &user_ata);
     assert!(ata_account.delegate.is_some());
     assert_eq!(ata_account.delegate.unwrap(), subscription_authority_pda);
     assert_eq!(ata_account.delegated_amount, u64::MAX);
@@ -100,7 +100,7 @@ fn initialize_subscription_authority_with_sponsor() {
     assert!(sponsor_balance_after < sponsor_balance_before);
 
     // Verify Approve still went through with user as the ATA authority.
-    let ata_account = fetch_account::<spl_token_2022::state::Account>(litesvm, &user_ata);
+    let ata_account = fetch_account::<spl_token_2022_interface::state::Account>(litesvm, &user_ata);
     assert_eq!(ata_account.delegate.unwrap(), subscription_authority_pda);
     assert_eq!(ata_account.delegated_amount, u64::MAX);
 }
@@ -169,7 +169,7 @@ fn initialize_subscription_authority_token_2022(
             assert!(subscription_authority.init_id >= 0);
 
             // Verify delegation
-            let ata_account = fetch_account::<spl_token_2022::state::Account>(litesvm, &user_ata);
+            let ata_account = fetch_account::<spl_token_2022_interface::state::Account>(litesvm, &user_ata);
             assert!(ata_account.delegate.is_some());
             assert_eq!(ata_account.delegate.unwrap(), subscription_authority_pda);
             assert_eq!(ata_account.delegated_amount, u64::MAX);
@@ -243,7 +243,7 @@ fn initialize_subscription_authority_with_prefunded_pda() {
     assert!(subscription_authority.init_id >= 0);
 
     // Verify delegation
-    let ata_account = fetch_account::<spl_token_2022::state::Account>(litesvm, &user_ata);
+    let ata_account = fetch_account::<spl_token_2022_interface::state::Account>(litesvm, &user_ata);
     assert!(ata_account.delegate.is_some());
     assert_eq!(ata_account.delegate.unwrap(), subscription_authority_pda);
     assert_eq!(ata_account.delegated_amount, u64::MAX);
@@ -282,7 +282,7 @@ fn initialize_subscription_authority_with_overfunded_pda() {
     assert_eq!(subscription_authority.token_mint.to_bytes(), mint.to_bytes());
     assert_eq!(subscription_authority.bump, bump);
 
-    let ata_account = fetch_account::<spl_token_2022::state::Account>(litesvm, &user_ata);
+    let ata_account = fetch_account::<spl_token_2022_interface::state::Account>(litesvm, &user_ata);
     assert!(ata_account.delegate.is_some());
     assert_eq!(ata_account.delegate.unwrap(), subscription_authority_pda);
     assert_eq!(ata_account.delegated_amount, u64::MAX);

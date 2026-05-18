@@ -17,11 +17,11 @@ thiserror = "1.0"
 num-derive = "0.4"
 num-traits = "0.2"
 
-solana-pubkey = { version = "^2", features = ["borsh", "curve25519"] }
-solana-instruction = { version = "^2", features = ["borsh"] }
-solana-account-info = "^2"
+solana-pubkey = { version = "^4", features = ["borsh", "curve25519"] }
+solana-instruction = { version = "^3", features = ["borsh"] }
+solana-account-info = "^3"
 solana-program-error = "^3"
-solana-cpi = "^2"
+solana-cpi = "^3"
 
 # Serde support
 serde = { version = "1.0", features = ["derive"], optional = true }

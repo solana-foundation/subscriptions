@@ -13,7 +13,7 @@ pub struct CreateDelegationAccounts<'a> {
     /// The existing [`SubscriptionAuthority`] PDA for this user/mint pair.
     pub subscription_authority: &'a AccountView,
     /// The delegation PDA to be created (must be writable).
-    pub delegation_account: &'a AccountView,
+    pub delegation_account: &'a mut AccountView,
     /// The party that will receive transfer rights.
     pub delegatee: &'a AccountView,
     /// System program (for CPI account creation).
@@ -22,10 +22,10 @@ pub struct CreateDelegationAccounts<'a> {
     pub payer: &'a AccountView,
 }
 
-impl<'a> TryFrom<&'a [AccountView]> for CreateDelegationAccounts<'a> {
+impl<'a> TryFrom<&'a mut [AccountView]> for CreateDelegationAccounts<'a> {
     type Error = ProgramError;
 
-    fn try_from(accounts: &'a [AccountView]) -> Result<Self, Self::Error> {
+    fn try_from(accounts: &'a mut [AccountView]) -> Result<Self, Self::Error> {
         let [delegator, subscription_authority, delegation_account, delegatee, system_program, rem @ ..] = accounts
         else {
             return Err(SubscriptionsError::NotEnoughAccountKeys.into());

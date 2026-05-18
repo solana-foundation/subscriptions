@@ -21,8 +21,8 @@ use solana_keypair::Keypair;
 use solana_pubkey::Pubkey;
 use solana_signer::Signer;
 use solana_transaction_error::TransactionError::InstructionError;
-use spl_associated_token_account::get_associated_token_address_with_program_id;
-use spl_token::instruction::TokenInstruction::{Approve, Revoke};
+use spl_associated_token_account_interface::address::get_associated_token_address_with_program_id;
+use spl_token_interface::instruction::TokenInstruction::{Approve, Revoke};
 
 fn setup_recurring_delegation(
     amount_per_period: u64,
@@ -568,7 +568,9 @@ fn test_recurring_transfer_token_revoke() {
         result.unwrap_err().err,
         InstructionError(
             0,
-            solana_instruction::error::InstructionError::Custom(spl_token::error::TokenError::OwnerMismatch as u32),
+            solana_instruction::error::InstructionError::Custom(
+                spl_token_interface::error::TokenError::OwnerMismatch as u32
+            ),
         )
     );
 
@@ -595,7 +597,9 @@ fn test_recurring_transfer_token_revoke() {
         result.unwrap_err().err,
         InstructionError(
             0,
-            solana_instruction::error::InstructionError::Custom(spl_token::error::TokenError::InsufficientFunds as u32),
+            solana_instruction::error::InstructionError::Custom(
+                spl_token_interface::error::TokenError::InsufficientFunds as u32,
+            ),
         )
     );
 

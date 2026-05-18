@@ -15,19 +15,22 @@ pinocchio-associated-token-account = { workspace = true }
 pinocchio-system = { workspace = true }
 pinocchio-token = { workspace = true }
 pinocchio-token-2022 = { workspace = true }
-litesvm = "^0.7"
-litesvm-token = { version = "^0.7", features = ["token-2022"] }
-solana-account = "^2"
-solana-instruction = "^2"
-solana-keypair = "^2"
-solana-message = "^2"
-solana-pubkey = "^2"
-solana-signer = "^2"
-solana-transaction = "^2"
-solana-transaction-error = "^2"
-spl-associated-token-account = "7.0.0"
-spl-token-2022 = "^8"
-spl-token = "^8"
+litesvm = "^0.12"
+litesvm-token = { version = "^0.12", features = ["token-2022"] }
+solana-account = "~3.4"
+solana-clock = "^3"
+solana-instruction = "^3"
+solana-keypair = "=3.1.0"
+solana-message = "^3.1"
+solana-native-token = "^3"
+solana-program-pack = "^3"
+solana-pubkey = "^4"
+solana-signer = "^3"
+solana-transaction = "^3"
+solana-transaction-error = "^3.2"
+spl-associated-token-account-interface = "2.0.0"
+spl-token-2022-interface = "2.0.0"
+spl-token-interface = "2.0.0"
 serde_json = { workspace = true }
 rstest = "0.26"
 tabled = "0.20"
