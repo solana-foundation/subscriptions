@@ -18,7 +18,7 @@ num-derive = "0.4"
 num-traits = "0.2"
 
 solana-pubkey = { version = "^2", features = ["borsh", "curve25519"] }
-solana-instruction = { version = "^2", features = ["borsh"] }
+solana-instruction = { version = "^3", features = ["borsh"] }
 solana-account-info = "^2"
 solana-program-error = "^3"
 solana-cpi = "^2"
