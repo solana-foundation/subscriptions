@@ -30,5 +30,5 @@ spl-token-2022 = "^8"
 spl-token = "^8"
 serde_json = { workspace = true }
 rstest = "0.24"
-tabled = "0.17"
+tabled = "0.20"
 ctor = "0.2"
