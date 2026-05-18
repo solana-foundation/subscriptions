@@ -12,6 +12,9 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  SOLANA_VERSION: '4.0.0'
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -25,7 +28,7 @@ jobs:
         with:
           rust-cache-key: 'build'
           save-rust-cache: 'true'
-          solana-version: 'stable'
+          solana-version: ${{ env.SOLANA_VERSION }}
 
       - name: Build program and clients
         run: just build

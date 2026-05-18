@@ -23,9 +23,9 @@ inputs:
     required: false
     default: 'true'
   solana-version:
-    description: "Solana CLI version to install (e.g., 'stable', 'v1.18.23')"
+    description: "Solana CLI version to install (e.g., '4.0.0')"
     required: false
-    default: 'stable'
+    default: '4.0.0'
 
 runs:
   using: 'composite'

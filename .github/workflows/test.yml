@@ -13,6 +13,9 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  SOLANA_VERSION: '4.0.0'
+
 jobs:
   unit-test:
     runs-on: ubuntu-latest
@@ -42,7 +45,7 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           rust-cache-key: 'rust-integration-test'
-          solana-version: 'stable'
+          solana-version: ${{ env.SOLANA_VERSION }}
 
       - name: Run Rust integration tests
         run: just integration-test
@@ -60,7 +63,7 @@ jobs:
           enable-rust-cache: 'false'
           install-surfpool: 'true'
           rust-cache-key: 'typescript-integration-test'
-          solana-version: 'stable'
+          solana-version: ${{ env.SOLANA_VERSION }}
 
       - name: Run TypeScript integration tests
         run: just test-client

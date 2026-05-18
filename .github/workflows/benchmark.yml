@@ -12,6 +12,9 @@ permissions:
   issues: write
   pull-requests: write
 
+env:
+  SOLANA_VERSION: '4.0.0'
+
 jobs:
   compute-units:
     runs-on: ubuntu-latest
@@ -24,7 +27,7 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           rust-cache-key: 'benchmark'
-          solana-version: 'stable'
+          solana-version: ${{ env.SOLANA_VERSION }}
 
       - name: Run benchmark
         run: just test-and-benchmark
