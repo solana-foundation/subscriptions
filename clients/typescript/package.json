@@ -40,9 +40,9 @@
     },
     "dependencies": {
         "@solana-program/token": "^0.13.0",
-        "@solana/kit-plugin-rpc": "^0.10.0",
+        "@solana/kit-plugin-rpc": "^0.11.1",
         "@solana/kit-plugin-signer": "^0.10.0",
-        "@solana/program-client-core": "^6.4.0"
+        "@solana/program-client-core": "^6.9.0"
     },
     "peerDependencies": {
         "@solana/kit": "^6.4.0"
@@ -50,14 +50,14 @@
     "devDependencies": {
         "@solana-program/system": "^0.12.0",
         "@solana-program/token-2022": "^0.9.0",
-        "@solana/kit": "^6.8.0",
+        "@solana/kit": "^6.9.0",
         "@solana/web3.js": "^1.98.4",
         "@sqds/multisig": "^2.1.4",
         "@swig-wallet/kit": "^1.5.0",
-        "@types/node": "^25.6.2",
+        "@types/node": "^25.7.0",
         "tsup": "^8.3.0",
         "tweetnacl": "^1.0.3",
         "typescript": "^5.7.0",
-        "vitest": "^4.1.5"
+        "vitest": "^4.1.6"
     }
 }
