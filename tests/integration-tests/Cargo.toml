@@ -17,7 +17,7 @@ pinocchio-token = { workspace = true }
 pinocchio-token-2022 = { workspace = true }
 litesvm = "^0.12"
 litesvm-token = { version = "^0.12", features = ["token-2022"] }
-solana-account = "~3.4"
+solana-account = "~4.3"
 solana-clock = "^3"
 solana-instruction = "^3"
 solana-keypair = "=3.1.0"
