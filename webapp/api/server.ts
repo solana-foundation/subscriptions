@@ -21,7 +21,7 @@ let deployingProgram = false;
 const MIN_SOL_AIRDROP = 0.1;
 const MAX_SOL_AIRDROP = 10;
 
-const SO_PATH = join(__dirname, '../../target/deploy/subscriptions.so');
+const SO_PATH = join(__dirname, '../../target/deploy/subscriptions_program.so');
 const KEYPAIR_PATH = join(__dirname, '../../keys/subscriptions-keypair.json');
 
 const PROGRAM_ADDRESS = 'De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44';

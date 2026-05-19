@@ -53,7 +53,7 @@ solana-verify build
 ### 2. Hash the local build
 
 ```bash
-solana-verify get-executable-hash target/deploy/subscriptions.so
+solana-verify get-executable-hash target/deploy/subscriptions_program.so
 ```
 
 ### 3. Hash the on-chain buffer
