@@ -1687,7 +1687,7 @@ dependencies = [
  "solana-last-restart-slot",
  "solana-loader-v3-interface",
  "solana-loader-v4-interface",
- "solana-message",
+ "solana-message 3.1.0",
  "solana-native-token",
  "solana-nonce",
  "solana-nonce-account",
@@ -3186,6 +3186,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "solana-message"
+version = "4.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a634d1db65a393d4e87ec49ef97c8dfb12201e2ba9e5faf87ff34e632f29e509"
+dependencies = [
+ "lazy_static",
+ "solana-address 2.6.0",
+ "solana-hash 4.3.0",
+ "solana-instruction",
+ "solana-sanitize",
+ "solana-sdk-ids",
+ "solana-transaction-error",
+]
+
+[[package]]
 name = "solana-msg"
 version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3650,7 +3665,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be3250a278a769ba59059e13d0f16c2aba0ca1de7595fb0e02556091751560c8"
 dependencies = [
  "solana-hash 3.1.0",
- "solana-message",
+ "solana-message 3.1.0",
  "solana-pubkey 3.0.0",
  "solana-sdk-ids",
  "solana-signature",
@@ -3777,7 +3792,7 @@ dependencies = [
  "solana-hash 4.3.0",
  "solana-instruction",
  "solana-instruction-error",
- "solana-message",
+ "solana-message 3.1.0",
  "solana-sanitize",
  "solana-sdk-ids",
  "solana-short-vec",
@@ -4318,7 +4333,7 @@ dependencies = [
  "solana-clock",
  "solana-instruction",
  "solana-keypair",
- "solana-message",
+ "solana-message 4.1.1",
  "solana-native-token",
  "solana-program-pack",
  "solana-pubkey 4.2.0",
