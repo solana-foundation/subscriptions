@@ -18,6 +18,10 @@ inputs:
     description: 'Install surfpool (only needed for integration tests)'
     required: false
     default: 'false'
+  surfpool-version:
+    description: "Surfpool CLI version to install (e.g., '1.2.1')"
+    required: false
+    default: '1.2.1'
   install-solana:
     description: 'Install Solana CLI'
     required: false
@@ -119,15 +123,33 @@ runs:
       shell: bash
       run: pnpm install --frozen-lockfile
 
+    - name: Resolve Surfpool release
+      if: inputs.install-surfpool == 'true'
+      id: surfpool-release
+      shell: bash
+      run: |
+        version='${{ inputs.surfpool-version }}'
+        if [[ "$version" =~ ^[0-9] ]]; then
+          version="v$version"
+        fi
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+
     - name: Cache surfpool
       if: inputs.install-surfpool == 'true'
       id: surfpool-cache
       uses: actions/cache@v4
       with:
         path: ~/.local/bin/surfpool
-        key: ${{ runner.os }}-surfpool-v1
+        key: ${{ runner.os }}-surfpool-${{ steps.surfpool-release.outputs.version }}
 
     - name: Install surfpool
       if: inputs.install-surfpool == 'true' && steps.surfpool-cache.outputs.cache-hit != 'true'
       shell: bash
+      env:
+        VERSION: ${{ steps.surfpool-release.outputs.version }}
       run: curl -sL https://run.surfpool.run/ | bash
+
+    - name: Verify surfpool
+      if: inputs.install-surfpool == 'true'
+      shell: bash
+      run: surfpool --version

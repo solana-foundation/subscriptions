@@ -3,7 +3,6 @@ import type { Address, Base58EncodedBytes, GetProgramAccountsApi, Rpc } from '@s
 import { PLAN_OWNER_OFFSET, PLAN_SIZE } from '../constants.js';
 import { decodePlan, SUBSCRIPTIONS_PROGRAM_ADDRESS } from '../generated/index.js';
 import type { PlanWithAddress } from '../types/plan.js';
-import type { RawProgramAccount } from './decode.js';
 import { toEncodedAccount } from './decode.js';
 
 /**
@@ -36,7 +35,7 @@ export async function fetchPlansForOwner(
         .send();
 
     return response.map(account => {
-        const encoded = toEncodedAccount(account as unknown as RawProgramAccount, progAddr);
+        const encoded = toEncodedAccount(account, progAddr);
         const { address, data } = decodePlan(encoded);
         return { address, data };
     });

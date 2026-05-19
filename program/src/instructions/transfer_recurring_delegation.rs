@@ -22,7 +22,7 @@ pub const DISCRIMINATOR: &u8 = &5;
 /// Validates authorization and per-period limits, advances the period if
 /// necessary, performs the SPL token transfer via the [`SubscriptionAuthority`](crate::SubscriptionAuthority)
 /// PDA, and emits a [`RecurringTransferEvent`].
-pub fn process(accounts: &[AccountView], transfer_data: &TransferData) -> ProgramResult {
+pub fn process(accounts: &mut [AccountView], transfer_data: &TransferData) -> ProgramResult {
     let accounts_struct = DelegationTransferAccounts::try_from(accounts)?;
 
     let current_ts = Clock::get()?.unix_timestamp;

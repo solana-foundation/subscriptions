@@ -90,7 +90,7 @@ export function useAirdropSol() {
             if (isDevnet) {
                 const lamports = BigInt(Math.round(amount * LAMPORTS_PER_SOL));
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                await rpc.requestAirdrop(account as Address, lamports as any).send();
+                await rpc.requestAirdrop(account, lamports as any).send();
                 return { message: `Airdropped ${amount} SOL on devnet` };
             }
             return await api.airdrop.sol({ amount, recipient: account });

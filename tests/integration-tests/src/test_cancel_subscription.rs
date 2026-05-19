@@ -64,7 +64,7 @@ fn cancel_subscription_ghost_plan_expires_immediately() {
     let (mut litesvm, alice, merchant, mint, plan_pda, _plan_bump, subscription_pda) = setup_with_subscription();
 
     // Get current time before any clock manipulation
-    let ts_before = litesvm.get_sysvar::<spl_associated_token_account::solana_program::clock::Clock>().unix_timestamp;
+    let ts_before = litesvm.get_sysvar::<solana_clock::Clock>().unix_timestamp;
 
     // Sunset, expire, and delete the plan
     let end_ts = current_ts() + days(2) as i64;
@@ -95,7 +95,7 @@ fn cancel_subscription_ghost_plan_expires_immediately() {
     assert!(expires > ts_before);
     // Verify it's NOT a grace period (which would be period_start + period_length)
     // Ghost plan expires at current_ts, which is much less than period_start + 720h
-    let svm_ts = litesvm.get_sysvar::<spl_associated_token_account::solana_program::clock::Clock>().unix_timestamp;
+    let svm_ts = litesvm.get_sysvar::<solana_clock::Clock>().unix_timestamp;
     assert_eq!(expires, svm_ts);
 }
 
@@ -128,7 +128,7 @@ fn cancel_subscription_caps_at_plan_end_ts() {
         .execute();
     res.assert_ok();
 
-    let svm_ts = litesvm.get_sysvar::<spl_associated_token_account::solana_program::clock::Clock>().unix_timestamp;
+    let svm_ts = litesvm.get_sysvar::<solana_clock::Clock>().unix_timestamp;
     let subscription_pda = CreateSubscription::new(&mut litesvm, plan_pda, alice.pubkey(), mint, svm_ts)
         .terms(PlanTerms { amount: 50_000_000, period_hours: 1, created_at: svm_ts })
         .execute();
@@ -171,7 +171,7 @@ fn cancel_subscription_after_plan_expired_allows_immediate_revoke() {
         .execute();
     res.assert_ok();
 
-    let svm_ts = litesvm.get_sysvar::<spl_associated_token_account::solana_program::clock::Clock>().unix_timestamp;
+    let svm_ts = litesvm.get_sysvar::<solana_clock::Clock>().unix_timestamp;
     let subscription_pda = CreateSubscription::new(&mut litesvm, plan_pda, alice.pubkey(), mint, svm_ts)
         .terms(PlanTerms { amount: 50_000_000, period_hours: 1, created_at: svm_ts })
         .execute();
@@ -182,8 +182,7 @@ fn cancel_subscription_after_plan_expired_allows_immediate_revoke() {
 
     let sub_account = litesvm.get_account(&subscription_pda).unwrap();
     let sub = SubscriptionDelegation::load(&sub_account.data).unwrap();
-    let current_clock =
-        litesvm.get_sysvar::<spl_associated_token_account::solana_program::clock::Clock>().unix_timestamp;
+    let current_clock = litesvm.get_sysvar::<solana_clock::Clock>().unix_timestamp;
     assert!(
         { sub.expires_at_ts } <= current_clock,
         "expires_at_ts ({}) should be <= current time ({}) so subscriber can revoke immediately",

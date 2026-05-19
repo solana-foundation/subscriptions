@@ -49,7 +49,7 @@ export function useCreateToken() {
                 mintKp,
                 rentLamports,
                 mintSize,
-                TOKEN_2022_PROGRAM_ADDRESS as Address,
+                TOKEN_2022_PROGRAM_ADDRESS,
             );
 
             const initMintIx = getInitializeMint2Instruction({
@@ -68,7 +68,7 @@ export function useCreateToken() {
 
             await signAndSendTransaction(tx);
 
-            return { mint: mintKp.address as Address };
+            return { mint: mintKp.address };
         },
         onError: e => toast.onError(e),
         onSuccess: () => {
@@ -85,7 +85,7 @@ export function useCreateToken() {
             const [ata] = await findAssociatedTokenPda({
                 mint,
                 owner,
-                tokenProgram: TOKEN_2022_PROGRAM_ADDRESS as Address,
+                tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
             });
 
             const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
@@ -95,8 +95,8 @@ export function useCreateToken() {
                 mint,
                 owner,
                 payer: signer,
-                systemProgram: SYSTEM_PROGRAM as Address,
-                tokenProgram: TOKEN_2022_PROGRAM_ADDRESS as Address,
+                systemProgram: SYSTEM_PROGRAM,
+                tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
             });
 
             const mintToIx = getMintToInstruction({

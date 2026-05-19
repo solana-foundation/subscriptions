@@ -8,16 +8,16 @@ use crate::{
 /// Validated accounts for the [`CreatePlan`](crate::SubscriptionsInstruction::CreatePlan) instruction.
 pub struct CreatePlanAccounts<'a> {
     pub merchant: &'a AccountView,
-    pub plan_pda: &'a AccountView,
+    pub plan_pda: &'a mut AccountView,
     pub token_mint: &'a AccountView,
     pub system_program: &'a AccountView,
     pub token_program: &'a AccountView,
 }
 
-impl<'a> TryFrom<&'a [AccountView]> for CreatePlanAccounts<'a> {
+impl<'a> TryFrom<&'a mut [AccountView]> for CreatePlanAccounts<'a> {
     type Error = ProgramError;
 
-    fn try_from(accounts: &'a [AccountView]) -> Result<Self, Self::Error> {
+    fn try_from(accounts: &'a mut [AccountView]) -> Result<Self, Self::Error> {
         let [merchant, plan_pda, token_mint, system_program, token_program] = accounts else {
             return Err(SubscriptionsError::NotEnoughAccountKeys.into());
         };

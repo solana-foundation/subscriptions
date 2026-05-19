@@ -47,7 +47,7 @@ pub fn get_token_account_owner(data: &[u8]) -> Result<Address, SubscriptionsErro
 
 /// Validated accounts shared by `TransferFixed` and `TransferRecurring` (identical layouts).
 pub struct DelegationTransferAccounts<'a> {
-    pub delegation_pda: &'a AccountView,
+    pub delegation_pda: &'a mut AccountView,
     pub subscription_authority: &'a AccountView,
     pub delegator_ata: &'a AccountView,
     pub receiver_ata: &'a AccountView,
@@ -57,10 +57,10 @@ pub struct DelegationTransferAccounts<'a> {
     pub self_program: &'a AccountView,
 }
 
-impl<'a> TryFrom<&'a [AccountView]> for DelegationTransferAccounts<'a> {
+impl<'a> TryFrom<&'a mut [AccountView]> for DelegationTransferAccounts<'a> {
     type Error = ProgramError;
 
-    fn try_from(accounts: &'a [AccountView]) -> Result<Self, Self::Error> {
+    fn try_from(accounts: &'a mut [AccountView]) -> Result<Self, Self::Error> {
         let [delegation_pda, subscription_authority, delegator_ata, receiver_ata, token_program, delegatee, event_authority, self_program] =
             accounts
         else {

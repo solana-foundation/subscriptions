@@ -18,7 +18,7 @@ use crate::{
 /// Validated accounts for the [`InitSubscriptionAuthority`](crate::SubscriptionsInstruction::InitSubscriptionAuthority) instruction.
 pub struct InitializeSubscriptionAuthorityAccounts<'a> {
     pub user: &'a AccountView,
-    pub subscription_authority: &'a AccountView,
+    pub subscription_authority: &'a mut AccountView,
     pub token_mint: &'a AccountView,
     pub user_ata: &'a AccountView,
     pub system_program: &'a AccountView,
@@ -27,10 +27,10 @@ pub struct InitializeSubscriptionAuthorityAccounts<'a> {
     pub payer: &'a AccountView,
 }
 
-impl<'a> TryFrom<&'a [AccountView]> for InitializeSubscriptionAuthorityAccounts<'a> {
+impl<'a> TryFrom<&'a mut [AccountView]> for InitializeSubscriptionAuthorityAccounts<'a> {
     type Error = ProgramError;
 
-    fn try_from(accounts: &'a [AccountView]) -> Result<Self, Self::Error> {
+    fn try_from(accounts: &'a mut [AccountView]) -> Result<Self, Self::Error> {
         let [user, subscription_authority, token_mint, user_ata, system_program, token_program, rem @ ..] = accounts
         else {
             return Err(SubscriptionsError::NotEnoughAccountKeys.into());
@@ -60,7 +60,7 @@ pub const DISCRIMINATOR: &u8 = &0;
 ///
 /// If the PDA already exists (e.g., pre-funded by an attacker), the account
 /// is reclaimed idempotently.
-pub fn process(accounts: &[AccountView]) -> ProgramResult {
+pub fn process(accounts: &mut [AccountView]) -> ProgramResult {
     let accounts = InitializeSubscriptionAuthorityAccounts::try_from(accounts)?;
 
     let (expected_pda, bump) = SubscriptionAuthority::find_pda(accounts.user.address(), accounts.token_mint.address());
@@ -127,13 +127,7 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
         }
         .invoke()?;
     } else {
-        ApproveSpl {
-            source: accounts.user_ata,
-            delegate: accounts.subscription_authority,
-            authority: accounts.user,
-            amount: u64::MAX,
-        }
-        .invoke()?;
+        ApproveSpl::new(accounts.user_ata, accounts.subscription_authority, accounts.user, u64::MAX).invoke()?;
     }
 
     Ok(())

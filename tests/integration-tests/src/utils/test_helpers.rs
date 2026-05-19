@@ -3,21 +3,17 @@ use std::vec::Vec;
 
 use litesvm::{types::TransactionResult, LiteSVM};
 use solana_account::Account;
+use solana_clock::Clock;
 use solana_instruction::Instruction;
 use solana_keypair::Keypair;
 use solana_message::Message;
+use solana_native_token::LAMPORTS_PER_SOL;
+use solana_program_pack::{IsInitialized, Pack};
 use solana_pubkey::Pubkey;
 use solana_signer::Signer;
 use solana_transaction::Transaction;
-use spl_associated_token_account::{
-    get_associated_token_address_with_program_id,
-    solana_program::{
-        clock::Clock,
-        native_token::LAMPORTS_PER_SOL,
-        program_pack::{IsInitialized, Pack},
-    },
-};
-use spl_token_2022::{
+use spl_associated_token_account_interface::address::get_associated_token_address_with_program_id;
+use spl_token_2022_interface::{
     extension::{
         confidential_transfer::ConfidentialTransferMint, mint_close_authority::MintCloseAuthority,
         non_transferable::NonTransferable, pausable::PausableConfig, permanent_delegate::PermanentDelegate,
@@ -73,7 +69,7 @@ pub fn move_clock_forward(litesvm: &mut LiteSVM, seconds: u64) {
 }
 
 pub fn get_ata_balance(litesvm: &LiteSVM, ata: &Pubkey) -> u64 {
-    let account = fetch_account::<spl_token_2022::state::Account>(litesvm, ata);
+    let account = fetch_account::<spl_token_2022_interface::state::Account>(litesvm, ata);
     account.amount
 }
 

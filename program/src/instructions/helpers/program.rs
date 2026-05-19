@@ -54,12 +54,13 @@ impl ProgramAccountInit for ProgramAccount {
 
 impl AccountClose for ProgramAccount {
     fn close(account: &AccountView, destination: &AccountView) -> ProgramResult {
+        let mut account = *account;
+        let mut destination = *destination;
         let lamports = account.lamports();
         let destination_lamports = destination.lamports();
         let new_balance =
             destination_lamports.checked_add(lamports).ok_or(crate::SubscriptionsError::ArithmeticOverflow)?;
         destination.set_lamports(new_balance);
-        account.resize(0)?;
         account.close()
     }
 }

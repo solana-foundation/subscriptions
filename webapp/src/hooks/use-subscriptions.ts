@@ -48,7 +48,7 @@ async function fetchMySubscriptions(
     }
 
     return subs.map(s => ({
-        address: s.address as string,
+        address: s.address,
         plan: planMap.get(s.data.header.delegatee) ?? null,
         subscription: s.data,
     }));
@@ -94,7 +94,7 @@ export async function fetchPlanSubscriptions(
                 currentPeriodStartTs: sub.currentPeriodStartTs,
                 delegator: sub.header.delegator,
                 expiresAtTs: sub.expiresAtTs,
-                subscriptionAddress: entry.pubkey as string,
+                subscriptionAddress: entry.pubkey,
                 terms: sub.terms,
             });
         } catch {

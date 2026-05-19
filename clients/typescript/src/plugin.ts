@@ -110,7 +110,7 @@ function withTrailing<I extends Instruction>(
         ...((instruction as Instruction & { accounts?: readonly unknown[] }).accounts ?? []),
         ...trailing,
     ];
-    return { ...instruction, accounts } as I;
+    return { ...instruction, accounts };
 }
 
 function appendPayer<I extends Instruction>(instruction: I, payer: TransactionSigner | undefined): I {
@@ -812,7 +812,7 @@ export function subscriptionsProgram() {
 
             return {
                 ...c,
-                subscriptions: <SubscriptionsPlugin>{
+                subscriptions: {
                     ...c.subscriptions,
                     instructions,
                     queries,

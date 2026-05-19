@@ -57,7 +57,7 @@ pub const DISCRIMINATOR: &u8 = &1;
 ///
 /// Validates the instruction data, creates the delegation account via CPI,
 /// and initializes its header and delegation-specific fields.
-pub fn process(accounts: &[AccountView], call_data: &CreateFixedDelegationData) -> ProgramResult {
+pub fn process(accounts: &mut [AccountView], call_data: &CreateFixedDelegationData) -> ProgramResult {
     call_data.validate(Clock::get()?.unix_timestamp)?;
 
     let accounts = CreateDelegationAccounts::try_from(accounts)?;

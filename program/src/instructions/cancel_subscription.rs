@@ -21,7 +21,7 @@ pub const DISCRIMINATOR: &u8 = &12;
 /// After cancellation the subscription remains valid until `expires_at_ts`,
 /// then it can be closed via [`RevokeDelegation`](crate::instructions::revoke_delegation).
 /// Emits a [`SubscriptionCancelledEvent`].
-pub fn process(accounts: &[AccountView]) -> ProgramResult {
+pub fn process(accounts: &mut [AccountView]) -> ProgramResult {
     let accounts_struct = CancelSubscriptionAccounts::try_from(accounts)?;
     let current_ts = Clock::get()?.unix_timestamp;
 
@@ -85,15 +85,15 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
 pub struct CancelSubscriptionAccounts<'a> {
     pub subscriber: &'a AccountView,
     pub plan_pda: &'a AccountView,
-    pub subscription_pda: &'a AccountView,
+    pub subscription_pda: &'a mut AccountView,
     pub event_authority: &'a AccountView,
     pub self_program: &'a AccountView,
 }
 
-impl<'a> TryFrom<&'a [AccountView]> for CancelSubscriptionAccounts<'a> {
+impl<'a> TryFrom<&'a mut [AccountView]> for CancelSubscriptionAccounts<'a> {
     type Error = ProgramError;
 
-    fn try_from(accounts: &'a [AccountView]) -> Result<Self, Self::Error> {
+    fn try_from(accounts: &'a mut [AccountView]) -> Result<Self, Self::Error> {
         let [subscriber, plan_pda, subscription_pda, event_authority, self_program] = accounts else {
             return Err(SubscriptionsError::NotEnoughAccountKeys.into());
         };

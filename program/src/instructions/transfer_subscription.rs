@@ -25,7 +25,7 @@ pub const DISCRIMINATOR: &u8 = &10;
 /// the plan's destination whitelist, enforces per-period limits, performs the
 /// SPL token transfer, and emits a
 /// [`SubscriptionTransferEvent`].
-pub fn process(accounts: &[AccountView], transfer_data: &TransferData) -> ProgramResult {
+pub fn process(accounts: &mut [AccountView], transfer_data: &TransferData) -> ProgramResult {
     let accounts_struct = TransferSubscriptionAccounts::try_from(accounts)?;
 
     let current_ts = Clock::get()?.unix_timestamp;
@@ -147,7 +147,7 @@ pub fn process(accounts: &[AccountView], transfer_data: &TransferData) -> Progra
 
 /// Validated accounts for the [`TransferSubscription`](crate::SubscriptionsInstruction::TransferSubscription) instruction.
 pub struct TransferSubscriptionAccounts<'a> {
-    pub subscription_pda: &'a AccountView,
+    pub subscription_pda: &'a mut AccountView,
     pub plan_pda: &'a AccountView,
     pub subscription_authority: &'a AccountView,
     pub delegator_ata: &'a AccountView,
@@ -158,10 +158,10 @@ pub struct TransferSubscriptionAccounts<'a> {
     pub self_program: &'a AccountView,
 }
 
-impl<'a> TryFrom<&'a [AccountView]> for TransferSubscriptionAccounts<'a> {
+impl<'a> TryFrom<&'a mut [AccountView]> for TransferSubscriptionAccounts<'a> {
     type Error = ProgramError;
 
-    fn try_from(accounts: &'a [AccountView]) -> Result<Self, Self::Error> {
+    fn try_from(accounts: &'a mut [AccountView]) -> Result<Self, Self::Error> {
         let [subscription_pda, plan_pda, subscription_authority, delegator_ata, receiver_ata, caller, token_program, event_authority, self_program] =
             accounts
         else {

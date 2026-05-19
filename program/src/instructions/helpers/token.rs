@@ -14,7 +14,7 @@ use pinocchio_associated_token_account::instructions::Create;
 use pinocchio_system::instructions::CreateAccount;
 use pinocchio_token::{
     instructions::{InitializeAccount3, InitializeMint2},
-    state::{Mint, TokenAccount as TokenAccountState},
+    state::{Account as TokenAccountState, Mint},
     ID as SPL_TOKEN_PROGRAM_ID,
 };
 

@@ -15,6 +15,7 @@ permissions:
 
 env:
   SOLANA_VERSION: '4.0.0'
+  SURFPOOL_VERSION: '1.2.1'
 
 jobs:
   unit-test:
@@ -64,6 +65,7 @@ jobs:
           install-surfpool: 'true'
           rust-cache-key: 'typescript-integration-test'
           solana-version: ${{ env.SOLANA_VERSION }}
+          surfpool-version: ${{ env.SURFPOOL_VERSION }}
 
       - name: Run TypeScript integration tests
         run: just test-client

@@ -152,7 +152,7 @@ pub fn emit_event(
 
     let instruction = InstructionView { program_id, data: event_data, accounts: &accounts };
 
-    invoke_signed::<2>(&instruction, &[event_authority, self_program], &[signer])
+    invoke_signed::<2, _>(&instruction, &[event_authority, self_program], &[signer])
 }
 
 #[cfg(test)]

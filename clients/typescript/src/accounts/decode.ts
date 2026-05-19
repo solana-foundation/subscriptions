@@ -36,7 +36,7 @@ export function toEncodedAccount(raw: RawProgramAccount, programAddress: Address
         lamports: raw.account.lamports,
         programAddress,
         space: raw.account.space,
-    } as EncodedAccount;
+    };
 }
 
 /**

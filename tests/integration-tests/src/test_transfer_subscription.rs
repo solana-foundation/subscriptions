@@ -20,7 +20,7 @@ use solana_instruction::{AccountMeta, Instruction};
 use solana_keypair::Keypair;
 use solana_pubkey::Pubkey;
 use solana_signer::Signer;
-use spl_associated_token_account::get_associated_token_address_with_program_id;
+use spl_associated_token_account_interface::address::get_associated_token_address_with_program_id;
 
 #[allow(clippy::type_complexity)]
 fn setup_plan_and_subscription(
@@ -64,7 +64,7 @@ fn setup_plan_and_subscription(
     res.assert_ok();
 
     // Manually inject subscription delegation (use LiteSVM clock, not system time)
-    let svm_ts = litesvm.get_sysvar::<spl_associated_token_account::solana_program::clock::Clock>().unix_timestamp;
+    let svm_ts = litesvm.get_sysvar::<solana_clock::Clock>().unix_timestamp;
     let plan_account = litesvm.get_account(&plan_pda).unwrap();
     let plan = Plan::load(&plan_account.data).unwrap();
     let plan_terms = plan.data.terms;

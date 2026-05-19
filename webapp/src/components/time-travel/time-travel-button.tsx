@@ -45,11 +45,24 @@ function TimeTravelButtonInner() {
     }, [getCurrentTimestamp]);
 
     useEffect(() => {
-        fetchTime();
+        let cancelled = false;
+        queueMicrotask(() => {
+            if (!cancelled) void fetchTime();
+        });
+        return () => {
+            cancelled = true;
+        };
     }, [fetchTime]);
 
     useEffect(() => {
-        if (open) fetchTime();
+        if (!open) return;
+        let cancelled = false;
+        queueMicrotask(() => {
+            if (!cancelled) void fetchTime();
+        });
+        return () => {
+            cancelled = true;
+        };
     }, [open, fetchTime]);
 
     const animRef = useRef<number>(0);
@@ -63,10 +76,11 @@ function TimeTravelButtonInner() {
         const startTs = currentTime;
         const endTs = currentTime + seconds;
         const duration = 1400;
-        const startMs = performance.now();
+        let startMs = 0;
         setAnimating(true);
 
         const step = (now: number) => {
+            if (startMs === 0) startMs = now;
             const elapsed = now - startMs;
             const t = Math.min(elapsed / duration, 1);
             const eased = 1 - Math.pow(1 - t, 4);
