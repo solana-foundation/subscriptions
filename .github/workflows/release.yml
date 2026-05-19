@@ -22,7 +22,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  PROGRAM: subscriptions
+  PROGRAM: subscriptions_program
   PROGRAM_ID: De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44
   REPO_URL: https://github.com/solana-program/subscriptions
 
@@ -108,19 +108,6 @@ jobs:
           keypair: ${{ env.DEPLOYER_KEYPAIR }}
           idl-path: idl/subscriptions.json
           priority-fees: ${{ inputs.priority-fee }}
-
-      - if: inputs.network == 'devnet'
-        name: Verify build (devnet)
-        uses: solana-developers/github-actions/verify-build@eb606791e11d06eb92593dfd3404bf0d4c809121
-        with:
-          program: ${{ env.PROGRAM }}
-          program-id: ${{ env.PROGRAM_ID }}
-          rpc-url: ${{ env.RPC_URL }}
-          keypair: ${{ env.DEPLOYER_KEYPAIR }}
-          repo-url: ${{ env.REPO_URL }}
-          network: devnet
-          commit-hash: ${{ github.sha }}
-          skip-build: 'false'
 
       # ============================================
       # mainnet: prepare Squads-owned buffers

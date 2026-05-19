@@ -3,7 +3,7 @@
 
 # Configuration (can be overridden via environment)
 KEYPAIR_FILE="${KEYPAIR_FILE:-keys/subscriptions-keypair.json}"
-PROGRAM_SO="${PROGRAM_SO:-target/deploy/subscriptions.so}"
+PROGRAM_SO="${PROGRAM_SO:-target/deploy/subscriptions_program.so}"
 LEDGER_DIR="${LEDGER_DIR:-.validator-ledger}"
 RPC_PORT="${RPC_PORT:-8899}"
 
@@ -156,7 +156,7 @@ wait_for_http() {
 prepare_deploy_keys() {
   mkdir -p "target/deploy"
   if [[ -f "$KEYPAIR_FILE" ]]; then
-    cp "$KEYPAIR_FILE" "target/deploy/subscriptions-keypair.json"
+    cp "$KEYPAIR_FILE" "target/deploy/subscriptions_program-keypair.json"
     echo -e "  ${GREEN}Deploy key copied${NC}"
   else
     # Post-rotation (#30) the canonical keypair lives only on the deploy

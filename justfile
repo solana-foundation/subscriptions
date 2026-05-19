@@ -347,7 +347,7 @@ verify-mainnet: check-solana-verify
     solana-verify verify-from-repo \
         https://github.com/solana-program/subscriptions \
         --program-id "$PROG_ID" \
-        --library-name subscriptions \
+        --library-name subscriptions_program \
         --mount-path program \
         --remote \
         -um

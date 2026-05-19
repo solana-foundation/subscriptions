@@ -6,7 +6,7 @@ license = { workspace = true }
 repository = { workspace = true }
 
 [lib]
-name = "subscriptions"
+name = "subscriptions_program"
 crate-type = ["lib", "cdylib"]
 
 [lints]

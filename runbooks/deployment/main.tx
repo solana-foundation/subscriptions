@@ -13,7 +13,7 @@ action "deploy_subscriptions" "svm::deploy_program" {
         "subscriptions",
         input.program_keypair_path,
         null,
-        "target/deploy/subscriptions.so"
+        "target/deploy/subscriptions_program.so"
     )
     authority = signer.authority
     payer = signer.payer
