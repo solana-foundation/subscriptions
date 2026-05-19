@@ -25,7 +25,6 @@ env:
   PROGRAM: subscriptions
   PROGRAM_ID: De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44
   REPO_URL: https://github.com/solana-program/subscriptions
-  SOLANA_VERSION: '4.0.0'
 
 jobs:
   release:
@@ -49,7 +48,7 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           rust-cache-key: 'release-${{ inputs.network }}'
-          solana-version: ${{ env.SOLANA_VERSION }}
+          solana-version: 'v4.0.0'
 
       - name: Install solana-verify
         run: cargo install solana-verify --locked
