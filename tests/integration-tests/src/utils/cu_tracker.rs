@@ -238,10 +238,9 @@ impl Default for CuTracker {
 }
 
 /// Destructor that runs after all tests complete.
-/// The `ctor` crate's `dtor` attribute registers this function to run
-/// when the test binary exits, ensuring the CU report is generated
+/// This runs when the test binary exits, ensuring the CU report is generated
 /// after all parallel tests have finished.
-#[ctor::dtor]
+#[dtor::dtor(unsafe)]
 fn output_cu_report_on_exit() {
     output_report_if_enabled();
 }

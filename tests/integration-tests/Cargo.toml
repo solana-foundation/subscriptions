@@ -34,4 +34,4 @@ spl-token-interface = "2.0.0"
 serde_json = { workspace = true }
 rstest = "0.26"
 tabled = "0.20"
-ctor = "0.2"
+dtor = "1.0"
