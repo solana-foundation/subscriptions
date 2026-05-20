@@ -116,7 +116,7 @@ jobs:
       - if: inputs.network == 'mainnet'
         id: prepare-squads-release
         name: Prepare Squads release buffers (mainnet)
-        uses: dev-jodee/github-actions/prepare-squads-release@c759fc72445a201cdba17ea652a803b81c2553db
+        uses: dev-jodee/github-actions/prepare-squads-release@d8eb51a3909f455c6b2132b1d0d9e7b98a231dcd
         with:
           program: ${{ env.PROGRAM }}
           program-id: ${{ env.PROGRAM_ID }}
@@ -125,10 +125,8 @@ jobs:
           squads-vault: ${{ env.SQUADS_VAULT }}
           metadata-path: idl/subscriptions.json
           priority-fee: ${{ inputs.priority-fee }}
-          program-buffer-max-sign-attempts: '80'
-          program-buffer-write-timeout-minutes: '80'
-          program-buffer-retry-timeout-minutes: '85'
-          program-buffer-retry-attempts: '1'
+          program-buffer-max-sign-attempts: '20'
+          program-buffer-write-timeout-minutes: '15'
           export-verify-pda: 'true'
           repo-url: ${{ env.REPO_URL }}
           commit-hash: ${{ github.sha }}
