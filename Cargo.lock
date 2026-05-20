@@ -4219,7 +4219,7 @@ dependencies = [
  "solana-instruction",
  "solana-program-error",
  "solana-pubkey 4.2.0",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
