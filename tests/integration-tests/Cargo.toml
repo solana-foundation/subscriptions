@@ -29,7 +29,7 @@ solana-signer = "^3"
 solana-transaction = "^3"
 solana-transaction-error = "^3.2"
 spl-associated-token-account-interface = "2.0.0"
-spl-token-2022-interface = "2.0.0"
+spl-token-2022-interface = "3.0.0"
 spl-token-interface = "2.0.0"
 serde_json = { workspace = true }
 rstest = "0.26"
