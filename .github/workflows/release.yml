@@ -30,7 +30,7 @@ jobs:
   release:
     name: Release ${{ inputs.network }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v6
         with:
@@ -116,7 +116,7 @@ jobs:
       - if: inputs.network == 'mainnet'
         id: prepare-squads-release
         name: Prepare Squads release buffers (mainnet)
-        uses: dev-jodee/github-actions/prepare-squads-release@846ab7323c93503ea7b8634fc313313726b83afa
+        uses: dev-jodee/github-actions/prepare-squads-release@c759fc72445a201cdba17ea652a803b81c2553db
         with:
           program: ${{ env.PROGRAM }}
           program-id: ${{ env.PROGRAM_ID }}
@@ -125,6 +125,10 @@ jobs:
           squads-vault: ${{ env.SQUADS_VAULT }}
           metadata-path: idl/subscriptions.json
           priority-fee: ${{ inputs.priority-fee }}
+          program-buffer-max-sign-attempts: '80'
+          program-buffer-write-timeout-minutes: '80'
+          program-buffer-retry-timeout-minutes: '85'
+          program-buffer-retry-attempts: '1'
           export-verify-pda: 'true'
           repo-url: ${{ env.REPO_URL }}
           commit-hash: ${{ github.sha }}
