@@ -1,13 +1,3 @@
-/**
- * Generates TypeScript and Rust clients from the Codama IDL.
- *
- * Renderer versions:
- *  - @codama/renderers-rust v1 (legacy API: `(generatedDir, { crateFolder })`)
- *    Pinned to v1 deliberately — v3 generates code that requires bumping the
- *    Rust client's solana-* deps to ~3.x; out of scope for this migration.
- *  - @codama/renderers-js v2 (new API: `(packageDir, { generatedFolder })`)
- */
-
 import type { AnchorIdl } from '@codama/nodes-from-anchor';
 import { renderVisitor as renderJavaScriptVisitor } from '@codama/renderers-js';
 import { renderVisitor as renderRustVisitor } from '@codama/renderers-rust';
@@ -15,8 +5,6 @@ import { createFromJson } from 'codama';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-
-import { preserveConfigFiles } from './lib/utils';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -28,17 +16,14 @@ const typescriptClientsDir = path.join(projectRoot, 'clients', 'typescript');
 
 const codama = createFromJson(JSON.stringify(idl));
 
-const cargoToml = preserveConfigFiles(rustClientsDir);
-
 void codama.accept(
-    renderRustVisitor(path.join(rustClientsDir, 'src', 'generated'), {
-        crateFolder: rustClientsDir,
+    renderRustVisitor(rustClientsDir, {
+        anchorTraits: false,
         deleteFolderBeforeRendering: true,
         formatCode: true,
+        generatedFolder: 'src/generated',
     }),
 );
-
-cargoToml.restore();
 
 void codama.accept(
     renderJavaScriptVisitor(typescriptClientsDir, {
