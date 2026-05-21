@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { CalendarCheck, Trash2, Clock } from 'lucide-react';
+import { CalendarCheck, Trash2, Clock, RotateCcw } from 'lucide-react';
 import { Badge } from '@solana/design-system';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -131,6 +131,54 @@ function RevokeSubscriptionDialog({
     );
 }
 
+function ResumeSubscriptionDialog({
+    item,
+    open,
+    onOpenChange,
+}: {
+    item: EnrichedSubscription;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+}) {
+    const { resumeSubscription } = useSubscriptionsMutations();
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="border-teal-300 bg-bg1">
+                <DialogHeader>
+                    <DialogTitle className="text-teal-700">Resume Subscription</DialogTitle>
+                    <DialogDescription>
+                        Resuming clears the pending cancellation and lets authorized plan pullers collect future
+                        payments automatically.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>
+                        Keep Cancelled
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={() =>
+                            resumeSubscription.mutate(
+                                {
+                                    planPda: item.subscription.header.delegatee,
+                                    subscriptionPda: item.address,
+                                },
+                                { onSuccess: () => onOpenChange(false) },
+                            )
+                        }
+                        disabled={resumeSubscription.isPending}
+                        className="border-teal-300 text-teal-700 hover:bg-teal-100 hover:text-teal-800"
+                    >
+                        <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                        {resumeSubscription.isPending ? 'Resuming...' : 'Resume'}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 function CancelAndRevokeDialog({
     item,
     isGhostPlan,
@@ -191,6 +239,7 @@ function SubscriptionCard({
 }) {
     const [cancelOpen, setCancelOpen] = useState(false);
     const [revokeOpen, setRevokeOpen] = useState(false);
+    const [resumeOpen, setResumeOpen] = useState(false);
     const [cancelAndRevokeOpen, setCancelAndRevokeOpen] = useState(false);
     const { cancelSubscription } = useSubscriptionsMutations();
     const { getCurrentTimestamp } = useTimeTravel();
@@ -229,6 +278,7 @@ function SubscriptionCard({
     const pulled = Number(item.subscription.amountPulledInPeriod) / USDC_MULTIPLIER;
     const subInitId = item.subscription.header.initId;
     const isStale = subscriptionAuthorityInitId != null && subInitId !== subscriptionAuthorityInitId;
+    const canResume = isCancelled && daysLeft !== null && daysLeft > 0 && !planDeleted && !isGhostPlan && !isStale;
 
     return (
         <>
@@ -325,6 +375,33 @@ function SubscriptionCard({
                             >
                                 {cancelSubscription.isPending ? 'Unsubscribing...' : 'Unsubscribe'}
                             </Button>
+                        ) : canResume ? (
+                            <div className="grid grid-cols-2 gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setResumeOpen(true)}
+                                    className="w-full border-teal-300 text-teal-700 hover:bg-teal-100 hover:text-teal-800"
+                                >
+                                    <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                                    Resume
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setRevokeOpen(true)}
+                                    disabled={!isExpired}
+                                    className={cn(
+                                        'w-full',
+                                        isExpired
+                                            ? 'border-red-300 text-red-600 hover:bg-red-100 hover:text-red-700'
+                                            : 'border-gray-600/30 text-sand-1000 cursor-not-allowed',
+                                    )}
+                                >
+                                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                                    {isExpired ? 'Delete' : `${daysLeft ?? '?'}d`}
+                                </Button>
+                            </div>
                         ) : (
                             <Button
                                 variant="outline"
@@ -346,6 +423,7 @@ function SubscriptionCard({
                 </CardContent>
             </Card>
             <CancelSubscriptionDialog item={item} open={cancelOpen} onOpenChange={setCancelOpen} />
+            <ResumeSubscriptionDialog item={item} open={resumeOpen} onOpenChange={setResumeOpen} />
             <RevokeSubscriptionDialog item={item} open={revokeOpen} onOpenChange={setRevokeOpen} />
             <CancelAndRevokeDialog
                 item={item}

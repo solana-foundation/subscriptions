@@ -9,12 +9,14 @@ pub mod fixed_transfer;
 pub mod recurring_transfer;
 pub mod subscription_cancelled;
 pub mod subscription_created;
+pub mod subscription_resumed;
 pub mod subscription_transfer;
 
 pub use fixed_transfer::*;
 pub use recurring_transfer::*;
 pub use subscription_cancelled::*;
 pub use subscription_created::*;
+pub use subscription_resumed::*;
 pub use subscription_transfer::*;
 
 /// Typed reference to one of the program's events, used for decoding.
@@ -29,4 +31,6 @@ pub enum Event<'a> {
     FixedTransfer(&'a FixedTransferEvent),
     /// See [`RecurringTransferEvent`].
     RecurringTransfer(&'a RecurringTransferEvent),
+    /// See [`SubscriptionResumedEvent`].
+    SubscriptionResumed(&'a SubscriptionResumedEvent),
 }

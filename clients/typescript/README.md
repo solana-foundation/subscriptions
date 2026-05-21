@@ -77,6 +77,7 @@ For custom wallet flows, use the exported `get*OverlayInstruction*` functions. T
 | `deletePlan` / `getDeletePlanOverlayInstruction`                      | Delete an expired plan and reclaim rent                          |
 | `subscribe` / `getSubscribeOverlayInstructionAsync`                   | Subscribe to a plan                                              |
 | `cancelSubscription` / `getCancelSubscriptionOverlayInstructionAsync` | Cancel a subscription (grace period until end of billing period) |
+| `resumeSubscription` / `getResumeSubscriptionOverlayInstructionAsync` | Resume a cancelled subscription before revocation                |
 
 ### Account Queries
 

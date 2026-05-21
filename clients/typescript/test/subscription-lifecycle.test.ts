@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'vitest';
-import { SUBSCRIPTIONS_ERROR__PLAN_TERMS_MISMATCH } from '../src/generated/errors/subscriptions.ts';
+import {
+    SUBSCRIPTIONS_ERROR__PLAN_TERMS_MISMATCH,
+    SUBSCRIPTIONS_ERROR__SUBSCRIPTION_NOT_CANCELLED,
+    SUBSCRIPTIONS_ERROR__UNAUTHORIZED,
+} from '../src/generated/errors/subscriptions.ts';
 import {
     fetchMaybePlan,
     fetchMaybeSubscriptionDelegation,
@@ -349,5 +353,163 @@ describe('Subscription Lifecycle', () => {
         // Subscription account should be closed
         const subAfterRevoke = await fetchMaybeSubscriptionDelegation(t.rpc, subscriptionPda);
         expect(subAfterRevoke.exists).toBe(false);
+    });
+
+    test('resume: subscriber clears pending cancellation and pulls continue', async () => {
+        const t = await initTestSuite();
+        const periodHours = 1n;
+
+        const [planPda] = await findPlanPda({ owner: t.payerKeypair.address, planId: 1n });
+        await t.client.subscriptions.instructions
+            .createPlan({
+                owner: t.payerKeypair,
+                planId: 1n,
+                mint: t.tokenMint,
+                amount: 250_000n,
+                periodHours,
+                endTs: 0n,
+                destinations: [],
+                pullers: [],
+                metadataUri: 'https://example.com/plan.json',
+            })
+            .sendTransaction();
+
+        const subscriber = await t.createFundedKeypair();
+        const subscriberAta = await t.createAtaWithBalance(t.tokenMint, subscriber.address, DEFAULT_TEST_BALANCE);
+        await t.client.subscriptions.instructions
+            .initSubscriptionAuthority({
+                owner: subscriber,
+                tokenMint: t.tokenMint,
+                userAta: subscriberAta,
+                tokenProgram: t.tokenProgram,
+            })
+            .sendTransaction();
+
+        const [subscriptionPda] = await findSubscriptionDelegationPda({ planPda, subscriber: subscriber.address });
+        await t.client.subscriptions.instructions
+            .subscribe({ subscriber, merchant: t.payerKeypair.address, planId: 1n, tokenMint: t.tokenMint })
+            .sendTransaction();
+
+        await t.client.subscriptions.instructions
+            .cancelSubscription({ subscriber, planPda, subscriptionPda })
+            .sendTransaction();
+
+        const subAfterCancel = (await fetchSubscriptionDelegation(t.rpc, subscriptionPda)).data;
+        expect(subAfterCancel.expiresAtTs).not.toBe(0n);
+        const periodStart = subAfterCancel.currentPeriodStartTs;
+        const amountPulled = subAfterCancel.amountPulledInPeriod;
+
+        await t.client.subscriptions.instructions
+            .resumeSubscription({ subscriber, planPda, subscriptionPda })
+            .sendTransaction();
+
+        const subAfterResume = (await fetchSubscriptionDelegation(t.rpc, subscriptionPda)).data;
+        expect(subAfterResume.expiresAtTs).toBe(0n);
+        // Resume must not reset period accounting, otherwise subscribers could
+        // dodge the per-period limit by cancelling and resuming after pulling.
+        expect(subAfterResume.currentPeriodStartTs).toBe(periodStart);
+        expect(subAfterResume.amountPulledInPeriod).toBe(amountPulled);
+
+        const merchantAta = await t.createAtaWithBalance(t.tokenMint, t.payerKeypair.address, 0n);
+        await t.client.subscriptions.instructions
+            .transferSubscription({
+                caller: t.payerKeypair,
+                delegator: subscriber.address,
+                tokenMint: t.tokenMint,
+                subscriptionPda,
+                planPda,
+                amount: 100_000n,
+                receiverAta: merchantAta,
+                tokenProgram: t.tokenProgram,
+            })
+            .sendTransaction();
+    });
+
+    test('resume: rejected when subscription is not cancelled', async () => {
+        const t = await initTestSuite();
+
+        const [planPda] = await findPlanPda({ owner: t.payerKeypair.address, planId: 1n });
+        await t.client.subscriptions.instructions
+            .createPlan({
+                owner: t.payerKeypair,
+                planId: 1n,
+                mint: t.tokenMint,
+                amount: 250_000n,
+                periodHours: 1n,
+                endTs: 0n,
+                destinations: [],
+                pullers: [],
+                metadataUri: 'https://example.com/plan.json',
+            })
+            .sendTransaction();
+
+        const subscriber = await t.createFundedKeypair();
+        const subscriberAta = await t.createAtaWithBalance(t.tokenMint, subscriber.address, DEFAULT_TEST_BALANCE);
+        await t.client.subscriptions.instructions
+            .initSubscriptionAuthority({
+                owner: subscriber,
+                tokenMint: t.tokenMint,
+                userAta: subscriberAta,
+                tokenProgram: t.tokenProgram,
+            })
+            .sendTransaction();
+
+        const [subscriptionPda] = await findSubscriptionDelegationPda({ planPda, subscriber: subscriber.address });
+        await t.client.subscriptions.instructions
+            .subscribe({ subscriber, merchant: t.payerKeypair.address, planId: 1n, tokenMint: t.tokenMint })
+            .sendTransaction();
+
+        await expectProgramError(
+            t.client.subscriptions.instructions
+                .resumeSubscription({ subscriber, planPda, subscriptionPda })
+                .sendTransaction(),
+            SUBSCRIPTIONS_ERROR__SUBSCRIPTION_NOT_CANCELLED,
+        );
+    });
+
+    test('resume: rejected when caller is not the subscriber', async () => {
+        const t = await initTestSuite();
+
+        const [planPda] = await findPlanPda({ owner: t.payerKeypair.address, planId: 1n });
+        await t.client.subscriptions.instructions
+            .createPlan({
+                owner: t.payerKeypair,
+                planId: 1n,
+                mint: t.tokenMint,
+                amount: 250_000n,
+                periodHours: 1n,
+                endTs: 0n,
+                destinations: [],
+                pullers: [],
+                metadataUri: 'https://example.com/plan.json',
+            })
+            .sendTransaction();
+
+        const subscriber = await t.createFundedKeypair();
+        const subscriberAta = await t.createAtaWithBalance(t.tokenMint, subscriber.address, DEFAULT_TEST_BALANCE);
+        await t.client.subscriptions.instructions
+            .initSubscriptionAuthority({
+                owner: subscriber,
+                tokenMint: t.tokenMint,
+                userAta: subscriberAta,
+                tokenProgram: t.tokenProgram,
+            })
+            .sendTransaction();
+
+        const [subscriptionPda] = await findSubscriptionDelegationPda({ planPda, subscriber: subscriber.address });
+        await t.client.subscriptions.instructions
+            .subscribe({ subscriber, merchant: t.payerKeypair.address, planId: 1n, tokenMint: t.tokenMint })
+            .sendTransaction();
+        await t.client.subscriptions.instructions
+            .cancelSubscription({ subscriber, planPda, subscriptionPda })
+            .sendTransaction();
+
+        const attacker = await t.createFundedKeypair();
+        await expectProgramError(
+            t.client.subscriptions.instructions
+                .resumeSubscription({ subscriber: attacker, planPda, subscriptionPda })
+                .sendTransaction(),
+            SUBSCRIPTIONS_ERROR__UNAUTHORIZED,
+        );
     });
 });
