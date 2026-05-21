@@ -2,6 +2,18 @@ name: 'Setup CI Environment'
 description: 'Shared setup for Rust, Solana, pnpm, and optional surfpool'
 
 inputs:
+  install-rust:
+    description: 'Install Rust toolchain'
+    required: false
+    default: 'true'
+  rust-toolchain:
+    description: 'Rust toolchain to install'
+    required: false
+    default: '1.92'
+  rust-components:
+    description: 'Rust components to install'
+    required: false
+    default: 'rustfmt, clippy'
   enable-rust-cache:
     description: 'Enable Rust caching (restore/save)'
     required: false
@@ -30,18 +42,31 @@ inputs:
     description: "Solana CLI version to install (e.g., 'v4.0.0')"
     required: false
     default: 'v4.0.0'
+  install-just:
+    description: 'Install just'
+    required: false
+    default: 'true'
+  install-pnpm:
+    description: 'Install pnpm and Node.js'
+    required: false
+    default: 'true'
+  install-pnpm-dependencies:
+    description: 'Install pnpm dependencies'
+    required: false
+    default: 'true'
 
 runs:
   using: 'composite'
   steps:
     - name: Setup Rust
+      if: inputs.install-rust == 'true'
       uses: dtolnay/rust-toolchain@master
       with:
-        toolchain: '1.92'
-        components: rustfmt, clippy
+        toolchain: ${{ inputs.rust-toolchain }}
+        components: ${{ inputs.rust-components }}
 
     - name: Rust cache
-      if: inputs.enable-rust-cache == 'true'
+      if: inputs.install-rust == 'true' && inputs.enable-rust-cache == 'true'
       uses: Swatinem/rust-cache@v2
       with:
         workspaces: '. -> target'
@@ -93,24 +118,29 @@ runs:
       run: echo "$HOME/.local/bin" >> $GITHUB_PATH
 
     - name: Install just
+      if: inputs.install-just == 'true'
       uses: extractions/setup-just@v4
       with:
         just-version: '1.50.0'
 
     - name: Install pnpm
+      if: inputs.install-pnpm == 'true'
       uses: pnpm/action-setup@v4
 
     - name: Setup Node.js
+      if: inputs.install-pnpm == 'true'
       uses: actions/setup-node@v6
       with:
         node-version-file: '.nvmrc'
 
     - name: Get pnpm store directory
+      if: inputs.install-pnpm == 'true'
       id: pnpm-store
       shell: bash
       run: echo "path=$(pnpm store path)" >> $GITHUB_OUTPUT
 
     - name: Cache pnpm store
+      if: inputs.install-pnpm == 'true'
       id: pnpm-cache
       uses: actions/cache@v4
       with:
@@ -120,6 +150,7 @@ runs:
           ${{ runner.os }}-pnpm-
 
     - name: Install pnpm dependencies
+      if: inputs.install-pnpm == 'true' && inputs.install-pnpm-dependencies == 'true'
       shell: bash
       run: pnpm install --frozen-lockfile
 

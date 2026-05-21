@@ -42,7 +42,13 @@
       "flatted": "3.4.2",
       "minimatch": "9.0.9",
       "picomatch": "4.0.4",
-      "rollup": "4.60.2"
+      "rollup": "4.60.2",
+      "ws@^8.0.0": "8.20.1"
+    },
+    "auditConfig": {
+      "ignoreCves": [
+        "GHSA-3gc7-fjrx-p6mg"
+      ]
     }
   }
 }
