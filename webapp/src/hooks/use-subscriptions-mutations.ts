@@ -10,6 +10,7 @@ import {
     getCreateRecurringDelegationOverlayInstructionAsync,
     getDeletePlanOverlayInstruction,
     getInitSubscriptionAuthorityOverlayInstructionAsync,
+    getResumeSubscriptionOverlayInstructionAsync,
     getRevokeDelegationOverlayInstruction,
     getRevokeSubscriptionOverlayInstruction,
     getSubscribeOverlayInstructionAsync,
@@ -480,6 +481,28 @@ export function useSubscriptionsMutations() {
         },
     });
 
+    const resumeSubscription = useMutation({
+        mutationFn: async ({ planPda, subscriptionPda }: { planPda: string; subscriptionPda: string }) => {
+            if (!signer) throw new Error('Wallet not connected');
+            if (!progId) throw new Error('Program address not configured');
+
+            const instruction = await getResumeSubscriptionOverlayInstructionAsync({
+                planPda: address(planPda),
+                programAddress: progId,
+                subscriber: signer,
+                subscriptionPda: address(subscriptionPda),
+            });
+
+            const signature = await signAndSend([instruction], signer);
+            return { signature };
+        },
+        onError: error => toast.onError(error),
+        onSuccess: res => {
+            toast.onSuccess(res.signature);
+            queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+        },
+    });
+
     const revokeSubscription = useMutation({
         mutationFn: async ({
             subscriptionPda,
@@ -839,6 +862,7 @@ export function useSubscriptionsMutations() {
         createRecurringDelegation,
         deletePlan,
         initSubscriptionAuthority,
+        resumeSubscription,
         revokeDelegation,
         revokeMultipleDelegations,
         revokeSubscription,

@@ -11,6 +11,7 @@ import {
     Star,
     Plus,
     X,
+    RotateCcw,
 } from 'lucide-react';
 import { Badge, Button as SolanaButton, Select, SelectItem, TextInput } from '@solana/design-system';
 import { Card, CardContent } from '@/components/ui/card';
@@ -653,6 +654,7 @@ export function PlanCard({
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [subscribeOpen, setSubscribeOpen] = useState(false);
+    const { resumeSubscription } = useSubscriptionsMutations();
     const { data: mySubscriptions } = useMySubscriptions();
     const matchingSub = useMemo(
         () => mySubscriptions?.find(s => s.subscription.header.delegatee === plan.address) ?? null,
@@ -661,6 +663,12 @@ export function PlanCard({
     const isSubscribed = !!matchingSub;
     const subExpiresAtTs = matchingSub ? Number(matchingSub.subscription.expiresAtTs) : 0;
     const isCancelledSub = isSubscribed && subExpiresAtTs > 0;
+    const isGhostSubscription =
+        matchingSub != null &&
+        (plan.data.terms.amount !== matchingSub.subscription.terms.amount ||
+            plan.data.terms.periodHours !== matchingSub.subscription.terms.periodHours ||
+            plan.data.terms.createdAt !== matchingSub.subscription.terms.createdAt);
+    const canResumeSubscription = isCancelledSub && !isGhostSubscription;
     const [subDaysLeft, setSubDaysLeft] = useState<number | null>(null);
 
     const meta = useMemo(() => parsePlanMeta(plan.data.metadataUri), [plan.data.metadataUri]);
@@ -837,7 +845,24 @@ export function PlanCard({
 
                     {variant === 'marketplace' && (
                         <div className="flex justify-center pt-2 border-t border-sand-200">
-                            {isCancelledSub ? (
+                            {canResumeSubscription && matchingSub ? (
+                                <SolanaButton
+                                    size="sm"
+                                    onClick={(e: React.MouseEvent) => {
+                                        e.stopPropagation();
+                                        resumeSubscription.mutate({
+                                            planPda: plan.address,
+                                            subscriptionPda: matchingSub.address,
+                                        });
+                                    }}
+                                    disabled={resumeSubscription.isPending}
+                                    loading={resumeSubscription.isPending}
+                                    iconLeft={<RotateCcw />}
+                                    style={{ width: '100%' }}
+                                >
+                                    Resume Subscription
+                                </SolanaButton>
+                            ) : isCancelledSub ? (
                                 <Badge variant="danger" className="w-full justify-center" style={{ height: '2.25rem' }}>
                                     Cancelled{' '}
                                     {subDaysLeft !== null && subDaysLeft > 0
