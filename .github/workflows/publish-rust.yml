@@ -13,6 +13,11 @@ on:
         required: true
         default: true
         type: boolean
+      validate-crates-auth:
+        description: 'Validate crates.io Trusted Publishing auth without publishing'
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -94,6 +99,7 @@ jobs:
           allow-dirty: 'true'
           check-version-available: ${{ inputs.publish-to-crates }}
           dry-run: ${{ !inputs.publish-to-crates }}
+          validate-auth: ${{ inputs.validate-crates-auth }}
           skip-existing: 'true'
 
       - name: Check if prerelease
@@ -161,4 +167,7 @@ jobs:
             echo "Published to crates.io: https://crates.io/crates/subscriptions/${{ steps.cargo_publish.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           else
             echo "Skipped crates.io publish" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ steps.cargo_publish.outputs.authenticated }}" == "true" ]; then
+            echo "Validated crates.io Trusted Publishing auth" >> $GITHUB_STEP_SUMMARY
           fi
