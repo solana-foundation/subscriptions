@@ -116,7 +116,7 @@ jobs:
       - if: inputs.network == 'mainnet'
         id: prepare-squads-release
         name: Prepare Squads release buffers (mainnet)
-        uses: dev-jodee/github-actions/prepare-squads-release@46df7c5ea1b1da3af494ab2d0a4ace694831c73a
+        uses: solana-developers/github-actions/prepare-squads-release@b480a01c45f5670da8e9d76fa03d30d9deb7153d
         with:
           program: ${{ env.PROGRAM }}
           program-id: ${{ env.PROGRAM_ID }}
