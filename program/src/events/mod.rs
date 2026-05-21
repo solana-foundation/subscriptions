@@ -25,12 +25,12 @@ pub enum Event<'a> {
     SubscriptionCreated(&'a SubscriptionCreatedEvent),
     /// See [`SubscriptionCancelledEvent`].
     SubscriptionCancelled(&'a SubscriptionCancelledEvent),
-    /// See [`SubscriptionResumedEvent`].
-    SubscriptionResumed(&'a SubscriptionResumedEvent),
     /// See [`SubscriptionTransferEvent`].
     SubscriptionTransfer(&'a SubscriptionTransferEvent),
     /// See [`FixedTransferEvent`].
     FixedTransfer(&'a FixedTransferEvent),
     /// See [`RecurringTransferEvent`].
     RecurringTransfer(&'a RecurringTransferEvent),
+    /// See [`SubscriptionResumedEvent`].
+    SubscriptionResumed(&'a SubscriptionResumedEvent),
 }

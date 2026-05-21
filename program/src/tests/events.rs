@@ -29,13 +29,13 @@ pub fn decode_event<'a>(data: &'a [u8]) -> Result<Event<'a>, ProgramError> {
         EventDiscriminators::SubscriptionCancelled => {
             Ok(Event::SubscriptionCancelled(SubscriptionCancelledEvent::load(payload)?))
         }
-        EventDiscriminators::SubscriptionResumed => {
-            Ok(Event::SubscriptionResumed(SubscriptionResumedEvent::load(payload)?))
-        }
         EventDiscriminators::SubscriptionTransfer => {
             Ok(Event::SubscriptionTransfer(SubscriptionTransferEvent::load(payload)?))
         }
         EventDiscriminators::FixedTransfer => Ok(Event::FixedTransfer(FixedTransferEvent::load(payload)?)),
         EventDiscriminators::RecurringTransfer => Ok(Event::RecurringTransfer(RecurringTransferEvent::load(payload)?)),
+        EventDiscriminators::SubscriptionResumed => {
+            Ok(Event::SubscriptionResumed(SubscriptionResumedEvent::load(payload)?))
+        }
     }
 }
