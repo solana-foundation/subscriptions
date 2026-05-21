@@ -8,6 +8,7 @@
     "format:check": "prettier --check .",
     "generate-idl": "cd program && GENERATE_IDL=1 cargo check",
     "generate-clients": "tsx ./scripts/generate-clients.ts",
+    "generate-ts-client": "tsx ./scripts/generate-ts-client.ts",
     "lint": "pnpm run generate-clients && pnpm --filter @solana/subscriptions build && eslint .",
     "lint:fix": "pnpm run generate-clients && pnpm --filter @solana/subscriptions build && eslint . --fix"
   },
