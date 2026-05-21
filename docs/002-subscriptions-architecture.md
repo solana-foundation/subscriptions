@@ -487,10 +487,10 @@ After `expires_at_ts` passes, pulls are blocked. The subscriber can then call `r
 3. If plan is closed (not program-owned): set `expires_at_ts = current_ts`
 4. Emit `SubscriptionCancelled` event via self-CPI
 
-**Two-step revocation flow:**
+**Cancellation flow:**
 
 - `cancel_subscription` → pre-computes `expires_at_ts` (end of current period), allows pulls until then
-- `resume_subscription` → clears `expires_at_ts` back to `0` if the subscriber changes their mind before revocation
+- `resume_subscription` → clears `expires_at_ts` back to `0` before the cancellation period ends, provided the plan is not closed, expired, or recreated with different terms
 - `revoke_delegation` → closes account (requires `expires_at_ts != 0` and `expires_at_ts <= current_ts`)
 
 ### `resume_subscription` (Discriminator: 13)
@@ -502,20 +502,26 @@ Subscriber resumes a cancelled subscription by clearing `expires_at_ts`. This do
 | 0       | signer   | Subscriber (delegator)     |
 | 1       |          | Plan PDA                   |
 | 2       | writable | SubscriptionDelegation PDA |
+| 3       |          | Event authority PDA        |
+| 4       |          | Self program               |
 
 **Parameters:** None (only discriminator byte)
 
 **Validation:**
 
-1. Verify the plan account is still program-owned (else `PlanClosed`)
-2. Verify caller is the subscription's delegator (else `Unauthorized`)
-3. Verify subscription's delegatee matches the plan PDA (else `SubscriptionPlanMismatch`)
-4. Verify `expires_at_ts != 0` (else `SubscriptionNotCancelled`)
+1. Verify caller is the subscription's delegator (else `Unauthorized`)
+2. Verify subscription's delegatee matches the plan PDA (else `SubscriptionPlanMismatch`)
+3. Verify `expires_at_ts != 0` (else `SubscriptionNotCancelled`)
+4. Verify the plan account is still program-owned (else `PlanClosed`)
+5. Verify the plan has not reached `end_ts` (else `PlanExpired`)
+6. Verify the live plan terms still match the subscription's snapshotted terms (else `PlanTermsMismatch`)
+7. Verify `expires_at_ts > current_ts` (else `SubscriptionCancelled`)
 
 **Process:**
 
 1. Clear `expires_at_ts` to `0`
 2. Leave `current_period_start_ts` and `amount_pulled_in_period` unchanged
+3. Emit `SubscriptionResumed` event via self-CPI
 
 ---
 
@@ -577,10 +583,10 @@ sequenceDiagram
 
 ### Delegator Cancels and Revokes Subscription
 
-Cancellation is a two-step process:
+Cancellation is a three-step flow (resume is optional):
 
 1. **`cancel_subscription`** — Sets `expires_at_ts`. Three paths: terms match (grace period until end of billing period), terms mismatch/ghost plan (immediate), plan closed (immediate).
-2. **`resume_subscription`** — Optional. Clears a pending cancellation without resetting period accounting.
+2. **`resume_subscription`** — Optional. Clears a pending cancellation without resetting period accounting. Rejected once the cancellation period elapses, or if the plan is closed, expired, or recreated with different terms. Sunset plans may still resume existing subscriptions before `end_ts`.
 3. **`revoke_delegation`** — Closes the subscription account and reclaims rent. Only allowed after `expires_at_ts` is in the past.
 
 ```mermaid
@@ -713,6 +719,7 @@ All transfer and lifecycle instructions emit events via self-CPI through an even
 | ---------------------------- | ----------------------- | ----------------------------------------------------------------- |
 | `SubscriptionCreatedEvent`   | `subscribe`             | plan_pda, subscriber, mint, timestamp                             |
 | `SubscriptionCancelledEvent` | `cancel_subscription`   | plan_pda, subscriber, expires_at_ts, timestamp                    |
+| `SubscriptionResumedEvent`   | `resume_subscription`   | plan_pda, subscriber, timestamp                                   |
 | `SubscriptionTransferEvent`  | `transfer_subscription` | plan_pda, subscriber, amount, receiver, timestamp                 |
 | `FixedTransferEvent`         | `transfer_fixed`        | delegation_pda, delegator, delegatee, amount, receiver, timestamp |
 | `RecurringTransferEvent`     | `transfer_recurring`    | delegation_pda, delegator, delegatee, amount, receiver, timestamp |

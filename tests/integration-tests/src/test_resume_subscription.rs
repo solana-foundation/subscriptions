@@ -1,15 +1,51 @@
 use crate::{
-    state::{header::VERSION_OFFSET, subscription_delegation::SubscriptionDelegation},
+    state::{common::PlanStatus, header::VERSION_OFFSET, subscription_delegation::SubscriptionDelegation},
     tests::{
         asserts::TransactionResultExt,
+        constants::{MINT_DECIMALS, TOKEN_PROGRAM_ID},
+        pda::{get_plan_pda, get_subscription_pda},
         utils::{
-            current_ts, days, hours, init_ata, init_wallet, move_clock_forward, setup_with_subscription,
-            CancelSubscription, CreatePlan, ResumeSubscription, TransferSubscription,
+            current_ts, days, hours, init_ata, init_mint, init_wallet, initialize_subscription_authority_action,
+            move_clock_forward, setup, setup_with_subscription, CancelSubscription, CreatePlan, DeletePlan,
+            ResumeSubscription, Subscribe, TransferSubscription, UpdatePlan,
         },
     },
     SubscriptionsError,
 };
+use litesvm::LiteSVM;
+use solana_keypair::Keypair;
+use solana_pubkey::Pubkey;
 use solana_signer::Signer;
+
+/// Creates a subscription whose plan ends exactly one period after creation, so
+/// the cancellation `expires_at_ts` is pinned to `plan.end_ts` and the
+/// `PlanExpired`/`PlanClosed` guards in resume become reachable.
+fn setup_subscription_with_tight_plan_end() -> (LiteSVM, Keypair, Keypair, Pubkey, Pubkey) {
+    let (mut litesvm, alice) = setup();
+    let merchant = Keypair::new();
+    litesvm.airdrop(&merchant.pubkey(), 10_000_000_000).unwrap();
+
+    let mint = init_mint(&mut litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(alice.pubkey()), &[]);
+    init_ata(&mut litesvm, mint, alice.pubkey(), 100_000_000);
+
+    initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
+
+    let end_ts = current_ts() + hours(1) as i64;
+    let (res, plan_pda) = CreatePlan::new(&mut litesvm, &merchant, mint)
+        .plan_id(1)
+        .amount(50_000_000)
+        .period_hours(1)
+        .end_ts(end_ts)
+        .execute();
+    res.assert_ok();
+
+    let (_, plan_bump) = get_plan_pda(&merchant.pubkey(), 1);
+    Subscribe::new(&mut litesvm, &alice, merchant.pubkey(), plan_pda, 1, plan_bump, mint).execute().assert_ok();
+
+    let (subscription_pda, _) = get_subscription_pda(&plan_pda, &alice.pubkey());
+
+    (litesvm, alice, merchant, plan_pda, subscription_pda)
+}
 
 #[test]
 fn resume_subscription_happy_path() {
@@ -33,7 +69,7 @@ fn resume_subscription_happy_path() {
 }
 
 #[test]
-fn resume_subscription_allows_transfer_after_cancelled_period_elapsed() {
+fn resume_subscription_rejected_at_cancelled_period_end() {
     let (mut litesvm, alice, merchant, mint, plan_pda, _plan_bump, subscription_pda) = setup_with_subscription();
     init_ata(&mut litesvm, mint, merchant.pubkey(), 0);
 
@@ -45,12 +81,9 @@ fn resume_subscription_allows_transfer_after_cancelled_period_elapsed() {
         .execute()
         .assert_err(SubscriptionsError::SubscriptionCancelled);
 
-    ResumeSubscription::new(&mut litesvm, &alice, plan_pda, subscription_pda).execute().assert_ok();
-
-    TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
-        .amount(10_000_000)
+    ResumeSubscription::new(&mut litesvm, &alice, plan_pda, subscription_pda)
         .execute()
-        .assert_ok();
+        .assert_err(SubscriptionsError::SubscriptionCancelled);
 }
 
 #[test]
@@ -91,6 +124,90 @@ fn resume_subscription_plan_mismatch_rejected() {
     ResumeSubscription::new(&mut litesvm, &alice, wrong_plan, subscription_pda)
         .execute()
         .assert_err(SubscriptionsError::SubscriptionPlanMismatch);
+}
+
+#[test]
+fn resume_subscription_rejected_after_cancelled_period_elapsed() {
+    let (mut litesvm, alice, _merchant, _mint, plan_pda, _plan_bump, subscription_pda) = setup_with_subscription();
+
+    CancelSubscription::new(&mut litesvm, &alice, plan_pda, subscription_pda).execute().assert_ok();
+    move_clock_forward(&mut litesvm, hours(1) + 1);
+
+    ResumeSubscription::new(&mut litesvm, &alice, plan_pda, subscription_pda)
+        .execute()
+        .assert_err(SubscriptionsError::SubscriptionCancelled);
+}
+
+#[test]
+fn resume_subscription_rejected_when_plan_expired() {
+    let (mut litesvm, alice, _merchant, plan_pda, subscription_pda) = setup_subscription_with_tight_plan_end();
+
+    CancelSubscription::new(&mut litesvm, &alice, plan_pda, subscription_pda).execute().assert_ok();
+
+    // Advance just past plan.end_ts. Resume is rejected because the plan no
+    // longer supports active subscriptions.
+    move_clock_forward(&mut litesvm, hours(1) + 1);
+
+    ResumeSubscription::new(&mut litesvm, &alice, plan_pda, subscription_pda)
+        .execute()
+        .assert_err(SubscriptionsError::PlanExpired);
+}
+
+#[test]
+fn resume_subscription_allows_when_plan_sunset() {
+    let (mut litesvm, alice, merchant, _mint, plan_pda, _plan_bump, subscription_pda) = setup_with_subscription();
+
+    CancelSubscription::new(&mut litesvm, &alice, plan_pda, subscription_pda).execute().assert_ok();
+    UpdatePlan::new(&mut litesvm, &merchant, plan_pda)
+        .status(PlanStatus::Sunset)
+        .end_ts(current_ts() + days(7) as i64)
+        .execute()
+        .assert_ok();
+
+    ResumeSubscription::new(&mut litesvm, &alice, plan_pda, subscription_pda).execute().assert_ok();
+
+    let account = litesvm.get_account(&subscription_pda).unwrap();
+    let sub = SubscriptionDelegation::load(&account.data).unwrap();
+    assert_eq!({ sub.expires_at_ts }, 0);
+}
+
+#[test]
+fn resume_subscription_rejected_when_plan_deleted() {
+    let (mut litesvm, alice, merchant, plan_pda, subscription_pda) = setup_subscription_with_tight_plan_end();
+
+    CancelSubscription::new(&mut litesvm, &alice, plan_pda, subscription_pda).execute().assert_ok();
+    move_clock_forward(&mut litesvm, hours(1) + 1);
+    DeletePlan::new(&mut litesvm, &merchant, plan_pda).execute().assert_ok();
+
+    ResumeSubscription::new(&mut litesvm, &alice, plan_pda, subscription_pda)
+        .execute()
+        .assert_err(SubscriptionsError::PlanClosed);
+}
+
+#[test]
+fn resume_subscription_cancel_resume_cancel_across_period_boundary() {
+    let (mut litesvm, alice, _merchant, _mint, plan_pda, _plan_bump, subscription_pda) = setup_with_subscription();
+
+    CancelSubscription::new(&mut litesvm, &alice, plan_pda, subscription_pda).execute().assert_ok();
+    let first_expires_at = {
+        let account = litesvm.get_account(&subscription_pda).unwrap();
+        let sub = SubscriptionDelegation::load(&account.data).unwrap();
+        sub.expires_at_ts
+    };
+
+    ResumeSubscription::new(&mut litesvm, &alice, plan_pda, subscription_pda).execute().assert_ok();
+
+    // Advance past the original period end so the second cancel must compute a
+    // new period boundary, not reuse the stale one.
+    move_clock_forward(&mut litesvm, hours(2));
+
+    CancelSubscription::new(&mut litesvm, &alice, plan_pda, subscription_pda).execute().assert_ok();
+    let account = litesvm.get_account(&subscription_pda).unwrap();
+    let sub = SubscriptionDelegation::load(&account.data).unwrap();
+    assert!(
+        { sub.expires_at_ts } > first_expires_at,
+        "second cancel should advance expires_at_ts past the prior period boundary",
+    );
 }
 
 #[test]

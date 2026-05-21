@@ -1063,10 +1063,14 @@ impl<'a> ResumeSubscription<'a> {
 
     #[allow(clippy::result_large_err)]
     pub fn execute(self) -> TransactionResult {
+        let event_authority = Pubkey::new_from_array(event_authority_pda::ID.to_bytes());
+
         let accounts = vec![
             AccountMeta::new_readonly(self.subscriber.pubkey(), true),
             AccountMeta::new_readonly(self.plan_pda, false),
             AccountMeta::new(self.subscription_pda, false),
+            AccountMeta::new_readonly(event_authority, false),
+            AccountMeta::new_readonly(PROGRAM_ID, false),
         ];
 
         let ix = Instruction { program_id: PROGRAM_ID, accounts, data: vec![*resume_subscription::DISCRIMINATOR] };

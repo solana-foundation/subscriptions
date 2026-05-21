@@ -109,6 +109,8 @@ pub enum EventDiscriminators {
     FixedTransfer = 3,
     /// A transfer was executed against a recurring delegation.
     RecurringTransfer = 4,
+    /// A cancelled subscription was resumed by the subscriber.
+    SubscriptionResumed = 5,
 }
 
 impl TryFrom<u8> for EventDiscriminators {
@@ -121,6 +123,7 @@ impl TryFrom<u8> for EventDiscriminators {
             2 => Ok(Self::SubscriptionTransfer),
             3 => Ok(Self::FixedTransfer),
             4 => Ok(Self::RecurringTransfer),
+            5 => Ok(Self::SubscriptionResumed),
             _ => Err(value),
         }
     }

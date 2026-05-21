@@ -668,8 +668,8 @@ export function PlanCard({
         (plan.data.terms.amount !== matchingSub.subscription.terms.amount ||
             plan.data.terms.periodHours !== matchingSub.subscription.terms.periodHours ||
             plan.data.terms.createdAt !== matchingSub.subscription.terms.createdAt);
-    const canResumeSubscription = isCancelledSub && !isGhostSubscription;
     const [subDaysLeft, setSubDaysLeft] = useState<number | null>(null);
+    const canResumeSubscription = isCancelledSub && !isGhostSubscription && subDaysLeft !== null && subDaysLeft > 0;
 
     const meta = useMemo(() => parsePlanMeta(plan.data.metadataUri), [plan.data.metadataUri]);
 

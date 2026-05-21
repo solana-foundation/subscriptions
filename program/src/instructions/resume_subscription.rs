@@ -1,8 +1,15 @@
-use pinocchio::{error::ProgramError, AccountView, ProgramResult};
+use pinocchio::{
+    error::ProgramError,
+    sysvars::{clock::Clock, Sysvar},
+    AccountView, ProgramResult,
+};
 
 use crate::{
-    check_and_update_version, state::subscription_delegation::SubscriptionDelegation, AccountCheck, ProgramAccount,
-    SignerAccount, SubscriptionsError, WritableAccount,
+    check_and_update_version,
+    event_engine::{self, EventSerialize},
+    events::SubscriptionResumedEvent,
+    state::{plan::Plan, subscription_delegation::SubscriptionDelegation},
+    AccountCheck, ProgramAccount, SignerAccount, SubscriptionsError, WritableAccount,
 };
 
 /// Instruction discriminator byte for `ResumeSubscription`.
@@ -10,27 +17,58 @@ pub const DISCRIMINATOR: &u8 = &13;
 
 /// Resumes a cancelled subscription by clearing its `expires_at_ts`.
 ///
-/// The current billing period start and pulled amount are left unchanged.
+/// Rejects when the cancellation period has elapsed, the plan account is
+/// closed, expired, or no longer matches the subscription's snapshotted terms.
+/// Period accounting (`current_period_start_ts`, `amount_pulled_in_period`) is
+/// unchanged. Emits a [`SubscriptionResumedEvent`].
 pub fn process(accounts: &mut [AccountView]) -> ProgramResult {
     let accounts_struct = ResumeSubscriptionAccounts::try_from(accounts)?;
+    let current_ts = Clock::get()?.unix_timestamp;
 
-    let mut binding = accounts_struct.subscription_pda.try_borrow_mut()?;
-    check_and_update_version(&mut binding)?;
-    let subscription = SubscriptionDelegation::load_mut_with_min_size(&mut binding)?;
+    let plan_pda;
+    {
+        let mut binding = accounts_struct.subscription_pda.try_borrow_mut()?;
+        check_and_update_version(&mut binding)?;
+        let subscription = SubscriptionDelegation::load_mut_with_min_size(&mut binding)?;
 
-    if subscription.header.delegator != *accounts_struct.subscriber.address() {
-        return Err(SubscriptionsError::Unauthorized.into());
+        if subscription.header.delegator != *accounts_struct.subscriber.address() {
+            return Err(SubscriptionsError::Unauthorized.into());
+        }
+
+        if subscription.header.delegatee != *accounts_struct.plan_pda.address() {
+            return Err(SubscriptionsError::SubscriptionPlanMismatch.into());
+        }
+
+        if subscription.expires_at_ts == 0 {
+            return Err(SubscriptionsError::SubscriptionNotCancelled.into());
+        }
+
+        if !accounts_struct.plan_pda.owned_by(&crate::ID) {
+            return Err(SubscriptionsError::PlanClosed.into());
+        }
+
+        {
+            let plan_data = accounts_struct.plan_pda.try_borrow()?;
+            let plan = Plan::load(&plan_data)?;
+
+            if plan.data.end_ts != 0 && current_ts > plan.data.end_ts {
+                return Err(SubscriptionsError::PlanExpired.into());
+            }
+
+            subscription.check_plan_terms(&plan.data.terms)?;
+        }
+
+        if subscription.expires_at_ts <= current_ts {
+            return Err(SubscriptionsError::SubscriptionCancelled.into());
+        }
+
+        plan_pda = subscription.header.delegatee;
+        subscription.expires_at_ts = 0;
     }
 
-    if subscription.header.delegatee != *accounts_struct.plan_pda.address() {
-        return Err(SubscriptionsError::SubscriptionPlanMismatch.into());
-    }
-
-    if subscription.expires_at_ts == 0 {
-        return Err(SubscriptionsError::SubscriptionNotCancelled.into());
-    }
-
-    subscription.expires_at_ts = 0;
+    let event = SubscriptionResumedEvent::new(plan_pda, *accounts_struct.subscriber.address(), current_ts);
+    let event_data = event.to_bytes();
+    event_engine::emit_event(&crate::ID, accounts_struct.event_authority, accounts_struct.self_program, &event_data)?;
 
     Ok(())
 }
@@ -40,23 +78,22 @@ pub struct ResumeSubscriptionAccounts<'a> {
     pub subscriber: &'a AccountView,
     pub plan_pda: &'a AccountView,
     pub subscription_pda: &'a mut AccountView,
+    pub event_authority: &'a AccountView,
+    pub self_program: &'a AccountView,
 }
 
 impl<'a> TryFrom<&'a mut [AccountView]> for ResumeSubscriptionAccounts<'a> {
     type Error = ProgramError;
 
     fn try_from(accounts: &'a mut [AccountView]) -> Result<Self, Self::Error> {
-        let [subscriber, plan_pda, subscription_pda] = accounts else {
+        let [subscriber, plan_pda, subscription_pda, event_authority, self_program] = accounts else {
             return Err(SubscriptionsError::NotEnoughAccountKeys.into());
         };
 
         SignerAccount::check(subscriber)?;
-        if !plan_pda.owned_by(&crate::ID) {
-            return Err(SubscriptionsError::PlanClosed.into());
-        }
         ProgramAccount::check(subscription_pda)?;
         WritableAccount::check(subscription_pda)?;
 
-        Ok(Self { subscriber, plan_pda, subscription_pda })
+        Ok(Self { subscriber, plan_pda, subscription_pda, event_authority, self_program })
     }
 }

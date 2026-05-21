@@ -278,7 +278,7 @@ function SubscriptionCard({
     const pulled = Number(item.subscription.amountPulledInPeriod) / USDC_MULTIPLIER;
     const subInitId = item.subscription.header.initId;
     const isStale = subscriptionAuthorityInitId != null && subInitId !== subscriptionAuthorityInitId;
-    const canResume = isCancelled && !planDeleted && !isGhostPlan && !isStale;
+    const canResume = isCancelled && daysLeft !== null && daysLeft > 0 && !planDeleted && !isGhostPlan && !isStale;
 
     return (
         <>
