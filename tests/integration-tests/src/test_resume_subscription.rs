@@ -13,6 +13,7 @@ use crate::{
     SubscriptionsError,
 };
 use litesvm::LiteSVM;
+use solana_clock::Clock;
 use solana_keypair::Keypair;
 use solana_pubkey::Pubkey;
 use solana_signer::Signer;
@@ -30,7 +31,7 @@ fn setup_subscription_with_tight_plan_end() -> (LiteSVM, Keypair, Keypair, Pubke
 
     initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
 
-    let end_ts = current_ts() + hours(1) as i64;
+    let end_ts = litesvm.get_sysvar::<Clock>().unix_timestamp + hours(1) as i64;
     let (res, plan_pda) = CreatePlan::new(&mut litesvm, &merchant, mint)
         .plan_id(1)
         .amount(50_000_000)
