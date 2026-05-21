@@ -17,7 +17,7 @@ thiserror = "2.0"
 num-derive = "0.4"
 num-traits = "0.2"
 
-solana-account = { version = "~3.4", optional = true }
+solana-account = { version = "~4.1", optional = true }
 solana-account-info = "~3.1"
 solana-address = { version = "2.6.0", features = ["borsh", "copy", "curve25519", "decode"] }
 solana-cpi = "~3.1"
