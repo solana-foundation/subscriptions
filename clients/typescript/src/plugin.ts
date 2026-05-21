@@ -72,6 +72,7 @@ import {
     getCreateRecurringDelegationInstruction,
     getDeletePlanInstruction,
     getInitSubscriptionAuthorityInstructionAsync,
+    getResumeSubscriptionInstructionAsync,
     getRevokeDelegationInstruction,
     getSubscribeInstructionAsync,
     getTransferFixedInstruction,
@@ -243,6 +244,12 @@ export type SubscribeInput = WithProgramAddress & {
 };
 
 export type CancelSubscriptionInput = WithProgramAddress & {
+    planPda: Address;
+    subscriber: TransactionSigner;
+    subscriptionPda?: Address;
+};
+
+export type ResumeSubscriptionInput = WithProgramAddress & {
     planPda: Address;
     subscriber: TransactionSigner;
     subscriptionPda?: Address;
@@ -573,6 +580,17 @@ export function getCancelSubscriptionOverlayInstructionAsync(input: CancelSubscr
     );
 }
 
+export function getResumeSubscriptionOverlayInstructionAsync(input: ResumeSubscriptionInput): Promise<Instruction> {
+    return getResumeSubscriptionInstructionAsync(
+        {
+            planPda: input.planPda,
+            subscriber: input.subscriber,
+            subscriptionPda: input.subscriptionPda,
+        },
+        pdaConfig(input.programAddress),
+    );
+}
+
 // ============================================================================
 // Plugin
 // ============================================================================
@@ -600,6 +618,7 @@ export type SubscriptionsPluginInstructions = {
     initSubscriptionAuthority: (
         input: MakeOptional<InitSubscriptionAuthorityInput, 'owner' | 'payer'>,
     ) => Self<Promise<Instruction>>;
+    resumeSubscription: (input: MakeOptional<ResumeSubscriptionInput, 'subscriber'>) => Self<Promise<Instruction>>;
     revokeDelegation: (input: MakeOptional<RevokeDelegationInput, 'authority'>) => Self<Instruction>;
     revokeSubscription: (input: MakeOptional<RevokeSubscriptionInput, 'authority'>) => Self<Instruction>;
     subscribe: (input: MakeOptional<SubscribeInput, 'payer' | 'subscriber'>) => Self<Promise<Instruction>>;
@@ -720,6 +739,14 @@ export function subscriptionsProgram() {
                             ...input,
                             owner: input.owner ?? client.identity,
                             payer: input.payer ?? (client.payer === client.identity ? undefined : client.payer),
+                        }),
+                    ),
+                resumeSubscription: input =>
+                    addSelfPlanAndSendFunctions(
+                        client,
+                        getResumeSubscriptionOverlayInstructionAsync({
+                            ...input,
+                            subscriber: input.subscriber ?? client.identity,
                         }),
                     ),
                 revokeDelegation: input =>

@@ -17,6 +17,7 @@ pub use create_recurring_delegation::CreateRecurringDelegationData;
 pub mod emit_event;
 pub mod helpers;
 pub mod initialize_subscription_authority;
+pub mod resume_subscription;
 pub mod revoke_delegation;
 pub mod transfer_fixed_delegation;
 pub mod transfer_recurring_delegation;
@@ -237,6 +238,16 @@ pub enum SubscriptionsInstruction {
     ))]
     CancelSubscription = 12,
 
+    #[codama(account(name = "subscriber", signer, docs = "The subscriber resuming the subscription"))]
+    #[codama(account(name = "plan_pda", docs = "The plan PDA for the subscription"))]
+    #[codama(account(
+        name = "subscription_pda",
+        writable,
+        docs = "The subscription PDA being resumed",
+        default_value = pda("subscriptionDelegation", [seed("planPda", account("plan_pda")), seed("subscriber", account("subscriber"))])
+    ))]
+    ResumeSubscription = 13,
+
     #[codama(skip)]
     #[codama(account(
         name = "event_authority",
@@ -291,6 +302,7 @@ impl SubscriptionsInstruction {
                 Ok(Self::Subscribe(loaded.clone()))
             }
             cancel_subscription::DISCRIMINATOR => Ok(Self::CancelSubscription),
+            resume_subscription::DISCRIMINATOR => Ok(Self::ResumeSubscription),
             &EMIT_EVENT_IX_DISC => Ok(Self::EmitEvent),
             _ => Err(SubscriptionsError::InvalidInstruction.into()),
         }
@@ -313,6 +325,7 @@ impl fmt::Display for SubscriptionsInstruction {
             Self::TransferSubscription(_) => write!(f, "transfer_subscription"),
             Self::Subscribe(_) => write!(f, "subscribe"),
             Self::CancelSubscription => write!(f, "cancel_subscription"),
+            Self::ResumeSubscription => write!(f, "resume_subscription"),
             Self::EmitEvent => write!(f, "emit_event"),
         }
     }

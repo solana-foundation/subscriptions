@@ -190,16 +190,16 @@ Both default to `http://localhost:8899`.
 
 The `@solana/subscriptions` package in `clients/typescript` provides a high-level `SubscriptionsClient` class wrapping all program instructions:
 
-| Method                                                      | Purpose                                                        |
-| ----------------------------------------------------------- | -------------------------------------------------------------- |
-| `initSubscriptionAuthority` / `closeSubscriptionAuthority`  | Create or close the SA for a (user, mint) pair                 |
-| `createFixedDelegation` / `transferFixed`                   | Create a fixed delegation and execute transfers against it     |
-| `createRecurringDelegation` / `transferRecurring`           | Create a recurring delegation and execute transfers against it |
-| `createPlan` / `updatePlan` / `deletePlan`                  | Manage merchant subscription plans                             |
-| `subscribe` / `cancelSubscription` / `transferSubscription` | Subscribe to plans, cancel, and pull payments                  |
-| `revokeDelegation`                                          | Close any delegation PDA and return rent to the original payer |
-| `getDelegationsForWallet` / `getPlansForOwner`              | Query on-chain accounts                                        |
-| `isSubscriptionAuthorityInitialized`                        | Check if an SA exists for a wallet/mint pair                   |
+| Method                                                                             | Purpose                                                        |
+| ---------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `initSubscriptionAuthority` / `closeSubscriptionAuthority`                         | Create or close the SA for a (user, mint) pair                 |
+| `createFixedDelegation` / `transferFixed`                                          | Create a fixed delegation and execute transfers against it     |
+| `createRecurringDelegation` / `transferRecurring`                                  | Create a recurring delegation and execute transfers against it |
+| `createPlan` / `updatePlan` / `deletePlan`                                         | Manage merchant subscription plans                             |
+| `subscribe` / `cancelSubscription` / `resumeSubscription` / `transferSubscription` | Subscribe to plans, cancel or resume, and pull payments        |
+| `revokeDelegation`                                                                 | Close any delegation PDA and return rent to the original payer |
+| `getDelegationsForWallet` / `getPlansForOwner`                                     | Query on-chain accounts                                        |
+| `isSubscriptionAuthorityInitialized`                                               | Check if an SA exists for a wallet/mint pair                   |
 
 PDA derivation helpers are exported from `pdas.ts`: `getSubscriptionAuthorityPDA`, `getDelegationPDA`, `getPlanPDA`, `getSubscriptionPDA`, `getEventAuthorityPDA`.
 

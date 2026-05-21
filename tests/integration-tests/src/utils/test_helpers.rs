@@ -31,8 +31,9 @@ use crate::{
     instructions::update_plan::UpdatePlanData,
     instructions::{
         cancel_subscription, close_subscription_authority, create_fixed_delegation, create_plan,
-        create_recurring_delegation, delete_plan, initialize_subscription_authority, revoke_delegation, subscribe,
-        transfer_fixed_delegation, transfer_recurring_delegation, transfer_subscription, update_plan,
+        create_recurring_delegation, delete_plan, initialize_subscription_authority, resume_subscription,
+        revoke_delegation, subscribe, transfer_fixed_delegation, transfer_recurring_delegation, transfer_subscription,
+        update_plan,
     },
     state::common::PlanStatus,
     tests::{
@@ -1043,6 +1044,32 @@ impl<'a> CancelSubscription<'a> {
         ];
 
         let ix = Instruction { program_id: PROGRAM_ID, accounts, data: vec![*cancel_subscription::DISCRIMINATOR] };
+
+        build_and_send_transaction(self.litesvm, &[self.subscriber], &self.subscriber.pubkey(), &ix)
+    }
+}
+
+pub struct ResumeSubscription<'a> {
+    litesvm: &'a mut LiteSVM,
+    subscriber: &'a Keypair,
+    plan_pda: Pubkey,
+    subscription_pda: Pubkey,
+}
+
+impl<'a> ResumeSubscription<'a> {
+    pub fn new(litesvm: &'a mut LiteSVM, subscriber: &'a Keypair, plan_pda: Pubkey, subscription_pda: Pubkey) -> Self {
+        Self { litesvm, subscriber, plan_pda, subscription_pda }
+    }
+
+    #[allow(clippy::result_large_err)]
+    pub fn execute(self) -> TransactionResult {
+        let accounts = vec![
+            AccountMeta::new_readonly(self.subscriber.pubkey(), true),
+            AccountMeta::new_readonly(self.plan_pda, false),
+            AccountMeta::new(self.subscription_pda, false),
+        ];
+
+        let ix = Instruction { program_id: PROGRAM_ID, accounts, data: vec![*resume_subscription::DISCRIMINATOR] };
 
         build_and_send_transaction(self.litesvm, &[self.subscriber], &self.subscriber.pubkey(), &ix)
     }

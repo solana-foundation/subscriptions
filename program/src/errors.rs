@@ -229,7 +229,7 @@ pub enum SubscriptionsError {
     SubscriptionCancelled,
     #[error("Subscription already cancelled")]
     SubscriptionAlreadyCancelled,
-    #[error("Subscription must be cancelled before revoke")]
+    #[error("Subscription is not cancelled")]
     SubscriptionNotCancelled,
     #[error("End timestamp must be zero or in the future")]
     InvalidEndTs,

@@ -135,16 +135,16 @@ ADR-001 provides the core delegation infrastructure. Plans add a subscription mo
 
 ### Comparison to Direct Delegation
 
-| Aspect                 | ADR-001 Direct Delegation                              | ADR-002 Plan Subscriptions                                                                                                                             |
-| ---------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Creation**           | Delegator initiates                                    | Delegatee publishes, delegators subscribe                                                                                                              |
-| **Terms Storage**      | Embedded per delegation                                | Single Plan for all                                                                                                                                    |
-| **Cost Structure**     | Full cost per delegation                               | Plan cost (1x) + Delegation cost (Nx)                                                                                                                  |
-| **Term Mutability**    | Per delegation                                         | Core billing terms (amount, period_hours, created_at) immutable and snapshotted per subscription; pullers, status, end_ts, metadata_uri mutable        |
-| **Discoverability**    | Manual PDA sharing                                     | Plans can be discovered/marketplace                                                                                                                    |
-| **Use Cases**          | P2P, custom, one-off                                   | Subscription services, SaaS, platforms                                                                                                                 |
-| **Pull Authorization** | Delegatee-only (`transfer_fixed`/`transfer_recurring`) | Owner + configurable pullers array (`transfer_subscription`)                                                                                           |
-| **Cancellability**     | Not implemented (add later)                            | Two-step: `cancel_subscription` (pre-computes expiration at end of current period) then `revoke_delegation` (close after expiration). Plan can sunset. |
+| Aspect                 | ADR-001 Direct Delegation                              | ADR-002 Plan Subscriptions                                                                                                                                                                     |
+| ---------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Creation**           | Delegator initiates                                    | Delegatee publishes, delegators subscribe                                                                                                                                                      |
+| **Terms Storage**      | Embedded per delegation                                | Single Plan for all                                                                                                                                                                            |
+| **Cost Structure**     | Full cost per delegation                               | Plan cost (1x) + Delegation cost (Nx)                                                                                                                                                          |
+| **Term Mutability**    | Per delegation                                         | Core billing terms (amount, period_hours, created_at) immutable and snapshotted per subscription; pullers, status, end_ts, metadata_uri mutable                                                |
+| **Discoverability**    | Manual PDA sharing                                     | Plans can be discovered/marketplace                                                                                                                                                            |
+| **Use Cases**          | P2P, custom, one-off                                   | Subscription services, SaaS, platforms                                                                                                                                                         |
+| **Pull Authorization** | Delegatee-only (`transfer_fixed`/`transfer_recurring`) | Owner + configurable pullers array (`transfer_subscription`)                                                                                                                                   |
+| **Cancellability**     | Not implemented (add later)                            | `cancel_subscription` pre-computes expiration at end of current period, `resume_subscription` clears a pending cancellation, and `revoke_delegation` closes after expiration. Plan can sunset. |
 
 ### Integration With ADR-001
 
@@ -199,6 +199,7 @@ When a subscriber subscribes, the plan's `PlanTerms` (amount, period_hours, crea
 | **NEW**: `SubscriptionDelegation` PDA        | -                     | Tracks per-subscriber billing state               |
 | **NEW**: `subscribe` instruction             | -                     | Creates SubscriptionDelegation referencing a Plan |
 | **NEW**: `cancel_subscription` instruction   | -                     | Sets expires_at_ts, grace period                  |
+| **NEW**: `resume_subscription` instruction   | -                     | Clears expires_at_ts to resume autopay            |
 | **NEW**: `transfer_subscription` instruction | -                     | Pulls tokens using Plan terms + Delegation state  |
 
 **Seeded Separation for Coexistence:**
@@ -211,7 +212,7 @@ When a subscriber subscribes, the plan's `PlanTerms` (amount, period_hours, crea
 **Flows Remain Available:**
 
 - All ADR-001 instructions (`initialize_subscription_authority`, `create_fixed_delegation`, `create_recurring_delegation`) continue to work unchanged
-- New ADR-002 instructions (`create_plan`, `update_plan`, `delete_plan`, `subscribe`, `cancel_subscription`, `transfer_subscription`) add subscription capability
+- New ADR-002 instructions (`create_plan`, `update_plan`, `delete_plan`, `subscribe`, `cancel_subscription`, `resume_subscription`, `transfer_subscription`) add subscription capability
 - Direct delegations and subscriptions can be created and withdrawn independently
 
 ---
@@ -277,7 +278,7 @@ Per-subscriber billing state linked to a Plan:
 
 **PDA seeds**: `["subscription", plan_pda, subscriber]`
 
-**Cancellation semantics**: `expires_at_ts == 0` means the subscription is active. When the subscriber cancels, `expires_at_ts` is set to the end of the current billing period. Transfers are blocked after this timestamp, and the account can be closed via `revoke_delegation`.
+**Cancellation semantics**: `expires_at_ts == 0` means the subscription is active. When the subscriber cancels, `expires_at_ts` is set to the end of the current billing period. The subscriber can call `resume_subscription` to clear the pending cancellation before the account is revoked. Transfers are blocked after `expires_at_ts`, and the account can be closed via `revoke_delegation`.
 
 ---
 
@@ -489,7 +490,32 @@ After `expires_at_ts` passes, pulls are blocked. The subscriber can then call `r
 **Two-step revocation flow:**
 
 - `cancel_subscription` → pre-computes `expires_at_ts` (end of current period), allows pulls until then
+- `resume_subscription` → clears `expires_at_ts` back to `0` if the subscriber changes their mind before revocation
 - `revoke_delegation` → closes account (requires `expires_at_ts != 0` and `expires_at_ts <= current_ts`)
+
+### `resume_subscription` (Discriminator: 13)
+
+Subscriber resumes a cancelled subscription by clearing `expires_at_ts`. This does not change `current_period_start_ts` or `amount_pulled_in_period`, so the billing period and allowance accounting continue from the existing subscription state.
+
+| Account | Type     | Description                |
+| ------- | -------- | -------------------------- |
+| 0       | signer   | Subscriber (delegator)     |
+| 1       |          | Plan PDA                   |
+| 2       | writable | SubscriptionDelegation PDA |
+
+**Parameters:** None (only discriminator byte)
+
+**Validation:**
+
+1. Verify the plan account is still program-owned (else `PlanClosed`)
+2. Verify caller is the subscription's delegator (else `Unauthorized`)
+3. Verify subscription's delegatee matches the plan PDA (else `SubscriptionPlanMismatch`)
+4. Verify `expires_at_ts != 0` (else `SubscriptionNotCancelled`)
+
+**Process:**
+
+1. Clear `expires_at_ts` to `0`
+2. Leave `current_period_start_ts` and `amount_pulled_in_period` unchanged
 
 ---
 
@@ -554,7 +580,8 @@ sequenceDiagram
 Cancellation is a two-step process:
 
 1. **`cancel_subscription`** — Sets `expires_at_ts`. Three paths: terms match (grace period until end of billing period), terms mismatch/ghost plan (immediate), plan closed (immediate).
-2. **`revoke_delegation`** — Closes the subscription account and reclaims rent. Only allowed after `expires_at_ts` is in the past.
+2. **`resume_subscription`** — Optional. Clears a pending cancellation without resetting period accounting.
+3. **`revoke_delegation`** — Closes the subscription account and reclaims rent. Only allowed after `expires_at_ts` is in the past.
 
 ```mermaid
 sequenceDiagram
@@ -567,6 +594,15 @@ sequenceDiagram
 
     X->>P: transfer_subscription(amount, delegator, mint)
     Note over P: Within cancellation period:<br/>Pull allowed (grace period)
+
+    D->>P: resume_subscription(plan_pda, subscription_pda)
+    Note over P: expires_at_ts = 0<br/>Period state unchanged
+
+    X->>P: transfer_subscription(amount, delegator, mint)
+    Note over P: Pulls continue as an active subscription
+
+    D->>P: cancel_subscription(plan_pda, subscription_pda)
+    Note over P: Subscriber cancels again
 
     Note over D,P: Period boundary passes...
 
