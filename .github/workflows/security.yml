@@ -1,0 +1,64 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  cargo-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup
+        with:
+          install-solana: 'false'
+          install-just: 'false'
+          install-pnpm: 'false'
+          rust-cache-key: 'cargo-audit'
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      - run: cargo audit
+
+  pnpm-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup
+        with:
+          install-rust: 'false'
+          enable-rust-cache: 'false'
+          install-solana: 'false'
+          install-just: 'false'
+          install-pnpm-dependencies: 'false'
+      - run: pnpm audit --ignore-unfixable
+
+  miri:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup
+        with:
+          rust-toolchain: 'nightly'
+          rust-components: 'miri'
+          install-solana: 'false'
+          install-just: 'false'
+          install-pnpm: 'false'
+          rust-cache-key: 'miri'
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/org.rust-lang.miri
+          key: miri-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+      - run: cargo +nightly miri setup
+      - run: cargo +nightly miri test -p subscriptions-program
