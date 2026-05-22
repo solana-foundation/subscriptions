@@ -85,9 +85,12 @@ jobs:
           cd program && cargo build
           cd .. && pnpm run generate-clients
 
+      - name: Build Rust client crate
+        run: cargo build
+
       - name: Publish Rust client crate
         id: cargo_publish
-        uses: solana-developers/github-actions/cargo-publish@main
+        uses: dev-jodee/github-actions/cargo-publish@e15ede4
         with:
           package: subscriptions
           working-directory: clients/rust
