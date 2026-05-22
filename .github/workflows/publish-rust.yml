@@ -90,7 +90,7 @@ jobs:
 
       - name: Publish Rust client crate
         id: cargo_publish
-        uses: dev-jodee/github-actions/cargo-publish@e15ede4
+        uses: dev-jodee/github-actions/cargo-publish@e15ede4246abd98badb4701d34394865e382a2de
         with:
           package: subscriptions
           working-directory: clients/rust
