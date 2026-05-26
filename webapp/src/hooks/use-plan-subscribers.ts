@@ -3,7 +3,14 @@ import { useMemo } from 'react';
 
 import { useClusterConfig } from '@/hooks/use-cluster-config';
 import { type PlanItem, useMyPlans } from '@/hooks/use-plans';
-import { fetchPlanSubscriptions, type PlanSubscriber, useSubscriberCounts } from '@/hooks/use-subscriptions';
+import {
+    fetchPlanSubscriptions,
+    getAuthorityStalePlanSubscribers,
+    getLivePlanSubscribers,
+    type PlanSubscriber,
+    resolvePlanSubscriberAuthorities,
+    useSubscriberCounts,
+} from '@/hooks/use-subscriptions';
 import { getBlockTimestamp } from '@/hooks/use-time-travel';
 import { useProgramAddress } from '@/hooks/use-token-config';
 import {
@@ -19,6 +26,7 @@ export interface PlanSubscriberData {
     currentSubscribers: PlanSubscriber[];
     eligible: EligibleSubscriber[];
     plan: PlanItem;
+    staleAuthoritySubscribers: PlanSubscriber[];
     staleSubscribers: PlanSubscriber[];
     subscribers: PlanSubscriber[];
     totalPending: bigint;
@@ -51,10 +59,19 @@ export function useAllPlanSubscribers() {
 
             const planDataArr = await Promise.all(
                 plansWithSubs.map(async (plan): Promise<PlanSubscriberData> => {
-                    const subscribers = await fetchPlanSubscriptions(rpcUrl, plan.address, progAddr!);
-                    const staleSubscribers = getStalePlanSubscribers(subscribers, plan.data.terms);
-                    const currentSubscribers = subscribers.filter(sub => hasMatchingPlanTerms(sub, plan.data.terms));
-                    const eligible = computeEligibleSubscribers(subscribers, plan.data.terms, blockTimestamp);
+                    const subscribers = await resolvePlanSubscriberAuthorities(
+                        rpcUrl,
+                        await fetchPlanSubscriptions(rpcUrl, plan.address, progAddr!),
+                        plan.data.mint,
+                        progAddr!,
+                    );
+                    const liveSubscribers = getLivePlanSubscribers(subscribers);
+                    const staleAuthoritySubscribers = getAuthorityStalePlanSubscribers(subscribers);
+                    const staleSubscribers = getStalePlanSubscribers(liveSubscribers, plan.data.terms);
+                    const currentSubscribers = liveSubscribers.filter(sub =>
+                        hasMatchingPlanTerms(sub, plan.data.terms),
+                    );
+                    const eligible = computeEligibleSubscribers(liveSubscribers, plan.data.terms, blockTimestamp);
                     const totalPending = eligible.reduce((sum, e) => sum + e.collectAmount, 0n);
                     const activeCount = currentSubscribers.filter(s => s.expiresAtTs === 0n).length;
                     const cancelledCount = currentSubscribers.filter(
@@ -67,6 +84,7 @@ export function useAllPlanSubscribers() {
                         currentSubscribers,
                         eligible,
                         plan,
+                        staleAuthoritySubscribers,
                         staleSubscribers,
                         subscribers,
                         totalPending,
