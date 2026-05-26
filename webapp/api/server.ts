@@ -23,7 +23,6 @@ const MIN_SOL_AIRDROP = 0.1;
 const MAX_SOL_AIRDROP = 10;
 
 const SO_PATH = join(__dirname, '../../target/deploy/subscriptions_program.so');
-const KEYPAIR_PATH = join(__dirname, '../../keys/subscriptions-keypair.json');
 
 const PROGRAM_ADDRESS = 'De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44';
 
@@ -255,8 +254,12 @@ async function handleBinaryInfo(): Promise<Response> {
     }
 }
 
-async function handlePrepareDeploy(body: { isUpgrade?: boolean; rpcUrl?: string }): Promise<Response> {
-    const { isUpgrade, rpcUrl } = body;
+async function handlePrepareDeploy(body: {
+    isUpgrade?: boolean;
+    programAddress?: string;
+    rpcUrl?: string;
+}): Promise<Response> {
+    const { isUpgrade, programAddress, rpcUrl } = body;
 
     try {
         const soBytes = await readFile(SO_PATH);
@@ -268,9 +271,10 @@ async function handlePrepareDeploy(body: { isUpgrade?: boolean; rpcUrl?: string 
             const programAddr = config.networks[network]?.programAddress ?? PROGRAM_ADDRESS;
             plan = await buildUpgradePlan(soBytes, programAddr);
         } else {
-            const keypairJson = await readFile(KEYPAIR_PATH, 'utf-8');
-            const programKeypairBytes = new Uint8Array(JSON.parse(keypairJson));
-            plan = await buildDeployPlan(soBytes, programKeypairBytes);
+            if (!programAddress || !BASE58_RE.test(programAddress)) {
+                return jsonResponse({ error: 'Program address required for initial deploy' }, 400);
+            }
+            plan = await buildDeployPlan(soBytes, programAddress);
         }
 
         return jsonResponse(plan);
@@ -653,10 +657,14 @@ async function handleRequest(req: Request): Promise<Response> {
         if (!parseResult.success) {
             response = jsonResponse({ error: parseResult.error }, 400);
         } else {
-            const deployBody = extractFields<{ isUpgrade?: boolean; rpcUrl?: string }>(parseResult.data, {
-                isUpgrade: 'optional_boolean',
-                rpcUrl: 'optional_string',
-            });
+            const deployBody = extractFields<{ isUpgrade?: boolean; programAddress?: string; rpcUrl?: string }>(
+                parseResult.data,
+                {
+                    isUpgrade: 'optional_boolean',
+                    programAddress: 'optional_string',
+                    rpcUrl: 'optional_string',
+                },
+            );
             response = await handlePrepareDeploy(deployBody);
         }
     } else if (url.pathname === '/api/setup/start-validator' && req.method === 'POST') {

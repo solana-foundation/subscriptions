@@ -76,7 +76,6 @@ export interface ProgramStatus {
 export interface DeployPlan {
     bufferKeypair: number[];
     bufferAddress: string;
-    programKeypair?: number[];
     chunks: string[];
     totalChunks: number;
     programAddress: string;
@@ -147,7 +146,12 @@ export const api = {
             apiClient<ProgramStatus>(
                 `/api/program/status?programAddress=${encodeURIComponent(programAddress)}&rpcUrl=${encodeURIComponent(rpcUrl)}`,
             ),
-        prepareDeploy: (params: { payerAddress: string; rpcUrl: string; isUpgrade: boolean }) =>
+        prepareDeploy: (params: {
+            payerAddress: string;
+            programAddress?: string;
+            rpcUrl: string;
+            isUpgrade: boolean;
+        }) =>
             apiClient<DeployPlan>('/api/program/prepare-deploy', {
                 method: 'POST',
                 body: JSON.stringify(params),

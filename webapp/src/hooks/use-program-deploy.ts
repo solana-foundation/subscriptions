@@ -58,6 +58,13 @@ export interface DeployProgress {
     total: number;
 }
 
+interface DeployMutationInput {
+    isUpgrade: boolean;
+    programAddress?: string;
+    programKeypairBytes?: Uint8Array;
+    resumeFrom?: number;
+}
+
 async function createKeypairSigner(bytes: Uint8Array): Promise<KeyPairSigner> {
     const kp = await createKeyPairFromBytes(bytes);
     return await createSignerFromKeyPair(kp);
@@ -89,6 +96,7 @@ export function useProgramDeploy() {
     async function fetchOrResumePlan(
         signer: TransactionSigner,
         isUpgrade: boolean,
+        programAddress?: string,
         resumeFrom?: number,
     ): Promise<{ bufferKpSigner: KeyPairSigner; plan: DeployPlan }> {
         if (resumeFrom !== undefined && lastPlanRef.current && bufferSignerRef.current) {
@@ -97,6 +105,7 @@ export function useProgramDeploy() {
         const plan = await api.program.prepareDeploy({
             isUpgrade,
             payerAddress: signer.address,
+            programAddress,
             rpcUrl,
         });
         const bufferKpSigner = await createKeypairSigner(new Uint8Array(plan.bufferKeypair));
@@ -266,6 +275,7 @@ export function useProgramDeploy() {
         plan: DeployPlan,
         bufferKpSigner: KeyPairSigner,
         isUpgrade: boolean,
+        programKeypairBytes?: Uint8Array,
     ) {
         const freshBlockhash = (await rpc.getLatestBlockhash().send()).value;
         const programAddr = address(plan.programAddress);
@@ -282,8 +292,11 @@ export function useProgramDeploy() {
             );
             finalTx = buildV0Tx(signer, freshBlockhash, [upgradeIx]);
         } else {
-            if (!plan.programKeypair) throw new Error('Program keypair required for initial deploy');
-            const programKpSigner = await createKeypairSigner(new Uint8Array(plan.programKeypair));
+            if (!programKeypairBytes) throw new Error('Program keypair required for initial deploy');
+            const programKpSigner = await createKeypairSigner(programKeypairBytes);
+            if (programKpSigner.address !== programAddr) {
+                throw new Error('Program keypair does not match deploy plan address');
+            }
             const programRent = await rpc.getMinimumBalanceForRentExemption(36n).send();
             const createProgramIx = buildCreateAccountIx(
                 signer,
@@ -361,13 +374,16 @@ export function useProgramDeploy() {
     });
 
     const deploy = useMutation({
-        mutationFn: async ({ isUpgrade, resumeFrom }: { isUpgrade: boolean; resumeFrom?: number }) => {
+        mutationFn: async ({ isUpgrade, programAddress, programKeypairBytes, resumeFrom }: DeployMutationInput) => {
             if (!walletSigner) throw new Error('Wallet not connected');
+            if (!isUpgrade && (!programAddress || !programKeypairBytes)) {
+                throw new Error('Program keypair required for initial deploy');
+            }
             const signer = walletSigner;
 
             setProgress({ current: 0, message: 'Fetching program data...', phase: 'preparing', total: 0 });
 
-            const { plan, bufferKpSigner } = await fetchOrResumePlan(signer, isUpgrade, resumeFrom);
+            const { plan, bufferKpSigner } = await fetchOrResumePlan(signer, isUpgrade, programAddress, resumeFrom);
             lastPlanRef.current = plan;
             bufferSignerRef.current = bufferKpSigner;
 
@@ -404,7 +420,7 @@ export function useProgramDeploy() {
                 total: totalChunks,
             });
 
-            const signature = await finalizeDeployment(signer, plan, bufferKpSigner, isUpgrade);
+            const signature = await finalizeDeployment(signer, plan, bufferKpSigner, isUpgrade, programKeypairBytes);
 
             await reclaimFeePayerSol(feePayerKp, signer);
 
