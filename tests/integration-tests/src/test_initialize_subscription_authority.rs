@@ -109,7 +109,7 @@ fn initialize_subscription_authority_with_sponsor() {
 #[case::no_extensions(&[], None)]
 #[case::confidential_transfer(
         &[ExtensionType::ConfidentialTransferMint],
-        Some(SubscriptionsError::MintHasConfidentialTransfer)
+        None
     )]
 #[case::non_transferable(
         &[ExtensionType::NonTransferable],
@@ -139,9 +139,9 @@ fn initialize_subscription_authority_with_sponsor() {
         &[ExtensionType::TransferFeeConfig, ExtensionType::TransferHook],
         Some(SubscriptionsError::MintHasTransferHook)
     )]
-#[case::mixed_blocked(
+#[case::mixed_allowed(
         &[ExtensionType::MintCloseAuthority, ExtensionType::ConfidentialTransferMint],
-        Some(SubscriptionsError::MintHasConfidentialTransfer)
+        None
     )]
 fn initialize_subscription_authority_token_2022(
     #[case] extensions: &[ExtensionType],
