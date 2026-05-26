@@ -11,6 +11,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, '../..');
 
 const PORT = 3001;
+const HOST = process.env.API_HOST?.trim() || '127.0.0.1';
 const RPC_URL = process.env.RPC_URL ?? 'http://127.0.0.1:8899';
 const CONFIG_PATH = join(__dirname, '../config.json');
 
@@ -741,20 +742,20 @@ const server = createServer(async (req, res) => {
     res.end(await response.text());
 });
 
-server.listen(PORT, () => {
-    console.log(`Subscriptions API server running on port ${PORT}`);
+server.listen(PORT, HOST, () => {
+    console.log(`Subscriptions API server running on http://${HOST}:${PORT}`);
     console.log('');
     console.log('Endpoints:');
-    console.log(`  GET  http://localhost:${PORT}/api/health`);
-    console.log(`  GET  http://localhost:${PORT}/api/config`);
-    console.log(`  GET  http://localhost:${PORT}/api/tokens`);
-    console.log(`  POST http://localhost:${PORT}/api/airdrop/sol`);
-    console.log(`  POST http://localhost:${PORT}/api/airdrop/usdc`);
-    console.log(`  GET  http://localhost:${PORT}/api/program/status`);
-    console.log(`  GET  http://localhost:${PORT}/api/program/binary-info`);
-    console.log(`  POST http://localhost:${PORT}/api/program/prepare-deploy`);
-    console.log(`  POST http://localhost:${PORT}/api/setup/start-validator`);
-    console.log(`  GET  http://localhost:${PORT}/api/setup/validator-status`);
-    console.log(`  POST http://localhost:${PORT}/api/setup/create-mock-usdc`);
-    console.log(`  POST http://localhost:${PORT}/api/setup/save-config`);
+    console.log(`  GET  http://${HOST}:${PORT}/api/health`);
+    console.log(`  GET  http://${HOST}:${PORT}/api/config`);
+    console.log(`  GET  http://${HOST}:${PORT}/api/tokens`);
+    console.log(`  POST http://${HOST}:${PORT}/api/airdrop/sol`);
+    console.log(`  POST http://${HOST}:${PORT}/api/airdrop/usdc`);
+    console.log(`  GET  http://${HOST}:${PORT}/api/program/status`);
+    console.log(`  GET  http://${HOST}:${PORT}/api/program/binary-info`);
+    console.log(`  POST http://${HOST}:${PORT}/api/program/prepare-deploy`);
+    console.log(`  POST http://${HOST}:${PORT}/api/setup/start-validator`);
+    console.log(`  GET  http://${HOST}:${PORT}/api/setup/validator-status`);
+    console.log(`  POST http://${HOST}:${PORT}/api/setup/create-mock-usdc`);
+    console.log(`  POST http://${HOST}:${PORT}/api/setup/save-config`);
 });
