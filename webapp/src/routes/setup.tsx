@@ -521,11 +521,10 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
     );
 
     const handleDeploy = useCallback(async () => {
-        const alreadyDeployed = programStatus.data?.deployed;
-        if (alreadyDeployed) {
-            log('info', 'Program already deployed, skipping...');
-            markStepDone('deploy-program', 'Already deployed');
-            setPhase('transfer-authority');
+        if (!programKeypair) {
+            const msg = 'Select a program keypair before deployment';
+            log('error', msg);
+            markStepError('deploy-program', msg);
             return;
         }
 
@@ -538,10 +537,11 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                 programAddress: programKeypair?.programAddress,
                 programKeypairBytes: programKeypair?.bytes,
             });
-            log('success', 'Program deployed successfully');
-            if (deployResult?.programAddress) {
-                setResult({ programId: deployResult.programAddress, usdcMint: '' });
+            if (!deployResult?.programAddress) {
+                throw new Error('Deployment did not return a program address');
             }
+            log('success', 'Program deployed successfully');
+            setResult({ programId: deployResult.programAddress, usdcMint: '' });
             markStepDone('deploy-program', 'Program deployed');
             setPhase('transfer-authority');
         } catch (e) {
@@ -549,24 +549,21 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
             log('error', `Deploy failed: ${msg}`);
             markStepError('deploy-program', msg);
         }
-    }, [
-        programStatus.data,
-        programDeploy,
-        programKeypair,
-        markStepDone,
-        markStepError,
-        markStepRunning,
-        setResult,
-        log,
-    ]);
+    }, [programDeploy, programKeypair, markStepDone, markStepError, markStepRunning, setResult, log]);
 
     const handleTransferAuthority = useCallback(async () => {
         if (!walletSigner) return;
+        if (!result?.programId) {
+            const msg = 'No deployed program target available';
+            log('error', msg);
+            markStepError('deploy-program', msg);
+            return;
+        }
         const newAuth = multisigAddress;
         log('info', `Transferring authority to ${newAuth}...`);
         markStepRunning('deploy-program', 'Transferring upgrade authority...');
         try {
-            const programAddr = (result?.programId ?? configProgramAddress ?? '') as Address;
+            const programAddr = result.programId as Address;
             const programDataPDA = await deriveProgramDataAddress(programAddr);
             const ix = buildSetAuthorityIx(programDataPDA, walletSigner, newAuth as Address);
             const sig = await walletSignAndSend(ix, walletSigner);
@@ -585,7 +582,6 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
         txToast,
         multisigAddress,
         result,
-        configProgramAddress,
         markStepDone,
         markStepError,
         markStepRunning,
@@ -863,16 +859,14 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
 
                         {phase === 'deploy' && (
                             <div className="space-y-3">
-                                {!programStatus.data?.deployed && (
-                                    <ProgramKeypairPicker
-                                        disabled={isPending}
-                                        value={programKeypair}
-                                        onChange={setProgramKeypair}
-                                    />
-                                )}
+                                <ProgramKeypairPicker
+                                    disabled={isPending}
+                                    value={programKeypair}
+                                    onChange={setProgramKeypair}
+                                />
                                 <SolanaButton
                                     onClick={handleDeploy}
-                                    disabled={isPending || (!programStatus.data?.deployed && !programKeypair)}
+                                    disabled={isPending || !programKeypair}
                                     loading={programDeploy.isPending}
                                     style={{ width: '100%' }}
                                 >
@@ -934,6 +928,14 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                                             Optional
                                         </span>
                                     </div>
+                                    {result?.programId && (
+                                        <p className="text-xs text-sand-1000">
+                                            Target:{' '}
+                                            <span className="font-mono text-sand-1400">
+                                                {truncateAddress(result.programId, 12)}
+                                            </span>
+                                        </p>
+                                    )}
                                     <TextInput
                                         value={multisigAddress}
                                         onChange={e => setMultisigAddress(e.target.value)}
@@ -942,7 +944,9 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
                                     />
                                     <SolanaButton
                                         onClick={handleTransferAuthority}
-                                        disabled={isPending || !isValidBase58Address(multisigAddress)}
+                                        disabled={
+                                            isPending || !result?.programId || !isValidBase58Address(multisigAddress)
+                                        }
                                         loading={isPending}
                                         style={{ width: '100%' }}
                                     >
