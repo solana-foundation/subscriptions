@@ -514,11 +514,14 @@ function SubscribeDialog({
                     </div>
                 </div>
 
-                {!token.supported ? (
+                {token.decimals == null && (
                     <div className="text-sm text-amber-600 p-3 rounded-lg border border-amber-300 bg-amber-50">
-                        This plan uses a token that is not configured for the selected network. Subscribing is disabled.
+                        This token is not configured for the selected network. Review the raw amount and mint before
+                        subscribing.
                     </div>
-                ) : statusLoading ? (
+                )}
+
+                {statusLoading ? (
                     <div className="text-sm text-muted-foreground animate-pulse py-4 text-center">
                         Checking wallet status...
                     </div>
@@ -713,7 +716,6 @@ export function PlanCard({
     const { getCurrentTimestamp } = useTimeTravel();
     const hasExpiry = Number(plan.data.endTs) > 0;
     const isSunset = plan.status === PlanStatus.Sunset;
-    const hasUnsupportedMarketplaceMint = variant === 'marketplace' && !token.supported;
     const [planExpired, setIsExpired] = useState(false);
 
     const [sunsetIntensity, setSunsetIntensity] = useState(0);
@@ -819,7 +821,7 @@ export function PlanCard({
                                 <div
                                     className={cn(
                                         'flex items-center gap-1.5 text-sm px-3 py-1 rounded-lg border',
-                                        token.supported
+                                        token.decimals != null
                                             ? 'font-medium text-foreground bg-sand-200 border-sand-300'
                                             : 'text-amber-700 bg-amber-50 border-amber-300',
                                     )}
@@ -873,9 +875,9 @@ export function PlanCard({
 
                     {variant === 'owner' && <PlanExpandedDetails plan={plan} isExpanded={isExpanded} />}
 
-                    {hasUnsupportedMarketplaceMint && (
+                    {variant === 'marketplace' && token.decimals == null && (
                         <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-700">
-                            This plan uses a token that is not configured for this network. Subscribing is disabled.
+                            This token is not configured for this network. Amounts are shown in raw units.
                         </div>
                     )}
 
@@ -898,15 +900,7 @@ export function PlanCard({
 
                     {variant === 'marketplace' && (
                         <div className="flex justify-center pt-2 border-t border-sand-200">
-                            {hasUnsupportedMarketplaceMint ? (
-                                <Badge
-                                    variant="warning"
-                                    className="w-full justify-center"
-                                    style={{ height: '2.25rem' }}
-                                >
-                                    Unsupported Token
-                                </Badge>
-                            ) : canResumeSubscription && matchingSub ? (
+                            {canResumeSubscription && matchingSub ? (
                                 <SolanaButton
                                     size="sm"
                                     onClick={(e: React.MouseEvent) => {
