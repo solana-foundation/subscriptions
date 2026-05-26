@@ -1,16 +1,20 @@
 use crate::{
-    state::subscription_delegation::SubscriptionDelegation,
+    event_engine::event_authority_pda,
+    instructions::subscribe,
+    state::{Plan, PlanStatus, SubscriptionAuthority, SubscriptionDelegation},
     tests::{
         asserts::TransactionResultExt,
-        constants::{MINT_DECIMALS, TOKEN_PROGRAM_ID},
-        pda::{get_plan_pda, get_subscription_pda},
+        constants::{MINT_DECIMALS, PROGRAM_ID, SYSTEM_PROGRAM_ID, TOKEN_PROGRAM_ID},
+        pda::{get_plan_pda, get_subscription_authority_pda, get_subscription_pda},
         utils::{
-            current_ts, days, init_ata, init_mint, init_wallet, initialize_subscription_authority_action, setup,
-            CreatePlan, Subscribe,
+            build_and_send_transaction, current_ts, days, init_ata, init_mint, init_wallet,
+            initialize_subscription_authority_action, move_clock_forward, setup, CloseSubscriptionAuthority,
+            CreatePlan, Subscribe, UpdatePlan,
         },
     },
     AccountDiscriminator, SubscriptionsError,
 };
+use solana_instruction::{AccountMeta, Instruction};
 use solana_keypair::Keypair;
 use solana_pubkey::Pubkey;
 use solana_signer::Signer;
@@ -77,8 +81,6 @@ fn subscribe_plan_sunset_rejected() {
     let end_ts = current_ts() + days(30) as i64;
     let (mut litesvm, alice, merchant, mint, plan_pda, plan_bump) = setup_plan(1, end_ts);
 
-    // Sunset the plan
-    use crate::{state::common::PlanStatus, tests::utils::UpdatePlan};
     UpdatePlan::new(&mut litesvm, &merchant, plan_pda).status(PlanStatus::Sunset).end_ts(end_ts).execute().assert_ok();
 
     let res = Subscribe::new(&mut litesvm, &alice, merchant.pubkey(), plan_pda, 1, plan_bump, mint).execute();
@@ -90,8 +92,6 @@ fn subscribe_plan_expired_rejected() {
     let end_ts = current_ts() + days(2) as i64;
     let (mut litesvm, alice, merchant, mint, plan_pda, plan_bump) = setup_plan(1, end_ts);
 
-    // Move past plan expiry
-    use crate::tests::utils::move_clock_forward;
     move_clock_forward(&mut litesvm, days(3));
 
     let res = Subscribe::new(&mut litesvm, &alice, merchant.pubkey(), plan_pda, 1, plan_bump, mint).execute();
@@ -144,8 +144,6 @@ fn subscribe_no_subscription_authority_rejected() {
 
 #[test]
 fn subscribe_with_sponsor() {
-    use crate::tests::utils::init_wallet;
-
     let end_ts = current_ts() + days(30) as i64;
     let (mut litesvm, alice, merchant, mint, plan_pda, plan_bump) = setup_plan(1, end_ts);
     let sponsor = init_wallet(&mut litesvm, 10_000_000_000);
@@ -186,19 +184,11 @@ fn subscribe_duplicate_rejected() {
 
 #[test]
 fn subscribe_rejects_stale_subscription_authority_generation() {
-    use crate::tests::{
-        constants::{PROGRAM_ID, SYSTEM_PROGRAM_ID},
-        pda::get_subscription_authority_pda,
-        utils::{build_and_send_transaction, move_clock_forward, CloseSubscriptionAuthority},
-    };
-    use crate::{event_engine::event_authority_pda, instructions::subscribe};
-    use solana_instruction::{AccountMeta, Instruction};
-
     let end_ts = current_ts() + days(30) as i64;
     let (mut litesvm, alice, merchant, mint, plan_pda, plan_bump) = setup_plan(1, end_ts);
 
     let plan_account = litesvm.get_account(&plan_pda).unwrap();
-    let plan = crate::state::Plan::load(&plan_account.data).unwrap();
+    let plan = Plan::load(&plan_account.data).unwrap();
     let live_amount = plan.data.terms.amount;
     let live_period_hours = plan.data.terms.period_hours;
     let live_created_at = plan.data.terms.created_at;
@@ -206,7 +196,7 @@ fn subscribe_rejects_stale_subscription_authority_generation() {
 
     let (subscription_authority_pda, _) = get_subscription_authority_pda(&alice.pubkey(), &mint);
     let authority_before_account = litesvm.get_account(&subscription_authority_pda).unwrap();
-    let authority_before = crate::state::SubscriptionAuthority::load(&authority_before_account.data).unwrap();
+    let authority_before = SubscriptionAuthority::load(&authority_before_account.data).unwrap();
     let stale_init_id = authority_before.init_id;
 
     CloseSubscriptionAuthority::new(&mut litesvm, &alice, mint).execute().assert_ok();
@@ -214,7 +204,7 @@ fn subscribe_rejects_stale_subscription_authority_generation() {
     initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
 
     let authority_after_account = litesvm.get_account(&subscription_authority_pda).unwrap();
-    let authority_after = crate::state::SubscriptionAuthority::load(&authority_after_account.data).unwrap();
+    let authority_after = SubscriptionAuthority::load(&authority_after_account.data).unwrap();
     let new_init_id = authority_after.init_id;
     assert_ne!(new_init_id, stale_init_id);
 
@@ -252,20 +242,12 @@ fn subscribe_rejects_stale_subscription_authority_generation() {
 
 #[test]
 fn subscribe_rejects_stale_expected_terms() {
-    use crate::tests::{
-        constants::{PROGRAM_ID, SYSTEM_PROGRAM_ID},
-        pda::get_subscription_authority_pda,
-        utils::build_and_send_transaction,
-    };
-    use crate::{event_engine::event_authority_pda, instructions::subscribe};
-    use solana_instruction::{AccountMeta, Instruction};
-
     let end_ts = current_ts() + days(30) as i64;
     let (mut litesvm, alice, merchant, mint, plan_pda, plan_bump) = setup_plan(1, end_ts);
 
     // Snapshot live terms, then submit subscribe with a stale `expected_amount`.
     let plan_account = litesvm.get_account(&plan_pda).unwrap();
-    let plan = crate::state::Plan::load(&plan_account.data).unwrap();
+    let plan = Plan::load(&plan_account.data).unwrap();
     let live_amount = plan.data.terms.amount;
     let stale_amount = live_amount.wrapping_add(1);
     let live_period_hours = plan.data.terms.period_hours;
@@ -274,8 +256,7 @@ fn subscribe_rejects_stale_expected_terms() {
 
     let (subscription_authority_pda, _) = get_subscription_authority_pda(&alice.pubkey(), &mint);
     let subscription_authority_account = litesvm.get_account(&subscription_authority_pda).unwrap();
-    let subscription_authority =
-        crate::state::SubscriptionAuthority::load(&subscription_authority_account.data).unwrap();
+    let subscription_authority = SubscriptionAuthority::load(&subscription_authority_account.data).unwrap();
     let live_subscription_authority_init_id = subscription_authority.init_id;
     let (subscription_pda, _) = get_subscription_pda(&plan_pda, &alice.pubkey());
     let event_authority = Pubkey::new_from_array(event_authority_pda::ID.to_bytes());
