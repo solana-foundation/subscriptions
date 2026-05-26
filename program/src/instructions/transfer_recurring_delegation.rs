@@ -79,6 +79,7 @@ pub fn process(accounts: &mut [AccountView], transfer_data: &TransferData) -> Pr
         &TransferAccounts {
             delegator_ata: accounts_struct.delegator_ata,
             to_ata: accounts_struct.receiver_ata,
+            token_mint: accounts_struct.token_mint,
             subscription_authority_pda: accounts_struct.subscription_authority,
             token_program: accounts_struct.token_program,
         },

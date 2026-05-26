@@ -121,7 +121,7 @@ fn initialize_subscription_authority_with_sponsor() {
     )]
 #[case::transfer_fee(
         &[ExtensionType::TransferFeeConfig],
-        Some(SubscriptionsError::MintHasTransferFee)
+        None
     )]
 #[case::transfer_hook(
         &[ExtensionType::TransferHook],
@@ -137,7 +137,7 @@ fn initialize_subscription_authority_with_sponsor() {
     )]
 #[case::multiple_blocked(
         &[ExtensionType::TransferFeeConfig, ExtensionType::TransferHook],
-        Some(SubscriptionsError::MintHasTransferFee)
+        Some(SubscriptionsError::MintHasTransferHook)
     )]
 #[case::mixed_blocked(
         &[ExtensionType::MintCloseAuthority, ExtensionType::ConfidentialTransferMint],
