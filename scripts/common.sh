@@ -194,6 +194,10 @@ start_api_server() {
   if [ "$health_host" = "0.0.0.0" ] || [ "$health_host" = "::" ]; then
     health_host="127.0.0.1"
   fi
+  local health_url_host="$health_host"
+  case "$health_host" in
+    *:*) health_url_host="[$health_host]" ;;
+  esac
 
   pkill -f "tsx.*server.ts" 2>/dev/null || true
   sleep 1
@@ -203,7 +207,7 @@ start_api_server() {
   LAST_SERVICE_PID=$!
   cd "$project_root"
   echo "  API PID: $LAST_SERVICE_PID"
-  wait_for_http "http://$health_host:3001/api/health" "API server" 15 '"status"' || exit 1
+  wait_for_http "http://$health_url_host:3001/api/health" "API server" 15 '"status"' || exit 1
 }
 
 # Start Vite dev server on :5173
