@@ -143,6 +143,38 @@ fn test_fixed_transfer_token_2022_confidential_transfer_public_balance() {
 }
 
 #[test]
+fn test_fixed_transfer_token_2022_unconfigured_transfer_hook() {
+    let (mut litesvm, alice) = setup();
+    let bob = Keypair::new();
+    litesvm.airdrop(&bob.pubkey(), 10_000_000).unwrap();
+
+    let mint = init_mint(
+        &mut litesvm,
+        TOKEN_2022_PROGRAM_ID,
+        MINT_DECIMALS,
+        1_000_000_000,
+        Some(alice.pubkey()),
+        &[ExtensionType::TransferHook],
+    );
+    let alice_ata = init_ata(&mut litesvm, mint, alice.pubkey(), 100_000_000);
+    let bob_ata = init_ata(&mut litesvm, mint, bob.pubkey(), 0);
+
+    initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
+
+    let (res, delegation_pda) = CreateDelegation::new(&mut litesvm, &alice, mint, bob.pubkey())
+        .fixed(50_000_000, current_ts() + days(1) as i64);
+    res.assert_ok();
+
+    TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
+        .amount(10_000_000)
+        .fixed()
+        .assert_ok();
+
+    assert_eq!(get_ata_balance(&litesvm, &alice_ata), 90_000_000);
+    assert_eq!(get_ata_balance(&litesvm, &bob_ata), 10_000_000);
+}
+
+#[test]
 fn test_fixed_transfer_multiple_times() {
     let amount: u64 = 50_000_000;
     let expiry_s: i64 = current_ts() + days(1) as i64;

@@ -14,7 +14,8 @@ use crate::{
         pda::get_subscription_authority_pda,
         utils::{
             build_and_send_transaction, fetch_account, init_ata, init_aux_token_account, init_mint, init_wallet,
-            initialize_subscription_authority_action, initialize_subscription_authority_action_with_sponsor, setup,
+            initialize_subscription_authority_action, initialize_subscription_authority_action_with_sponsor,
+            set_transfer_hook_config, setup,
         },
     },
     AccountDiscriminator, SubscriptionAuthority, SubscriptionsError,
@@ -123,9 +124,9 @@ fn initialize_subscription_authority_with_sponsor() {
         &[ExtensionType::TransferFeeConfig],
         None
     )]
-#[case::transfer_hook(
+#[case::transfer_hook_unconfigured(
         &[ExtensionType::TransferHook],
-        Some(SubscriptionsError::MintHasTransferHook)
+        None
     )]
 #[case::pausable(
         &[ExtensionType::Pausable],
@@ -135,11 +136,11 @@ fn initialize_subscription_authority_with_sponsor() {
         &[ExtensionType::MintCloseAuthority],
         None
     )]
-#[case::multiple_blocked(
-        &[ExtensionType::TransferFeeConfig, ExtensionType::TransferHook],
-        Some(SubscriptionsError::MintHasTransferHook)
-    )]
 #[case::mixed_allowed(
+        &[ExtensionType::TransferFeeConfig, ExtensionType::TransferHook],
+        None
+    )]
+#[case::mixed_allowed_confidential(
         &[ExtensionType::MintCloseAuthority, ExtensionType::ConfidentialTransferMint],
         None
     )]
@@ -175,6 +176,42 @@ fn initialize_subscription_authority_token_2022(
             assert_eq!(ata_account.delegated_amount, u64::MAX);
         }
     }
+}
+
+#[test]
+fn initialize_subscription_authority_rejects_transfer_hook_with_program_id() {
+    let (litesvm, user) = &mut setup();
+
+    let mint = init_mint(
+        litesvm,
+        TOKEN_2022_PROGRAM_ID,
+        MINT_DECIMALS,
+        1_000_000_000,
+        Some(user.pubkey()),
+        &[ExtensionType::TransferHook],
+    );
+    set_transfer_hook_config(litesvm, mint, None, Some(Pubkey::new_unique()));
+    init_ata(litesvm, mint, user.pubkey(), 1_000_000);
+
+    initialize_subscription_authority_action(litesvm, user, mint).0.assert_err(SubscriptionsError::MintHasTransferHook);
+}
+
+#[test]
+fn initialize_subscription_authority_rejects_mutable_transfer_hook() {
+    let (litesvm, user) = &mut setup();
+
+    let mint = init_mint(
+        litesvm,
+        TOKEN_2022_PROGRAM_ID,
+        MINT_DECIMALS,
+        1_000_000_000,
+        Some(user.pubkey()),
+        &[ExtensionType::TransferHook],
+    );
+    set_transfer_hook_config(litesvm, mint, Some(user.pubkey()), None);
+    init_ata(litesvm, mint, user.pubkey(), 1_000_000);
+
+    initialize_subscription_authority_action(litesvm, user, mint).0.assert_err(SubscriptionsError::MintHasTransferHook);
 }
 
 #[test]
