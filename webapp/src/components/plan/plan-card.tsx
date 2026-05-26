@@ -26,7 +26,7 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog';
 import { ZERO_ADDRESS, PlanStatus } from '@solana/subscriptions';
-import { cn, ellipsify, USDC_MULTIPLIER, fmtDate, fmtDateTime, formatPeriod, formatPeriodLabel } from '@/lib/utils';
+import { cn, ellipsify, fmtDate, fmtDateTime, formatPeriod, formatPeriodLabel } from '@/lib/utils';
 import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations';
 import { useSubscriptionAuthorityStatus } from '@/hooks/use-subscription-authority-status';
 import { useTimeTravel } from '@/hooks/use-time-travel';
@@ -34,11 +34,13 @@ import { useWallet } from '@solana/connector/react';
 import { address } from '@solana/kit';
 import { findAssociatedTokenPda } from '@solana-program/token';
 import { useClusterConfig } from '@/hooks/use-cluster-config';
+import { useTokenConfig } from '@/hooks/use-token-config';
 import { resolveTokenProgram } from '@/lib/token-program';
 import type { PlanItem } from '@/hooks/use-plans';
 import { useMySubscriptions, useSubscriberCount } from '@/hooks/use-subscriptions';
 import { PLAN_ICONS, ICON_MAP, parsePlanMeta, type PlanMeta } from '@/lib/plan-constants';
 import { ExplorerLink } from '@/components/cluster/cluster-ui';
+import { formatPlanTokenAmount, resolvePlanTokenDisplay, type PlanTokenDisplay } from '@/lib/token-display';
 
 function ImmutableField({ label, value }: { label: string; value: string }) {
     return (
@@ -104,7 +106,9 @@ function EditPlanDialog({
         setPullers(next);
     };
 
-    const amount = Number(plan.data.terms.amount) / USDC_MULTIPLIER;
+    const { data: tokens } = useTokenConfig();
+    const token = useMemo(() => resolvePlanTokenDisplay(plan.data.mint, tokens), [plan.data.mint, tokens]);
+    const amount = formatPlanTokenAmount(plan.data.terms.amount, token);
     const activeDestinations = plan.data.destinations.filter(d => d !== ZERO_ADDRESS);
 
     const metadataJson = useMemo(() => {
@@ -232,7 +236,7 @@ function EditPlanDialog({
                             </p>
                         </div>
 
-                        <ImmutableField label="Amount (USDC)" value={`$${amount}`} />
+                        <ImmutableField label="Amount" value={amount} />
                         <ImmutableField label="Billing Period" value={formatPeriodLabel(plan.data.terms.periodHours)} />
 
                         <div className="sm:col-span-2 grid gap-2">
@@ -444,11 +448,13 @@ function DeletePlanDialog({
 function SubscribeDialog({
     plan,
     meta,
+    token,
     open,
     onOpenChange,
 }: {
     plan: PlanItem;
     meta: PlanMeta;
+    token: PlanTokenDisplay;
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }) {
@@ -460,7 +466,7 @@ function SubscribeDialog({
     } = useSubscriptionAuthorityStatus(plan.data.mint);
     const { account } = useWallet();
     const { url: rpcUrl } = useClusterConfig();
-    const amount = Number(plan.data.terms.amount) / USDC_MULTIPLIER;
+    const amount = formatPlanTokenAmount(plan.data.terms.amount, token);
 
     const handleInit = async () => {
         if (!account) return;
@@ -487,11 +493,30 @@ function SubscribeDialog({
                 <DialogHeader>
                     <DialogTitle>Subscribe to: {meta.n || 'Unnamed'}</DialogTitle>
                     <DialogDescription>
-                        ${amount} / {formatPeriod(plan.data.terms.periodHours)} from merchant {ellipsify(plan.owner, 4)}
+                        {amount} / {formatPeriod(plan.data.terms.periodHours)} from merchant {ellipsify(plan.owner, 4)}
                     </DialogDescription>
                 </DialogHeader>
 
-                {statusLoading ? (
+                <div className="rounded-lg border border-sand-200 bg-sand-100 px-3 py-2 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                        <span className="text-sand-1000">Token</span>
+                        <span className="font-medium text-foreground">{token.symbol}</span>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between gap-3">
+                        <span className="text-sand-1000">Mint</span>
+                        <ExplorerLink
+                            address={plan.data.mint}
+                            label={ellipsify(plan.data.mint, 4)}
+                            className="font-mono text-xs text-foreground hover:text-sand-1100 no-underline"
+                        />
+                    </div>
+                </div>
+
+                {!token.supported ? (
+                    <div className="text-sm text-amber-600 p-3 rounded-lg border border-amber-300 bg-amber-50">
+                        This plan uses a token that is not configured for the selected network. Subscribing is disabled.
+                    </div>
+                ) : statusLoading ? (
                     <div className="text-sm text-muted-foreground animate-pulse py-4 text-center">
                         Checking wallet status...
                     </div>
@@ -672,9 +697,11 @@ export function PlanCard({
     const canResumeSubscription = isCancelledSub && !isGhostSubscription && subDaysLeft !== null && subDaysLeft > 0;
 
     const meta = useMemo(() => parsePlanMeta(plan.data.metadataUri), [plan.data.metadataUri]);
+    const { data: tokens } = useTokenConfig();
+    const token = useMemo(() => resolvePlanTokenDisplay(plan.data.mint, tokens), [plan.data.mint, tokens]);
 
     const Icon = (meta.i && ICON_MAP[meta.i]) || Star;
-    const amount = Number(plan.data.terms.amount) / USDC_MULTIPLIER;
+    const amount = formatPlanTokenAmount(plan.data.terms.amount, token);
     const period = formatPeriod(plan.data.terms.periodHours);
     const activeDestinations = plan.data.destinations.filter(d => d !== ZERO_ADDRESS).length;
     const activePullers = plan.data.pullers.filter(p => p !== ZERO_ADDRESS).length;
@@ -682,6 +709,7 @@ export function PlanCard({
     const { getCurrentTimestamp } = useTimeTravel();
     const hasExpiry = Number(plan.data.endTs) > 0;
     const isSunset = plan.status === PlanStatus.Sunset;
+    const hasUnsupportedMarketplaceMint = variant === 'marketplace' && !token.supported;
     const [planExpired, setIsExpired] = useState(false);
 
     const [sunsetIntensity, setSunsetIntensity] = useState(0);
@@ -777,13 +805,28 @@ export function PlanCard({
                         </div>
 
                         <div>
-                            <div className="flex items-baseline gap-1.5">
-                                <span className="text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground tracking-tight">
-                                    ${amount}
+                            <div className="flex flex-wrap items-baseline gap-1.5">
+                                <span className="min-w-0 text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground tracking-tight break-words leading-tight">
+                                    {amount}
                                 </span>
                                 <span className="text-base font-medium text-sand-1000">/{period}</span>
                             </div>
-                            <div className="flex items-center gap-1.5 mt-2">
+                            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                                <div
+                                    className={cn(
+                                        'flex items-center gap-1.5 text-sm px-3 py-1 rounded-lg border',
+                                        token.supported
+                                            ? 'font-medium text-foreground bg-sand-200 border-sand-300'
+                                            : 'text-amber-700 bg-amber-50 border-amber-300',
+                                    )}
+                                >
+                                    <span>{token.symbol}</span>
+                                    <ExplorerLink
+                                        address={plan.data.mint}
+                                        label={ellipsify(plan.data.mint, 4)}
+                                        className="font-mono text-xs text-current hover:text-sand-1100 no-underline"
+                                    />
+                                </div>
                                 {hasExpiry ? (
                                     planExpired ? (
                                         <div className="flex items-center gap-1.5 text-sm text-red-700 bg-red-100 px-3 py-1 rounded-lg border border-red-300">
@@ -826,6 +869,12 @@ export function PlanCard({
 
                     {variant === 'owner' && <PlanExpandedDetails plan={plan} isExpanded={isExpanded} />}
 
+                    {hasUnsupportedMarketplaceMint && (
+                        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-700">
+                            This plan uses a token that is not configured for this network. Subscribing is disabled.
+                        </div>
+                    )}
+
                     <div className="flex items-center justify-between gap-2 pt-2 border-t border-sand-200">
                         <span className="font-mono text-xs text-sand-1000 break-all leading-relaxed">
                             {plan.address}
@@ -845,7 +894,15 @@ export function PlanCard({
 
                     {variant === 'marketplace' && (
                         <div className="flex justify-center pt-2 border-t border-sand-200">
-                            {canResumeSubscription && matchingSub ? (
+                            {hasUnsupportedMarketplaceMint ? (
+                                <Badge
+                                    variant="warning"
+                                    className="w-full justify-center"
+                                    style={{ height: '2.25rem' }}
+                                >
+                                    Unsupported Token
+                                </Badge>
+                            ) : canResumeSubscription && matchingSub ? (
                                 <SolanaButton
                                     size="sm"
                                     onClick={(e: React.MouseEvent) => {
@@ -934,7 +991,13 @@ export function PlanCard({
                 </>
             )}
             {variant === 'marketplace' && (
-                <SubscribeDialog plan={plan} meta={meta} open={subscribeOpen} onOpenChange={setSubscribeOpen} />
+                <SubscribeDialog
+                    plan={plan}
+                    meta={meta}
+                    token={token}
+                    open={subscribeOpen}
+                    onOpenChange={setSubscribeOpen}
+                />
             )}
         </>
     );
