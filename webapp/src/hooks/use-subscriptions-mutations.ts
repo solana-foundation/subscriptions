@@ -427,10 +427,12 @@ export function useSubscriptionsMutations() {
             expectedAmount,
             expectedPeriodHours,
             expectedCreatedAt,
+            expectedSubscriptionAuthorityInitId,
         }: {
             expectedAmount: bigint;
             expectedCreatedAt: bigint;
             expectedPeriodHours: bigint;
+            expectedSubscriptionAuthorityInitId: bigint;
             merchant: string;
             planId: bigint;
             tokenMint: string;
@@ -442,6 +444,7 @@ export function useSubscriptionsMutations() {
                 expectedAmount,
                 expectedCreatedAt,
                 expectedPeriodHours,
+                expectedSubscriptionAuthorityInitId,
                 merchant: address(merchant),
                 planId,
                 programAddress: progId,

@@ -1001,6 +1001,13 @@ impl<'a> Subscribe<'a> {
         let expected_period_hours = plan.data.terms.period_hours;
         let expected_created_at = plan.data.terms.created_at;
         let expected_mint = plan.data.mint;
+        let expected_subscription_authority_init_id = self
+            .litesvm
+            .get_account(&subscription_authority_pda)
+            .and_then(|account| {
+                crate::state::SubscriptionAuthority::load(&account.data).ok().map(|authority| authority.init_id)
+            })
+            .unwrap_or_default();
 
         let data = [
             vec![*subscribe::DISCRIMINATOR],
@@ -1010,6 +1017,7 @@ impl<'a> Subscribe<'a> {
             expected_amount.to_le_bytes().to_vec(),
             expected_period_hours.to_le_bytes().to_vec(),
             expected_created_at.to_le_bytes().to_vec(),
+            expected_subscription_authority_init_id.to_le_bytes().to_vec(),
         ]
         .concat();
 
