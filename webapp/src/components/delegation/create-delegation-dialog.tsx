@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Coins, RefreshCw, Plus, ArrowLeft } from 'lucide-react';
 import { Button as SolanaButton, Select, SelectItem, TextInput } from '@solana/design-system';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations';
 import { useSubscriptionAuthorityStatus } from '@/hooks/use-subscription-authority-status';
+import { useTokenConfig } from '@/hooks/use-token-config';
 import { DELEGATION_KINDS, type DelegationKindId } from '@/lib/delegation-kinds';
-import { cn, USDC_MULTIPLIER, SECONDS_PER_DAY } from '@/lib/utils';
+import { cn, SECONDS_PER_DAY } from '@/lib/utils';
+import { parseTokenAmount, resolvePlanTokenDisplay } from '@/lib/token-display';
 import { getBlockTimestamp } from '@/hooks/use-time-travel';
 import { useClusterConfig } from '@/hooks/use-cluster-config';
 
@@ -61,6 +63,8 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
     const { data: authorityStatus } = useSubscriptionAuthorityStatus(tokenMint);
     const authorityInitId = authorityStatus?.data?.initId;
     const { url: rpcUrl } = useClusterConfig();
+    const { data: tokens } = useTokenConfig();
+    const token = useMemo(() => resolvePlanTokenDisplay(tokenMint, tokens), [tokenMint, tokens]);
     const [blockTime, setBlockTime] = useState<number | undefined>();
 
     useEffect(() => {
@@ -109,6 +113,7 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
 
     const handleSubmit = async () => {
         if (authorityInitId == null) return;
+        if (token.decimals == null) return;
 
         const nonce = generateNonce();
         let expiryTimestamp = 0;
@@ -117,7 +122,12 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
             expiryTimestamp = Math.floor(expiryDateTime.getTime() / 1000);
             if (Number.isNaN(expiryTimestamp) || expiryTimestamp <= 0) return;
         }
-        const amountInSmallestUnits = BigInt(Math.round(Number(amount) * USDC_MULTIPLIER));
+        let amountInSmallestUnits: bigint;
+        try {
+            amountInSmallestUnits = parseTokenAmount(amount, token.decimals);
+        } catch {
+            return;
+        }
 
         if (selectedKind === 'fixed') {
             await createFixedDelegation.mutateAsync(
@@ -166,11 +176,19 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
         return expiryDateTime > blockDate;
     };
 
+    const isAmountValid = useMemo(() => {
+        if (token.decimals == null) return false;
+        try {
+            return parseTokenAmount(amount, token.decimals) > 0n;
+        } catch {
+            return false;
+        }
+    }, [amount, token.decimals]);
+
     const isFormValid =
         delegatee.length >= 32 &&
         delegatee.length <= 44 &&
-        amount.length > 0 &&
-        Number(amount) > 0 &&
+        isAmountValid &&
         authorityInitId != null &&
         (noExpiry || expiryDate.length > 0) &&
         isExpiryValid() &&
@@ -239,17 +257,25 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
 
                             <div className="grid gap-2">
                                 <Label htmlFor="amount">
-                                    {selectedKind === 'fixed' ? 'Total Amount (USDC)' : 'Amount per Period (USDC)'}
+                                    {selectedKind === 'fixed'
+                                        ? `Total Amount (${token.symbol})`
+                                        : `Amount per Period (${token.symbol})`}
                                 </Label>
                                 <TextInput
                                     id="amount"
                                     type="number"
                                     min="0"
-                                    step="0.01"
+                                    step={token.decimals === 0 ? '1' : 'any'}
                                     value={amount}
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(e.target.value)}
-                                    placeholder="100.00"
+                                    placeholder={token.decimals === 0 ? '100' : '100.00'}
                                 />
+                                {token.decimals == null && (
+                                    <p className="text-xs text-amber-600">
+                                        This token is not configured for the selected network. Delegation creation is
+                                        disabled.
+                                    </p>
+                                )}
                             </div>
 
                             {selectedKind === 'recurring' && (
