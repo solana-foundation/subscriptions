@@ -40,8 +40,9 @@ fn validate_mint_extensions(data: &[u8]) -> Result<(), ProgramError> {
         let ext_type = u16::from_le_bytes([data[offset], data[offset + 1]]);
         let ext_len = u16::from_le_bytes([data[offset + 2], data[offset + 3]]) as usize;
         let ext_data_start = offset + TLV_ENTRY_HEADER_LEN;
-        let ext_data_end =
-            ext_data_start.checked_add(ext_len).ok_or::<ProgramError>(SubscriptionsError::InvalidAccountData.into())?;
+        let ext_data_end = ext_data_start
+            .checked_add(ext_len)
+            .ok_or::<ProgramError>(SubscriptionsError::InvalidToken2022MintAccountData.into())?;
 
         if ext_type == 0 {
             break;
