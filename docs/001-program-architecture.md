@@ -505,23 +505,7 @@ Executes a transfer for a recurring delegation.
 
 ## Token-2022 Extension Policy
 
-`Mint2022Account::check` (in `program/src/instructions/helpers/token.rs`) walks the TLV
-extension list on a Token-2022 mint and rejects only mints with a **configured**
-`TransferHook` extension — that is, where the hook `authority` or `program_id` field is
-set to a non-zero pubkey. An inert `TransferHook` (both fields unset) is accepted: with
-the hook authority empty, no one can ever call `update_transfer_hook` to install a
-program, so the hook remains permanently dormant and transfers via the SubscriptionAuthority
-incur no extra CPI. Mints carrying any other extension — `ConfidentialTransferMint`,
-`NonTransferable`, `PermanentDelegate`, `TransferFeeConfig`, `MintCloseAuthority`,
-`Pausable` — are allowed:
-
-- `ConfidentialTransferMint` operates on a separate, encrypted balance bucket. SPL
-  transfers initiated by the SubscriptionAuthority move the public balance, which the
-  extension does not affect. A delegator who deposits public balance into the
-  confidential side starves their own subscribers — the same failure mode as moving the
-  tokens elsewhere — so the risk is consent-shaped, not protocol-shaped.
-- `TransferFeeConfig` is handled by `transfer_utils::transfer_checked_with_fee`, which
-  routes through the Token-2022 fee accounting path.
-- The remaining extensions (`NonTransferable`, `PermanentDelegate`, `MintCloseAuthority`,
-  `Pausable`) are accepted as an explicit consent-over-paternalism trade-off; downstream
-  UX is responsible for surfacing the issuer-side capabilities they introduce.
+`Mint2022Account::check` rejects only mints with a configured `TransferHook`
+(`authority` or `program_id` set). An inert `TransferHook` (both fields unset) is
+allowed: with no hook authority, `update_transfer_hook` cannot be invoked, so the hook
+stays permanently dormant.

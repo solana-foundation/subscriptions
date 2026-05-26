@@ -143,9 +143,7 @@ pub enum SubscriptionsError {
     ArithmeticUnderflow,
     #[error("Invalid account discriminator")]
     InvalidAccountDiscriminator,
-    /// Reserved for backwards compatibility. No longer emitted: confidential
-    /// transfer mints are accepted because subscription transfers use the
-    /// public balance, which is unaffected by the extension.
+    /// Reserved for backwards compatibility.
     #[error("Mint has ConfidentialTransfer extension")]
     MintHasConfidentialTransfer,
     #[error("Mint has NonTransferable extension")]
