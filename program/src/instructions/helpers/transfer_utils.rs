@@ -4,6 +4,8 @@ use pinocchio::{
     AccountView, Address, ProgramResult,
 };
 use pinocchio_token_2022::instructions::TransferChecked;
+use solana_program_pack::Pack;
+use spl_token_interface::state::Mint as TokenMint;
 
 use crate::{
     constants::{
@@ -12,9 +14,6 @@ use crate::{
     AccountCheck, MintInterface, ProgramAccount, SignerAccount, SubscriptionAuthority, SubscriptionAuthorityAccount,
     SubscriptionsError, TokenAccountInterface, TokenProgramInterface, WritableAccount,
 };
-
-const MINT_DECIMALS_OFFSET: usize = 44;
-const MINT_DECIMALS_END: usize = MINT_DECIMALS_OFFSET + 1;
 
 /// Verifies that the token account's owner field matches `expected`.
 pub fn check_token_account_owner(data: &[u8], expected: &Address) -> Result<(), SubscriptionsError> {
@@ -49,10 +48,7 @@ pub fn get_token_account_owner(data: &[u8]) -> Result<Address, SubscriptionsErro
 }
 
 fn get_mint_decimals(data: &[u8]) -> Result<u8, SubscriptionsError> {
-    if data.len() < MINT_DECIMALS_END {
-        return Err(SubscriptionsError::InvalidAccountData);
-    }
-    Ok(data[MINT_DECIMALS_OFFSET])
+    TokenMint::unpack_from_slice(data).map(|mint| mint.decimals).map_err(|_| SubscriptionsError::InvalidAccountData)
 }
 
 /// Validated accounts shared by `TransferFixed` and `TransferRecurring` (identical layouts).

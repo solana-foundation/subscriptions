@@ -28,5 +28,7 @@ pinocchio-system = { workspace = true }
 pinocchio-token = { workspace = true }
 pinocchio-token-2022 = { workspace = true }
 solana-address = { workspace = true }
+solana-program-pack = { workspace = true }
 solana-security-txt = { workspace = true }
+spl-token-interface = { workspace = true }
 thiserror = { workspace = true }

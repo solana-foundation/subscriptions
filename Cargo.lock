@@ -5361,7 +5361,9 @@ dependencies = [
  "pinocchio-token-2022",
  "serde_json",
  "solana-address 2.6.0",
+ "solana-program-pack",
  "solana-security-txt",
+ "spl-token-interface",
  "thiserror 2.0.18",
 ]
 
