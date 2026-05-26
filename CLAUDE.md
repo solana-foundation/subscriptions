@@ -117,4 +117,4 @@ Audited by Cantina. See [audits/AUDIT_STATUS.md](audits/AUDIT_STATUS.md) for the
 - **No `mod.rs` business logic**: only module declarations and re-exports.
 - **PDA seeds co-located with state**: each state struct exposes its seed pattern; helpers live in `state/common.rs`.
 - **Codama attributes drive IDL**: keep `#[codama(...)]` macros in sync with Rust types — `just generate-idl && git diff` catches drift.
-- **Token-2022 extension allowlist**: rejects ConfidentialTransfer, NonTransferable, PermanentDelegate, TransferHook, TransferFee, MintCloseAuthority, Pausable.
+- **Token-2022 extension policy**: rejects only mints with a configured `TransferHook` (either the hook `authority` or `program_id` is set). Inert `TransferHook` (both unset and therefore permanently immutable) is allowed. All other extensions — `ConfidentialTransferMint`, `NonTransferable`, `PermanentDelegate`, `TransferFeeConfig`, `MintCloseAuthority`, `Pausable` — are accepted; downstream UX must surface the corresponding risks.
