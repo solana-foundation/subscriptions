@@ -5,7 +5,9 @@ import {
     decodeSubscriptionDelegation,
     DELEGATEE_OFFSET,
     fetchAllMaybePlan,
+    fetchAllMaybeSubscriptionAuthority,
     fetchSubscriptionsForUser,
+    findSubscriptionAuthorityPda,
     type RawProgramAccount,
     SUBSCRIPTION_SIZE,
     toEncodedAccount,
@@ -14,12 +16,17 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useClusterConfig } from '@/hooks/use-cluster-config';
 import { useProgramAddress } from '@/hooks/use-token-config';
+import type { PlanSubscriberAuthorityStatus } from '@/lib/plan-subscriber-authority';
+
+export { getAuthorityStalePlanSubscribers, getLivePlanSubscribers } from '@/lib/plan-subscriber-authority';
 
 export interface PlanSubscriber {
     amountPulledInPeriod: bigint;
+    authorityStatus?: PlanSubscriberAuthorityStatus;
     currentPeriodStartTs: bigint;
     delegator: string;
     expiresAtTs: bigint;
+    initId: bigint;
     subscriptionAddress: string;
     terms: { amount: bigint; createdAt: bigint; periodHours: bigint };
 }
@@ -94,6 +101,7 @@ export async function fetchPlanSubscriptions(
                 currentPeriodStartTs: sub.currentPeriodStartTs,
                 delegator: sub.header.delegator,
                 expiresAtTs: sub.expiresAtTs,
+                initId: sub.header.initId,
                 subscriptionAddress: entry.pubkey,
                 terms: sub.terms,
             });
@@ -103,6 +111,40 @@ export async function fetchPlanSubscriptions(
     }
 
     return subscribers;
+}
+
+export async function resolvePlanSubscriberAuthorities(
+    rpcUrl: string,
+    subscribers: PlanSubscriber[],
+    mint: string,
+    progAddr: string,
+): Promise<PlanSubscriber[]> {
+    if (subscribers.length === 0) return [];
+
+    const rpc = createSolanaRpc(rpcUrl);
+    const programAddress = address(progAddr);
+    const tokenMint = address(mint);
+    const authorityAddresses = await Promise.all(
+        subscribers.map(async subscriber => {
+            const [authorityAddress] = await findSubscriptionAuthorityPda(
+                { tokenMint, user: address(subscriber.delegator) },
+                { programAddress },
+            );
+            return authorityAddress;
+        }),
+    );
+    const authorities = await fetchAllMaybeSubscriptionAuthority(rpc, authorityAddresses);
+
+    return subscribers.map((subscriber, index) => {
+        const authority = authorities[index];
+        const authorityStatus: PlanSubscriberAuthorityStatus =
+            authority?.exists && authority.data.initId === subscriber.initId
+                ? 'live'
+                : authority?.exists
+                  ? 'rotated'
+                  : 'missing';
+        return { ...subscriber, authorityStatus };
+    });
 }
 
 export function useMySubscriptions() {

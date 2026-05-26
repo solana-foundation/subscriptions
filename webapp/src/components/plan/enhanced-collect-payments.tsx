@@ -21,7 +21,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations';
 import { useClusterConfig } from '@/hooks/use-cluster-config';
 import { useProgramAddress } from '@/hooks/use-token-config';
-import { fetchPlanSubscriptions } from '@/hooks/use-subscriptions';
+import {
+    fetchPlanSubscriptions,
+    getLivePlanSubscribers,
+    resolvePlanSubscriberAuthorities,
+} from '@/hooks/use-subscriptions';
 import { getBlockTimestamp } from '@/hooks/use-time-travel';
 import { computeEligibleSubscribers, hasMatchingPlanTerms } from '@/lib/collect-utils';
 import {
@@ -138,7 +142,14 @@ function CollectAllButton({
             const ts = await getBlockTimestamp(rpcUrl);
 
             for (const pd of eligiblePlans) {
-                const subscribers = await fetchPlanSubscriptions(rpcUrl, pd.plan.address, progAddr!);
+                const subscribers = getLivePlanSubscribers(
+                    await resolvePlanSubscriberAuthorities(
+                        rpcUrl,
+                        await fetchPlanSubscriptions(rpcUrl, pd.plan.address, progAddr!),
+                        pd.plan.data.mint,
+                        progAddr!,
+                    ),
+                );
                 const eligible = computeEligibleSubscribers(subscribers, pd.plan.data.terms, ts);
                 if (eligible.length === 0) continue;
                 plans.push({
@@ -223,7 +234,7 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
     const progAddr = useProgramAddress();
     const { collectSubscriptionPayments } = useSubscriptionsMutations();
 
-    const { plan, subscribers, currentSubscribers, staleSubscribers, eligible } = planData;
+    const { plan, subscribers, currentSubscribers, staleAuthoritySubscribers, staleSubscribers, eligible } = planData;
     const meta = useMemo(() => parsePlanMeta(plan.data.metadataUri), [plan.data.metadataUri]);
     const planName = meta.n || `Plan ${ellipsify(plan.address)}`;
     const PlanIcon = (meta.i && ICON_MAP[meta.i]) || Star;
@@ -233,6 +244,10 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
         () => new Set(staleSubscribers.map(sub => sub.subscriptionAddress)),
         [staleSubscribers],
     );
+    const staleAuthoritySubscriberAddresses = useMemo(
+        () => new Set(staleAuthoritySubscribers.map(sub => sub.subscriptionAddress)),
+        [staleAuthoritySubscribers],
+    );
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const history = useMemo(() => getCollectionHistory(plan.address), [plan.address, historyVersion]);
@@ -240,10 +255,16 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
     const handleCollect = useCallback(async () => {
         setIsCollecting(true);
         try {
-            const subs = await fetchPlanSubscriptions(rpcUrl, plan.address, progAddr!);
+            const subs = await resolvePlanSubscriberAuthorities(
+                rpcUrl,
+                await fetchPlanSubscriptions(rpcUrl, plan.address, progAddr!),
+                plan.data.mint,
+                progAddr!,
+            );
+            const liveSubs = getLivePlanSubscribers(subs);
             const ts = await getBlockTimestamp(rpcUrl);
-            const elig = computeEligibleSubscribers(subs, plan.data.terms, ts);
-            const currentSubscriberCount = subs.filter(sub => hasMatchingPlanTerms(sub, plan.data.terms)).length;
+            const elig = computeEligibleSubscribers(liveSubs, plan.data.terms, ts);
+            const currentSubscriberCount = liveSubs.filter(sub => hasMatchingPlanTerms(sub, plan.data.terms)).length;
 
             if (elig.length === 0) {
                 toast.info(
@@ -317,7 +338,8 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
                         <p className="text-sm text-slate-400">
                             ${amountUsd.toFixed(2)}/period &middot; {eligible.length}/{currentSubscribers.length}{' '}
                             eligible
-                            {staleSubscribers.length > 0 && ` / ${staleSubscribers.length} stale`}
+                            {staleSubscribers.length + staleAuthoritySubscribers.length > 0 &&
+                                ` / ${staleSubscribers.length + staleAuthoritySubscribers.length} stale`}
                         </p>
                     </div>
                 </div>
@@ -377,6 +399,9 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
                                                 e => e.subscriptionAddress === sub.subscriptionAddress,
                                             );
                                             const isStale = staleSubscriberAddresses.has(sub.subscriptionAddress);
+                                            const isAuthorityStale = staleAuthoritySubscriberAddresses.has(
+                                                sub.subscriptionAddress,
+                                            );
                                             const collectibleUsd = eligEntry
                                                 ? Number(eligEntry.collectAmount) / USDC_MULTIPLIER
                                                 : null;
@@ -391,7 +416,9 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
                                                         />
                                                     </TableCell>
                                                     <TableCell>
-                                                        {isStale ? (
+                                                        {isAuthorityStale ? (
+                                                            <Badge variant="warning">Stale Authority</Badge>
+                                                        ) : isStale ? (
                                                             <Badge variant="warning">Stale Terms</Badge>
                                                         ) : isActive ? (
                                                             <Badge variant="success">Active</Badge>
@@ -406,7 +433,7 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
                                                         {fmtDateShort(periodEnd)}
                                                     </TableCell>
                                                     <TableCell className="text-right">
-                                                        {isStale ? (
+                                                        {isAuthorityStale || isStale ? (
                                                             <span className="text-amber-600">Excluded</span>
                                                         ) : collectibleUsd !== null ? (
                                                             <span className="text-foreground font-medium">

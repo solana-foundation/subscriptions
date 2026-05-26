@@ -6,7 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn, USDC_MULTIPLIER, ellipsify, fmtDateTime } from '@/lib/utils';
 import { ExplorerLink } from '@/components/cluster/cluster-ui';
 import { useMyPlans, type PlanItem } from '@/hooks/use-plans';
-import { useSubscriberCounts, fetchPlanSubscriptions } from '@/hooks/use-subscriptions';
+import {
+    fetchPlanSubscriptions,
+    getLivePlanSubscribers,
+    resolvePlanSubscriberAuthorities,
+    useSubscriberCounts,
+} from '@/hooks/use-subscriptions';
 import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations';
 import { useClusterConfig } from '@/hooks/use-cluster-config';
 import { useProgramAddress } from '@/hooks/use-token-config';
@@ -78,7 +83,14 @@ function CollectPlanCard({
     const handleCollect = useCallback(async () => {
         setIsCollecting(true);
         try {
-            const subscribers = await fetchPlanSubscriptions(rpcUrl, plan.address, progAddr);
+            const subscribers = getLivePlanSubscribers(
+                await resolvePlanSubscriberAuthorities(
+                    rpcUrl,
+                    await fetchPlanSubscriptions(rpcUrl, plan.address, progAddr),
+                    plan.data.mint,
+                    progAddr,
+                ),
+            );
             const ts = await getBlockTimestamp(rpcUrl);
             const eligible = computeEligibleSubscribers(subscribers, plan.data.terms, ts);
             const currentSubscriberCount = subscribers.filter(sub => hasMatchingPlanTerms(sub, plan.data.terms)).length;
