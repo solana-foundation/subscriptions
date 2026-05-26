@@ -4,7 +4,7 @@ use crate::{
     state::{header::VERSION_OFFSET, RecurringDelegation},
     tests::{
         asserts::TransactionResultExt,
-        constants::{MINT_DECIMALS, PROGRAM_ID, TOKEN_PROGRAM_ID},
+        constants::{MINT_DECIMALS, PROGRAM_ID, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID},
         idl,
         pda::get_subscription_authority_pda,
         utils::{
@@ -22,6 +22,7 @@ use solana_pubkey::Pubkey;
 use solana_signer::Signer;
 use solana_transaction_error::TransactionError::InstructionError;
 use spl_associated_token_account_interface::address::get_associated_token_address_with_program_id;
+use spl_token_2022_interface::extension::ExtensionType;
 use spl_token_interface::instruction::TokenInstruction::{Approve, Revoke};
 
 fn setup_recurring_delegation(
@@ -794,4 +795,76 @@ fn test_recurring_transfer_past_drift_window() {
         .amount(transfer_amount)
         .recurring();
     result.assert_err(SubscriptionsError::DelegationExpired);
+}
+
+#[test]
+fn test_recurring_transfer_token_2022_confidential_transfer_public_balance() {
+    let (mut litesvm, alice) = setup();
+    let bob = Keypair::new();
+    litesvm.airdrop(&bob.pubkey(), 10_000_000).unwrap();
+
+    let mint = init_mint(
+        &mut litesvm,
+        TOKEN_2022_PROGRAM_ID,
+        MINT_DECIMALS,
+        1_000_000_000,
+        Some(alice.pubkey()),
+        &[ExtensionType::ConfidentialTransferMint],
+    );
+    let alice_ata = init_ata(&mut litesvm, mint, alice.pubkey(), 100_000_000);
+    let bob_ata = init_ata(&mut litesvm, mint, bob.pubkey(), 0);
+
+    initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
+
+    let (res, delegation_pda) = CreateDelegation::new(&mut litesvm, &alice, mint, bob.pubkey()).recurring(
+        50_000_000,
+        hours(1),
+        current_ts(),
+        current_ts() + days(1) as i64,
+    );
+    res.assert_ok();
+
+    TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
+        .amount(10_000_000)
+        .recurring()
+        .assert_ok();
+
+    assert_eq!(get_ata_balance(&litesvm, &alice_ata), 90_000_000);
+    assert_eq!(get_ata_balance(&litesvm, &bob_ata), 10_000_000);
+}
+
+#[test]
+fn test_recurring_transfer_token_2022_unconfigured_transfer_hook() {
+    let (mut litesvm, alice) = setup();
+    let bob = Keypair::new();
+    litesvm.airdrop(&bob.pubkey(), 10_000_000).unwrap();
+
+    let mint = init_mint(
+        &mut litesvm,
+        TOKEN_2022_PROGRAM_ID,
+        MINT_DECIMALS,
+        1_000_000_000,
+        Some(alice.pubkey()),
+        &[ExtensionType::TransferHook],
+    );
+    let alice_ata = init_ata(&mut litesvm, mint, alice.pubkey(), 100_000_000);
+    let bob_ata = init_ata(&mut litesvm, mint, bob.pubkey(), 0);
+
+    initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
+
+    let (res, delegation_pda) = CreateDelegation::new(&mut litesvm, &alice, mint, bob.pubkey()).recurring(
+        50_000_000,
+        hours(1),
+        current_ts(),
+        current_ts() + days(1) as i64,
+    );
+    res.assert_ok();
+
+    TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
+        .amount(10_000_000)
+        .recurring()
+        .assert_ok();
+
+    assert_eq!(get_ata_balance(&litesvm, &alice_ata), 90_000_000);
+    assert_eq!(get_ata_balance(&litesvm, &bob_ata), 10_000_000);
 }
