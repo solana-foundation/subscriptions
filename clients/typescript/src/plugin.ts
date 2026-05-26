@@ -435,6 +435,7 @@ async function getTransferDelegationOverlayInstructionAsync(
             delegatorAta: input.delegatorAta,
             receiverAta: input.receiverAta,
             subscriptionAuthority,
+            tokenMint: input.tokenMint,
             tokenProgram: input.tokenProgram,
             transferData: {
                 amount: input.amount,
@@ -475,6 +476,7 @@ export async function getTransferSubscriptionOverlayInstructionAsync(
             receiverAta: input.receiverAta,
             subscriptionAuthority,
             subscriptionPda: input.subscriptionPda,
+            tokenMint: input.tokenMint,
             tokenProgram: input.tokenProgram,
             transferData: {
                 amount: input.amount,

@@ -10,7 +10,7 @@ use crate::{
     events::SubscriptionTransferEvent,
     helpers::{transfer_with_delegate, validate_recurring_transfer, TransferAccounts, TransferData},
     state::{plan::Plan, subscription_delegation::SubscriptionDelegation},
-    AccountCheck, ProgramAccount, SignerAccount, SubscriptionAuthorityAccount, SubscriptionsError,
+    AccountCheck, MintInterface, ProgramAccount, SignerAccount, SubscriptionAuthorityAccount, SubscriptionsError,
     TokenAccountInterface, TokenProgramInterface, WritableAccount,
 };
 
@@ -114,6 +114,7 @@ pub fn process(accounts: &mut [AccountView], transfer_data: &TransferData) -> Pr
         &TransferAccounts {
             delegator_ata: accounts_struct.delegator_ata,
             to_ata: accounts_struct.receiver_ata,
+            token_mint: accounts_struct.token_mint,
             subscription_authority_pda: accounts_struct.subscription_authority,
             token_program: accounts_struct.token_program,
         },
@@ -153,6 +154,7 @@ pub struct TransferSubscriptionAccounts<'a> {
     pub delegator_ata: &'a AccountView,
     pub receiver_ata: &'a AccountView,
     pub caller: &'a AccountView,
+    pub token_mint: &'a AccountView,
     pub token_program: &'a AccountView,
     pub event_authority: &'a AccountView,
     pub self_program: &'a AccountView,
@@ -162,7 +164,7 @@ impl<'a> TryFrom<&'a mut [AccountView]> for TransferSubscriptionAccounts<'a> {
     type Error = ProgramError;
 
     fn try_from(accounts: &'a mut [AccountView]) -> Result<Self, Self::Error> {
-        let [subscription_pda, plan_pda, subscription_authority, delegator_ata, receiver_ata, caller, token_program, event_authority, self_program] =
+        let [subscription_pda, plan_pda, subscription_authority, delegator_ata, receiver_ata, caller, token_mint, token_program, event_authority, self_program] =
             accounts
         else {
             return Err(SubscriptionsError::NotEnoughAccountKeys.into());
@@ -179,6 +181,7 @@ impl<'a> TryFrom<&'a mut [AccountView]> for TransferSubscriptionAccounts<'a> {
         WritableAccount::check(receiver_ata)?;
         SignerAccount::check(caller)?;
         TokenProgramInterface::check(token_program)?;
+        MintInterface::check_with_program(token_mint, token_program)?;
         TokenAccountInterface::check_accounts_with_program(token_program, &[delegator_ata, receiver_ata])?;
 
         Ok(Self {
@@ -188,6 +191,7 @@ impl<'a> TryFrom<&'a mut [AccountView]> for TransferSubscriptionAccounts<'a> {
             delegator_ata,
             receiver_ata,
             caller,
+            token_mint,
             token_program,
             event_authority,
             self_program,

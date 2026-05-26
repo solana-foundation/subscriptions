@@ -100,6 +100,7 @@ pub enum SubscriptionsInstruction {
     #[codama(account(name = "subscription_authority", docs = "The subscription-authority PDA"))]
     #[codama(account(name = "delegator_ata", writable, docs = "The delegator's ATA to transfer from"))]
     #[codama(account(name = "receiver_ata", writable, docs = "The receiver's ATA to transfer to"))]
+    #[codama(account(name = "token_mint", docs = "The token mint"))]
     #[codama(account(name = "token_program", docs = "Token program"))]
     #[codama(account(name = "delegatee", signer, docs = "The delegatee signing the transfer"))]
     #[codama(account(
@@ -118,6 +119,7 @@ pub enum SubscriptionsInstruction {
     #[codama(account(name = "subscription_authority", docs = "The subscription-authority PDA"))]
     #[codama(account(name = "delegator_ata", writable, docs = "The delegator's ATA to transfer from"))]
     #[codama(account(name = "receiver_ata", writable, docs = "The receiver's ATA to transfer to"))]
+    #[codama(account(name = "token_mint", docs = "The token mint"))]
     #[codama(account(name = "token_program", docs = "Token program"))]
     #[codama(account(name = "delegatee", signer, docs = "The delegatee signing the transfer"))]
     #[codama(account(
@@ -170,6 +172,7 @@ pub enum SubscriptionsInstruction {
     #[codama(account(name = "delegator_ata", writable, docs = "The delegator's ATA to transfer from"))]
     #[codama(account(name = "receiver_ata", writable, docs = "The receiver's ATA to transfer to"))]
     #[codama(account(name = "caller", signer, docs = "The authorized puller (plan owner or whitelisted)"))]
+    #[codama(account(name = "token_mint", docs = "The token mint"))]
     #[codama(account(name = "token_program", docs = "Token program"))]
     #[codama(account(
         name = "event_authority",

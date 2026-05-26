@@ -3,15 +3,18 @@ use pinocchio::{
     error::ProgramError,
     AccountView, Address, ProgramResult,
 };
-use pinocchio_token_2022::instructions::Transfer;
+use pinocchio_token_2022::instructions::TransferChecked;
 
 use crate::{
     constants::{
         TOKEN_ACCOUNT_MINT_END, TOKEN_ACCOUNT_MINT_OFFSET, TOKEN_ACCOUNT_OWNER_END, TOKEN_ACCOUNT_OWNER_OFFSET,
     },
-    AccountCheck, ProgramAccount, SignerAccount, SubscriptionAuthority, SubscriptionAuthorityAccount,
+    AccountCheck, MintInterface, ProgramAccount, SignerAccount, SubscriptionAuthority, SubscriptionAuthorityAccount,
     SubscriptionsError, TokenAccountInterface, TokenProgramInterface, WritableAccount,
 };
+
+const MINT_DECIMALS_OFFSET: usize = 44;
+const MINT_DECIMALS_END: usize = MINT_DECIMALS_OFFSET + 1;
 
 /// Verifies that the token account's owner field matches `expected`.
 pub fn check_token_account_owner(data: &[u8], expected: &Address) -> Result<(), SubscriptionsError> {
@@ -45,12 +48,20 @@ pub fn get_token_account_owner(data: &[u8]) -> Result<Address, SubscriptionsErro
     Ok(Address::from(owner))
 }
 
+fn get_mint_decimals(data: &[u8]) -> Result<u8, SubscriptionsError> {
+    if data.len() < MINT_DECIMALS_END {
+        return Err(SubscriptionsError::InvalidAccountData);
+    }
+    Ok(data[MINT_DECIMALS_OFFSET])
+}
+
 /// Validated accounts shared by `TransferFixed` and `TransferRecurring` (identical layouts).
 pub struct DelegationTransferAccounts<'a> {
     pub delegation_pda: &'a mut AccountView,
     pub subscription_authority: &'a AccountView,
     pub delegator_ata: &'a AccountView,
     pub receiver_ata: &'a AccountView,
+    pub token_mint: &'a AccountView,
     pub token_program: &'a AccountView,
     pub delegatee: &'a AccountView,
     pub event_authority: &'a AccountView,
@@ -61,7 +72,7 @@ impl<'a> TryFrom<&'a mut [AccountView]> for DelegationTransferAccounts<'a> {
     type Error = ProgramError;
 
     fn try_from(accounts: &'a mut [AccountView]) -> Result<Self, Self::Error> {
-        let [delegation_pda, subscription_authority, delegator_ata, receiver_ata, token_program, delegatee, event_authority, self_program] =
+        let [delegation_pda, subscription_authority, delegator_ata, receiver_ata, token_mint, token_program, delegatee, event_authority, self_program] =
             accounts
         else {
             return Err(SubscriptionsError::NotEnoughAccountKeys.into());
@@ -73,6 +84,7 @@ impl<'a> TryFrom<&'a mut [AccountView]> for DelegationTransferAccounts<'a> {
         WritableAccount::check(receiver_ata)?;
         SubscriptionAuthorityAccount::check(subscription_authority)?;
         TokenProgramInterface::check(token_program)?;
+        MintInterface::check_with_program(token_mint, token_program)?;
         TokenAccountInterface::check_accounts_with_program(token_program, &[delegator_ata, receiver_ata])?;
         SignerAccount::check(delegatee)?;
 
@@ -81,6 +93,7 @@ impl<'a> TryFrom<&'a mut [AccountView]> for DelegationTransferAccounts<'a> {
             subscription_authority,
             delegator_ata,
             receiver_ata,
+            token_mint,
             token_program,
             delegatee,
             event_authority,
@@ -95,6 +108,8 @@ pub struct TransferAccounts<'a> {
     pub delegator_ata: &'a AccountView,
     /// The receiver's Associated Token Account (destination).
     pub to_ata: &'a AccountView,
+    /// The token mint being transferred.
+    pub token_mint: &'a AccountView,
     /// The [`SubscriptionAuthority`] PDA that is the SPL delegate on `delegator_ata`.
     pub subscription_authority_pda: &'a AccountView,
     /// The token program (SPL Token or Token-2022).
@@ -113,6 +128,10 @@ pub fn transfer_with_delegate(
     init_id: i64,
     accounts: &TransferAccounts,
 ) -> ProgramResult {
+    if accounts.token_mint.address() != mint {
+        return Err(SubscriptionsError::MintMismatch.into());
+    }
+
     let bump = {
         // Read the bump from the SubscriptionAuthority account data (cheaper than find_program_address)
         let subscription_authority_data = accounts.subscription_authority_pda.try_borrow()?;
@@ -149,6 +168,11 @@ pub fn transfer_with_delegate(
         check_token_account_mint(&to_data, mint)?;
     }
 
+    let decimals = {
+        let mint_data = accounts.token_mint.try_borrow()?;
+        get_mint_decimals(&mint_data)?
+    };
+
     let bump_bytes = [bump];
     let seeds = [
         Seed::from(SubscriptionAuthority::SEED),
@@ -158,11 +182,13 @@ pub fn transfer_with_delegate(
     ];
     let signer = [Signer::from(&seeds)];
 
-    Transfer {
+    TransferChecked {
         from: accounts.delegator_ata,
+        mint: accounts.token_mint,
         to: accounts.to_ata,
         authority: accounts.subscription_authority_pda,
         amount,
+        decimals,
         token_program: accounts.token_program.address(),
     }
     .invoke_signed(&signer)?;

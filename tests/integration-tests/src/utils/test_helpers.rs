@@ -15,9 +15,15 @@ use solana_transaction::Transaction;
 use spl_associated_token_account_interface::address::get_associated_token_address_with_program_id;
 use spl_token_2022_interface::{
     extension::{
-        confidential_transfer::ConfidentialTransferMint, mint_close_authority::MintCloseAuthority,
-        non_transferable::NonTransferable, pausable::PausableConfig, permanent_delegate::PermanentDelegate,
-        transfer_fee::TransferFeeConfig, transfer_hook::TransferHook, BaseStateWithExtensionsMut, ExtensionType,
+        confidential_transfer::ConfidentialTransferMint,
+        immutable_owner::ImmutableOwner,
+        mint_close_authority::MintCloseAuthority,
+        non_transferable::{NonTransferable, NonTransferableAccount},
+        pausable::{PausableAccount, PausableConfig},
+        permanent_delegate::PermanentDelegate,
+        transfer_fee::{TransferFeeAmount, TransferFeeConfig},
+        transfer_hook::{TransferHook, TransferHookAccount},
+        BaseStateWithExtensions, BaseStateWithExtensionsMut, ExtensionType, StateWithExtensions,
         StateWithExtensionsMut,
     },
     state::{Account as TokenAccount, AccountState, Mint as Mint2022},
@@ -90,15 +96,9 @@ pub fn setup() -> (LiteSVM, Keypair) {
     (litesvm, default_payer)
 }
 
-fn pack_data<T: Pack>(state: T) -> Vec<u8> {
-    let mut data = vec![0; T::LEN];
-    T::pack(state, &mut data).unwrap();
-    data
-}
-
 pub fn fetch_account<T: Pack + IsInitialized>(litesvm: &LiteSVM, pubkey: &Pubkey) -> T {
     let account = litesvm.get_account(pubkey).unwrap();
-    T::unpack(account.data.as_ref()).unwrap()
+    T::unpack(&account.data[..T::LEN]).unwrap()
 }
 
 #[allow(clippy::result_large_err)]
@@ -174,7 +174,11 @@ pub fn init_mint(
                     state.init_extension::<PermanentDelegate>(true).unwrap();
                 }
                 ExtensionType::TransferFeeConfig => {
-                    state.init_extension::<TransferFeeConfig>(true).unwrap();
+                    let extension = state.init_extension::<TransferFeeConfig>(true).unwrap();
+                    extension.older_transfer_fee.epoch = 0.into();
+                    extension.older_transfer_fee.maximum_fee = 1_000_000.into();
+                    extension.older_transfer_fee.transfer_fee_basis_points = 100.into();
+                    extension.newer_transfer_fee = extension.older_transfer_fee;
                 }
                 ExtensionType::TransferHook => {
                     state.init_extension::<TransferHook>(true).unwrap();
@@ -220,6 +224,19 @@ fn init_token_account_at(
     amount: u64,
 ) -> Pubkey {
     let token_program = litesvm.get_account(&mint).unwrap().owner;
+    let account_extensions = if token_program == crate::tests::constants::TOKEN_2022_PROGRAM_ID {
+        let mint_account = litesvm.get_account(&mint).unwrap();
+        let mint_state = StateWithExtensions::<Mint2022>::unpack(&mint_account.data).unwrap();
+        let mint_extensions = mint_state.get_extension_types().unwrap();
+        ExtensionType::get_required_init_account_extensions(&mint_extensions)
+    } else {
+        vec![]
+    };
+    let space = if account_extensions.is_empty() {
+        TokenAccount::LEN
+    } else {
+        ExtensionType::try_calculate_account_len::<TokenAccount>(&account_extensions).unwrap()
+    };
     let ata_state = TokenAccount {
         mint,
         owner,
@@ -231,8 +248,37 @@ fn init_token_account_at(
         close_authority: None.into(),
     };
 
-    let ata_data = pack_data(ata_state);
-    let lamports = litesvm.minimum_balance_for_rent_exemption(TokenAccount::LEN);
+    let mut ata_data = vec![0u8; space];
+    if account_extensions.is_empty() {
+        TokenAccount::pack(ata_state, &mut ata_data).unwrap();
+    } else {
+        let mut state = StateWithExtensionsMut::<TokenAccount>::unpack_uninitialized(&mut ata_data).unwrap();
+        state.base = ata_state;
+        state.pack_base();
+        state.init_account_type().unwrap();
+
+        for ext in account_extensions {
+            match ext {
+                ExtensionType::TransferFeeAmount => {
+                    state.init_extension::<TransferFeeAmount>(true).unwrap();
+                }
+                ExtensionType::NonTransferableAccount => {
+                    state.init_extension::<NonTransferableAccount>(true).unwrap();
+                }
+                ExtensionType::ImmutableOwner => {
+                    state.init_extension::<ImmutableOwner>(true).unwrap();
+                }
+                ExtensionType::TransferHookAccount => {
+                    state.init_extension::<TransferHookAccount>(true).unwrap();
+                }
+                ExtensionType::PausableAccount => {
+                    state.init_extension::<PausableAccount>(true).unwrap();
+                }
+                _ => panic!("Unsupported account extension type in test helper: {:?}", ext),
+            }
+        }
+    }
+    let lamports = litesvm.minimum_balance_for_rent_exemption(space);
 
     litesvm
         .set_account(
@@ -479,6 +525,7 @@ impl<'a> TransferDelegation<'a> {
                 AccountMeta::new(subscription_authority_pda, false),
                 AccountMeta::new(delegator_ata, false),
                 AccountMeta::new(receiver_ata, false),
+                AccountMeta::new_readonly(self.mint, false),
                 AccountMeta::new_readonly(token_program, false),
                 AccountMeta::new_readonly(self.signer.pubkey(), true),
                 AccountMeta::new_readonly(event_authority, false),
@@ -956,6 +1003,7 @@ impl<'a> TransferSubscription<'a> {
                 AccountMeta::new(delegator_ata, false),
                 AccountMeta::new(receiver_ata, false),
                 AccountMeta::new_readonly(self.caller.pubkey(), true),
+                AccountMeta::new_readonly(self.mint, false),
                 AccountMeta::new_readonly(token_program, false),
                 AccountMeta::new_readonly(event_authority, false),
                 AccountMeta::new_readonly(PROGRAM_ID, false),

@@ -4,7 +4,7 @@ use crate::{
     state::{header::VERSION_OFFSET, FixedDelegation},
     tests::{
         asserts::TransactionResultExt,
-        constants::{MINT_DECIMALS, PROGRAM_ID, TOKEN_PROGRAM_ID},
+        constants::{MINT_DECIMALS, PROGRAM_ID, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID},
         idl,
         pda::get_subscription_authority_pda,
         utils::{
@@ -21,6 +21,7 @@ use solana_keypair::Keypair;
 use solana_pubkey::Pubkey;
 use solana_signer::Signer;
 use spl_associated_token_account_interface::address::get_associated_token_address_with_program_id;
+use spl_token_2022_interface::extension::ExtensionType;
 use spl_token_interface::instruction::TokenInstruction::Approve;
 
 fn setup_fixed_delegation(
@@ -70,6 +71,43 @@ fn test_fixed_transfer_success() {
     let del_expiry_s = delegation.expiry_ts;
     assert_eq!(del_amount, 20_000_000);
     assert_eq!(del_expiry_s, expiry_ts);
+}
+
+#[test]
+fn test_fixed_transfer_token_2022_transfer_fee() {
+    let (mut litesvm, alice) = setup();
+    let bob = Keypair::new();
+    litesvm.airdrop(&bob.pubkey(), 10_000_000).unwrap();
+
+    let mint = init_mint(
+        &mut litesvm,
+        TOKEN_2022_PROGRAM_ID,
+        MINT_DECIMALS,
+        1_000_000_000,
+        Some(alice.pubkey()),
+        &[ExtensionType::TransferFeeConfig],
+    );
+    let alice_ata = init_ata(&mut litesvm, mint, alice.pubkey(), 100_000_000);
+    let bob_ata = init_ata(&mut litesvm, mint, bob.pubkey(), 0);
+
+    initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
+
+    let (res, delegation_pda) = CreateDelegation::new(&mut litesvm, &alice, mint, bob.pubkey())
+        .fixed(50_000_000, current_ts() + days(1) as i64);
+    res.assert_ok();
+
+    TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
+        .amount(10_000_000)
+        .fixed()
+        .assert_ok();
+
+    assert_eq!(get_ata_balance(&litesvm, &alice_ata), 90_000_000);
+    assert_eq!(get_ata_balance(&litesvm, &bob_ata), 9_900_000);
+
+    let delegation_account = litesvm.get_account(&delegation_pda).unwrap();
+    let delegation = FixedDelegation::load(&delegation_account.data).unwrap();
+    let remaining_amount = delegation.amount;
+    assert_eq!(remaining_amount, 40_000_000);
 }
 
 #[test]
@@ -321,6 +359,7 @@ fn writable_accounts_must_be_writable() {
             AccountMeta::new_readonly(subscription_authority_pda, false),
             AccountMeta::new(delegator_ata, false),
             AccountMeta::new(receiver_ata, false),
+            AccountMeta::new_readonly(mint, false),
             AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
             AccountMeta::new_readonly(bob.pubkey(), true),
             AccountMeta::new_readonly(event_authority, false),
@@ -369,6 +408,7 @@ fn signer_accounts_must_be_signers() {
             AccountMeta::new_readonly(subscription_authority_pda, false),
             AccountMeta::new(delegator_ata, false),
             AccountMeta::new(receiver_ata, false),
+            AccountMeta::new_readonly(mint, false),
             AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
             AccountMeta::new_readonly(bob.pubkey(), true),
             AccountMeta::new_readonly(event_authority, false),
