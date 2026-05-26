@@ -235,10 +235,13 @@ impl SubscriptionAuthority {
 
 > **Note (init_id):** The `init_id` field is set from `Clock::slot` when the account is created.
 > Every delegation header stores a copy of this value. On transfer, the program validates
-> `header.init_id == subscription_authority.init_id`. If a user closes and re-initializes their
-> SubscriptionAuthority, the new slot produces a different `init_id`, making all old delegations
-> non-transferable (error: `StaleSubscriptionAuthority`). This prevents orphaned delegations from
-> being revived and also makes closing an effective emergency kill switch.
+> `header.init_id == subscription_authority.init_id`. Closing a SubscriptionAuthority makes
+> existing delegations non-transferable while the authority account is closed.
+>
+> Re-initializing in a later slot creates a different `init_id`, so old delegations fail with
+> `StaleSubscriptionAuthority`. Re-initializing in the same slot can reuse the same `init_id`,
+> so same-slot rotation is not a reliable invalidation boundary. To stop a specific delegation
+> immediately, use `revoke_delegation`.
 
 ### Header
 
@@ -423,12 +426,14 @@ Closes a SubscriptionAuthority PDA and returns rent to the owner.
 2. Verify PDA derivation from `["SubscriptionAuthority", user, token_mint]`
 3. Close account and transfer lamports to user
 
-> **Emergency kill switch:** Closing does not revoke existing delegation PDAs, but they
-> become non-transferable because the SubscriptionAuthority account no longer exists. If the user
-> re-initializes, the new `init_id` invalidates all old delegations. This allows a user
-> to immediately cut off all delegatees in a single transaction without revoking each one
-> individually. The delegator can still call `revoke_delegation` on orphaned delegations
-> afterward to reclaim rent.
+> **Authority close and rotation:** Closing does not revoke existing delegation PDAs, but they
+> become non-transferable while the SubscriptionAuthority account does not exist. If the user
+> re-initializes in a later slot, the new `init_id` invalidates old delegations.
+>
+> Same-slot close and re-initialization can reuse the same `init_id`, so authority rotation should
+> not be used as an immediate same-slot revocation mechanism. To stop a delegation immediately,
+> revoke that delegation directly. The delegator can still call `revoke_delegation` afterward to
+> reclaim rent from orphaned delegations.
 
 ---
 
