@@ -57,14 +57,15 @@ export function createSuccessRecord(
     subscribersTotal: number,
     subscribersAttempted: number,
 ): CollectionRecord {
-    const storedTransfers = transfers.slice(0, subscribersTotal).map(transfer => ({
+    const storedTransfers = transfers.map(transfer => ({
         subscriptionAddress: transfer.subscriptionAddress,
         amount: transfer.amount.toString(),
         signature: transfer.signature,
     }));
     const totalAmount = storedTransfers.reduce((sum, transfer) => sum + BigInt(transfer.amount), 0n);
     const subscribersCollected = storedTransfers.length;
-    const attempted = Math.min(subscribersAttempted, subscribersTotal);
+    const effectiveSubscribersTotal = Math.max(subscribersTotal, subscribersAttempted, subscribersCollected);
+    const attempted = Math.min(subscribersAttempted, effectiveSubscribersTotal);
 
     return {
         id: crypto.randomUUID(),
@@ -72,7 +73,7 @@ export function createSuccessRecord(
         planAddress,
         planName,
         subscribersCollected,
-        subscribersTotal,
+        subscribersTotal: effectiveSubscribersTotal,
         totalAmount: totalAmount.toString(),
         transfers: storedTransfers,
         status: subscribersCollected < attempted ? 'partial' : 'success',

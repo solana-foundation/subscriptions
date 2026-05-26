@@ -179,13 +179,7 @@ function CollectAllButton({
                     signature,
                 }));
                 addCollectionRecord(
-                    createSuccessRecord(
-                        pd.plan.address,
-                        planName,
-                        planTransfers,
-                        pd.currentSubscribers.length,
-                        planResult.total,
-                    ),
+                    createSuccessRecord(pd.plan.address, planName, planTransfers, planResult.total, planResult.total),
                 );
             }
 

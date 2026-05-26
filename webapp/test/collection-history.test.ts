@@ -79,4 +79,37 @@ describe('collection history', () => {
         assert.equal(getCollectionRecordTotalDisplayAmount(record, USDC_MULTIPLIER), 3);
         assert.equal(record.status, 'partial');
     });
+
+    test('keeps all collected transfers when a stale total is too low', () => {
+        const record = createSuccessRecord(
+            'Plan111111111111111111111111111111111111111',
+            'Growing Batch Plan',
+            [
+                {
+                    subscriptionAddress: 'Sub111111111111111111111111111111111111111',
+                    amount: 1n * USDC,
+                    signature: 'signature-1',
+                },
+                {
+                    subscriptionAddress: 'Sub222222222222222222222222222222222222222',
+                    amount: 2n * USDC,
+                    signature: 'signature-2',
+                },
+                {
+                    subscriptionAddress: 'Sub333333333333333333333333333333333333333',
+                    amount: 3n * USDC,
+                    signature: 'signature-2',
+                },
+            ],
+            2,
+            3,
+        );
+
+        assert.equal(record.subscribersCollected, 3);
+        assert.equal(record.subscribersTotal, 3);
+        assert.equal(record.totalAmount, (6n * USDC).toString());
+        assert.equal(record.transfers?.length, 3);
+        assert.deepEqual(record.signatures, ['signature-1', 'signature-2']);
+        assert.equal(record.status, 'success');
+    });
 });
