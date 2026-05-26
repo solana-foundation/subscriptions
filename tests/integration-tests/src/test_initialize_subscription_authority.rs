@@ -113,11 +113,11 @@ fn initialize_subscription_authority_with_sponsor() {
     )]
 #[case::non_transferable(
         &[ExtensionType::NonTransferable],
-        Some(SubscriptionsError::MintHasNonTransferable)
+        None
     )]
 #[case::permanent_delegate(
         &[ExtensionType::PermanentDelegate],
-        Some(SubscriptionsError::MintHasPermanentDelegate)
+        None
     )]
 #[case::transfer_fee(
         &[ExtensionType::TransferFeeConfig],
@@ -129,19 +129,19 @@ fn initialize_subscription_authority_with_sponsor() {
     )]
 #[case::pausable(
         &[ExtensionType::Pausable],
-        Some(SubscriptionsError::MintHasPausable)
+        None
     )]
 #[case::close_authority(
         &[ExtensionType::MintCloseAuthority],
-        Some(SubscriptionsError::MintHasMintCloseAuthority)
+        None
     )]
 #[case::multiple_blocked(
         &[ExtensionType::TransferFeeConfig, ExtensionType::TransferHook],
         Some(SubscriptionsError::MintHasTransferFee)
     )]
 #[case::mixed_blocked(
-        &[ExtensionType::MintCloseAuthority, ExtensionType::PermanentDelegate],
-        Some(SubscriptionsError::MintHasMintCloseAuthority)
+        &[ExtensionType::MintCloseAuthority, ExtensionType::ConfidentialTransferMint],
+        Some(SubscriptionsError::MintHasConfidentialTransfer)
     )]
 fn initialize_subscription_authority_token_2022(
     #[case] extensions: &[ExtensionType],
