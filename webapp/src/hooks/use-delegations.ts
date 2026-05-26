@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useClusterConfig } from '@/hooks/use-cluster-config';
 import { useProgramAddress } from '@/hooks/use-token-config';
+import { groupDelegations } from '@/lib/delegation-filters';
 
 export interface DelegationData {
     amount: bigint;
@@ -19,6 +20,7 @@ export interface DelegationData {
         payer: string;
         version: number;
     };
+    mint: string;
     periodLengthS: bigint;
 }
 
@@ -65,11 +67,7 @@ async function fetchDelegationsByRole(
     const delegations = await fetchFn(rpc, address(walletAddress), address(progAddr));
     const all = delegations.map(toDelegationItem).filter((d): d is DelegationItem => d !== null);
 
-    return {
-        all,
-        fixed: all.filter(d => d.type === 'Fixed'),
-        recurring: all.filter(d => d.type === 'Recurring'),
-    };
+    return groupDelegations(all);
 }
 
 function useDelegationsByRole(role: DelegationRole) {

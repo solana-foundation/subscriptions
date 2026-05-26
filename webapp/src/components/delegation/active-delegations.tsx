@@ -40,6 +40,7 @@ import { useClusterConfig } from '@/hooks/use-cluster-config';
 import { getBlockTimestamp } from '@/hooks/use-time-travel';
 import { useMySubscriptions } from '@/hooks/use-subscriptions';
 import { getDelegationApprovalState } from '@/lib/delegation-approval-state';
+import { groupDelegationsByMint } from '@/lib/delegation-filters';
 
 interface ActiveDelegationsProps {
     tokenMint: string;
@@ -733,9 +734,12 @@ function CloseSubscriptionAuthorityDialog({
     });
     const [confirmText, setConfirmText] = useState('');
 
-    const activeFixed = outgoing.fixed.filter(d => !isExpired(d.data.expiryTs, blockTime)).length;
-    const activeRecurring = outgoing.recurring.filter(d => !isExpired(d.data.expiryTs, blockTime)).length;
-    const activeSubscriptions = subscriptions?.filter(s => Number(s.subscription.expiresAtTs) === 0).length ?? 0;
+    const outgoingForMint = useMemo(() => groupDelegationsByMint(outgoing.all, tokenMint), [outgoing.all, tokenMint]);
+    const activeFixed = outgoingForMint.fixed.filter(d => !isExpired(d.data.expiryTs, blockTime)).length;
+    const activeRecurring = outgoingForMint.recurring.filter(d => !isExpired(d.data.expiryTs, blockTime)).length;
+    const activeSubscriptions =
+        subscriptions?.filter(s => s.plan?.data.mint === tokenMint && Number(s.subscription.expiresAtTs) === 0)
+            .length ?? 0;
     const totalActive = activeFixed + activeRecurring + activeSubscriptions;
     const hasActive = totalActive > 0;
 
@@ -835,10 +839,12 @@ export function ActiveDelegations({
 
     const outgoing = useDelegations();
     const incoming = useIncomingDelegations();
+    const outgoingForMint = useMemo(() => groupDelegationsByMint(outgoing.all, tokenMint), [outgoing.all, tokenMint]);
+    const incomingForMint = useMemo(() => groupDelegationsByMint(incoming.all, tokenMint), [incoming.all, tokenMint]);
 
     const outgoingFiltered = useMemo(() => {
-        const active = outgoing.all.filter(d => !isExpired(d.data.expiryTs, blockTime));
-        const expired = outgoing.all.filter(d => isExpired(d.data.expiryTs, blockTime));
+        const active = outgoingForMint.all.filter(d => !isExpired(d.data.expiryTs, blockTime));
+        const expired = outgoingForMint.all.filter(d => isExpired(d.data.expiryTs, blockTime));
         return {
             active: {
                 all: active,
@@ -851,26 +857,18 @@ export function ActiveDelegations({
                 recurring: expired.filter(d => d.type === 'Recurring'),
             },
         };
-    }, [outgoing.all, blockTime]);
-
-    const incomingGrouped = useMemo(() => {
-        return {
-            all: incoming.all,
-            fixed: incoming.all.filter(d => d.type === 'Fixed'),
-            recurring: incoming.all.filter(d => d.type === 'Recurring'),
-        };
-    }, [incoming.all]);
+    }, [outgoingForMint, blockTime]);
 
     const staleDelegations = useMemo(() => {
         if (subscriptionAuthorityInitId == null) return [];
-        return outgoing.all.filter(d => d.data.header.initId !== subscriptionAuthorityInitId);
-    }, [outgoing.all, subscriptionAuthorityInitId]);
+        return outgoingForMint.all.filter(d => d.data.header.initId !== subscriptionAuthorityInitId);
+    }, [outgoingForMint.all, subscriptionAuthorityInitId]);
 
     const { revokeMultipleDelegations } = useSubscriptionsMutations();
     const approvalState = getDelegationApprovalState({
         isInitialized,
         isApproved,
-        outgoingDelegationCount: outgoing.all.length,
+        outgoingDelegationCount: outgoingForMint.all.length,
     });
 
     const handleRevokeAllStale = async () => {
@@ -931,18 +929,18 @@ export function ActiveDelegations({
     };
 
     const renderIncomingContent = () => {
-        if (incomingGrouped.all.length === 0) return <EmptyState mode="incoming" />;
+        if (incomingForMint.all.length === 0) return <EmptyState mode="incoming" />;
 
         return (
             <div className="space-y-6">
                 <FixedDelegationTable
-                    delegations={incomingGrouped.fixed}
+                    delegations={incomingForMint.fixed}
                     mode="incoming"
                     tokenMint={tokenMint}
                     blockTime={blockTime}
                 />
                 <RecurringDelegationTable
-                    delegations={incomingGrouped.recurring}
+                    delegations={incomingForMint.recurring}
                     mode="incoming"
                     tokenMint={tokenMint}
                     blockTime={blockTime}
@@ -999,7 +997,7 @@ export function ActiveDelegations({
                     active={activeTab === 'incoming'}
                     onClick={() => setActiveTab('incoming')}
                     label="Delegated to Me"
-                    count={incomingGrouped.all.length}
+                    count={incomingForMint.all.length}
                     subLabel="Active"
                 />
                 <FilterCard
