@@ -95,7 +95,7 @@ describe('webapp collection utilities', () => {
             sendInstructions: async instructions => {
                 sentInstructionIds.push(instructions.map(ix => ix.data[0] ?? -1));
                 if (instructions.includes(failingInstruction)) {
-                    throw new Error('insufficient funds');
+                    throw new Error('Transaction simulation failed: insufficient funds');
                 }
                 return `sig-${sentInstructionIds.length}`;
             },
@@ -111,9 +111,67 @@ describe('webapp collection utilities', () => {
                     amount: 1n,
                 },
                 reason: 'transfer-failed',
-                message: 'insufficient funds',
+                message: 'Transaction simulation failed: insufficient funds',
             },
         ]);
         expect(sentInstructionIds).toEqual([[1, 2, 3], [1], [2, 3], [2], [3]]);
+    });
+
+    test('does not split and replay a batch after an ambiguous send error', async () => {
+        const signer = createNoopSigner(address('11111111111111111111111111111112'));
+        const sentInstructionIds: number[][] = [];
+
+        const result = await sendBatchedSubscriberInstructions({
+            feePayer: signer,
+            transfers: [
+                {
+                    subscriber: {
+                        subscriptionAddress: 'sub-1',
+                        delegator: 'delegator-1',
+                        amount: 1n,
+                    },
+                    instruction: instruction(1),
+                },
+                {
+                    subscriber: {
+                        subscriptionAddress: 'sub-2',
+                        delegator: 'delegator-2',
+                        amount: 1n,
+                    },
+                    instruction: instruction(2),
+                },
+            ],
+            sendInstructions: async instructions => {
+                sentInstructionIds.push(instructions.map(ix => ix.data[0] ?? -1));
+                throw new Error('transport lost after broadcast');
+            },
+        });
+
+        expect(result.collected).toBe(0);
+        expect(result.signatures).toEqual([]);
+        expect(result.confirmed).toEqual([]);
+        expect(result.failures).toEqual([
+            {
+                subscriber: {
+                    subscriptionAddress: 'sub-1',
+                    delegator: 'delegator-1',
+                    amount: 1n,
+                },
+                reason: 'transfer-failed',
+                message:
+                    'Payment batch status is unknown and was not retried automatically: transport lost after broadcast',
+            },
+            {
+                subscriber: {
+                    subscriptionAddress: 'sub-2',
+                    delegator: 'delegator-2',
+                    amount: 1n,
+                },
+                reason: 'transfer-failed',
+                message:
+                    'Payment batch status is unknown and was not retried automatically: transport lost after broadcast',
+            },
+        ]);
+        expect(sentInstructionIds).toEqual([[1, 2]]);
     });
 });
