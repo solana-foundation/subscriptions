@@ -1,23 +1,21 @@
 import type { TokenConfig } from '@/config/networks';
 
 export interface PlanTokenDisplay {
-    decimals: number;
+    decimals: number | null;
     mint: string;
     name: string;
-    supported: boolean;
     symbol: string;
 }
 
 export function resolvePlanTokenDisplay(mint: string, tokens: readonly TokenConfig[] | undefined): PlanTokenDisplay {
     const token = tokens?.find(t => t.mint === mint);
-    if (token) return { ...token, supported: true };
+    if (token) return token;
 
     return {
-        decimals: 0,
+        decimals: null,
         mint,
-        name: 'Unsupported token',
-        supported: false,
-        symbol: 'Unsupported token',
+        name: 'Unknown token',
+        symbol: 'Unknown token',
     };
 }
 
@@ -34,7 +32,26 @@ export function formatTokenAmount(amount: bigint, decimals: number): string {
 }
 
 export function formatPlanTokenAmount(amount: bigint, token: PlanTokenDisplay): string {
-    if (!token.supported) return `${amount.toLocaleString('en-US')} raw units`;
+    if (token.decimals == null) return `${amount.toLocaleString('en-US')} raw units`;
 
     return `${formatTokenAmount(amount, token.decimals)} ${token.symbol}`;
+}
+
+export function parseTokenAmount(value: string, decimals: number): bigint {
+    const trimmed = value.trim();
+    if (!/^\d+(\.\d+)?$/.test(trimmed)) {
+        throw new Error('Invalid token amount');
+    }
+
+    const [whole, fraction = ''] = trimmed.split('.');
+    const significantFraction = fraction.replace(/0+$/, '');
+    if (significantFraction.length > decimals) {
+        throw new Error(`Amount has more than ${decimals} decimal places`);
+    }
+
+    const divisor = 10n ** BigInt(decimals);
+    const wholeUnits = BigInt(whole) * divisor;
+    const fractionUnits = fraction.length === 0 ? 0n : BigInt(fraction.padEnd(decimals, '0') || '0');
+
+    return wholeUnits + fractionUnits;
 }

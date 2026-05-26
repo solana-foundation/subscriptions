@@ -5,11 +5,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations';
-import { useUsdcMint } from '@/hooks/use-token-config';
-import { cn, USDC_MULTIPLIER } from '@/lib/utils';
+import { useTokenConfig } from '@/hooks/use-token-config';
+import { cn, ellipsify } from '@/lib/utils';
 import { getBlockTimestamp } from '@/hooks/use-time-travel';
 import { useClusterConfig } from '@/hooks/use-cluster-config';
 import { PLAN_ICONS } from '@/lib/plan-constants';
+import { parseTokenAmount } from '@/lib/token-display';
 
 const PLAN_TEMPLATES = [
     {
@@ -72,11 +73,25 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
     const [endHour, setEndHour] = useState('12');
     const [destinations, setDestinations] = useState<string[]>([]);
     const [pullers, setPullers] = useState<string[]>([]);
+    const [selectedMint, setSelectedMint] = useState('');
 
     const { createPlan } = useSubscriptionsMutations();
-    const usdcMint = useUsdcMint();
+    const { data: tokens } = useTokenConfig();
     const { url: rpcUrl } = useClusterConfig();
     const [blockTime, setBlockTime] = useState<number | undefined>();
+    const defaultToken = tokens?.[0] ?? null;
+    const selectedToken = useMemo(
+        () => tokens?.find(token => token.mint === selectedMint) ?? defaultToken,
+        [defaultToken, selectedMint, tokens],
+    );
+    const isAmountValid = useMemo(() => {
+        if (!selectedToken) return false;
+        try {
+            return parseTokenAmount(amount, selectedToken.decimals) > 0n;
+        } catch {
+            return false;
+        }
+    }, [amount, selectedToken]);
 
     useEffect(() => {
         if (open)
@@ -112,6 +127,7 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
         setEndHour('12');
         setDestinations([]);
         setPullers([]);
+        setSelectedMint('');
     };
 
     const handleOpenChange = (next: boolean) => {
@@ -153,17 +169,17 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
         planName.length > 0 &&
         description.length > 0 &&
         selectedIcon.length > 0 &&
-        Number(amount) > 0 &&
+        isAmountValid &&
         periodHours >= 1 &&
         metadataBytes <= 128 &&
-        usdcMint !== null &&
+        selectedToken !== null &&
         isEndDateValid;
 
     const handleSubmit = async () => {
-        if (!usdcMint) return;
+        if (!selectedToken) return;
 
         const planId = crypto.getRandomValues(new BigUint64Array(1))[0];
-        const amountInSmallestUnits = BigInt(Math.round(Number(amount) * USDC_MULTIPLIER));
+        const amountInSmallestUnits = parseTokenAmount(amount, selectedToken.decimals);
         const endTsRaw = endDate
             ? Math.floor(new Date(`${endDate}T${endHour.padStart(2, '0')}:00:00`).getTime() / 1000)
             : 0;
@@ -175,7 +191,7 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
         await createPlan.mutateAsync(
             {
                 planId,
-                mint: usdcMint,
+                mint: selectedToken.mint,
                 amount: amountInSmallestUnits,
                 periodHours,
                 endTs,
@@ -336,16 +352,35 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
                                     id="plan-amount"
                                     type="number"
                                     min="0"
-                                    step="0.01"
+                                    step={selectedToken?.decimals === 0 ? '1' : 'any'}
                                     value={amount}
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAmount(e.target.value)}
-                                    placeholder="9.99"
+                                    placeholder={selectedToken?.decimals === 0 ? '10' : '9.99'}
                                     className="flex-1"
                                 />
-                                <span className="h-10 flex items-center rounded-md border border-input bg-background px-3 text-sm text-muted-foreground">
-                                    USDC
-                                </span>
+                                <Select
+                                    value={selectedToken?.mint ?? null}
+                                    onValueChange={value => {
+                                        if (value) setSelectedMint(value);
+                                    }}
+                                    className="w-40 shrink-0"
+                                >
+                                    {(tokens ?? []).map(token => (
+                                        <SelectItem key={token.mint} value={token.mint}>
+                                            {token.symbol}
+                                        </SelectItem>
+                                    ))}
+                                </Select>
                             </div>
+                            {selectedToken ? (
+                                <p className="text-xs text-muted-foreground">
+                                    {selectedToken.name} · {ellipsify(selectedToken.mint, 4)}
+                                </p>
+                            ) : (
+                                <p className="text-xs text-destructive">
+                                    No payment tokens are configured for this network.
+                                </p>
+                            )}
                         </div>
 
                         <div className="grid gap-2">
