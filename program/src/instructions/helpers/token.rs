@@ -28,20 +28,15 @@ use crate::{
 };
 
 const EXTENSION_TYPE_TRANSFER_FEE_CONFIG: u16 = 1;
-const EXTENSION_TYPE_MINT_CLOSE_AUTHORITY: u16 = 3;
 const EXTENSION_TYPE_CONFIDENTIAL_TRANSFER_MINT: u16 = 4;
-const EXTENSION_TYPE_NON_TRANSFERABLE: u16 = 9;
-const EXTENSION_TYPE_PERMANENT_DELEGATE: u16 = 12;
 const EXTENSION_TYPE_TRANSFER_HOOK: u16 = 14;
-const EXTENSION_TYPE_PAUSABLE: u16 = 26;
 
 const TLV_EXTENSIONS_START: usize = 166;
 
 /// Validates that a Token-2022 mint does not contain any blocked extensions.
 ///
 /// Walks the TLV extension entries starting at byte 166 and rejects mints
-/// that have ConfidentialTransfer, NonTransferable, PermanentDelegate,
-/// TransferHook, TransferFee, MintCloseAuthority, or Pausable extensions.
+/// that have ConfidentialTransfer, TransferHook, or TransferFee extensions.
 fn validate_mint_extensions(data: &[u8]) -> Result<(), ProgramError> {
     let mut offset = TLV_EXTENSIONS_START;
 
@@ -58,23 +53,11 @@ fn validate_mint_extensions(data: &[u8]) -> Result<(), ProgramError> {
             EXTENSION_TYPE_TRANSFER_FEE_CONFIG => {
                 return Err(SubscriptionsError::MintHasTransferFee.into());
             }
-            EXTENSION_TYPE_MINT_CLOSE_AUTHORITY => {
-                return Err(SubscriptionsError::MintHasMintCloseAuthority.into());
-            }
             EXTENSION_TYPE_CONFIDENTIAL_TRANSFER_MINT => {
                 return Err(SubscriptionsError::MintHasConfidentialTransfer.into());
             }
-            EXTENSION_TYPE_NON_TRANSFERABLE => {
-                return Err(SubscriptionsError::MintHasNonTransferable.into());
-            }
-            EXTENSION_TYPE_PERMANENT_DELEGATE => {
-                return Err(SubscriptionsError::MintHasPermanentDelegate.into());
-            }
             EXTENSION_TYPE_TRANSFER_HOOK => {
                 return Err(SubscriptionsError::MintHasTransferHook.into());
-            }
-            EXTENSION_TYPE_PAUSABLE => {
-                return Err(SubscriptionsError::MintHasPausable.into());
             }
             _ => {}
         }
