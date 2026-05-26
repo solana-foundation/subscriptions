@@ -11,6 +11,7 @@ import { packInstructionBatches } from './tx-packer';
 
 const SUBSCRIPTION_AUTHORITY_SEED = 'SubscriptionAuthority';
 const FAILURE_CACHE_STORAGE_KEY = 'collect-payments-subscriber-failures';
+const SIMULATION_FAILURE_PREFIX = 'Transaction simulation failed:';
 
 const addressEncoder = getAddressEncoder();
 const textEncoder = new TextEncoder();
@@ -223,6 +224,17 @@ export async function sendBatchedSubscriberInstructions<TSubscriber extends Coll
                 clearCachedFailure(transfer.subscriber);
             }
         } catch (err) {
+            if (!isKnownPreBroadcastFailure(err)) {
+                for (const transfer of group) {
+                    failures.push({
+                        subscriber: transfer.subscriber,
+                        reason: 'transfer-failed',
+                        message: `Payment batch status is unknown and was not retried automatically: ${errorMessage(err)}`,
+                    });
+                }
+                return;
+            }
+
             if (group.length === 1) {
                 const [transfer] = group;
                 failures.push({
@@ -424,6 +436,10 @@ function tokenStateHash(account: ParsedTokenAccount, amount: bigint): string {
 
 function errorMessage(err: unknown): string {
     return err instanceof Error ? err.message : String(err);
+}
+
+function isKnownPreBroadcastFailure(err: unknown): boolean {
+    return errorMessage(err).startsWith(SIMULATION_FAILURE_PREFIX);
 }
 
 function cacheKey(subscriber: CollectableSubscriber): string {
