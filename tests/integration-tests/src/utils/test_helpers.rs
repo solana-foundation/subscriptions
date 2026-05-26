@@ -206,6 +206,22 @@ pub fn init_mint(
     mint
 }
 
+pub fn set_transfer_hook_config(
+    litesvm: &mut LiteSVM,
+    mint: Pubkey,
+    authority: Option<Pubkey>,
+    program_id: Option<Pubkey>,
+) {
+    let mut account = litesvm.get_account(&mint).unwrap();
+    {
+        let mut state = StateWithExtensionsMut::<Mint2022>::unpack(&mut account.data).unwrap();
+        let extension = state.get_extension_mut::<TransferHook>().unwrap();
+        extension.authority = authority.try_into().unwrap();
+        extension.program_id = program_id.try_into().unwrap();
+    }
+    litesvm.set_account(mint, account).unwrap();
+}
+
 pub fn init_ata(litesvm: &mut LiteSVM, mint: Pubkey, owner: Pubkey, amount: u64) -> Pubkey {
     let token_program = litesvm.get_account(&mint).unwrap().owner;
     let ata = get_associated_token_address_with_program_id(&owner, &mint, &token_program);
