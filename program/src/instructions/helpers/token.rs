@@ -27,7 +27,6 @@ use crate::{
     SubscriptionsError,
 };
 
-const EXTENSION_TYPE_CONFIDENTIAL_TRANSFER_MINT: u16 = 4;
 const EXTENSION_TYPE_TRANSFER_HOOK: u16 = 14;
 
 const TLV_EXTENSIONS_START: usize = 166;
@@ -35,7 +34,7 @@ const TLV_EXTENSIONS_START: usize = 166;
 /// Validates that a Token-2022 mint does not contain any blocked extensions.
 ///
 /// Walks the TLV extension entries starting at byte 166 and rejects mints
-/// that have ConfidentialTransfer or TransferHook extensions.
+/// that have TransferHook extensions.
 fn validate_mint_extensions(data: &[u8]) -> Result<(), ProgramError> {
     let mut offset = TLV_EXTENSIONS_START;
 
@@ -48,14 +47,8 @@ fn validate_mint_extensions(data: &[u8]) -> Result<(), ProgramError> {
             break;
         }
 
-        match ext_type {
-            EXTENSION_TYPE_CONFIDENTIAL_TRANSFER_MINT => {
-                return Err(SubscriptionsError::MintHasConfidentialTransfer.into());
-            }
-            EXTENSION_TYPE_TRANSFER_HOOK => {
-                return Err(SubscriptionsError::MintHasTransferHook.into());
-            }
-            _ => {}
+        if ext_type == EXTENSION_TYPE_TRANSFER_HOOK {
+            return Err(SubscriptionsError::MintHasTransferHook.into());
         }
 
         offset += 4 + ext_len;
