@@ -1,4 +1,4 @@
-import { getAddressFromPublicKey, createKeyPairFromBytes, createKeyPairFromPrivateKeyBytes } from '@solana/kit';
+import { getAddressFromPublicKey, createKeyPairFromPrivateKeyBytes } from '@solana/kit';
 import crypto from 'node:crypto';
 import { CHUNK_SIZE } from './bpf-loader.js';
 
@@ -23,7 +23,6 @@ async function generateKeypairBytes(): Promise<{ keypairBytes: Uint8Array; publi
 export interface DeployPlan {
     bufferKeypair: number[];
     bufferAddress: string;
-    programKeypair?: number[];
     chunks: string[];
     totalChunks: number;
     programAddress: string;
@@ -42,24 +41,20 @@ function chunkSoBytes(soBytes: Uint8Array): string[] {
     return chunks;
 }
 
-export async function buildDeployPlan(soBytes: Uint8Array, programKeypairBytes: Uint8Array): Promise<DeployPlan> {
+export async function buildDeployPlan(soBytes: Uint8Array, programAddress: string): Promise<DeployPlan> {
     const soHash = crypto.createHash('sha256').update(soBytes).digest('hex');
 
     const { keypairBytes: bufferKeypairBytes, publicKey: bufferPubKey } = await generateKeypairBytes();
     const bufferAddress = await getAddressFromPublicKey(bufferPubKey);
-
-    const programKp = await createKeyPairFromBytes(programKeypairBytes);
-    const programAddress = await getAddressFromPublicKey(programKp.publicKey);
 
     const chunks = chunkSoBytes(soBytes);
 
     return {
         bufferKeypair: Array.from(bufferKeypairBytes),
         bufferAddress: bufferAddress.toString(),
-        programKeypair: Array.from(programKeypairBytes),
         chunks,
         totalChunks: chunks.length,
-        programAddress: programAddress.toString(),
+        programAddress,
         soHash,
         soSize: soBytes.length,
     };

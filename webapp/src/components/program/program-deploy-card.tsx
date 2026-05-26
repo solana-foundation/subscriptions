@@ -14,8 +14,10 @@ import {
 import { Button as SolanaButton, CopyButton, TextInput } from '@solana/design-system';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ProgramKeypairPicker } from '@/components/program/program-keypair-picker';
 import { useProgramStatus } from '@/hooks/use-program-status';
 import { useProgramDeploy, type DeployProgress } from '@/hooks/use-program-deploy';
+import type { ProgramKeypairImport } from '@/lib/program-keypair';
 import { useProgramAddress } from '@/hooks/use-token-config';
 import { useClusterConfig } from '@/hooks/use-cluster-config';
 import { useKitTransactionSigner, useWallet } from '@solana/connector/react';
@@ -242,6 +244,7 @@ export function ProgramDeployCard() {
     const isActive = deploy.isPending;
     const isUpgrade = status?.deployed ?? false;
     const [lastFailedChunk, setLastFailedChunk] = useState<number | null>(null);
+    const [programKeypair, setProgramKeypair] = useState<ProgramKeypairImport | null>(null);
     const progressRef = useRef(progress);
     useEffect(() => {
         progressRef.current = progress;
@@ -254,7 +257,12 @@ export function ProgramDeployCard() {
     const handleDeploy = (resumeFrom?: number) => {
         setLastFailedChunk(null);
         deploy.mutate(
-            { isUpgrade, resumeFrom },
+            {
+                isUpgrade,
+                programAddress: programKeypair?.programAddress,
+                programKeypairBytes: programKeypair?.bytes,
+                resumeFrom,
+            },
             {
                 onError: () => {
                     if (progressRef.current.phase === 'writing' && progressRef.current.current > 0) {
@@ -280,10 +288,18 @@ export function ProgramDeployCard() {
                     </div>
                 )}
 
+                {!isUpgrade && !isActive && progress.phase !== 'done' && (
+                    <ProgramKeypairPicker
+                        disabled={deploy.isPending}
+                        value={programKeypair}
+                        onChange={setProgramKeypair}
+                    />
+                )}
+
                 {!isActive && progress.phase !== 'done' && progress.phase !== 'error' && (
                     <SolanaButton
                         onClick={() => handleDeploy()}
-                        disabled={!!authorityMismatch}
+                        disabled={!!authorityMismatch || (!isUpgrade && !programKeypair)}
                         iconLeft={<Rocket />}
                         style={{ width: '100%' }}
                     >

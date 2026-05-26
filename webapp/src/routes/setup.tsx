@@ -30,6 +30,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { WalletButton } from '@/components/solana/solana-provider';
+import { ProgramKeypairPicker } from '@/components/program/program-keypair-picker';
 import { useLocalnetSetup, useDevnetSetup, type SetupStep } from '@/hooks/use-setup-wizard';
 import { useProgramDeploy } from '@/hooks/use-program-deploy';
 import { useProgramStatus } from '@/hooks/use-program-status';
@@ -45,6 +46,7 @@ import { truncateAddress } from '@/lib/format';
 import { isValidBase58Address } from '@/lib/validators';
 import { useRpc } from '@/hooks/use-rpc';
 import { api } from '@/lib/api-client';
+import type { ProgramKeypairImport } from '@/lib/program-keypair';
 import solanaLogo from '@/assets/solana-logo.svg';
 
 type Network = 'localnet' | 'devnet' | null;
@@ -405,6 +407,7 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
     const [usdcVerifyFailed, setUsdcVerifyFailed] = useState(false);
     const [multisigAddress, setMultisigAddress] = useState('');
     const [confirmClose, setConfirmClose] = useState(false);
+    const [programKeypair, setProgramKeypair] = useState<ProgramKeypairImport | null>(null);
     const [existingUsdcMint, setExistingUsdcMint] = useState<string | null>(null);
     const [configUsdcOnline, setConfigUsdcOnline] = useState<boolean | null>(null);
     const [checkingUsdc, setCheckingUsdc] = useState(false);
@@ -530,7 +533,11 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
         markStepRunning('deploy-program', 'Deploying program via wallet...');
         try {
             log('info', 'Preparing deploy plan (fetching .so binary from API)...');
-            const deployResult = await programDeploy.mutateAsync({ isUpgrade: false });
+            const deployResult = await programDeploy.mutateAsync({
+                isUpgrade: false,
+                programAddress: programKeypair?.programAddress,
+                programKeypairBytes: programKeypair?.bytes,
+            });
             log('success', 'Program deployed successfully');
             if (deployResult?.programAddress) {
                 setResult({ programId: deployResult.programAddress, usdcMint: '' });
@@ -542,7 +549,16 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
             log('error', `Deploy failed: ${msg}`);
             markStepError('deploy-program', msg);
         }
-    }, [programStatus.data, programDeploy, markStepDone, markStepError, markStepRunning, setResult, log]);
+    }, [
+        programStatus.data,
+        programDeploy,
+        programKeypair,
+        markStepDone,
+        markStepError,
+        markStepRunning,
+        setResult,
+        log,
+    ]);
 
     const handleTransferAuthority = useCallback(async () => {
         if (!walletSigner) return;
@@ -847,9 +863,16 @@ function DevnetWizard({ onComplete, onBack }: { onComplete: () => void; onBack: 
 
                         {phase === 'deploy' && (
                             <div className="space-y-3">
+                                {!programStatus.data?.deployed && (
+                                    <ProgramKeypairPicker
+                                        disabled={isPending}
+                                        value={programKeypair}
+                                        onChange={setProgramKeypair}
+                                    />
+                                )}
                                 <SolanaButton
                                     onClick={handleDeploy}
-                                    disabled={isPending}
+                                    disabled={isPending || (!programStatus.data?.deployed && !programKeypair)}
                                     loading={programDeploy.isPending}
                                     style={{ width: '100%' }}
                                 >
