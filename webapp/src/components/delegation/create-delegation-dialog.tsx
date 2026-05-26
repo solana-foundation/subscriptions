@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations';
+import { useSubscriptionAuthorityStatus } from '@/hooks/use-subscription-authority-status';
 import { DELEGATION_KINDS, type DelegationKindId } from '@/lib/delegation-kinds';
 import { cn, USDC_MULTIPLIER, SECONDS_PER_DAY } from '@/lib/utils';
 import { getBlockTimestamp } from '@/hooks/use-time-travel';
@@ -57,6 +58,8 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
     const [periodDays, setPeriodDays] = useState('');
 
     const { createFixedDelegation, createRecurringDelegation } = useSubscriptionsMutations();
+    const { data: authorityStatus } = useSubscriptionAuthorityStatus(tokenMint);
+    const authorityInitId = authorityStatus?.data?.initId;
     const { url: rpcUrl } = useClusterConfig();
     const [blockTime, setBlockTime] = useState<number | undefined>();
 
@@ -105,6 +108,8 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
     };
 
     const handleSubmit = async () => {
+        if (authorityInitId == null) return;
+
         const nonce = generateNonce();
         let expiryTimestamp = 0;
         if (!noExpiry) {
@@ -122,6 +127,7 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
                     nonce,
                     amount: amountInSmallestUnits,
                     expiryTs: expiryTimestamp,
+                    expectedSubscriptionAuthorityInitId: authorityInitId,
                 },
                 {
                     onSuccess: () => {
@@ -140,6 +146,7 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
                     amountPerPeriod: amountInSmallestUnits,
                     periodLengthS: periodSeconds,
                     expiryTs: expiryTimestamp,
+                    expectedSubscriptionAuthorityInitId: authorityInitId,
                 },
                 {
                     onSuccess: () => {
@@ -164,6 +171,7 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
         delegatee.length <= 44 &&
         amount.length > 0 &&
         Number(amount) > 0 &&
+        authorityInitId != null &&
         (noExpiry || expiryDate.length > 0) &&
         isExpiryValid() &&
         (selectedKind === 'fixed' || (periodDays.length > 0 && Number(periodDays) > 0));
@@ -171,7 +179,12 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
-                <SolanaButton disabled={disabled} iconLeft={<Plus />} radius="round" size="lg">
+                <SolanaButton
+                    disabled={disabled || authorityInitId == null}
+                    iconLeft={<Plus />}
+                    radius="round"
+                    size="lg"
+                >
                     Create Delegation
                 </SolanaButton>
             </DialogTrigger>

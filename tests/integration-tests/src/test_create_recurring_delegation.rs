@@ -10,7 +10,7 @@ use crate::{
         constants::{MINT_DECIMALS, TOKEN_PROGRAM_ID},
         utils::{
             days, get_ata_balance, init_ata, init_mint, initialize_subscription_authority_action, move_clock_forward,
-            setup, CreateDelegation, TransferDelegation,
+            setup, CloseSubscriptionAuthority, CreateDelegation, TransferDelegation,
         },
     },
     AccountDiscriminator, RecurringDelegation, SubscriptionsError,
@@ -60,6 +60,43 @@ fn create_recurring_delegation() {
     assert_eq!(del_expiry_s, expiry_ts);
     assert_eq!(del_amount_pulled_in_period, 0);
     assert_eq!(del_current_period_start_ts, start_ts);
+}
+
+#[test]
+fn create_recurring_delegation_rejects_stale_subscription_authority_generation() {
+    let (litesvm, user) = &mut setup();
+    let payer = user;
+    let amount_per_period: u64 = 50_000_000;
+    let period_length_s: u64 = 86400;
+    let start_ts: i64 = current_ts();
+    let expiry_ts = start_ts + days(7) as i64;
+    let nonce: u64 = 0;
+
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(payer.pubkey()), &[]);
+    let _user_ata = init_ata(litesvm, mint, payer.pubkey(), 1_000_000);
+
+    let (_, subscription_authority_pda, _) = initialize_subscription_authority_action(litesvm, payer, mint);
+    let old_init_id =
+        crate::state::SubscriptionAuthority::load(&litesvm.get_account(&subscription_authority_pda).unwrap().data)
+            .unwrap()
+            .init_id;
+
+    CloseSubscriptionAuthority::new(litesvm, payer, mint).execute().assert_ok();
+    move_clock_forward(litesvm, 1);
+    initialize_subscription_authority_action(litesvm, payer, mint).0.assert_ok();
+
+    let new_init_id =
+        crate::state::SubscriptionAuthority::load(&litesvm.get_account(&subscription_authority_pda).unwrap().data)
+            .unwrap()
+            .init_id;
+    assert_ne!(old_init_id, new_init_id);
+
+    let delegatee = Pubkey::new_unique();
+    let (res, _) = CreateDelegation::new(litesvm, payer, mint, delegatee)
+        .expected_subscription_authority_init_id(old_init_id)
+        .nonce(nonce)
+        .recurring(amount_per_period, period_length_s, start_ts, expiry_ts);
+    res.assert_err(SubscriptionsError::StaleSubscriptionAuthority);
 }
 
 #[test]

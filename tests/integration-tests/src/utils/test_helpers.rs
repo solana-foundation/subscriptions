@@ -294,11 +294,21 @@ pub struct CreateDelegation<'a> {
     delegatee: Pubkey,
     nonce: u64,
     custom_pda: Option<Pubkey>,
+    expected_subscription_authority_init_id: Option<i64>,
 }
 
 impl<'a> CreateDelegation<'a> {
     pub fn new(litesvm: &'a mut LiteSVM, delegator: &'a Keypair, mint: Pubkey, delegatee: Pubkey) -> Self {
-        Self { litesvm, delegator, payer: None, mint, delegatee, nonce: 0, custom_pda: None }
+        Self {
+            litesvm,
+            delegator,
+            payer: None,
+            mint,
+            delegatee,
+            nonce: 0,
+            custom_pda: None,
+            expected_subscription_authority_init_id: None,
+        }
     }
 
     pub fn payer(mut self, payer: &'a Keypair) -> Self {
@@ -316,11 +326,35 @@ impl<'a> CreateDelegation<'a> {
         self
     }
 
+    pub fn expected_subscription_authority_init_id(mut self, init_id: i64) -> Self {
+        self.expected_subscription_authority_init_id = Some(init_id);
+        self
+    }
+
+    fn resolved_expected_subscription_authority_init_id(&self) -> i64 {
+        self.expected_subscription_authority_init_id.unwrap_or_else(|| {
+            let (subscription_authority_pda, _) = get_subscription_authority_pda(&self.delegator.pubkey(), &self.mint);
+            self.litesvm
+                .get_account(&subscription_authority_pda)
+                .and_then(|account| {
+                    crate::state::SubscriptionAuthority::load(&account.data).ok().map(|authority| authority.init_id)
+                })
+                .unwrap_or_default()
+        })
+    }
+
     pub fn fixed(self, amount: u64, expiry_ts: i64) -> (TransactionResult, Pubkey) {
         let nonce_bytes = self.nonce.to_le_bytes().to_vec();
+        let expected_subscription_authority_init_id = self.resolved_expected_subscription_authority_init_id();
         self.execute(
             *create_fixed_delegation::DISCRIMINATOR,
-            [nonce_bytes, amount.to_le_bytes().to_vec(), expiry_ts.to_le_bytes().to_vec()].concat(),
+            [
+                nonce_bytes,
+                amount.to_le_bytes().to_vec(),
+                expiry_ts.to_le_bytes().to_vec(),
+                expected_subscription_authority_init_id.to_le_bytes().to_vec(),
+            ]
+            .concat(),
         )
     }
 
@@ -332,6 +366,7 @@ impl<'a> CreateDelegation<'a> {
         expiry_ts: i64,
     ) -> (TransactionResult, Pubkey) {
         let nonce_bytes = self.nonce.to_le_bytes().to_vec();
+        let expected_subscription_authority_init_id = self.resolved_expected_subscription_authority_init_id();
         self.execute(
             *create_recurring_delegation::DISCRIMINATOR,
             [
@@ -340,6 +375,7 @@ impl<'a> CreateDelegation<'a> {
                 period_length_s.to_le_bytes().to_vec(),
                 start_ts.to_le_bytes().to_vec(),
                 expiry_ts.to_le_bytes().to_vec(),
+                expected_subscription_authority_init_id.to_le_bytes().to_vec(),
             ]
             .concat(),
         )
@@ -368,7 +404,6 @@ impl<'a> CreateDelegation<'a> {
             fee_payer = p.pubkey();
         }
 
-        // Instruction data now includes the bump at the end
         let ix = Instruction { program_id: PROGRAM_ID, accounts, data: [vec![discriminator], data].concat() };
 
         (build_and_send_transaction(self.litesvm, &signers, &fee_payer, &ix), delegation_pda)

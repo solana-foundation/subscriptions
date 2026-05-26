@@ -147,6 +147,7 @@ export type CreateFixedDelegationInput = WithProgramAddress & {
     amount: bigint | number;
     delegatee: Address;
     delegator: TransactionSigner;
+    expectedSubscriptionAuthorityInitId?: bigint | number;
     expiryTs: bigint | number;
     nonce: bigint | number;
     payer?: TransactionSigner;
@@ -157,6 +158,7 @@ export type CreateRecurringDelegationInput = WithProgramAddress & {
     amountPerPeriod: bigint | number;
     delegatee: Address;
     delegator: TransactionSigner;
+    expectedSubscriptionAuthorityInitId?: bigint | number;
     expiryTs: bigint | number;
     nonce: bigint | number;
     payer?: TransactionSigner;
@@ -298,6 +300,11 @@ export async function getCreateFixedDelegationOverlayInstructionAsync(
     input: CreateFixedDelegationInput,
 ): Promise<Instruction> {
     assertPositive(input.amount, 'amount');
+    if (input.expectedSubscriptionAuthorityInitId === undefined) {
+        throw new Error(
+            'getCreateFixedDelegationOverlayInstructionAsync requires expectedSubscriptionAuthorityInitId. Use the plugin client `subscriptions.instructions.createFixedDelegation(...)` to auto-fetch from the live authority.',
+        );
+    }
     const [subscriptionAuthority] = await findSubscriptionAuthorityPda(
         { tokenMint: input.tokenMint, user: input.delegator.address },
         pdaConfig(input.programAddress),
@@ -319,6 +326,7 @@ export async function getCreateFixedDelegationOverlayInstructionAsync(
                 delegator: input.delegator,
                 fixedDelegation: {
                     amount: input.amount,
+                    expectedSubscriptionAuthorityInitId: input.expectedSubscriptionAuthorityInitId,
                     expiryTs: input.expiryTs,
                     nonce: input.nonce,
                 },
@@ -335,6 +343,11 @@ export async function getCreateRecurringDelegationOverlayInstructionAsync(
 ): Promise<Instruction> {
     assertPositive(input.amountPerPeriod, 'amountPerPeriod');
     assertPositive(input.periodLengthS, 'periodLengthS');
+    if (input.expectedSubscriptionAuthorityInitId === undefined) {
+        throw new Error(
+            'getCreateRecurringDelegationOverlayInstructionAsync requires expectedSubscriptionAuthorityInitId. Use the plugin client `subscriptions.instructions.createRecurringDelegation(...)` to auto-fetch from the live authority.',
+        );
+    }
     const [subscriptionAuthority] = await findSubscriptionAuthorityPda(
         { tokenMint: input.tokenMint, user: input.delegator.address },
         pdaConfig(input.programAddress),
@@ -356,6 +369,7 @@ export async function getCreateRecurringDelegationOverlayInstructionAsync(
                 delegator: input.delegator,
                 recurringDelegation: {
                     amountPerPeriod: input.amountPerPeriod,
+                    expectedSubscriptionAuthorityInitId: input.expectedSubscriptionAuthorityInitId,
                     expiryTs: input.expiryTs,
                     nonce: input.nonce,
                     periodLengthS: input.periodLengthS,
@@ -684,6 +698,26 @@ export function subscriptionsProgram() {
                 plansForOwner: owner => fetchPlansForOwner(c.rpc, owner),
             };
 
+            const resolveExpectedSubscriptionAuthorityInitId = async (
+                tokenMint: Address,
+                user: Address,
+                programAddress: Address | undefined,
+                expectedSubscriptionAuthorityInitId: bigint | number | undefined,
+            ) => {
+                if (expectedSubscriptionAuthorityInitId !== undefined) {
+                    return expectedSubscriptionAuthorityInitId;
+                }
+                const [subscriptionAuthorityPda] = await findSubscriptionAuthorityPda(
+                    { tokenMint, user },
+                    pdaConfig(programAddress),
+                );
+                const subscriptionAuthority = await fetchMaybeSubscriptionAuthority(c.rpc, subscriptionAuthorityPda);
+                if (!subscriptionAuthority.exists) {
+                    throw new Error('SubscriptionAuthority is not initialized for this delegator and token mint.');
+                }
+                return subscriptionAuthority.data.initId;
+            };
+
             const instructions: SubscriptionsPluginInstructions = {
                 cancelSubscription: input =>
                     addSelfPlanAndSendFunctions(
@@ -704,11 +738,22 @@ export function subscriptionsProgram() {
                 createFixedDelegation: input =>
                     addSelfPlanAndSendFunctions(
                         client,
-                        getCreateFixedDelegationOverlayInstructionAsync({
-                            ...input,
-                            delegator: input.delegator ?? client.identity,
-                            payer: input.payer ?? (client.payer === client.identity ? undefined : client.payer),
-                        }),
+                        (async () => {
+                            const delegator = input.delegator ?? client.identity;
+                            const expectedSubscriptionAuthorityInitId =
+                                await resolveExpectedSubscriptionAuthorityInitId(
+                                    input.tokenMint,
+                                    delegator.address,
+                                    input.programAddress,
+                                    input.expectedSubscriptionAuthorityInitId,
+                                );
+                            return await getCreateFixedDelegationOverlayInstructionAsync({
+                                ...input,
+                                delegator,
+                                expectedSubscriptionAuthorityInitId,
+                                payer: input.payer ?? (client.payer === client.identity ? undefined : client.payer),
+                            });
+                        })(),
                     ),
                 createPlan: input =>
                     addSelfPlanAndSendFunctions(
@@ -721,11 +766,22 @@ export function subscriptionsProgram() {
                 createRecurringDelegation: input =>
                     addSelfPlanAndSendFunctions(
                         client,
-                        getCreateRecurringDelegationOverlayInstructionAsync({
-                            ...input,
-                            delegator: input.delegator ?? client.identity,
-                            payer: input.payer ?? (client.payer === client.identity ? undefined : client.payer),
-                        }),
+                        (async () => {
+                            const delegator = input.delegator ?? client.identity;
+                            const expectedSubscriptionAuthorityInitId =
+                                await resolveExpectedSubscriptionAuthorityInitId(
+                                    input.tokenMint,
+                                    delegator.address,
+                                    input.programAddress,
+                                    input.expectedSubscriptionAuthorityInitId,
+                                );
+                            return await getCreateRecurringDelegationOverlayInstructionAsync({
+                                ...input,
+                                delegator,
+                                expectedSubscriptionAuthorityInitId,
+                                payer: input.payer ?? (client.payer === client.identity ? undefined : client.payer),
+                            });
+                        })(),
                     ),
                 deletePlan: input =>
                     addSelfPlanAndSendFunctions(
