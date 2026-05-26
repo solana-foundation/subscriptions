@@ -185,6 +185,72 @@ fn subscribe_duplicate_rejected() {
 }
 
 #[test]
+fn subscribe_rejects_stale_subscription_authority_generation() {
+    use crate::tests::{
+        constants::{PROGRAM_ID, SYSTEM_PROGRAM_ID},
+        pda::get_subscription_authority_pda,
+        utils::{build_and_send_transaction, move_clock_forward, CloseSubscriptionAuthority},
+    };
+    use crate::{event_engine::event_authority_pda, instructions::subscribe};
+    use solana_instruction::{AccountMeta, Instruction};
+
+    let end_ts = current_ts() + days(30) as i64;
+    let (mut litesvm, alice, merchant, mint, plan_pda, plan_bump) = setup_plan(1, end_ts);
+
+    let plan_account = litesvm.get_account(&plan_pda).unwrap();
+    let plan = crate::state::Plan::load(&plan_account.data).unwrap();
+    let live_amount = plan.data.terms.amount;
+    let live_period_hours = plan.data.terms.period_hours;
+    let live_created_at = plan.data.terms.created_at;
+    let live_mint = plan.data.mint;
+
+    let (subscription_authority_pda, _) = get_subscription_authority_pda(&alice.pubkey(), &mint);
+    let authority_before_account = litesvm.get_account(&subscription_authority_pda).unwrap();
+    let authority_before = crate::state::SubscriptionAuthority::load(&authority_before_account.data).unwrap();
+    let stale_init_id = authority_before.init_id;
+
+    CloseSubscriptionAuthority::new(&mut litesvm, &alice, mint).execute().assert_ok();
+    move_clock_forward(&mut litesvm, 1);
+    initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
+
+    let authority_after_account = litesvm.get_account(&subscription_authority_pda).unwrap();
+    let authority_after = crate::state::SubscriptionAuthority::load(&authority_after_account.data).unwrap();
+    let new_init_id = authority_after.init_id;
+    assert_ne!(new_init_id, stale_init_id);
+
+    let (subscription_pda, _) = get_subscription_pda(&plan_pda, &alice.pubkey());
+    let event_authority = Pubkey::new_from_array(event_authority_pda::ID.to_bytes());
+
+    let accounts = vec![
+        AccountMeta::new(alice.pubkey(), true),
+        AccountMeta::new_readonly(merchant.pubkey(), false),
+        AccountMeta::new_readonly(plan_pda, false),
+        AccountMeta::new(subscription_pda, false),
+        AccountMeta::new_readonly(subscription_authority_pda, false),
+        AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+        AccountMeta::new_readonly(event_authority, false),
+        AccountMeta::new_readonly(PROGRAM_ID, false),
+    ];
+
+    let data = [
+        vec![*subscribe::DISCRIMINATOR],
+        1u64.to_le_bytes().to_vec(),
+        vec![plan_bump],
+        live_mint.as_ref().to_vec(),
+        live_amount.to_le_bytes().to_vec(),
+        live_period_hours.to_le_bytes().to_vec(),
+        live_created_at.to_le_bytes().to_vec(),
+        stale_init_id.to_le_bytes().to_vec(),
+    ]
+    .concat();
+
+    let ix = Instruction { program_id: PROGRAM_ID, accounts, data };
+
+    let res = build_and_send_transaction(&mut litesvm, &[&alice], &alice.pubkey(), &ix);
+    res.assert_err(SubscriptionsError::StaleSubscriptionAuthority);
+}
+
+#[test]
 fn subscribe_rejects_stale_expected_terms() {
     use crate::tests::{
         constants::{PROGRAM_ID, SYSTEM_PROGRAM_ID},
@@ -207,6 +273,10 @@ fn subscribe_rejects_stale_expected_terms() {
     let live_mint = plan.data.mint;
 
     let (subscription_authority_pda, _) = get_subscription_authority_pda(&alice.pubkey(), &mint);
+    let subscription_authority_account = litesvm.get_account(&subscription_authority_pda).unwrap();
+    let subscription_authority =
+        crate::state::SubscriptionAuthority::load(&subscription_authority_account.data).unwrap();
+    let live_subscription_authority_init_id = subscription_authority.init_id;
     let (subscription_pda, _) = get_subscription_pda(&plan_pda, &alice.pubkey());
     let event_authority = Pubkey::new_from_array(event_authority_pda::ID.to_bytes());
 
@@ -229,6 +299,7 @@ fn subscribe_rejects_stale_expected_terms() {
         stale_amount.to_le_bytes().to_vec(),
         live_period_hours.to_le_bytes().to_vec(),
         live_created_at.to_le_bytes().to_vec(),
+        live_subscription_authority_init_id.to_le_bytes().to_vec(),
     ]
     .concat();
 

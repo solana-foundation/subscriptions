@@ -42,6 +42,7 @@ pub struct SubscribeData {
     pub expected_amount: u64,
     pub expected_period_hours: u64,
     pub expected_created_at: i64,
+    pub expected_subscription_authority_init_id: i64,
 }
 
 impl SubscribeData {
@@ -114,6 +115,9 @@ pub fn process(accounts: &mut [AccountView], data: &SubscribeData) -> ProgramRes
         subscription_authority.check_owner(accounts_struct.subscriber.address())?;
         if subscription_authority.token_mint != plan_mint {
             return Err(SubscriptionsError::MintMismatch.into());
+        }
+        if subscription_authority.init_id != data.expected_subscription_authority_init_id {
+            return Err(SubscriptionsError::StaleSubscriptionAuthority.into());
         }
         init_id = subscription_authority.init_id;
     }

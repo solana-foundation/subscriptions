@@ -460,6 +460,7 @@ function SubscribeDialog({
 }) {
     const { subscribe, initSubscriptionAuthority } = useSubscriptionsMutations();
     const {
+        data: statusData,
         isInitialized,
         isLoading: statusLoading,
         refetch: refetchStatus,
@@ -467,6 +468,7 @@ function SubscribeDialog({
     const { account } = useWallet();
     const { url: rpcUrl } = useClusterConfig();
     const amount = formatPlanTokenAmount(plan.data.terms.amount, token);
+    const authorityInitId = statusData?.data?.initId;
 
     const handleInit = async () => {
         if (!account) return;
@@ -540,7 +542,8 @@ function SubscribeDialog({
                             Cancel
                         </Button>
                         <SolanaButton
-                            onClick={() =>
+                            onClick={() => {
+                                if (authorityInitId == null) return;
                                 subscribe.mutate(
                                     {
                                         merchant: plan.owner,
@@ -549,11 +552,12 @@ function SubscribeDialog({
                                         expectedAmount: plan.data.terms.amount,
                                         expectedPeriodHours: plan.data.terms.periodHours,
                                         expectedCreatedAt: plan.data.terms.createdAt,
+                                        expectedSubscriptionAuthorityInitId: authorityInitId,
                                     },
                                     { onSuccess: () => onOpenChange(false) },
-                                )
-                            }
-                            disabled={subscribe.isPending}
+                                );
+                            }}
+                            disabled={subscribe.isPending || authorityInitId == null}
                             loading={subscribe.isPending}
                         >
                             Subscribe

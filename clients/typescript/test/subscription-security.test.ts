@@ -1,3 +1,12 @@
+import {
+    appendTransactionMessageInstructions,
+    createTransactionMessage,
+    getBase64EncodedWireTransaction,
+    pipe,
+    setTransactionMessageFeePayerSigner,
+    setTransactionMessageLifetimeUsingBlockhash,
+    signTransactionMessageWithSigners,
+} from '@solana/kit';
 import { describe, expect, test } from 'vitest';
 import {
     SUBSCRIPTIONS_ERROR__ALREADY_SUBSCRIBED,
@@ -17,14 +26,113 @@ import {
 import {
     fetchMaybePlan,
     fetchMaybeSubscriptionDelegation,
+    fetchPlan,
+    fetchSubscriptionAuthority,
     fetchSubscriptionDelegation,
     findPlanPda,
+    findSubscriptionAuthorityPda,
     findSubscriptionDelegationPda,
     PlanStatus,
 } from '../src/generated/index.ts';
+import { getSubscribeOverlayInstructionAsync } from '../src/index.ts';
 import { DEFAULT_TEST_BALANCE, expectProgramError, initTestSuite } from './setup.ts';
 
 describe('Subscription Security', () => {
+    test('subscribe rejects approval signed for a previous authority generation', async () => {
+        const t = await initTestSuite();
+
+        const [planPda] = await findPlanPda({
+            owner: t.payerKeypair.address,
+            planId: 1n,
+        });
+        await t.client.subscriptions.instructions
+            .createPlan({
+                owner: t.payerKeypair,
+                planId: 1n,
+                mint: t.tokenMint,
+                amount: 500_000n,
+                periodHours: 1n,
+                endTs: 0n,
+                destinations: [],
+                pullers: [],
+                metadataUri: 'https://example.com/plan.json',
+            })
+            .sendTransaction();
+
+        const subscriber = await t.createFundedKeypair();
+        const subscriberAta = await t.createAtaWithBalance(t.tokenMint, subscriber.address, DEFAULT_TEST_BALANCE);
+        await t.client.subscriptions.instructions
+            .initSubscriptionAuthority({
+                owner: subscriber,
+                tokenMint: t.tokenMint,
+                userAta: subscriberAta,
+                tokenProgram: t.tokenProgram,
+            })
+            .sendTransaction();
+
+        const [subscriptionAuthorityPda] = await findSubscriptionAuthorityPda({
+            tokenMint: t.tokenMint,
+            user: subscriber.address,
+        });
+        const authorityBeforeClose = await fetchSubscriptionAuthority(t.rpc, subscriptionAuthorityPda);
+        const plan = await fetchPlan(t.rpc, planPda);
+        const [subscriptionPda] = await findSubscriptionDelegationPda({
+            planPda,
+            subscriber: subscriber.address,
+        });
+        const subscribeInstruction = await getSubscribeOverlayInstructionAsync({
+            subscriber,
+            merchant: t.payerKeypair.address,
+            planId: 1n,
+            tokenMint: t.tokenMint,
+            expectedAmount: plan.data.data.terms.amount,
+            expectedCreatedAt: plan.data.data.terms.createdAt,
+            expectedPeriodHours: plan.data.data.terms.periodHours,
+            expectedSubscriptionAuthorityInitId: authorityBeforeClose.data.initId,
+        });
+        const { value: latestBlockhash } = await t.rpc.getLatestBlockhash().send();
+        const signedSubscribeTransaction = await signTransactionMessageWithSigners(
+            pipe(
+                createTransactionMessage({ version: 0 }),
+                tx => setTransactionMessageFeePayerSigner(subscriber, tx),
+                tx => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
+                tx => appendTransactionMessageInstructions([subscribeInstruction], tx),
+            ),
+        );
+
+        await t.client.subscriptions.instructions
+            .closeSubscriptionAuthority({
+                user: subscriber,
+                tokenMint: t.tokenMint,
+            })
+            .sendTransaction();
+        await t.client.subscriptions.instructions
+            .initSubscriptionAuthority({
+                owner: subscriber,
+                tokenMint: t.tokenMint,
+                userAta: subscriberAta,
+                tokenProgram: t.tokenProgram,
+            })
+            .sendTransaction();
+
+        const authorityAfterReinit = await fetchSubscriptionAuthority(t.rpc, subscriptionAuthorityPda);
+        expect(authorityAfterReinit.data.initId).not.toBe(authorityBeforeClose.data.initId);
+
+        await expectProgramError(
+            t.rpc
+                .sendTransaction(getBase64EncodedWireTransaction(signedSubscribeTransaction), {
+                    encoding: 'base64',
+                    preflightCommitment: 'confirmed',
+                    skipPreflight: false,
+                })
+                .send({ abortSignal: AbortSignal.timeout(30_000) }),
+            SUBSCRIPTIONS_ERROR__STALE_SUBSCRIPTION_AUTHORITY,
+        );
+
+        const maybeSubscription = await fetchMaybeSubscriptionDelegation(t.rpc, subscriptionPda);
+        expect(maybeSubscription.exists).toBe(false);
+    });
+
     test('revoke blocked during grace period, allowed after expiry', async () => {
         const t = await initTestSuite();
 

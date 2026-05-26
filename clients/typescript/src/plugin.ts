@@ -236,6 +236,7 @@ export type SubscribeInput = WithProgramAddress & {
     expectedAmount?: bigint | number;
     expectedCreatedAt?: bigint | number;
     expectedPeriodHours?: bigint | number;
+    expectedSubscriptionAuthorityInitId?: bigint | number;
     merchant: Address;
     payer?: TransactionSigner;
     planId: bigint | number;
@@ -533,10 +534,11 @@ export async function getSubscribeOverlayInstructionAsync(input: SubscribeInput)
     if (
         input.expectedAmount === undefined ||
         input.expectedPeriodHours === undefined ||
-        input.expectedCreatedAt === undefined
+        input.expectedCreatedAt === undefined ||
+        input.expectedSubscriptionAuthorityInitId === undefined
     ) {
         throw new Error(
-            'getSubscribeOverlayInstructionAsync requires expectedAmount, expectedPeriodHours, and expectedCreatedAt. Use the plugin client `subscriptions.instructions.subscribe(...)` to auto-fetch from the live plan.',
+            'getSubscribeOverlayInstructionAsync requires expectedAmount, expectedPeriodHours, expectedCreatedAt, and expectedSubscriptionAuthorityInitId. Use the plugin client `subscriptions.instructions.subscribe(...)` to auto-fetch from the live plan and authority.',
         );
     }
     const [planPda, planBump] = await findPlanPda(
@@ -557,6 +559,7 @@ export async function getSubscribeOverlayInstructionAsync(input: SubscribeInput)
                     expectedCreatedAt: input.expectedCreatedAt,
                     expectedMint: input.tokenMint,
                     expectedPeriodHours: input.expectedPeriodHours,
+                    expectedSubscriptionAuthorityInitId: input.expectedSubscriptionAuthorityInitId,
                     planBump,
                     planId: input.planId,
                 },
@@ -769,13 +772,18 @@ export function subscriptionsProgram() {
                     addSelfPlanAndSendFunctions(
                         client,
                         (async () => {
-                            let { expectedAmount, expectedPeriodHours, expectedCreatedAt } = input;
+                            const subscriber = input.subscriber ?? client.identity;
+                            let {
+                                expectedAmount,
+                                expectedCreatedAt,
+                                expectedPeriodHours,
+                                expectedSubscriptionAuthorityInitId,
+                            } = input;
                             if (
                                 expectedAmount === undefined ||
                                 expectedPeriodHours === undefined ||
                                 expectedCreatedAt === undefined
                             ) {
-                                const subscriber = input.subscriber ?? client.identity;
                                 const [planPda] = await findPlanPda(
                                     { owner: input.merchant, planId: input.planId },
                                     pdaConfig(input.programAddress),
@@ -784,22 +792,31 @@ export function subscriptionsProgram() {
                                 expectedAmount = expectedAmount ?? plan.data.data.terms.amount;
                                 expectedPeriodHours = expectedPeriodHours ?? plan.data.data.terms.periodHours;
                                 expectedCreatedAt = expectedCreatedAt ?? plan.data.data.terms.createdAt;
-                                return await getSubscribeOverlayInstructionAsync({
-                                    ...input,
-                                    expectedAmount,
-                                    expectedCreatedAt,
-                                    expectedPeriodHours,
-                                    payer: input.payer ?? (client.payer === client.identity ? undefined : client.payer),
-                                    subscriber,
-                                });
+                            }
+                            if (expectedSubscriptionAuthorityInitId === undefined) {
+                                const [subscriptionAuthorityPda] = await findSubscriptionAuthorityPda(
+                                    { tokenMint: input.tokenMint, user: subscriber.address },
+                                    pdaConfig(input.programAddress),
+                                );
+                                const subscriptionAuthority = await fetchMaybeSubscriptionAuthority(
+                                    c.rpc,
+                                    subscriptionAuthorityPda,
+                                );
+                                if (!subscriptionAuthority.exists) {
+                                    throw new Error(
+                                        'SubscriptionAuthority is not initialized for this subscriber and token mint.',
+                                    );
+                                }
+                                expectedSubscriptionAuthorityInitId = subscriptionAuthority.data.initId;
                             }
                             return await getSubscribeOverlayInstructionAsync({
                                 ...input,
                                 expectedAmount,
                                 expectedCreatedAt,
                                 expectedPeriodHours,
+                                expectedSubscriptionAuthorityInitId,
                                 payer: input.payer ?? (client.payer === client.identity ? undefined : client.payer),
-                                subscriber: input.subscriber ?? client.identity,
+                                subscriber,
                             });
                         })(),
                     ),
