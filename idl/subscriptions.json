@@ -353,6 +353,15 @@
                 "format": "i64",
                 "kind": "numberTypeNode"
               }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "expectedSubscriptionAuthorityInitId",
+              "type": {
+                "endian": "le",
+                "format": "i64",
+                "kind": "numberTypeNode"
+              }
             }
           ],
           "kind": "structTypeNode"
@@ -520,6 +529,15 @@
             {
               "kind": "structFieldTypeNode",
               "name": "expiryTs",
+              "type": {
+                "endian": "le",
+                "format": "i64",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "expectedSubscriptionAuthorityInitId",
               "type": {
                 "endian": "le",
                 "format": "i64",

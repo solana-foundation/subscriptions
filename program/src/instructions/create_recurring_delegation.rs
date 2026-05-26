@@ -28,6 +28,8 @@ pub struct CreateRecurringDelegationData {
     pub start_ts: i64,
     /// Unix timestamp after which the delegation expires.
     pub expiry_ts: i64,
+    /// SubscriptionAuthority generation the delegator approved.
+    pub expected_subscription_authority_init_id: i64,
 }
 
 impl CreateRecurringDelegationData {
@@ -76,7 +78,12 @@ pub fn process(accounts: &mut [AccountView], call_data: &CreateRecurringDelegati
 
     let accounts = CreateDelegationAccounts::try_from(accounts)?;
 
-    let (bump, init_id, mint) = create_delegation_account(&accounts, call_data.nonce, RecurringDelegation::LEN)?;
+    let (bump, init_id, mint) = create_delegation_account(
+        &accounts,
+        call_data.nonce,
+        RecurringDelegation::LEN,
+        call_data.expected_subscription_authority_init_id,
+    )?;
 
     let binding = &mut accounts.delegation_account.try_borrow_mut()?;
     // Set discriminator before load_mut so validation passes on freshly created account

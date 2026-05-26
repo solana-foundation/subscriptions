@@ -53,6 +53,24 @@ export function useSubscriptionsMutations() {
 
     const progId = programAddress ? address(programAddress) : undefined;
     const resolveTokenProgramForMint = (mint: Address) => resolveTokenProgram(rpcUrl, mint);
+    const fetchCurrentAuthorityInitId = async (tokenMint: Address) => {
+        if (!signer) throw new Error('Wallet not connected');
+        if (!progId) throw new Error('Program address not configured');
+
+        const rpc = createSolanaRpc(rpcUrl);
+        const [subscriptionAuthorityPda] = await findSubscriptionAuthorityPda(
+            {
+                tokenMint,
+                user: signer.address,
+            },
+            { programAddress: progId },
+        );
+        const subscriptionAuthority = await fetchMaybeSubscriptionAuthority(rpc, subscriptionAuthorityPda);
+        if (!subscriptionAuthority.exists) {
+            throw new Error('Subscription authority is not initialized for this token mint.');
+        }
+        return subscriptionAuthority.data.initId;
+    };
 
     const initSubscriptionAuthority = useMutation({
         mutationFn: async ({
@@ -135,9 +153,11 @@ export function useSubscriptionsMutations() {
             nonce,
             amount,
             expiryTs,
+            expectedSubscriptionAuthorityInitId,
         }: {
             amount: bigint | number;
             delegatee: string;
+            expectedSubscriptionAuthorityInitId?: bigint | number;
             expiryTs: bigint | number;
             nonce: bigint | number;
             tokenMint: string;
@@ -145,14 +165,17 @@ export function useSubscriptionsMutations() {
             if (!signer) throw new Error('Wallet not connected');
             if (!progId) throw new Error('Program address not configured');
 
+            const mint = address(tokenMint);
             const instruction = await getCreateFixedDelegationOverlayInstructionAsync({
                 amount,
                 delegatee: address(delegatee),
                 delegator: signer,
+                expectedSubscriptionAuthorityInitId:
+                    expectedSubscriptionAuthorityInitId ?? (await fetchCurrentAuthorityInitId(mint)),
                 expiryTs,
                 nonce,
                 programAddress: progId,
-                tokenMint: address(tokenMint),
+                tokenMint: mint,
             });
 
             const signature = await signAndSend([instruction], signer);
@@ -174,9 +197,11 @@ export function useSubscriptionsMutations() {
             periodLengthS,
             expiryTs,
             startTs,
+            expectedSubscriptionAuthorityInitId,
         }: {
             amountPerPeriod: bigint | number;
             delegatee: string;
+            expectedSubscriptionAuthorityInitId?: bigint | number;
             expiryTs: bigint | number;
             nonce: bigint | number;
             periodLengthS: bigint | number;
@@ -186,16 +211,19 @@ export function useSubscriptionsMutations() {
             if (!signer) throw new Error('Wallet not connected');
             if (!progId) throw new Error('Program address not configured');
 
+            const mint = address(tokenMint);
             const instruction = await getCreateRecurringDelegationOverlayInstructionAsync({
                 amountPerPeriod,
                 delegatee: address(delegatee),
                 delegator: signer,
+                expectedSubscriptionAuthorityInitId:
+                    expectedSubscriptionAuthorityInitId ?? (await fetchCurrentAuthorityInitId(mint)),
                 expiryTs,
                 nonce,
                 periodLengthS,
                 programAddress: progId,
                 startTs: startTs ?? (await getBlockTimestamp(rpcUrl)),
-                tokenMint: address(tokenMint),
+                tokenMint: mint,
             });
 
             const signature = await signAndSend([instruction], signer);

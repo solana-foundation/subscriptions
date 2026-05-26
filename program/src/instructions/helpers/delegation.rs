@@ -51,6 +51,7 @@ pub fn create_delegation_account(
     accounts: &CreateDelegationAccounts,
     nonce: u64,
     space: usize,
+    expected_subscription_authority_init_id: i64,
 ) -> Result<(u8, i64, Address), ProgramError> {
     if accounts.delegation_account.data_len() > 0 {
         return Err(SubscriptionsError::DelegationAlreadyExists.into());
@@ -62,6 +63,9 @@ pub fn create_delegation_account(
         let md_data = accounts.subscription_authority.try_borrow()?;
         let subscription_authority = SubscriptionAuthority::load(&md_data)?;
         subscription_authority.check_owner(accounts.delegator.address())?;
+        if subscription_authority.init_id != expected_subscription_authority_init_id {
+            return Err(SubscriptionsError::StaleSubscriptionAuthority.into());
+        }
         init_id = subscription_authority.init_id;
         mint = subscription_authority.token_mint;
     }

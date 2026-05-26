@@ -8,8 +8,8 @@ use crate::{
         pda::get_delegation_pda,
         utils::{
             current_ts, days, get_ata_balance, init_ata, init_mint, init_wallet,
-            initialize_subscription_authority_action, move_clock_forward, setup, CreateDelegation, RevokeDelegation,
-            TransferDelegation,
+            initialize_subscription_authority_action, move_clock_forward, setup, CloseSubscriptionAuthority,
+            CreateDelegation, RevokeDelegation, TransferDelegation,
         },
     },
     AccountDiscriminator, FixedDelegation, SubscriptionsError,
@@ -96,6 +96,41 @@ fn create_fixed_delegation() {
     assert_eq!(header.discriminator, AccountDiscriminator::FixedDelegation as u8);
     assert_eq!(del_amount, amount);
     assert_eq!(del_expiry_s, expiry_ts);
+}
+
+#[test]
+fn create_fixed_delegation_rejects_stale_subscription_authority_generation() {
+    let (litesvm, user) = &mut setup();
+    let payer = user;
+    let amount: u64 = 100_000_000;
+    let expiry_ts: i64 = current_ts() + days(1) as i64;
+    let nonce: u64 = 0;
+
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(payer.pubkey()), &[]);
+    let _user_ata = init_ata(litesvm, mint, payer.pubkey(), 1_000_000);
+
+    let (_, subscription_authority_pda, _) = initialize_subscription_authority_action(litesvm, payer, mint);
+    let old_init_id =
+        crate::state::SubscriptionAuthority::load(&litesvm.get_account(&subscription_authority_pda).unwrap().data)
+            .unwrap()
+            .init_id;
+
+    CloseSubscriptionAuthority::new(litesvm, payer, mint).execute().assert_ok();
+    move_clock_forward(litesvm, 1);
+    initialize_subscription_authority_action(litesvm, payer, mint).0.assert_ok();
+
+    let new_init_id =
+        crate::state::SubscriptionAuthority::load(&litesvm.get_account(&subscription_authority_pda).unwrap().data)
+            .unwrap()
+            .init_id;
+    assert_ne!(old_init_id, new_init_id);
+
+    let delegatee = Pubkey::new_unique();
+    let (res, _) = CreateDelegation::new(litesvm, payer, mint, delegatee)
+        .expected_subscription_authority_init_id(old_init_id)
+        .nonce(nonce)
+        .fixed(amount, expiry_ts);
+    res.assert_err(SubscriptionsError::StaleSubscriptionAuthority);
 }
 
 /// Verify that pre-funding a delegation PDA with lamports (DOS attack)
@@ -273,6 +308,10 @@ fn writable_accounts_must_be_writable() {
     let delegatee = Pubkey::new_unique();
     let nonce: u64 = 0;
     let (subscription_authority_pda, _) = get_subscription_authority_pda(&user.pubkey(), &mint);
+    let expected_subscription_authority_init_id =
+        crate::state::SubscriptionAuthority::load(&litesvm.get_account(&subscription_authority_pda).unwrap().data)
+            .unwrap()
+            .init_id;
     let (delegation_pda, _) =
         crate::tests::pda::get_delegation_pda(&subscription_authority_pda, &user.pubkey(), &delegatee, nonce);
 
@@ -294,6 +333,7 @@ fn writable_accounts_must_be_writable() {
             nonce.to_le_bytes().to_vec(),
             100u64.to_le_bytes().to_vec(),
             (current_ts() + 1000i64).to_le_bytes().to_vec(),
+            expected_subscription_authority_init_id.to_le_bytes().to_vec(),
         ]
         .concat();
 
@@ -331,6 +371,10 @@ fn signer_accounts_must_be_signers() {
     let delegatee = Pubkey::new_unique();
     let nonce: u64 = 0;
     let (subscription_authority_pda, _) = get_subscription_authority_pda(&user.pubkey(), &mint);
+    let expected_subscription_authority_init_id =
+        crate::state::SubscriptionAuthority::load(&litesvm.get_account(&subscription_authority_pda).unwrap().data)
+            .unwrap()
+            .init_id;
     let (delegation_pda, _) =
         crate::tests::pda::get_delegation_pda(&subscription_authority_pda, &user.pubkey(), &delegatee, nonce);
 
@@ -353,6 +397,7 @@ fn signer_accounts_must_be_signers() {
             nonce.to_le_bytes().to_vec(),
             100u64.to_le_bytes().to_vec(),
             (current_ts() + 1000i64).to_le_bytes().to_vec(),
+            expected_subscription_authority_init_id.to_le_bytes().to_vec(),
         ]
         .concat();
 
