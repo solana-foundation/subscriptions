@@ -9,6 +9,7 @@ import {
     createTransactionMessage,
     generateKeyPair,
     getAddressEncoder,
+    getBase58Decoder,
     getBase64EncodedWireTransaction,
     type Instruction,
     type KeyPairSigner,
@@ -88,6 +89,9 @@ export function useProgramDeploy() {
 
     const resetProgress = useCallback(() => {
         setProgress({ current: 0, message: '', phase: 'preparing', total: 0 });
+    }, []);
+
+    const clearRecoveryRefs = useCallback(() => {
         lastPlanRef.current = null;
         bufferSignerRef.current = null;
         feePayerRef.current = null;
@@ -101,6 +105,9 @@ export function useProgramDeploy() {
     ): Promise<{ bufferKpSigner: KeyPairSigner; plan: DeployPlan }> {
         if (resumeFrom !== undefined && lastPlanRef.current && bufferSignerRef.current) {
             return { bufferKpSigner: bufferSignerRef.current, plan: lastPlanRef.current };
+        }
+        if (lastPlanRef.current || bufferSignerRef.current || feePayerRef.current) {
+            throw new Error('Close the failed buffer before starting a new deployment.');
         }
         const plan = await api.program.prepareDeploy({
             isUpgrade,
@@ -270,6 +277,18 @@ export function useProgramDeploy() {
         }
     }
 
+    async function getBufferAuthority(bufferAddress: string): Promise<string | null> {
+        const acctInfo = await rpc.getAccountInfo(address(bufferAddress), { encoding: 'base64' }).send();
+        if (!acctInfo.value) return null;
+
+        const data = Uint8Array.from(atob(acctInfo.value.data[0] as string), c => c.charCodeAt(0));
+        if (data.length < 37 || data[4] !== 1) {
+            throw new Error('Buffer account is not in a recoverable buffer state');
+        }
+
+        return getBase58Decoder().decode(data.slice(5, 37));
+    }
+
     async function finalizeDeployment(
         signer: TransactionSigner,
         plan: DeployPlan,
@@ -355,21 +374,39 @@ export function useProgramDeploy() {
 
     const closeBuffer = useMutation({
         mutationFn: async () => {
-            if (!walletSigner || !bufferSignerRef.current) throw new Error('No buffer to close');
+            if (!walletSigner) throw new Error('Wallet not connected');
             const signer = walletSigner;
             const bufferKp = bufferSignerRef.current;
+            const feePayerKp = feePayerRef.current;
 
-            const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+            if (!bufferKp && !feePayerKp) throw new Error('No deploy recovery state found');
 
-            const closeIx = buildCloseBufferIx(bufferKp.address, signer.address, bufferKp);
-            const closeTx = buildV0Tx(signer, latestBlockhash, [closeIx]);
-            const signedCloseTx = await signTransactionMessageWithSigners(closeTx);
-            await rpc.sendTransaction(getBase64EncodedWireTransaction(signedCloseTx), { encoding: 'base64' }).send();
-            bufferSignerRef.current = null;
+            if (bufferKp) {
+                const currentAuthority = await getBufferAuthority(bufferKp.address);
+
+                if (currentAuthority) {
+                    const authority = currentAuthority === signer.address ? signer : bufferKp;
+                    if (authority.address !== currentAuthority) {
+                        throw new Error(`Cannot close buffer because its authority is ${currentAuthority}`);
+                    }
+
+                    const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+
+                    const closeIx = buildCloseBufferIx(bufferKp.address, signer.address, authority);
+                    const closeTx = buildV0Tx(signer, latestBlockhash, [closeIx]);
+                    const signedCloseTx = await signTransactionMessageWithSigners(closeTx);
+                    await rpc
+                        .sendTransaction(getBase64EncodedWireTransaction(signedCloseTx), { encoding: 'base64' })
+                        .send();
+                }
+            }
+
+            if (feePayerKp) await reclaimFeePayerSol(feePayerKp, signer);
+            clearRecoveryRefs();
         },
         onError: e => toast.onError(e),
         onSuccess: () => {
-            toast.onSuccess('Buffer closed, SOL reclaimed');
+            toast.onSuccess('Deploy recovery SOL reclaimed');
         },
     });
 
@@ -409,33 +446,42 @@ export function useProgramDeploy() {
                 total: totalChunks,
             });
 
-            await transferBufferAuthority(signer, bufferKpSigner, feePayerKp);
+            try {
+                await transferBufferAuthority(signer, bufferKpSigner, feePayerKp);
 
-            setProgress({
-                current: totalChunks,
-                message: isUpgrade
-                    ? 'Finalizing upgrade (approve in wallet)...'
-                    : 'Finalizing deployment (approve in wallet)...',
-                phase: 'deploying',
-                total: totalChunks,
-            });
+                setProgress({
+                    current: totalChunks,
+                    message: isUpgrade
+                        ? 'Finalizing upgrade (approve in wallet)...'
+                        : 'Finalizing deployment (approve in wallet)...',
+                    phase: 'deploying',
+                    total: totalChunks,
+                });
 
-            const signature = await finalizeDeployment(signer, plan, bufferKpSigner, isUpgrade, programKeypairBytes);
+                const signature = await finalizeDeployment(
+                    signer,
+                    plan,
+                    bufferKpSigner,
+                    isUpgrade,
+                    programKeypairBytes,
+                );
 
-            await reclaimFeePayerSol(feePayerKp, signer);
+                await reclaimFeePayerSol(feePayerKp, signer);
 
-            setProgress({
-                current: totalChunks,
-                message: 'Deployment complete!',
-                phase: 'done',
-                total: totalChunks,
-            });
+                setProgress({
+                    current: totalChunks,
+                    message: 'Deployment complete!',
+                    phase: 'done',
+                    total: totalChunks,
+                });
 
-            bufferSignerRef.current = null;
-            lastPlanRef.current = null;
-            feePayerRef.current = null;
+                clearRecoveryRefs();
 
-            return { programAddress: plan.programAddress, signature };
+                return { programAddress: plan.programAddress, signature };
+            } catch (error) {
+                await reclaimFeePayerSol(feePayerKp, signer);
+                throw error;
+            }
         },
         onError: error => {
             console.error('Deploy/upgrade error:', error);
