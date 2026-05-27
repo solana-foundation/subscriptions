@@ -149,7 +149,7 @@ jobs:
           if [ "${{ inputs.network }}" = "mainnet" ]; then
             echo "- Buffer: \`${{ steps['prepare-squads-release'].outputs.buffer }}\`" >> $GITHUB_STEP_SUMMARY
             echo "- IDL buffer: \`${{ steps['prepare-squads-release'].outputs['metadata-buffer'] }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- Verify PDA transaction exported: \`true\`" >> $GITHUB_STEP_SUMMARY
+            echo "- Verify PDA transaction: \`${{ steps['prepare-squads-release'].outputs['pda-tx'] }}\`" >> $GITHUB_STEP_SUMMARY
             echo "- Buffer authority: \`${{ env.SQUADS_VAULT }}\`" >> $GITHUB_STEP_SUMMARY
             echo "- **Action required**: create the Squads upgrade proposal using the listed buffers" >> $GITHUB_STEP_SUMMARY
             echo "- CI keypair role: fee payer and buffer writer only; it does not need Squads membership" >> $GITHUB_STEP_SUMMARY
