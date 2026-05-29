@@ -1,6 +1,6 @@
 {
     "name": "@solana/subscriptions",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "description": "TypeScript SDK and @solana/kit plugin for the Subscriptions Solana program: token delegations, recurring payments, and subscription plans.",
     "type": "module",
     "license": "MIT",
