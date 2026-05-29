@@ -1,9 +1,18 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { useCluster } from '@solana/connector/react';
-import { Button } from '@solana/design-system';
-import { ChevronDown, Menu, RotateCcw, Settings2 } from 'lucide-react';
+import { Button, TextInput } from '@solana/design-system';
+import { ChevronDown, Menu, Plus, RotateCcw, Settings2, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -14,6 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { CURRENT_PROGRAM_VERSION } from '@solana/subscriptions';
 import solanaLogo from '@/assets/solana-logo.svg';
+import { clearCustomCluster, isValidRpcUrl, readCustomCluster, saveCustomCluster } from '@/lib/custom-rpc';
 import { cn } from '@/lib/utils';
 
 import { NAV_ITEMS, type NavItem } from './nav-items';
@@ -23,50 +33,110 @@ import { TimeTravelButton } from './time-travel/time-travel-button';
 function ClusterButton() {
     const { cluster, clusters, setCluster } = useCluster();
     const navigate = useNavigate();
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [url, setUrl] = useState('');
+
+    const hasCustom = readCustomCluster() !== null;
+
+    function openDialog() {
+        setUrl(readCustomCluster()?.url ?? '');
+        setDialogOpen(true);
+    }
+
+    function handleSave() {
+        const trimmed = url.trim();
+        if (!isValidRpcUrl(trimmed)) {
+            toast.error('Enter a valid http(s) RPC URL');
+            return;
+        }
+        saveCustomCluster(trimmed);
+        window.location.reload();
+    }
+
+    function handleRemove() {
+        clearCustomCluster();
+        window.location.reload();
+    }
 
     return (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button
-                    iconLeft={<Settings2 />}
-                    iconRight={<ChevronDown className="opacity-60" />}
-                    size="sm"
-                    variant="secondary"
-                >
-                    {cluster?.label ?? 'Network'}
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuLabel>Network</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {clusters.map(c => (
-                    <DropdownMenuItem
-                        key={c.id}
-                        onClick={() => {
-                            void setCluster(c.id);
-                        }}
+        <>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        iconLeft={<Settings2 />}
+                        iconRight={<ChevronDown className="opacity-60" />}
+                        size="sm"
+                        variant="secondary"
                     >
-                        {c.label}
-                    </DropdownMenuItem>
-                ))}
-                {import.meta.env.DEV && (
-                    <>
-                        <DropdownMenuSeparator />
+                        {cluster?.label ?? 'Network'}
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuLabel>Network</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {clusters.map(c => (
                         <DropdownMenuItem
+                            key={c.id}
                             onClick={() => {
-                                localStorage.removeItem('setup-complete-localnet');
-                                localStorage.removeItem('setup-complete-devnet');
-                                localStorage.removeItem('setup-cluster');
-                                navigate('/setup');
+                                void setCluster(c.id);
                             }}
                         >
-                            <RotateCcw className="mr-2 h-4 w-4" />
-                            Rerun setup
+                            {c.label}
                         </DropdownMenuItem>
-                    </>
-                )}
-            </DropdownMenuContent>
-        </DropdownMenu>
+                    ))}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={openDialog}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        {hasCustom ? 'Edit custom RPC' : 'Add custom RPC'}
+                    </DropdownMenuItem>
+                    {hasCustom && (
+                        <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={handleRemove}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Remove custom RPC
+                        </DropdownMenuItem>
+                    )}
+                    {import.meta.env.DEV && (
+                        <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                onClick={() => {
+                                    localStorage.removeItem('setup-complete-localnet');
+                                    localStorage.removeItem('setup-complete-devnet');
+                                    localStorage.removeItem('setup-cluster');
+                                    navigate('/setup');
+                                }}
+                            >
+                                <RotateCcw className="mr-2 h-4 w-4" />
+                                Rerun setup
+                            </DropdownMenuItem>
+                        </>
+                    )}
+                </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Custom RPC endpoint</DialogTitle>
+                        <DialogDescription>
+                            Point the app at your own Solana RPC URL. Saving reloads the page and selects it.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <TextInput
+                        value={url}
+                        onChange={e => setUrl(e.currentTarget.value)}
+                        placeholder="https://my-rpc.example.com"
+                        inputClassName="font-mono"
+                    />
+                    <DialogFooter>
+                        <Button variant="secondary" onClick={() => setDialogOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleSave}>Save</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }
 
