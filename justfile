@@ -340,6 +340,9 @@ check-solana-verify:
 
 # Verify mainnet deployment against repo (remote build via OtterSec).
 # Note: Remote verification (--remote) only works on mainnet.
+# Apple Silicon (local builds without --remote): enable Docker/Colima Rosetta and
+# `export DOCKER_DEFAULT_PLATFORM=linux/amd64`. The pinned verify image is amd64-only,
+# so the SBF build fails on getrandom under arm64 emulation without it.
 verify-mainnet: check-solana-verify
     #!/usr/bin/env bash
     set -euo pipefail
@@ -348,6 +351,5 @@ verify-mainnet: check-solana-verify
         https://github.com/solana-program/subscriptions \
         --program-id "$PROG_ID" \
         --library-name subscriptions_program \
-        --mount-path program \
         --remote \
         -um
