@@ -353,3 +353,6 @@ verify-mainnet: check-solana-verify
         --library-name subscriptions_program \
         --remote \
         -um
+
+verify-local: check-solana-verify
+    solana-verify build --library-name subscriptions_program
