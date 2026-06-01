@@ -1,5 +1,5 @@
 import { useWallet } from '@solana/connector/react';
-import { address, createSolanaRpc } from '@solana/kit';
+import { type Address, address, createSolanaRpc } from '@solana/kit';
 import type { Plan, SubscriptionDelegation } from '@solana/subscriptions';
 import {
     decodeSubscriptionDelegation,
@@ -61,7 +61,7 @@ async function fetchMySubscriptions(
     const subMints = subs.map(s => planMap.get(s.data.header.delegatee)?.data.mint ?? null);
     const authorityInitIdByMint = await fetchAuthorityInitIdByMint(
         rpc,
-        [...new Set(subMints.filter((m): m is string => m !== null))],
+        [...new Set(subMints.filter((m): m is Address => m !== null))],
         address(walletAddress),
         address(progAddr),
     );
@@ -80,16 +80,16 @@ async function fetchMySubscriptions(
 
 async function fetchAuthorityInitIdByMint(
     rpc: ReturnType<typeof createSolanaRpc>,
-    mints: string[],
+    mints: Address[],
     user: ReturnType<typeof address>,
     programAddress: ReturnType<typeof address>,
-): Promise<Map<string, bigint>> {
-    const initIdByMint = new Map<string, bigint>();
+): Promise<Map<Address, bigint>> {
+    const initIdByMint = new Map<Address, bigint>();
     if (mints.length === 0) return initIdByMint;
 
     const authorityPdas = await Promise.all(
         mints.map(async mint => {
-            const [pda] = await findSubscriptionAuthorityPda({ tokenMint: address(mint), user }, { programAddress });
+            const [pda] = await findSubscriptionAuthorityPda({ tokenMint: mint, user }, { programAddress });
             return pda;
         }),
     );
