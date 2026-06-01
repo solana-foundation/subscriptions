@@ -28,6 +28,7 @@ import { useMemo, useState } from 'react';
 import {
     USDC_MULTIPLIER,
     isExpired,
+    isStillCollectibleSubscription,
     invalidateWithDelay,
     recurringAvailable,
     fmtDateTime,
@@ -738,8 +739,11 @@ function CloseSubscriptionAuthorityDialog({
     const activeFixed = outgoingForMint.fixed.filter(d => !isExpired(d.data.expiryTs, blockTime)).length;
     const activeRecurring = outgoingForMint.recurring.filter(d => !isExpired(d.data.expiryTs, blockTime)).length;
     const activeSubscriptions =
-        subscriptions?.filter(s => s.plan?.data.mint === tokenMint && Number(s.subscription.expiresAtTs) === 0)
-            .length ?? 0;
+        subscriptions?.filter(
+            s =>
+                s.plan?.data.mint === tokenMint &&
+                isStillCollectibleSubscription(s.subscription.expiresAtTs, blockTime),
+        ).length ?? 0;
     const totalActive = activeFixed + activeRecurring + activeSubscriptions;
     const hasActive = totalActive > 0;
 
@@ -783,7 +787,7 @@ function CloseSubscriptionAuthorityDialog({
                             )}
                             {activeSubscriptions > 0 && (
                                 <p className="text-amber-600">
-                                    {activeSubscriptions} active subscription{activeSubscriptions > 1 ? 's' : ''}
+                                    {activeSubscriptions} collectible subscription{activeSubscriptions > 1 ? 's' : ''}
                                 </p>
                             )}
                         </div>

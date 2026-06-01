@@ -15,6 +15,10 @@ export function isExpired(expiryTs: bigint, nowSec?: number): boolean {
     return Number(expiryTs) + TIME_DRIFT_ALLOWED_SECS < now;
 }
 
+export function isStillCollectibleSubscription(expiresAtTs: bigint, nowSec?: number): boolean {
+    return !isExpired(expiresAtTs, nowSec);
+}
+
 export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
