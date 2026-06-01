@@ -18,10 +18,6 @@ const DEVNET_USDC = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU';
 const MAINNET_USDC = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 
 export const STATIC_NETWORKS: Record<Network, NetworkConfig> = {
-    custom: {
-        programAddress: PROGRAM_ID,
-        tokens: [{ decimals: 6, mint: MAINNET_USDC, name: 'USD Coin', symbol: 'USDC' }],
-    },
     devnet: {
         programAddress: PROGRAM_ID,
         tokens: [{ decimals: 6, mint: DEVNET_USDC, name: 'USD Coin', symbol: 'USDC' }],
