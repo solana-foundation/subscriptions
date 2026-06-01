@@ -16,6 +16,11 @@ export function assertPositive(value: bigint | number, name: string): void {
     if (BigInt(value) <= 0n) throw new ValidationError(`${name} must be greater than zero`);
 }
 
+export function assertSafeU64(value: bigint | number, name: string): void {
+    if (typeof value === 'number' && !Number.isSafeInteger(value))
+        throw new ValidationError(`${name} must be a bigint or a safe integer (numbers above 2^53-1 lose precision)`);
+}
+
 export function assertMetadataUri(metadataUri: string): void {
     if (textEncoder.encode(metadataUri).length > METADATA_URI_LEN)
         throw new ValidationError(`metadataUri exceeds ${METADATA_URI_LEN} bytes`);
