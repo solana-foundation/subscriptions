@@ -12,6 +12,8 @@ import {
     SUBSCRIPTION_SIZE,
     toEncodedAccount,
 } from '@solana/subscriptions';
+import { findAssociatedTokenPda, TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
+import { TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
 import { useQuery } from '@tanstack/react-query';
 
 import { useClusterConfig } from '@/hooks/use-cluster-config';
@@ -173,17 +175,50 @@ export async function resolvePlanSubscriberAuthorities(
         }),
     );
     const authorities = await fetchAllMaybeSubscriptionAuthority(rpc, authorityAddresses);
+    const ataDelegates = await fetchAtaDelegates(
+        rpc,
+        tokenMint,
+        subscribers.map(s => address(s.delegator)),
+    );
 
     return subscribers.map((subscriber, index) => {
         const authority = authorities[index];
+        const isCurrentGeneration = authority?.exists && authority.data.initId === subscriber.initId;
+        const isDelegatedToAuthority = ataDelegates[index] === String(authorityAddresses[index]);
         const authorityStatus: PlanSubscriberAuthorityStatus =
-            authority?.exists && authority.data.initId === subscriber.initId
-                ? 'live'
-                : authority?.exists
-                  ? 'rotated'
-                  : 'missing';
+            isCurrentGeneration && isDelegatedToAuthority ? 'live' : authority?.exists ? 'rotated' : 'missing';
         return { ...subscriber, authorityStatus };
     });
+}
+
+async function fetchAtaDelegates(
+    rpc: ReturnType<typeof createSolanaRpc>,
+    mint: ReturnType<typeof address>,
+    owners: ReturnType<typeof address>[],
+): Promise<(string | null)[]> {
+    if (owners.length === 0) return [];
+
+    const mintInfo = await rpc.getAccountInfo(mint, { encoding: 'base64' }).send();
+    const tokenProgram =
+        mintInfo.value?.owner === TOKEN_2022_PROGRAM_ADDRESS ? TOKEN_2022_PROGRAM_ADDRESS : TOKEN_PROGRAM_ADDRESS;
+
+    const ataAddresses = await Promise.all(
+        owners.map(async owner => {
+            const [ata] = await findAssociatedTokenPda({ mint, owner, tokenProgram });
+            return ata;
+        }),
+    );
+
+    const delegates: (string | null)[] = [];
+    for (let i = 0; i < ataAddresses.length; i += 100) {
+        const chunk = ataAddresses.slice(i, i + 100);
+        const { value } = await rpc.getMultipleAccounts(chunk, { encoding: 'jsonParsed' }).send();
+        for (const account of value) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            delegates.push((account?.data as any)?.parsed?.info?.delegate ?? null);
+        }
+    }
+    return delegates;
 }
 
 export function useMySubscriptions() {
