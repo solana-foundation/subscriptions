@@ -33,6 +33,8 @@ export interface PlanSubscriber {
 
 export interface EnrichedSubscription {
     address: string;
+    authorityInitId: bigint | null;
+    mint: string | null;
     plan: Plan | null;
     subscription: SubscriptionDelegation;
 }
@@ -54,11 +56,48 @@ async function fetchMySubscriptions(
         if (mp.exists) planMap.set(mp.address, mp.data);
     }
 
-    return subs.map(s => ({
-        address: s.address,
-        plan: planMap.get(s.data.header.delegatee) ?? null,
-        subscription: s.data,
-    }));
+    const subMints = subs.map(s => planMap.get(s.data.header.delegatee)?.data.mint ?? null);
+    const authorityInitIdByMint = await fetchAuthorityInitIdByMint(
+        rpc,
+        [...new Set(subMints.filter((m): m is string => m !== null))],
+        address(walletAddress),
+        address(progAddr),
+    );
+
+    return subs.map((s, i) => {
+        const mint = subMints[i];
+        return {
+            address: s.address,
+            authorityInitId: mint != null ? (authorityInitIdByMint.get(mint) ?? null) : null,
+            mint,
+            plan: planMap.get(s.data.header.delegatee) ?? null,
+            subscription: s.data,
+        };
+    });
+}
+
+async function fetchAuthorityInitIdByMint(
+    rpc: ReturnType<typeof createSolanaRpc>,
+    mints: string[],
+    user: ReturnType<typeof address>,
+    programAddress: ReturnType<typeof address>,
+): Promise<Map<string, bigint>> {
+    const initIdByMint = new Map<string, bigint>();
+    if (mints.length === 0) return initIdByMint;
+
+    const authorityPdas = await Promise.all(
+        mints.map(async mint => {
+            const [pda] = await findSubscriptionAuthorityPda({ tokenMint: address(mint), user }, { programAddress });
+            return pda;
+        }),
+    );
+    const authorities = await fetchAllMaybeSubscriptionAuthority(rpc, authorityPdas);
+
+    mints.forEach((mint, i) => {
+        const authority = authorities[i];
+        if (authority?.exists) initIdByMint.set(mint, authority.data.initId);
+    });
+    return initIdByMint;
 }
 
 export async function fetchPlanSubscriptions(
