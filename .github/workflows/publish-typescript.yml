@@ -33,7 +33,6 @@ jobs:
               ;;
           esac
 
-  # Run full test suite before publishing
   test:
     needs: guard-allowed-branch
     uses: ./.github/workflows/test.yml
@@ -43,8 +42,6 @@ jobs:
     name: Publish @solana/subscriptions package
     runs-on: ubuntu-latest
     needs: [guard-allowed-branch, test]
-    env:
-      NPM_CONFIG_PROVENANCE: true
 
     steps:
       - name: Checkout repository
@@ -93,104 +90,32 @@ jobs:
           cd program && cargo build
           cd .. && pnpm run generate-clients
 
-      - name: Get version
-        id: version
-        working-directory: clients/typescript
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Publishing version: $VERSION"
+      - name: Build TypeScript client
+        run: pnpm --filter "@solana/subscriptions" build
+
+      - name: Publish TypeScript client
+        id: npm_publish
+        uses: solana-developers/github-actions/npm-publish@279ffba919ebb53b40c1f7e3b98783888942f666
+        with:
+          package: '@solana/subscriptions'
+          package-directory: clients/typescript
+          check-version-available: ${{ !inputs.dry-run }}
+          dry-run: ${{ inputs.dry-run }}
+          skip-existing: 'true'
 
       - name: Check if prerelease
         id: prerelease
         run: |
-          if [[ "${{ steps.version.outputs.version }}" == *"-"* ]]; then
+          if [ "${{ steps.npm_publish.outputs.tag }}" = "beta" ]; then
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
-            echo "npm_tag=beta" >> $GITHUB_OUTPUT
-            echo "Pre-release version detected, using 'beta' npm tag"
           else
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
-            echo "npm_tag=latest" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Build TypeScript client
-        run: pnpm --filter "@solana/subscriptions" build
-
-      - name: Pack tarball
-        working-directory: clients/typescript
-        run: |
-          mkdir -p ../../.npm-pack
-          pnpm pack --pack-destination ../../.npm-pack
-          echo ""
-          echo "Packed tarball:"
-          ls -la ../../.npm-pack/
-
-      - name: 'Guard - Fail if tarball contains workspace: protocol'
-        run: |
-          echo "Checking tarball for workspace: protocol..."
-
-          for tarball in .npm-pack/*.tgz; do
-            tar -xzf "$tarball" package/package.json -O > /tmp/pkg.json
-
-            if grep -q '"workspace:' /tmp/pkg.json; then
-              echo "FAIL: ${tarball} contains workspace: dependencies!"
-              grep '"workspace:' /tmp/pkg.json || true
-              exit 1
-            fi
-          done
-
-          echo "All tarballs are clean (no workspace: dependencies)"
-
-      - name: Guard - Fail if tarball missing dist/ artifacts
-        run: |
-          echo "Checking tarball for dist/ artifacts..."
-
-          for tarball in .npm-pack/*.tgz; do
-            CONTENTS=$(tar -tzf "$tarball")
-
-            if ! echo "$CONTENTS" | grep -q "package/dist/index.js"; then
-              echo "FAIL: ${tarball} is missing dist/index.js!"
-              exit 1
-            fi
-
-            if ! echo "$CONTENTS" | grep -q "package/dist/index.d.ts"; then
-              echo "FAIL: ${tarball} is missing dist/index.d.ts!"
-              exit 1
-            fi
-
-            echo "dist/index.js and dist/index.d.ts present"
-          done
-
-          echo "All tarballs contain required dist/ artifacts"
-
-      - name: Publish to npm
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          NPM_TAG="${{ steps.prerelease.outputs.npm_tag }}"
-          TARBALL=".npm-pack/solana-subscriptions-${VERSION}.tgz"
-          DRY_RUN="${{ github.event.inputs.dry-run }}"
-
-          if [ -f "$TARBALL" ]; then
-            if [ "$DRY_RUN" == "true" ]; then
-              echo "DRY RUN: Publishing ${TARBALL} with tag '${NPM_TAG}'..."
-              npm publish "$TARBALL" --access public --tag "$NPM_TAG" --dry-run
-              echo "Dry run completed successfully (OIDC auth validated, no package uploaded)"
-            else
-              echo "Publishing ${TARBALL} with tag '${NPM_TAG}'..."
-              npm publish "$TARBALL" --access public --tag "$NPM_TAG"
-              echo "Published successfully"
-            fi
-          else
-            echo "Tarball not found: ${TARBALL}"
-            echo "Available tarballs:"
-            ls -la .npm-pack/ || true
-            exit 1
           fi
 
       - name: Create and push tag
         if: ${{ github.event.inputs.dry-run != 'true' }}
         run: |
-          TAG="ts-client-v${{ steps.version.outputs.version }}"
+          TAG="ts-client-v${{ steps.npm_publish.outputs.version }}"
           if git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "Tag $TAG already exists, skipping"
           else
@@ -205,8 +130,8 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const tagName = `ts-client-v${{ steps.version.outputs.version }}`;
-            const version = `${{ steps.version.outputs.version }}`;
+            const version = `${{ steps.npm_publish.outputs.version }}`;
+            const tagName = `ts-client-v${version}`;
             const releaseName = `TypeScript Client v${version}`;
             const isPrerelease = '${{ steps.prerelease.outputs.is_prerelease }}' === 'true';
 
@@ -248,8 +173,8 @@ jobs:
 
       - name: Publish summary
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          NPM_TAG="${{ steps.prerelease.outputs.npm_tag }}"
+          VERSION="${{ steps.npm_publish.outputs.version }}"
+          NPM_TAG="${{ steps.npm_publish.outputs.tag }}"
           DRY_RUN="${{ github.event.inputs.dry-run }}"
 
           if [ "$DRY_RUN" == "true" ]; then
