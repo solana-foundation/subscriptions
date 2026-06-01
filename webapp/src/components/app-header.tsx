@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { CURRENT_PROGRAM_VERSION } from '@solana/subscriptions';
 import solanaLogo from '@/assets/solana-logo.svg';
-import { clearCustomCluster, isValidRpcUrl, readCustomCluster, saveCustomCluster } from '@/lib/custom-rpc';
+import { clearCustomRpc, detectNetwork, isValidRpcUrl, readCustomRpc, saveCustomRpc } from '@/lib/custom-rpc';
 import { cn } from '@/lib/utils';
 
 import { NAV_ITEMS, type NavItem } from './nav-items';
@@ -35,26 +35,39 @@ function ClusterButton() {
     const navigate = useNavigate();
     const [dialogOpen, setDialogOpen] = useState(false);
     const [url, setUrl] = useState('');
+    const [saving, setSaving] = useState(false);
 
-    const hasCustom = readCustomCluster() !== null;
+    const hasCustom = readCustomRpc() !== null;
 
     function openDialog() {
-        setUrl(readCustomCluster()?.url ?? '');
+        setUrl(readCustomRpc()?.url ?? '');
         setDialogOpen(true);
     }
 
-    function handleSave() {
+    async function handleSave() {
         const trimmed = url.trim();
         if (!isValidRpcUrl(trimmed)) {
             toast.error('Enter a valid http(s) RPC URL');
             return;
         }
-        saveCustomCluster(trimmed);
-        window.location.reload();
+        setSaving(true);
+        try {
+            const network = await detectNetwork(trimmed);
+            if (!network) {
+                toast.error('Could not detect mainnet, devnet, or testnet from this RPC');
+                return;
+            }
+            saveCustomRpc(trimmed, network);
+            window.location.reload();
+        } catch {
+            toast.error('Could not reach RPC URL');
+        } finally {
+            setSaving(false);
+        }
     }
 
     function handleRemove() {
-        clearCustomCluster();
+        clearCustomRpc();
         window.location.reload();
     }
 
@@ -119,7 +132,8 @@ function ClusterButton() {
                     <DialogHeader>
                         <DialogTitle>Custom RPC endpoint</DialogTitle>
                         <DialogDescription>
-                            Point the app at your own Solana RPC URL. Saving reloads the page and selects it.
+                            Point the app at your own Solana RPC URL. The network is detected from the endpoint; saving
+                            reloads the page and selects it.
                         </DialogDescription>
                     </DialogHeader>
                     <TextInput
@@ -129,10 +143,12 @@ function ClusterButton() {
                         inputClassName="font-mono"
                     />
                     <DialogFooter>
-                        <Button variant="secondary" onClick={() => setDialogOpen(false)}>
+                        <Button variant="secondary" disabled={saving} onClick={() => setDialogOpen(false)}>
                             Cancel
                         </Button>
-                        <Button onClick={handleSave}>Save</Button>
+                        <Button loading={saving} onClick={() => void handleSave()}>
+                            Save
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

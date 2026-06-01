@@ -8,6 +8,7 @@ import {
     useWallet,
     useWalletConnectors,
     useWalletInfo,
+    type SolanaCluster,
     type SolanaClusterId,
 } from '@solana/connector/react';
 import { Button } from '@solana/design-system';
@@ -22,14 +23,13 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { CUSTOM_CLUSTER_ID, readCustomCluster } from '@/lib/custom-rpc';
+import { readCustomRpc } from '@/lib/custom-rpc';
 import { ellipsify } from '@/lib/utils';
 
 function defaultClusterId(): SolanaClusterId {
     const stored = localStorage.getItem('setup-cluster');
     const configured = import.meta.env.VITE_DEFAULT_CLUSTER;
     const id = stored || configured || (import.meta.env.DEV ? 'solana:localnet' : 'solana:devnet');
-    if (id === CUSTOM_CLUSTER_ID && readCustomCluster()) return CUSTOM_CLUSTER_ID;
     return id === 'solana:devnet' || id === 'solana:testnet' || id === 'solana:localnet' || id === 'solana:mainnet'
         ? (id as SolanaClusterId)
         : 'solana:devnet';
@@ -38,23 +38,32 @@ function defaultClusterId(): SolanaClusterId {
 function networkFromClusterId(clusterId: SolanaClusterId): 'devnet' | 'localnet' | 'mainnet' | 'testnet' {
     if (clusterId === 'solana:devnet') return 'devnet';
     if (clusterId === 'solana:testnet') return 'testnet';
-    if (clusterId === 'solana:mainnet' || clusterId === CUSTOM_CLUSTER_ID) return 'mainnet';
+    if (clusterId === 'solana:mainnet') return 'mainnet';
     return 'localnet';
 }
 
-function buildClusters() {
-    const custom = readCustomCluster();
-    return [
+function buildClusters(): SolanaCluster[] {
+    const clusters: SolanaCluster[] = [
         ...(import.meta.env.DEV ? [{ id: 'solana:localnet' as const, label: 'Localnet', url: '/rpc' }] : []),
-        { id: 'solana:devnet' as const, label: 'Devnet', url: 'https://api.devnet.solana.com' },
-        { id: 'solana:testnet' as const, label: 'Testnet', url: 'https://api.testnet.solana.com' },
+        { id: 'solana:devnet', label: 'Devnet', url: 'https://api.devnet.solana.com' },
+        { id: 'solana:testnet', label: 'Testnet', url: 'https://api.testnet.solana.com' },
         {
-            id: 'solana:mainnet' as const,
+            id: 'solana:mainnet',
             label: 'Mainnet',
             url: import.meta.env.VITE_MAINNET_RPC_URL ?? 'https://api.mainnet-beta.solana.com',
         },
-        ...(custom ? [custom] : []),
     ];
+
+    const custom = readCustomRpc();
+    if (custom) {
+        const target = clusters.find(c => c.id === `solana:${custom.network}`);
+        if (target) {
+            target.url = custom.url;
+            target.label = `${target.label} (${custom.label})`;
+        }
+    }
+
+    return clusters;
 }
 
 export function WalletButton() {

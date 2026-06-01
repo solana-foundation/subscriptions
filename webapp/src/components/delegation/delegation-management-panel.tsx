@@ -1,7 +1,8 @@
 import { AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { ActiveDelegations } from './active-delegations';
-import { useUsdcMintRaw } from '@/hooks/use-token-config';
+import { TokenPicker } from '@/components/token/token-picker';
+import { useSelectedToken } from '@/hooks/use-selected-token';
 import { useSubscriptionAuthorityStatus } from '@/hooks/use-subscription-authority-status';
 
 function LoadingState() {
@@ -19,9 +20,7 @@ function TokenConfigError() {
                 <AlertCircle className="h-5 w-5 text-destructive" />
                 <div>
                     <p className="font-medium text-destructive">Token Configuration Error</p>
-                    <p className="text-sm text-destructive/80">
-                        USDC token is not configured. Please ensure the API server is running.
-                    </p>
+                    <p className="text-sm text-destructive/80">No tokens are configured for this network.</p>
                 </div>
             </CardContent>
         </Card>
@@ -53,7 +52,7 @@ function StatusError({ onRetry }: { onRetry: () => void }) {
 }
 
 export function DelegationManagementPanel() {
-    const { mint: usdcMint, isLoading: isMintLoading } = useUsdcMintRaw();
+    const { selectedMint, tokens } = useSelectedToken();
     const {
         isLoading: statusLoading,
         isError,
@@ -61,9 +60,9 @@ export function DelegationManagementPanel() {
         isApproved,
         data: statusData,
         refetch: refetchStatus,
-    } = useSubscriptionAuthorityStatus(usdcMint);
+    } = useSubscriptionAuthorityStatus(selectedMint);
 
-    if (isMintLoading || statusLoading) {
+    if (tokens === undefined || statusLoading) {
         return <LoadingState />;
     }
 
@@ -71,7 +70,7 @@ export function DelegationManagementPanel() {
         return <StatusError onRetry={refetchStatus} />;
     }
 
-    if (!usdcMint) {
+    if (!selectedMint) {
         return <TokenConfigError />;
     }
 
@@ -80,6 +79,9 @@ export function DelegationManagementPanel() {
 
     return (
         <div className="w-full">
+            <div className="flex justify-end mb-4">
+                <TokenPicker />
+            </div>
             {subscriptionAuthorityInitId != null && (
                 <div className="flex items-center gap-2 mb-4 text-xs text-sand-1000 tracking-wide">
                     <div className="h-px flex-1 bg-gradient-to-r from-transparent via-sand-300 to-transparent" />
@@ -89,7 +91,7 @@ export function DelegationManagementPanel() {
                 </div>
             )}
             <ActiveDelegations
-                tokenMint={usdcMint}
+                tokenMint={selectedMint}
                 isInitialized={isInitialized}
                 isApproved={isApproved}
                 subscriptionAuthorityPayer={subscriptionAuthorityPayer}

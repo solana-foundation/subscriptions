@@ -4,30 +4,36 @@ import { useDelegations, useIncomingDelegations } from '@/hooks/use-delegations'
 import { useMySubscriptions, useSubscriberCounts } from '@/hooks/use-subscriptions';
 import { useMyPlans } from '@/hooks/use-plans';
 import { useMemo } from 'react';
-import { USDC_MULTIPLIER } from '@/lib/utils';
+import { useSelectedToken } from '@/hooks/use-selected-token';
+import { formatTokenAmount } from '@/lib/token-display';
 
 export function SummaryCards() {
     const outgoing = useDelegations();
     const incoming = useIncomingDelegations();
     const { data: subscriptions } = useMySubscriptions();
     const { data: plans } = useMyPlans();
+    const { selectedMint, selectedToken } = useSelectedToken();
+    const decimals = selectedToken?.decimals ?? 0;
+    const symbol = selectedToken?.symbol ?? '';
 
     const outgoingCount = outgoing.all.length;
     const incomingCount = incoming.all.length;
 
     const subsCounts = useMemo(() => {
-        if (!subscriptions || subscriptions.length === 0) return { active: 0, totalAmount: 0 };
-        const active = subscriptions.filter(s => Number(s.subscription.expiresAtTs) === 0);
+        if (!subscriptions || subscriptions.length === 0) return { active: 0, totalAmount: 0n };
+        const active = subscriptions.filter(
+            s => Number(s.subscription.expiresAtTs) === 0 && s.plan?.data.mint === selectedMint,
+        );
 
-        let totalAmount = 0;
+        let totalAmount = 0n;
         for (const sub of active) {
             if (sub.plan) {
-                totalAmount += Number(sub.plan.data.terms.amount) / USDC_MULTIPLIER;
+                totalAmount += sub.plan.data.terms.amount;
             }
         }
 
         return { active: active.length, totalAmount };
-    }, [subscriptions]);
+    }, [subscriptions, selectedMint]);
 
     const planAddresses = useMemo(() => (plans ?? []).map(p => p.address), [plans]);
     const { data: subscriberCounts } = useSubscriberCounts(planAddresses);
@@ -88,12 +94,7 @@ export function SummaryCards() {
                         <div className="flex justify-between items-center text-sm">
                             <span className="text-sand-1100">Amount</span>
                             <span className="font-bold text-foreground text-sm sm:text-base truncate">
-                                $
-                                {subsCounts.totalAmount.toLocaleString(undefined, {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                })}{' '}
-                                USDC
+                                {formatTokenAmount(subsCounts.totalAmount, decimals)} {symbol}
                             </span>
                         </div>
                     </div>

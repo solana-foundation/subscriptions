@@ -3,8 +3,6 @@ import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import type { QueryClient } from '@tanstack/react-query';
 
-export const USDC_DECIMALS = 6;
-export const USDC_MULTIPLIER = 10 ** USDC_DECIMALS;
 export const SECONDS_PER_DAY = 86400;
 
 const TIME_DRIFT_ALLOWED_SECS = 120;

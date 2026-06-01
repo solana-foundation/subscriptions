@@ -3,6 +3,8 @@ import { SolanaProvider } from './solana/solana-provider';
 import { ErrorBoundary } from 'react-error-boundary';
 import React from 'react';
 
+import { SelectedTokenProvider } from '@/hooks/use-selected-token';
+
 function WalletErrorFallback({ error }: { error: unknown }) {
     const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
     if (error instanceof Error) {
@@ -47,7 +49,9 @@ export function AppProviders({ children }: Readonly<{ children: React.ReactNode 
     return (
         <ReactQueryProvider>
             <ErrorBoundary FallbackComponent={WalletErrorFallback}>
-                <SolanaProvider>{children}</SolanaProvider>
+                <SolanaProvider>
+                    <SelectedTokenProvider>{children}</SelectedTokenProvider>
+                </SolanaProvider>
             </ErrorBoundary>
         </ReactQueryProvider>
     );
