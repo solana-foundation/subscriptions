@@ -485,6 +485,7 @@ describe('Subscription Security', () => {
                 status: PlanStatus.Sunset,
                 endTs,
                 metadataUri: 'https://example.com/plan.json',
+                pullers: [],
             })
             .sendTransaction();
 
@@ -766,6 +767,7 @@ describe('Subscription Security', () => {
                 status: PlanStatus.Sunset,
                 endTs,
                 metadataUri: 'https://example.com/plan.json',
+                pullers: [],
             })
             .sendTransaction();
 
@@ -777,6 +779,7 @@ describe('Subscription Security', () => {
                     status: PlanStatus.Active,
                     endTs: 0n,
                     metadataUri: 'https://example.com/updated.json',
+                    pullers: [],
                 })
                 .sendTransaction(),
             SUBSCRIPTIONS_ERROR__PLAN_IMMUTABLE_AFTER_SUNSET,
@@ -1023,6 +1026,7 @@ describe('Subscription Security', () => {
                 status: PlanStatus.Sunset,
                 endTs,
                 metadataUri: 'https://example.com/plan.json',
+                pullers: [],
             })
             .sendTransaction();
 
@@ -1197,6 +1201,7 @@ describe('Subscription Security', () => {
                 status: PlanStatus.Sunset,
                 endTs,
                 metadataUri: 'https://example.com/plan.json',
+                pullers: [],
             })
             .sendTransaction();
 

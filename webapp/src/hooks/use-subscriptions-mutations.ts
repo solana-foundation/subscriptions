@@ -397,12 +397,12 @@ export function useSubscriptionsMutations() {
             status,
             endTs,
             metadataUri,
-            pullers = [],
+            pullers,
         }: {
             endTs: number;
             metadataUri: string;
             planPda: string;
-            pullers?: string[];
+            pullers: string[];
             status: PlanStatus;
         }) => {
             if (!signer) throw new Error('Wallet not connected');

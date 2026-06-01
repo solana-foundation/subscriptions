@@ -220,7 +220,7 @@ export type UpdatePlanInput = WithProgramAddress & {
     metadataUri: string;
     owner: TransactionSigner;
     planPda: Address;
-    pullers?: Address[];
+    pullers: Address[];
     status: PlanStatus;
 };
 
@@ -527,7 +527,7 @@ export async function getCreatePlanOverlayInstructionAsync(input: CreatePlanInpu
 
 export function getUpdatePlanOverlayInstruction(input: UpdatePlanInput): Instruction {
     assertMetadataUri(input.metadataUri);
-    const pullers = padPlanPullers(input.pullers ?? []);
+    const pullers = padPlanPullers(input.pullers);
     return getUpdatePlanInstruction(
         {
             owner: input.owner,

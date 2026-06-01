@@ -120,6 +120,7 @@ describe('Subscription Lifecycle', () => {
                 status: PlanStatus.Sunset,
                 endTs,
                 metadataUri: 'https://example.com/plan.json',
+                pullers: [],
             })
             .sendTransaction();
 
@@ -276,6 +277,7 @@ describe('Subscription Lifecycle', () => {
                 status: PlanStatus.Sunset,
                 endTs,
                 metadataUri: 'https://example.com/plan.json',
+                pullers: [],
             })
             .sendTransaction();
 
