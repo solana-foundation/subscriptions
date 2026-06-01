@@ -13,10 +13,10 @@ import {
 } from '@/components/ui/dialog';
 import { useMySubscriptions, type EnrichedSubscription } from '@/hooks/use-subscriptions';
 import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations';
-import { useSubscriptionAuthorityStatus } from '@/hooks/use-subscription-authority-status';
-import { useUsdcMintRaw } from '@/hooks/use-token-config';
+import { useTokenConfig } from '@/hooks/use-token-config';
 import { useTimeTravel } from '@/hooks/use-time-travel';
-import { cn, USDC_MULTIPLIER, ellipsify, fmtDate, fmtDateTime, formatPeriod } from '@/lib/utils';
+import { cn, ellipsify, fmtDate, fmtDateTime, formatPeriod } from '@/lib/utils';
+import { formatPlanTokenAmount, resolvePlanTokenDisplay } from '@/lib/token-display';
 import { parsePlanMeta } from '@/lib/plan-constants';
 
 function CancelSubscriptionDialog({
@@ -230,13 +230,7 @@ function CancelAndRevokeDialog({
     );
 }
 
-function SubscriptionCard({
-    item,
-    subscriptionAuthorityInitId,
-}: {
-    item: EnrichedSubscription;
-    subscriptionAuthorityInitId: bigint | null;
-}) {
+function SubscriptionCard({ item }: { item: EnrichedSubscription }) {
     const [cancelOpen, setCancelOpen] = useState(false);
     const [revokeOpen, setRevokeOpen] = useState(false);
     const [resumeOpen, setResumeOpen] = useState(false);
@@ -266,18 +260,20 @@ function SubscriptionCard({
             .catch(err => console.error('Failed to fetch block timestamp:', err));
     }, [isCancelled, revokedTs, getCurrentTimestamp]);
 
+    const { data: tokens } = useTokenConfig();
     const planDeleted = !item.plan;
     const planName = meta.n || 'Unknown Plan';
-    const amount = Number(item.subscription.terms.amount) / USDC_MULTIPLIER;
+    const tokenDisplay = resolvePlanTokenDisplay(item.mint ?? '', tokens);
+    const amount = formatPlanTokenAmount(item.subscription.terms.amount, tokenDisplay);
     const period = formatPeriod(item.subscription.terms.periodHours);
     const isGhostPlan =
         item.plan != null &&
         (item.plan.data.terms.amount !== item.subscription.terms.amount ||
             item.plan.data.terms.periodHours !== item.subscription.terms.periodHours ||
             item.plan.data.terms.createdAt !== item.subscription.terms.createdAt);
-    const pulled = Number(item.subscription.amountPulledInPeriod) / USDC_MULTIPLIER;
+    const pulled = formatPlanTokenAmount(item.subscription.amountPulledInPeriod, tokenDisplay);
     const subInitId = item.subscription.header.initId;
-    const isStale = subscriptionAuthorityInitId != null && subInitId !== subscriptionAuthorityInitId;
+    const isStale = item.authorityInitId != null && subInitId !== item.authorityInitId;
     const canResume = isCancelled && daysLeft !== null && daysLeft > 0 && !planDeleted && !isGhostPlan && !isStale;
 
     return (
@@ -318,7 +314,7 @@ function SubscriptionCard({
                     </div>
 
                     <div className="flex items-baseline gap-1.5">
-                        <span className="text-base sm:text-lg lg:text-xl font-semibold text-foreground">${amount}</span>
+                        <span className="text-base sm:text-lg lg:text-xl font-semibold text-foreground">{amount}</span>
                         <span className="text-sm text-sand-1000">/{period.toLowerCase()}</span>
                     </div>
 
@@ -335,7 +331,7 @@ function SubscriptionCard({
                             </>
                         )}
                         <span className="text-sand-900">|</span>
-                        <span>Pulled: ${pulled.toFixed(2)}</span>
+                        <span>Pulled: {pulled}</span>
                         {isCancelled && !planDeleted && (
                             <>
                                 <span className="text-sand-900">|</span>
@@ -437,9 +433,6 @@ function SubscriptionCard({
 
 export function MySubscriptionsPanel() {
     const { data: subscriptions, isLoading } = useMySubscriptions();
-    const { mint: usdcMint } = useUsdcMintRaw();
-    const { data: statusData } = useSubscriptionAuthorityStatus(usdcMint);
-    const subscriptionAuthorityInitId = statusData?.data?.initId ?? null;
 
     if (isLoading) {
         return (
@@ -468,11 +461,7 @@ export function MySubscriptionsPanel() {
                 {hasSubs ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {subscriptions.map(item => (
-                            <SubscriptionCard
-                                key={item.address}
-                                item={item}
-                                subscriptionAuthorityInitId={subscriptionAuthorityInitId}
-                            />
+                            <SubscriptionCard key={item.address} item={item} />
                         ))}
                     </div>
                 ) : (

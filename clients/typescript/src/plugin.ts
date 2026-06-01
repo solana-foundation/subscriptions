@@ -86,7 +86,7 @@ import {
 } from './generated/index.js';
 import type { Delegation } from './types/delegation.js';
 import type { PlanWithAddress } from './types/plan.js';
-import { assertMetadataUri, assertPositive, padPlanDestinations, padPlanPullers } from './validators.js';
+import { assertMetadataUri, assertPositive, assertSafeU64, padPlanDestinations, padPlanPullers } from './validators.js';
 
 type WithProgramAddress = { programAddress?: Address };
 
@@ -220,7 +220,7 @@ export type UpdatePlanInput = WithProgramAddress & {
     metadataUri: string;
     owner: TransactionSigner;
     planPda: Address;
-    pullers?: Address[];
+    pullers: Address[];
     status: PlanStatus;
 };
 
@@ -491,6 +491,7 @@ export async function getTransferSubscriptionOverlayInstructionAsync(
 export async function getCreatePlanOverlayInstructionAsync(input: CreatePlanInput): Promise<Instruction> {
     assertPositive(input.amount, 'amount');
     assertPositive(input.periodHours, 'periodHours');
+    assertSafeU64(input.planId, 'planId');
     assertMetadataUri(input.metadataUri);
     const destinations = padPlanDestinations(input.destinations);
     const pullers = padPlanPullers(input.pullers);
@@ -526,7 +527,7 @@ export async function getCreatePlanOverlayInstructionAsync(input: CreatePlanInpu
 
 export function getUpdatePlanOverlayInstruction(input: UpdatePlanInput): Instruction {
     assertMetadataUri(input.metadataUri);
-    const pullers = padPlanPullers(input.pullers ?? []);
+    const pullers = padPlanPullers(input.pullers);
     return getUpdatePlanInstruction(
         {
             owner: input.owner,
@@ -557,6 +558,7 @@ export async function getSubscribeOverlayInstructionAsync(input: SubscribeInput)
             'getSubscribeOverlayInstructionAsync requires expectedAmount, expectedPeriodHours, expectedCreatedAt, and expectedSubscriptionAuthorityInitId. Use the plugin client `subscriptions.instructions.subscribe(...)` to auto-fetch from the live plan and authority.',
         );
     }
+    assertSafeU64(input.planId, 'planId');
     const [planPda, planBump] = await findPlanPda(
         { owner: input.merchant, planId: input.planId },
         pdaConfig(input.programAddress),
@@ -831,6 +833,7 @@ export function subscriptionsProgram() {
                         client,
                         (async () => {
                             const subscriber = input.subscriber ?? client.identity;
+                            assertSafeU64(input.planId, 'planId');
                             let {
                                 expectedAmount,
                                 expectedCreatedAt,
