@@ -13,9 +13,10 @@ import { toast } from 'sonner';
 import type { TokenAccountEntry } from '@/lib/types';
 import { useGetBalanceQuery, useGetTokenAccountsQuery, useAirdropSol, useAirdropUsdc } from './account-data-access';
 import { useDelegations, useIncomingDelegations } from '@/hooks/use-delegations';
-import { useUsdcMint, useUsdcMintRaw } from '@/hooks/use-token-config';
 import { useSubscriptionAuthorityStatus } from '@/hooks/use-subscription-authority-status';
-import { USDC_MULTIPLIER, cn, recurringAvailable } from '@/lib/utils';
+import { useSelectedToken } from '@/hooks/use-selected-token';
+import { TokenPicker } from '@/components/token/token-picker';
+import { cn, recurringAvailable } from '@/lib/utils';
 import { getBlockTimestamp } from '@/hooks/use-time-travel';
 import { useClusterConfig } from '@/hooks/use-cluster-config';
 import { useProgramAddress } from '@/hooks/use-token-config';
@@ -67,7 +68,10 @@ export function WalletBalanceCards({ address: addr }: { address: Address }) {
     const solQuery = useGetBalanceQuery({ address: addr });
     const tokenQuery = useGetTokenAccountsQuery({ address: addr });
     const { url: rpcUrl } = useClusterConfig();
-    const usdcMint = useUsdcMint();
+    const { selectedMint, selectedToken } = useSelectedToken();
+    const decimals = selectedToken?.decimals ?? 0;
+    const symbol = selectedToken?.symbol ?? '';
+    const divisor = 10 ** decimals;
     const progAddr = useProgramAddress();
     const outgoing = useDelegations();
     const incoming = useIncomingDelegations();
@@ -83,16 +87,21 @@ export function WalletBalanceCards({ address: addr }: { address: Address }) {
 
     const reservedAmount = useMemo(() => {
         let total = 0;
-        for (const d of outgoing.fixed) total += Number(d.data.amount) / USDC_MULTIPLIER;
-        for (const d of outgoing.recurring) total += Number(d.data.amountPerPeriod) / USDC_MULTIPLIER;
+        for (const d of outgoing.fixed) {
+            if (d.data.mint === selectedMint) total += Number(d.data.amount) / divisor;
+        }
+        for (const d of outgoing.recurring) {
+            if (d.data.mint === selectedMint) total += Number(d.data.amountPerPeriod) / divisor;
+        }
         return total;
-    }, [outgoing.fixed, outgoing.recurring]);
+    }, [outgoing.fixed, outgoing.recurring, selectedMint, divisor]);
 
     const incomingAmount = useMemo(() => {
         let total = 0;
         for (const d of incoming.all) {
+            if (d.data.mint !== selectedMint) continue;
             if (d.type === 'Fixed') {
-                total += Number(d.data.amount) / USDC_MULTIPLIER;
+                total += Number(d.data.amount) / divisor;
             } else {
                 total +=
                     Number(
@@ -103,22 +112,21 @@ export function WalletBalanceCards({ address: addr }: { address: Address }) {
                             d.data.periodLengthS,
                             blockTime,
                         ),
-                    ) / USDC_MULTIPLIER;
+                    ) / divisor;
             }
         }
         return total;
-    }, [incoming.all, blockTime]);
+    }, [incoming.all, blockTime, selectedMint, divisor]);
 
-    const usdcAccount = useMemo(() => {
+    const tokenAccount = useMemo(() => {
         return (tokenQuery.data as TokenAccountEntry[] | undefined)?.find(entry => {
-            return entry.account?.data?.parsed?.info?.mint === usdcMint;
+            return entry.account?.data?.parsed?.info?.mint === selectedMint;
         });
-    }, [tokenQuery.data, usdcMint]);
+    }, [tokenQuery.data, selectedMint]);
 
-    const usdcBalance = usdcAccount?.account?.data?.parsed?.info?.tokenAmount?.uiAmount ?? 0;
+    const tokenBalance = tokenAccount?.account?.data?.parsed?.info?.tokenAmount?.uiAmount ?? 0;
 
-    const { mint: usdcMintRaw } = useUsdcMintRaw();
-    const { data: statusData } = useSubscriptionAuthorityStatus(usdcMintRaw);
+    const { data: statusData } = useSubscriptionAuthorityStatus(selectedMint);
     const delegationId = statusData?.data?.initId ?? null;
 
     const [spinning, setSpinning] = useState(false);
@@ -151,15 +159,18 @@ export function WalletBalanceCards({ address: addr }: { address: Address }) {
                         </div>
                     )}
                 </div>
-                <Button
-                    variant="secondary"
-                    size="sm"
-                    iconOnly
-                    iconLeft={<RefreshCw className={isRefreshing ? 'animate-spin' : ''} />}
-                    aria-label="Refresh wallet balances"
-                    onClick={handleRefresh}
-                    disabled={isRefreshing}
-                />
+                <div className="flex items-center gap-2">
+                    <TokenPicker />
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        iconOnly
+                        iconLeft={<RefreshCw className={isRefreshing ? 'animate-spin' : ''} />}
+                        aria-label="Refresh wallet balances"
+                        onClick={handleRefresh}
+                        disabled={isRefreshing}
+                    />
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -190,11 +201,11 @@ export function WalletBalanceCards({ address: addr }: { address: Address }) {
                     <CardHeader className="relative pb-2">
                         <CardTitle className="flex items-center justify-between">
                             <div>
-                                <span className="text-sm font-medium text-sand-1100">USDC Balance</span>
-                                {usdcMint && (
+                                <span className="text-sm font-medium text-sand-1100">{symbol} Balance</span>
+                                {selectedMint && (
                                     <p className="flex items-center gap-1 text-[10px] font-mono text-sand-900 mt-0.5">
-                                        {usdcMint.slice(0, 8)}...{usdcMint.slice(-4)}
-                                        <CopyButton value={usdcMint} />
+                                        {selectedMint.slice(0, 8)}...{selectedMint.slice(-4)}
+                                        <CopyButton value={selectedMint} />
                                     </p>
                                 )}
                             </div>
@@ -213,7 +224,7 @@ export function WalletBalanceCards({ address: addr }: { address: Address }) {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="min-w-0">
                                         <div className="text-lg sm:text-2xl lg:text-[36px] leading-tight font-semibold tracking-tight text-foreground">
-                                            {usdcBalance.toLocaleString(undefined, {
+                                            {tokenBalance.toLocaleString(undefined, {
                                                 minimumFractionDigits: 2,
                                                 maximumFractionDigits: 2,
                                             })}
@@ -222,10 +233,13 @@ export function WalletBalanceCards({ address: addr }: { address: Address }) {
                                     </div>
                                     <div className="min-w-0">
                                         <div className="text-lg sm:text-2xl lg:text-[36px] leading-tight font-semibold tracking-tight text-foreground">
-                                            {(usdcBalance - reservedAmount + incomingAmount).toLocaleString(undefined, {
-                                                minimumFractionDigits: 2,
-                                                maximumFractionDigits: 2,
-                                            })}
+                                            {(tokenBalance - reservedAmount + incomingAmount).toLocaleString(
+                                                undefined,
+                                                {
+                                                    minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 2,
+                                                },
+                                            )}
                                         </div>
                                         <div className="text-sm font-medium text-sand-1000 tracking-wide">
                                             Spendable

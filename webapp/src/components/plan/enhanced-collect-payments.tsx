@@ -36,27 +36,71 @@ import {
     clearCollectionHistory,
 } from '@/lib/collection-history';
 import { parsePlanMeta, ICON_MAP } from '@/lib/plan-constants';
-import { USDC_MULTIPLIER, ellipsify, fmtDateShort } from '@/lib/utils';
+import { ellipsify, fmtDateShort } from '@/lib/utils';
+import { useTokenConfig } from '@/hooks/use-token-config';
+import { resolvePlanTokenDisplay } from '@/lib/token-display';
+import type { TokenConfig } from '@/config/networks';
+
+interface PendingTokenTotal {
+    symbol: string;
+    amount: number;
+}
+
+function sumPendingByToken(plans: PlanSubscriberData[], tokens: TokenConfig[] | undefined): PendingTokenTotal[] {
+    const byMint = new Map<string, { symbol: string; decimals: number; raw: bigint }>();
+    for (const p of plans) {
+        if (p.totalPending <= 0n) continue;
+        const t = resolvePlanTokenDisplay(p.plan.data.mint, tokens);
+        const existing = byMint.get(p.plan.data.mint);
+        if (existing) existing.raw += p.totalPending;
+        else byMint.set(p.plan.data.mint, { symbol: t.symbol, decimals: t.decimals ?? 0, raw: p.totalPending });
+    }
+    return [...byMint.values()].map(v => ({ symbol: v.symbol, amount: Number(v.raw) / 10 ** v.decimals }));
+}
+
+function formatPendingTotals(totals: PendingTokenTotal[]): string {
+    if (totals.length === 0) return '0';
+    return totals
+        .map(
+            t =>
+                `${t.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${t.symbol}`,
+        )
+        .join(' · ');
+}
 
 function CollectSummaryCards({
-    totalPending,
+    pendingByToken,
     activeSubscribers,
     cancelledCount,
     plansWithPending,
     totalPlans,
 }: {
-    totalPending: number;
+    pendingByToken: PendingTokenTotal[];
     activeSubscribers: number;
     cancelledCount: number;
     plansWithPending: number;
     totalPlans: number;
 }) {
+    const pendingValue =
+        pendingByToken.length === 0 ? (
+            <span>0</span>
+        ) : (
+            <div className="flex flex-col items-end">
+                {pendingByToken.map(t => (
+                    <span key={t.symbol}>
+                        {t.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
+                        {t.symbol}
+                    </span>
+                ))}
+            </div>
+        );
+
     const cards = [
         {
             icon: DollarSign,
             title: 'Total Pending',
             row1Label: 'Amount',
-            row1Value: `$${totalPending.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC`,
+            row1Value: pendingValue,
             row2Label: 'Across',
             row2Value: `${activeSubscribers + cancelledCount} subscribers`,
         },
@@ -93,7 +137,7 @@ function CollectSummaryCards({
                         <div className="space-y-4">
                             <div className="flex justify-between items-center text-sm">
                                 <span className="text-sand-1100">{card.row1Label}</span>
-                                <span className="font-bold text-foreground text-base">{card.row1Value}</span>
+                                <div className="font-bold text-foreground text-base">{card.row1Value}</div>
                             </div>
                             <div className="h-px w-full bg-sand-100" />
                             <div className="flex justify-between items-center text-sm">
@@ -110,11 +154,11 @@ function CollectSummaryCards({
 
 function CollectAllButton({
     plansData,
-    totalPendingUsd,
+    pendingByToken,
     onComplete,
 }: {
     plansData: PlanSubscriberData[];
-    totalPendingUsd: number;
+    pendingByToken: PendingTokenTotal[];
     onComplete?: () => void;
 }) {
     const [collecting, setCollecting] = useState(false);
@@ -218,9 +262,7 @@ function CollectAllButton({
             loading={collecting}
             onClick={handleCollectAll}
         >
-            {collecting
-                ? progress || 'Collecting...'
-                : `Collect All Pending ($${totalPendingUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
+            {collecting ? progress || 'Collecting...' : `Collect All Pending (${formatPendingTotals(pendingByToken)})`}
         </SolanaButton>
     );
 }
@@ -235,11 +277,14 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
     const { collectSubscriptionPayments } = useSubscriptionsMutations();
 
     const { plan, subscribers, currentSubscribers, staleAuthoritySubscribers, staleSubscribers, eligible } = planData;
+    const { data: tokens } = useTokenConfig();
+    const token = resolvePlanTokenDisplay(plan.data.mint, tokens);
+    const decimals = token.decimals ?? 0;
     const meta = useMemo(() => parsePlanMeta(plan.data.metadataUri), [plan.data.metadataUri]);
     const planName = meta.n || `Plan ${ellipsify(plan.address)}`;
     const PlanIcon = (meta.i && ICON_MAP[meta.i]) || Star;
-    const amountUsd = Number(plan.data.terms.amount) / USDC_MULTIPLIER;
-    const pendingUsd = Number(planData.totalPending) / USDC_MULTIPLIER;
+    const amountUsd = Number(plan.data.terms.amount) / 10 ** decimals;
+    const pendingUsd = Number(planData.totalPending) / 10 ** decimals;
     const staleSubscriberAddresses = useMemo(
         () => new Set(staleSubscribers.map(sub => sub.subscriptionAddress)),
         [staleSubscribers],
@@ -336,8 +381,8 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
                     <div className="text-left">
                         <p className="text-foreground font-medium">{planName}</p>
                         <p className="text-sm text-slate-400">
-                            ${amountUsd.toFixed(2)}/period &middot; {eligible.length}/{currentSubscribers.length}{' '}
-                            eligible
+                            {amountUsd.toFixed(2)} {token.symbol}/period &middot; {eligible.length}/
+                            {currentSubscribers.length} eligible
                             {staleSubscribers.length + staleAuthoritySubscribers.length > 0 &&
                                 ` / ${staleSubscribers.length + staleAuthoritySubscribers.length} stale`}
                         </p>
@@ -345,7 +390,9 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
                 </div>
                 <div className="flex items-center gap-3">
                     {pendingUsd > 0 && (
-                        <span className="text-foreground font-medium text-sm">${pendingUsd.toFixed(2)} pending</span>
+                        <span className="text-foreground font-medium text-sm">
+                            {pendingUsd.toFixed(2)} {token.symbol} pending
+                        </span>
                     )}
                     <SolanaButton
                         size="sm"
@@ -356,7 +403,7 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
                             handleCollect();
                         }}
                     >
-                        Collect ${pendingUsd.toFixed(2)}
+                        Collect {pendingUsd.toFixed(2)} {token.symbol}
                     </SolanaButton>
                 </div>
             </div>
@@ -403,7 +450,7 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
                                                 sub.subscriptionAddress,
                                             );
                                             const collectibleUsd = eligEntry
-                                                ? Number(eligEntry.collectAmount) / USDC_MULTIPLIER
+                                                ? Number(eligEntry.collectAmount) / 10 ** decimals
                                                 : null;
 
                                             return (
@@ -437,7 +484,7 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
                                                             <span className="text-amber-600">Excluded</span>
                                                         ) : collectibleUsd !== null ? (
                                                             <span className="text-foreground font-medium">
-                                                                ${collectibleUsd.toFixed(2)}
+                                                                {collectibleUsd.toFixed(2)} {token.symbol}
                                                             </span>
                                                         ) : (
                                                             <span className="text-slate-500">Collected</span>
@@ -454,7 +501,12 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
                         ) : (
                             <div className="space-y-2">
                                 {history.slice(0, 10).map(record => (
-                                    <HistoryEntry key={record.id} record={record} />
+                                    <HistoryEntry
+                                        key={record.id}
+                                        record={record}
+                                        decimals={decimals}
+                                        symbol={token.symbol}
+                                    />
                                 ))}
                             </div>
                         )}
@@ -466,6 +518,10 @@ function EnhancedPlanCard({ planData, blockTs }: { planData: PlanSubscriberData;
 }
 
 function RecentCollections({ version, onClear }: { version: number; onClear: () => void }) {
+    const { data: tokens } = useTokenConfig();
+    const primary = tokens?.[0];
+    const decimals = primary?.decimals ?? 0;
+    const symbol = primary?.symbol ?? '';
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const history = useMemo(() => getCollectionHistory(), [version]);
 
@@ -514,7 +570,7 @@ function RecentCollections({ version, onClear }: { version: number; onClear: () 
                             {record.planName}
                         </Badge>
                         <div className="flex-1 min-w-0">
-                            <HistoryEntry record={record} />
+                            <HistoryEntry record={record} decimals={decimals} symbol={symbol} />
                         </div>
                     </div>
                 ))}
@@ -525,6 +581,7 @@ function RecentCollections({ version, onClear }: { version: number; onClear: () 
 
 export function EnhancedCollectPayments() {
     const { data, isLoading, allPlans, plansWithSubs, refetch } = useAllPlanSubscribers();
+    const { data: tokens } = useTokenConfig();
     const queryClient = useQueryClient();
     const [spinning, setSpinning] = useState(false);
     const [historyVersion, setHistoryVersion] = useState(0);
@@ -567,7 +624,7 @@ export function EnhancedCollectPayments() {
         );
     }
 
-    const totalPendingUsd = data ? Number(data.totalPendingAmount) / USDC_MULTIPLIER : 0;
+    const pendingByToken = sumPendingByToken(data?.plans ?? [], tokens);
     const totalActive = data?.totalActiveSubscribers ?? 0;
     const totalCancelled = data?.plans.reduce((sum, p) => sum + p.cancelledCount, 0) ?? 0;
     const plansWithPending = data?.plansWithPending ?? 0;
@@ -576,7 +633,7 @@ export function EnhancedCollectPayments() {
     return (
         <div className="space-y-6">
             <CollectSummaryCards
-                totalPending={totalPendingUsd}
+                pendingByToken={pendingByToken}
                 activeSubscribers={totalActive}
                 cancelledCount={totalCancelled}
                 plansWithPending={plansWithPending}
@@ -595,7 +652,7 @@ export function EnhancedCollectPayments() {
                 />
                 <CollectAllButton
                     plansData={data?.plans ?? []}
-                    totalPendingUsd={totalPendingUsd}
+                    pendingByToken={pendingByToken}
                     onComplete={() => setHistoryVersion(v => v + 1)}
                 />
             </div>

@@ -3,9 +3,11 @@ import { Banknote, ChevronDown, CheckCircle2, XCircle } from 'lucide-react';
 import { Badge, Button } from '@solana/design-system';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { cn, USDC_MULTIPLIER, ellipsify, fmtDateTime } from '@/lib/utils';
+import { cn, ellipsify, fmtDateTime } from '@/lib/utils';
 import { ExplorerLink } from '@/components/cluster/cluster-ui';
 import { useMyPlans, type PlanItem } from '@/hooks/use-plans';
+import { useTokenConfig } from '@/hooks/use-token-config';
+import { formatTokenAmount, resolvePlanTokenDisplay } from '@/lib/token-display';
 import {
     fetchPlanSubscriptions,
     getLivePlanSubscribers,
@@ -28,9 +30,17 @@ import {
 import { parsePlanMeta, ICON_MAP } from '@/lib/plan-constants';
 import { Star } from 'lucide-react';
 
-export function HistoryEntry({ record }: { record: CollectionRecord }) {
+export function HistoryEntry({
+    record,
+    decimals,
+    symbol,
+}: {
+    record: CollectionRecord;
+    decimals: number;
+    symbol: string;
+}) {
     const isSuccess = record.status === 'success' || record.status === 'partial';
-    const totalAmount = getCollectionRecordTotalDisplayAmount(record, USDC_MULTIPLIER);
+    const totalAmount = getCollectionRecordTotalDisplayAmount(record, 10 ** decimals);
 
     return (
         <div className="flex items-center gap-3 bg-sand-200 border border-sand-200 rounded-lg p-2 text-sm">
@@ -41,7 +51,8 @@ export function HistoryEntry({ record }: { record: CollectionRecord }) {
             )}
             <span className="text-slate-400 shrink-0">{fmtDateTime(record.timestamp)}</span>
             <span className="text-foreground">
-                ${totalAmount.toFixed(2)} total from {record.subscribersCollected}/{record.subscribersTotal} subs
+                {totalAmount.toFixed(2)} {symbol} total from {record.subscribersCollected}/{record.subscribersTotal}{' '}
+                subs
             </span>
             {isSuccess && record.signatures[0] && (
                 <span className="ml-auto">
@@ -72,10 +83,13 @@ function CollectPlanCard({
     const { url: rpcUrl } = useClusterConfig();
     const { collectSubscriptionPayments } = useSubscriptionsMutations();
 
+    const { data: tokens } = useTokenConfig();
+    const token = resolvePlanTokenDisplay(plan.data.mint, tokens);
+    const decimals = token.decimals ?? 0;
+
     const meta = useMemo(() => parsePlanMeta(plan.data.metadataUri), [plan.data.metadataUri]);
     const planName = meta.n || `Plan ${ellipsify(plan.address)}`;
     const PlanIcon = (meta.i && ICON_MAP[meta.i]) || Star;
-    const amountUsd = Number(plan.data.terms.amount) / USDC_MULTIPLIER;
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const history = useMemo(() => getCollectionHistory(plan.address), [plan.address, historyVersion]);
@@ -151,8 +165,8 @@ function CollectPlanCard({
                     <div>
                         <p className="text-foreground font-medium">{planName}</p>
                         <p className="text-sm text-slate-400">
-                            ${amountUsd.toFixed(2)} / period - {subscriberCount} subscriber
-                            {subscriberCount !== 1 ? 's' : ''}
+                            {formatTokenAmount(plan.data.terms.amount, decimals)} {token.symbol} / period -{' '}
+                            {subscriberCount} subscriber{subscriberCount !== 1 ? 's' : ''}
                         </p>
                     </div>
                 </div>
@@ -177,7 +191,7 @@ function CollectPlanCard({
                 <div className="space-y-2 pt-2 border-t border-sand-200">
                     <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Collection History</p>
                     {history.slice(0, 10).map(record => (
-                        <HistoryEntry key={record.id} record={record} />
+                        <HistoryEntry key={record.id} record={record} decimals={decimals} symbol={token.symbol} />
                     ))}
                 </div>
             )}
