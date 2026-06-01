@@ -469,6 +469,9 @@ function SubscribeDialog({
     const { url: rpcUrl } = useClusterConfig();
     const amount = formatPlanTokenAmount(plan.data.terms.amount, token);
     const authorityInitId = statusData?.data?.initId;
+    const activeDestinations = plan.data.destinations.filter(d => d !== ZERO_ADDRESS);
+    const activePullers = plan.data.pullers.filter(p => p !== ZERO_ADDRESS);
+    const isOpenRouting = activeDestinations.length === 0;
 
     const handleInit = async () => {
         if (!account) return;
@@ -520,6 +523,25 @@ function SubscribeDialog({
                         subscribing.
                     </div>
                 )}
+
+                <div className="rounded-lg border border-sand-200 bg-sand-100 px-3 py-2 text-sm space-y-1">
+                    <div className="flex items-center justify-between gap-3">
+                        <span className="text-sand-1000">Authorized pullers</span>
+                        <span className="font-medium text-foreground">
+                            {activePullers.length === 0
+                                ? 'Merchant only'
+                                : `Merchant + ${activePullers.length} more key${activePullers.length > 1 ? 's' : ''}`}
+                        </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                        <span className="text-sand-1000">Funds can be sent to</span>
+                        <span className={cn('font-medium', isOpenRouting ? 'text-amber-600' : 'text-foreground')}>
+                            {isOpenRouting
+                                ? 'Any wallet'
+                                : `${activeDestinations.length} whitelisted wallet${activeDestinations.length > 1 ? 's' : ''}`}
+                        </span>
+                    </div>
+                </div>
 
                 {statusLoading ? (
                     <div className="text-sm text-muted-foreground animate-pulse py-4 text-center">
