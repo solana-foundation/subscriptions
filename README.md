@@ -73,7 +73,7 @@ subscriptions/
 ## Quick Start
 
 ```bash
-git clone git@github.com:solana-program/subscriptions.git
+git clone git@github.com:solana-foundation/subscriptions.git
 cd subscriptions
 just setup
 just build

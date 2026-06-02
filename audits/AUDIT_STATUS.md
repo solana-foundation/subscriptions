@@ -9,9 +9,9 @@ Last updated: 2026-04-08
 - Auditor: Cantina
 - Report: `audits/report-cli-cantina-db2ffeea-c85c-4f35-b188-e861cdcd785d-solana-multi-delegator.pdf`
 - Audited-through commit: `18a50bc21c4b91ed62e612109c371f41200385e8`
-- Compare audited baseline delta: https://github.com/solana-program/subscriptions/compare/18a50bc21c4b91ed62e612109c371f41200385e8...main
+- Compare audited baseline delta: https://github.com/solana-foundation/subscriptions/compare/18a50bc21c4b91ed62e612109c371f41200385e8...main
 - Audit fixes implemented/verified through commit: `b4b0345f9fd616e1355b7b6628362283fd6b1691`
-- Compare post-fix delta: https://github.com/solana-program/subscriptions/compare/b4b0345f9fd616e1355b7b6628362283fd6b1691...main
+- Compare post-fix delta: https://github.com/solana-foundation/subscriptions/compare/b4b0345f9fd616e1355b7b6628362283fd6b1691...main
 
 Audit scope is commit-based. The external audit baseline is `18a50bc...`. Audit remediation was implemented and verified through `b4b0345...`.
 

@@ -1,8 +1,8 @@
 # @solana/subscriptions
 
-TypeScript SDK for the [Subscriptions Solana program](https://github.com/solana-program/subscriptions): token delegation, recurring payments, and subscriptions. Ships as a [`@solana/kit`](https://github.com/anza-xyz/kit) plugin.
+TypeScript SDK for the [Subscriptions Solana program](https://github.com/solana-foundation/subscriptions): token delegation, recurring payments, and subscriptions. Ships as a [`@solana/kit`](https://github.com/anza-xyz/kit) plugin.
 
-**Source & issues:** https://github.com/solana-program/subscriptions
+**Source & issues:** https://github.com/solana-foundation/subscriptions
 
 ## Installation
 

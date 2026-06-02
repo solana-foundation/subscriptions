@@ -54,9 +54,9 @@ use solana_security_txt::security_txt;
 #[cfg(not(feature = "no-entrypoint"))]
 security_txt! {
     name: "Subscriptions Program",
-    project_url: "https://github.com/solana-program/subscriptions",
-    contacts: "link:https://github.com/solana-program/subscriptions/security/advisories/new",
-    policy: "https://github.com/solana-program/subscriptions/security/policy",
-    source_code: "https://github.com/solana-program/subscriptions",
+    project_url: "https://github.com/solana-foundation/subscriptions",
+    contacts: "link:https://github.com/solana-foundation/subscriptions/security/advisories/new",
+    policy: "https://github.com/solana-foundation/subscriptions/security/policy",
+    source_code: "https://github.com/solana-foundation/subscriptions",
     auditors: "Cantina"
 }
