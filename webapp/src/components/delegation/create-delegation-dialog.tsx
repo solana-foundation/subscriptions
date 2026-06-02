@@ -195,7 +195,7 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
         (selectedKind === 'fixed' || (periodDays.length > 0 && Number(periodDays) > 0));
 
     return (
-        <Dialog open={open} onOpenChange={handleOpenChange}>
+        <Dialog open={open} onOpenChange={handleOpenChange} modal={false}>
             <DialogTrigger asChild>
                 <SolanaButton
                     disabled={disabled || authorityInitId == null}

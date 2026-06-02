@@ -147,7 +147,7 @@ function TimeTravelButtonInner() {
     };
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={setOpen} modal={false}>
             <DialogTrigger asChild>
                 <Button
                     variant="outline"

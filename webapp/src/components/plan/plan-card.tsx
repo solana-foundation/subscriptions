@@ -153,7 +153,7 @@ function EditPlanDialog({
         (endTsComputed === 0 || blockTime !== undefined);
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={onOpenChange} modal={false}>
             <DialogContent className="sm:max-w-[750px]">
                 <DialogHeader>
                     <DialogTitle>Edit Plan: {meta.n || 'Unnamed'}</DialogTitle>
