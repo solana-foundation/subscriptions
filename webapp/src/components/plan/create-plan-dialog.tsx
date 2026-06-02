@@ -246,7 +246,7 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
     );
 
     return (
-        <Dialog open={open} onOpenChange={handleOpenChange}>
+        <Dialog open={open} onOpenChange={handleOpenChange} modal={false}>
             <DialogContent className="sm:max-w-[750px]">
                 <DialogHeader>
                     <DialogTitle>Create Subscription Plan</DialogTitle>

@@ -315,3 +315,7 @@ pre code {
         animation: none;
     }
 }
+
+[role='listbox'] {
+    pointer-events: auto;
+}
