@@ -4,14 +4,14 @@
     "description": "TypeScript SDK and @solana/kit plugin for the Subscriptions Solana program: token delegations, recurring payments, and subscription plans.",
     "type": "module",
     "license": "MIT",
-    "homepage": "https://github.com/solana-program/subscriptions#readme",
+    "homepage": "https://github.com/solana-foundation/subscriptions#readme",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/solana-program/subscriptions.git",
+        "url": "git+https://github.com/solana-foundation/subscriptions.git",
         "directory": "clients/typescript"
     },
     "bugs": {
-        "url": "https://github.com/solana-program/subscriptions/issues"
+        "url": "https://github.com/solana-foundation/subscriptions/issues"
     },
     "keywords": [
         "solana",

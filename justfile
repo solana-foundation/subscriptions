@@ -348,7 +348,7 @@ verify-mainnet: check-solana-verify
     set -euo pipefail
     PROG_ID=$(sed -n 's/.*declare_id!("\([^"]*\)").*/\1/p' "{{program_dir}}/src/lib.rs")
     solana-verify verify-from-repo \
-        https://github.com/solana-program/subscriptions \
+        https://github.com/solana-foundation/subscriptions \
         --program-id "$PROG_ID" \
         --library-name subscriptions_program \
         --remote \

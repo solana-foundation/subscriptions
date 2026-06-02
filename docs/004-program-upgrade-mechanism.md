@@ -75,7 +75,7 @@ After an upgrade, anyone can verify the on-chain program matches the public sour
 ```bash
 solana-verify verify-from-repo \
     --program-id <PROGRAM_ID> \
-    --url https://github.com/solana-program/subscriptions
+    --url https://github.com/solana-foundation/subscriptions
 ```
 
 ## References
