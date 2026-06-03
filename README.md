@@ -16,7 +16,7 @@ Supported delegation models:
 
 The program emits on-chain events via self-CPI for indexer integration (subscription created/cancelled, fixed/recurring/subscription transfers).
 
-Token-2022 mints are supported, but the following extensions are rejected during SA initialization: ConfidentialTransfer, NonTransferable, PermanentDelegate, TransferHook, TransferFee, MintCloseAuthority, and Pausable.
+Token-2022 mints are supported. The only extension rejected is a configured `TransferHook` (where the hook `authority` or `program_id` is set). An inert `TransferHook` (both unset, therefore permanently immutable) is allowed.
 
 Delegation accounts include a version field and the program implements a three-tier migration framework (lazy in-place update, explicit migrate instruction, revoke/recreate) for future upgrades. See [ADR-003](docs/003-versioning-migration-architecture.md) for details.
 
@@ -258,6 +258,10 @@ just webapp-clean     # also removes generated state
 The external audit baseline is commit `18a50bc21c4b91ed62e612109c371f41200385e8`, and audit fixes were implemented and verified through commit `b4b0345f9fd616e1355b7b6628362283fd6b1691`.
 
 Audit status, audited-through commit, and the current unaudited delta are tracked in [audits/AUDIT_STATUS.md](audits/AUDIT_STATUS.md).
+
+## Acknowledgments
+
+Thanks to [Moonsong Labs](https://moonsonglabs.com) for the initial design and implementation of this program.
 
 ## CI Pipeline
 
