@@ -30,6 +30,20 @@ This repository contains:
 - A local demo webapp in `webapp/`
 - CI pipeline with build, test, lint, and CU benchmarking
 
+## Rent Costs
+
+Rent is recoverable: closing a delegation, plan, or subscription authority returns its rent to the original payer.
+
+| Flow                        | Account(s) created     | Rent for new account(s) (SOL) |
+| --------------------------- | ---------------------- | ----------------------------- |
+| Enable authority for a mint | SubscriptionAuthority  | 0.00162864                    |
+| Merchant creates a plan     | Plan                   | 0.00430824                    |
+| Subscribe to a plan         | SubscriptionDelegation | 0.00196968                    |
+| Grant fixed delegation      | FixedDelegation        | 0.00219240                    |
+| Grant recurring delegation  | RecurringDelegation    | 0.00235944                    |
+
+> Subscribe and delegation flows require an existing `SubscriptionAuthority`. If starting from scratch, add **0.00162864 SOL** for the "Enable authority" step.
+
 ## Program ID
 
 ```
