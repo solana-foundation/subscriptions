@@ -8,8 +8,6 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
-  issues: write
   pull-requests: write
 
 env:
@@ -22,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - uses: ./.github/actions/setup
         with:
@@ -32,23 +30,5 @@ jobs:
       - name: Run benchmark
         run: just test-and-benchmark
 
-      - name: Post CU report comment
-        if: github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          PR=${{ github.event.pull_request.number }}
-          MARKER="<!-- cu-report -->"
-          REPORT="$MARKER
-          $(cat tests/integration-tests/cu_report.md)"
-
-          COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${PR}/comments" \
-            --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" | head -1)
-
-          if [ -n "$COMMENT_ID" ]; then
-            gh api "repos/${{ github.repository }}/issues/comments/${COMMENT_ID}" \
-              -X PATCH -f body="$REPORT"
-          else
-            gh api "repos/${{ github.repository }}/issues/${PR}/comments" \
-              -f body="$REPORT"
-          fi
+      - name: Report compute units
+        uses: solana-developers/github-actions/cu-benchmark@e846103a578b3170a9a14824bcdf38d5dcf59ac0

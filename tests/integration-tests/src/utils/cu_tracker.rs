@@ -6,13 +6,10 @@
 //!
 //! # Usage
 //!
-//! ```ignore
-//! // Record directly from transaction result - instruction type is auto-detected
-//! let result = build_and_send_transaction(...);
-//! record_transaction(&result, &ix);
-//!
-//! // Report is automatically output when tests complete if CU_REPORT is set
-//! ```
+//! Recording happens automatically when tests send transactions through the
+//! shared test helpers (gated on `CU_REPORT`); the report is written when the
+//! test binary exits. Call `record_cu` directly only for transactions sent by
+//! some other path.
 
 use std::borrow::ToOwned;
 use std::collections::HashMap;
@@ -23,18 +20,14 @@ use std::sync::Mutex;
 use std::sync::OnceLock;
 use std::vec::Vec;
 
-use litesvm::types::TransactionResult;
-use solana_instruction::Instruction;
 use tabled::settings::Style;
 use tabled::{Table, Tabled};
-
-use crate::SubscriptionsInstruction;
 
 static TRACKER: OnceLock<Mutex<CuTracker>> = OnceLock::new();
 
 /// Check if CU tracking is enabled via CU_REPORT environment variable.
 /// Caches the result to avoid repeated env lookups.
-fn is_tracking_enabled() -> bool {
+pub fn is_tracking_enabled() -> bool {
     static ENABLED: OnceLock<bool> = OnceLock::new();
     ENABLED.get_or_init(|| std::env::var("CU_REPORT").is_ok()).to_owned()
 }
@@ -44,15 +37,15 @@ fn global_tracker() -> &'static Mutex<CuTracker> {
     TRACKER.get_or_init(|| Mutex::new(CuTracker::new()))
 }
 
-/// Record a transaction result to the global tracker.
-/// Parses instruction type from the provided instruction.
-/// Only records if CU_REPORT environment variable is set.
-/// Returns the CU consumed, or None if the transaction failed or tracking is disabled.
-pub fn record_transaction(result: &TransactionResult, ix: &Instruction) -> Option<u64> {
+/// Record a CU measurement for a named instruction to the global tracker.
+/// Only records if the CU_REPORT environment variable is set.
+pub fn record_cu(name: &str, cus: u64) {
     if !is_tracking_enabled() {
-        return None;
+        return;
     }
-    global_tracker().lock().ok().and_then(|mut tracker| tracker.record(result, ix))
+    if let Ok(mut tracker) = global_tracker().lock() {
+        tracker.record(name, cus);
+    }
 }
 
 /// Output the CU report if the CU_REPORT environment variable is set.
@@ -69,7 +62,7 @@ pub fn output_report_if_enabled() {
 }
 
 const MICRO_LAMPORTS: u64 = 1_000_000;
-const LAMPOSTS_PER_SOL: f64 = 1_000_000_000.0;
+const LAMPORTS_PER_SOL: f64 = 1_000_000_000.0;
 const BASE_FEE_LAMPORTS: u64 = 5_000;
 
 // Different rate for Microlamports per CU
@@ -82,7 +75,7 @@ fn calculate_sol_cost(cu: u64, rate: u64) -> f64 {
     let priority_fee_micro = cu * rate;
     let priority_fee_lamports = priority_fee_micro / MICRO_LAMPORTS;
     let total_lamports = BASE_FEE_LAMPORTS + priority_fee_lamports;
-    total_lamports as f64 / LAMPOSTS_PER_SOL
+    total_lamports as f64 / LAMPORTS_PER_SOL
 }
 
 /// Statistics for a single instruction type (displayed in table).
@@ -92,12 +85,8 @@ pub struct InstructionStats {
     pub instruction: String,
     #[tabled(rename = "Samples")]
     pub count: usize,
-    #[tabled(rename = "Min CUs")]
-    pub min: u64,
-    #[tabled(rename = "Max CUs")]
-    pub max: u64,
-    #[tabled(rename = "Avg CUs")]
-    pub avg: u64,
+    #[tabled(rename = "CUs")]
+    pub cus: u64,
     #[tabled(rename = "Est Cost (Low) [SOL]")]
     pub cost_low: String,
     #[tabled(rename = "Est Cost (Med) [SOL]")]
@@ -120,22 +109,9 @@ impl CuTracker {
         Self { measurements: HashMap::new() }
     }
 
-    /// Record CU from a transaction result.
-    /// Parses instruction type from the provided instruction.
-    /// Returns the CU consumed, or None if the transaction failed.
-    pub fn record(&mut self, result: &TransactionResult, ix: &Instruction) -> Option<u64> {
-        if !is_tracking_enabled() {
-            return None;
-        }
-
-        let tx = result.as_ref().ok()?;
-
-        if let Ok(instruction) = SubscriptionsInstruction::from_bytes(&ix.data) {
-            let instruction_name = instruction.to_string();
-            self.measurements.entry(instruction_name).or_default().push(tx.compute_units_consumed);
-        }
-
-        Some(tx.compute_units_consumed)
+    /// Record a CU measurement for a named instruction.
+    pub fn record(&mut self, name: &str, cus: u64) {
+        self.measurements.entry(name.to_string()).or_default().push(cus);
     }
 
     /// Get the total number of recorded measurements.
@@ -155,24 +131,13 @@ impl CuTracker {
             .iter()
             .map(|(instruction, measurements)| {
                 let count = measurements.len();
-                let min = *measurements.iter().min().unwrap_or(&0);
-                let max = *measurements.iter().max().unwrap_or(&0);
-                let avg = if count > 0 { measurements.iter().sum::<u64>() / count as u64 } else { 0 };
+                let cus = *measurements.iter().min().unwrap_or(&0);
 
-                let cost_low = format!("{:.9}", calculate_sol_cost(avg, RATE_LOW));
-                let cost_med = format!("{:.9}", calculate_sol_cost(avg, RATE_MED));
-                let cost_high = format!("{:.9}", calculate_sol_cost(avg, RATE_HIGH));
+                let cost_low = format!("{:.9}", calculate_sol_cost(cus, RATE_LOW));
+                let cost_med = format!("{:.9}", calculate_sol_cost(cus, RATE_MED));
+                let cost_high = format!("{:.9}", calculate_sol_cost(cus, RATE_HIGH));
 
-                InstructionStats {
-                    instruction: instruction.clone(),
-                    count,
-                    min,
-                    max,
-                    avg,
-                    cost_low,
-                    cost_med,
-                    cost_high,
-                }
+                InstructionStats { instruction: instruction.clone(), count, cus, cost_low, cost_med, cost_high }
             })
             .collect();
 
@@ -215,19 +180,6 @@ impl CuTracker {
         file.write_all(markdown.as_bytes())?;
         println!("CU report written to: {}", path);
         Ok(())
-    }
-
-    /// Check if CU_REPORT environment variable is set and write report if so.
-    /// Returns true if report was written.
-    pub fn write_if_enabled(&self, path: &str) -> bool {
-        if is_tracking_enabled() {
-            if let Err(e) = self.write_to_file(path) {
-                eprintln!("Failed to write CU report: {}", e);
-                return false;
-            }
-            return true;
-        }
-        false
     }
 }
 
