@@ -6,9 +6,10 @@
 //!
 //! # Usage
 //!
-//! Recording happens automatically inside `build_and_send_transaction` when
-//! `CU_REPORT` is set; the report is written when the test binary exits. Call
-//! `record_cu` directly only when sending a transaction by some other path.
+//! Recording happens automatically when tests send transactions through the
+//! shared test helpers (gated on `CU_REPORT`); the report is written when the
+//! test binary exits. Call `record_cu` directly only for transactions sent by
+//! some other path.
 
 use std::borrow::ToOwned;
 use std::collections::HashMap;
