@@ -44,9 +44,10 @@ use crate::{
     state::common::PlanStatus,
     tests::{
         constants::{PROGRAM_ID, SYSTEM_PROGRAM_ID},
-        cu_tracker::record_transaction,
+        cu_tracker::{is_tracking_enabled, record_cu},
         pda::{get_delegation_pda, get_plan_pda, get_subscription_authority_pda, get_subscription_pda},
     },
+    SubscriptionsInstruction,
 };
 
 /// Converts number of minutes into seconds
@@ -112,8 +113,11 @@ pub fn build_and_send_transaction(
     let result = litesvm.send_transaction(tx);
     litesvm.expire_blockhash();
 
-    // Record CU consumption to global tracker
-    record_transaction(&result, ix);
+    if is_tracking_enabled() {
+        if let (Ok(meta), Ok(parsed)) = (result.as_ref(), SubscriptionsInstruction::from_bytes(&ix.data)) {
+            record_cu(&parsed.to_string(), meta.compute_units_consumed);
+        }
+    }
 
     result
 }
