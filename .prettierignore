@@ -4,10 +4,6 @@ idl/
 # Generated files
 clients/typescript/src/generated/
 
-# CU benchmark (generated)
-**/cu_baseline.md
-**/cu_report.md
-
 # Build outputs
 dist/
 build/
