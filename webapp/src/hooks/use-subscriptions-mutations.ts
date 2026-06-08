@@ -12,6 +12,7 @@ import {
     getInitSubscriptionAuthorityOverlayInstructionAsync,
     getResumeSubscriptionOverlayInstructionAsync,
     getRevokeDelegationOverlayInstruction,
+    getRevokeSubscriptionAuthorityOverlayInstructionAsync,
     getRevokeSubscriptionOverlayInstruction,
     getSubscribeOverlayInstructionAsync,
     getTransferFixedOverlayInstructionAsync,
@@ -125,14 +126,22 @@ export function useSubscriptionsMutations() {
             }
             const receiver = storedPayer && storedPayer !== signer.address ? address(storedPayer) : undefined;
 
-            const instruction = await getCloseSubscriptionAuthorityOverlayInstructionAsync({
+            const tokenProgram = await resolveTokenProgramForMint(address(tokenMint));
+            const revokeInstruction = await getRevokeSubscriptionAuthorityOverlayInstructionAsync({
+                programAddress: progId,
+                tokenMint: address(tokenMint),
+                tokenProgram,
+                user: signer,
+            });
+
+            const closeInstruction = await getCloseSubscriptionAuthorityOverlayInstructionAsync({
                 programAddress: progId,
                 receiver,
                 tokenMint: address(tokenMint),
                 user: signer,
             });
 
-            const signature = await signAndSend([instruction], signer);
+            const signature = await signAndSend([revokeInstruction, closeInstruction], signer);
             return { signature };
         },
         onError: error => toast.onError(error),

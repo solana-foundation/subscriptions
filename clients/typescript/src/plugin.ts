@@ -74,6 +74,7 @@ import {
     getInitSubscriptionAuthorityInstructionAsync,
     getResumeSubscriptionInstructionAsync,
     getRevokeDelegationInstruction,
+    getRevokeSubscriptionAuthorityInstruction,
     getSubscribeInstructionAsync,
     getTransferFixedInstruction,
     getTransferRecurringInstruction,
@@ -140,6 +141,12 @@ export type InitSubscriptionAuthorityInput = WithProgramAddress & {
 export type CloseSubscriptionAuthorityInput = WithProgramAddress & {
     receiver?: Address;
     tokenMint: Address;
+    user: TransactionSigner;
+};
+
+export type RevokeSubscriptionAuthorityInput = WithProgramAddress & {
+    tokenMint: Address;
+    tokenProgram: Address;
     user: TransactionSigner;
 };
 
@@ -294,6 +301,25 @@ export async function getCloseSubscriptionAuthorityOverlayInstructionAsync(
         ix = withTrailing(ix, [{ address: input.receiver, role: AccountRole.WRITABLE }]);
     }
     return ix;
+}
+
+export async function getRevokeSubscriptionAuthorityOverlayInstructionAsync(
+    input: RevokeSubscriptionAuthorityInput,
+): Promise<Instruction> {
+    const [userAta] = await findAssociatedTokenPda({
+        mint: input.tokenMint,
+        owner: input.user.address,
+        tokenProgram: input.tokenProgram,
+    });
+    return getRevokeSubscriptionAuthorityInstruction(
+        {
+            tokenMint: input.tokenMint,
+            tokenProgram: input.tokenProgram,
+            user: input.user,
+            userAta,
+        },
+        pdaConfig(input.programAddress),
+    );
 }
 
 export async function getCreateFixedDelegationOverlayInstructionAsync(
@@ -642,6 +668,9 @@ export type SubscriptionsPluginInstructions = {
     resumeSubscription: (input: MakeOptional<ResumeSubscriptionInput, 'subscriber'>) => Self<Promise<Instruction>>;
     revokeDelegation: (input: MakeOptional<RevokeDelegationInput, 'authority'>) => Self<Instruction>;
     revokeSubscription: (input: MakeOptional<RevokeSubscriptionInput, 'authority'>) => Self<Instruction>;
+    revokeSubscriptionAuthority: (
+        input: MakeOptional<RevokeSubscriptionAuthorityInput, 'user'>,
+    ) => Self<Promise<Instruction>>;
     subscribe: (input: MakeOptional<SubscribeInput, 'payer' | 'subscriber'>) => Self<Promise<Instruction>>;
     transferFixed: (input: MakeOptional<TransferDelegationInput, 'delegatee'>) => Self<Promise<Instruction>>;
     transferRecurring: (input: MakeOptional<TransferDelegationInput, 'delegatee'>) => Self<Promise<Instruction>>;
@@ -826,6 +855,14 @@ export function subscriptionsProgram() {
                         getRevokeSubscriptionOverlayInstruction({
                             ...input,
                             authority: input.authority ?? client.identity,
+                        }),
+                    ),
+                revokeSubscriptionAuthority: input =>
+                    addSelfPlanAndSendFunctions(
+                        client,
+                        getRevokeSubscriptionAuthorityOverlayInstructionAsync({
+                            ...input,
+                            user: input.user ?? client.identity,
                         }),
                     ),
                 subscribe: input =>

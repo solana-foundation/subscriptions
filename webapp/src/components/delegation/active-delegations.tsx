@@ -788,8 +788,8 @@ function CloseSubscriptionAuthorityDialog({
                     <DialogTitle className="text-red-600">Disable Delegations</DialogTitle>
                     <DialogDescription>
                         {hasActive
-                            ? 'You have active outgoing delegations. Closing the SubscriptionAuthority account will invalidate them.'
-                            : 'Close your SubscriptionAuthority account and return the rent to your wallet.'}
+                            ? 'You have active outgoing delegations. Closing the SubscriptionAuthority account will invalidate them and revoke the program’s token approval on your account.'
+                            : 'Close your SubscriptionAuthority account, revoke the program’s token approval on your account, and return the rent to your wallet.'}
                     </DialogDescription>
                 </DialogHeader>
                 {hasActive && (
