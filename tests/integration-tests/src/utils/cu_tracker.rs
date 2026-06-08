@@ -85,12 +85,8 @@ pub struct InstructionStats {
     pub instruction: String,
     #[tabled(rename = "Samples")]
     pub count: usize,
-    #[tabled(rename = "Min CUs")]
-    pub min: u64,
-    #[tabled(rename = "Max CUs")]
-    pub max: u64,
-    #[tabled(rename = "Avg CUs")]
-    pub avg: u64,
+    #[tabled(rename = "CUs")]
+    pub cus: u64,
     #[tabled(rename = "Est Cost (Low) [SOL]")]
     pub cost_low: String,
     #[tabled(rename = "Est Cost (Med) [SOL]")]
@@ -135,24 +131,13 @@ impl CuTracker {
             .iter()
             .map(|(instruction, measurements)| {
                 let count = measurements.len();
-                let min = *measurements.iter().min().unwrap_or(&0);
-                let max = *measurements.iter().max().unwrap_or(&0);
-                let avg = if count > 0 { measurements.iter().sum::<u64>() / count as u64 } else { 0 };
+                let cus = *measurements.iter().min().unwrap_or(&0);
 
-                let cost_low = format!("{:.9}", calculate_sol_cost(avg, RATE_LOW));
-                let cost_med = format!("{:.9}", calculate_sol_cost(avg, RATE_MED));
-                let cost_high = format!("{:.9}", calculate_sol_cost(avg, RATE_HIGH));
+                let cost_low = format!("{:.9}", calculate_sol_cost(cus, RATE_LOW));
+                let cost_med = format!("{:.9}", calculate_sol_cost(cus, RATE_MED));
+                let cost_high = format!("{:.9}", calculate_sol_cost(cus, RATE_HIGH));
 
-                InstructionStats {
-                    instruction: instruction.clone(),
-                    count,
-                    min,
-                    max,
-                    avg,
-                    cost_low,
-                    cost_med,
-                    cost_high,
-                }
+                InstructionStats { instruction: instruction.clone(), count, cus, cost_low, cost_med, cost_high }
             })
             .collect();
 

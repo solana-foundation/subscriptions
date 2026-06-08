@@ -8,7 +8,6 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
   pull-requests: write
 
 env:
@@ -33,5 +32,3 @@ jobs:
 
       - name: Report compute units
         uses: solana-developers/github-actions/cu-benchmark@e846103a578b3170a9a14824bcdf38d5dcf59ac0
-        with:
-          commit-baseline: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
