@@ -38,8 +38,8 @@ use crate::{
     instructions::{
         cancel_subscription, close_subscription_authority, create_fixed_delegation, create_plan,
         create_recurring_delegation, delete_plan, initialize_subscription_authority, resume_subscription,
-        revoke_delegation, subscribe, transfer_fixed_delegation, transfer_recurring_delegation, transfer_subscription,
-        update_plan,
+        revoke_delegation, revoke_subscription_authority, subscribe, transfer_fixed_delegation,
+        transfer_recurring_delegation, transfer_subscription, update_plan,
     },
     state::common::PlanStatus,
     tests::{
@@ -653,6 +653,43 @@ impl<'a> CloseSubscriptionAuthority<'a> {
 
         let ix =
             Instruction { program_id: PROGRAM_ID, accounts, data: vec![*close_subscription_authority::DISCRIMINATOR] };
+
+        build_and_send_transaction(self.litesvm, &[self.user], &self.user.pubkey(), &ix)
+    }
+}
+
+pub struct RevokeSubscriptionAuthority<'a> {
+    litesvm: &'a mut LiteSVM,
+    user: &'a Keypair,
+    mint: Pubkey,
+    custom_ata: Option<Pubkey>,
+}
+
+impl<'a> RevokeSubscriptionAuthority<'a> {
+    pub fn new(litesvm: &'a mut LiteSVM, user: &'a Keypair, mint: Pubkey) -> Self {
+        Self { litesvm, user, mint, custom_ata: None }
+    }
+
+    pub fn ata(mut self, ata: Pubkey) -> Self {
+        self.custom_ata = Some(ata);
+        self
+    }
+
+    #[allow(clippy::result_large_err)]
+    pub fn execute(self) -> TransactionResult {
+        let token_program = self.litesvm.get_account(&self.mint).unwrap().owner;
+        let derived_ata = get_associated_token_address_with_program_id(&self.user.pubkey(), &self.mint, &token_program);
+        let user_ata = self.custom_ata.unwrap_or(derived_ata);
+
+        let accounts = vec![
+            AccountMeta::new_readonly(self.user.pubkey(), true),
+            AccountMeta::new(user_ata, false),
+            AccountMeta::new_readonly(self.mint, false),
+            AccountMeta::new_readonly(token_program, false),
+        ];
+
+        let ix =
+            Instruction { program_id: PROGRAM_ID, accounts, data: vec![*revoke_subscription_authority::DISCRIMINATOR] };
 
         build_and_send_transaction(self.litesvm, &[self.user], &self.user.pubkey(), &ix)
     }
