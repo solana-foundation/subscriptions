@@ -2585,6 +2585,71 @@
         ],
         "kind": "instructionNode",
         "name": "resumeSubscription"
+      },
+      {
+        "accounts": [
+          {
+            "docs": [
+              "The ATA owner revoking the program's delegate"
+            ],
+            "isSigner": true,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "user"
+          },
+          {
+            "docs": [
+              "The user's ATA whose delegate is being revoked"
+            ],
+            "isSigner": false,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "userAta"
+          },
+          {
+            "docs": [
+              "The token mint of the user's ATA"
+            ],
+            "isSigner": false,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "tokenMint"
+          },
+          {
+            "docs": [
+              "Token program"
+            ],
+            "isSigner": false,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "tokenProgram"
+          }
+        ],
+        "arguments": [
+          {
+            "defaultValue": {
+              "kind": "numberValueNode",
+              "number": 14
+            },
+            "defaultValueStrategy": "omitted",
+            "kind": "instructionArgumentNode",
+            "name": "discriminator",
+            "type": {
+              "endian": "le",
+              "format": "u8",
+              "kind": "numberTypeNode"
+            }
+          }
+        ],
+        "discriminators": [
+          {
+            "kind": "fieldDiscriminatorNode",
+            "name": "discriminator",
+            "offset": 0
+          }
+        ],
+        "kind": "instructionNode",
+        "name": "revokeSubscriptionAuthority"
       }
     ],
     "kind": "programNode",
