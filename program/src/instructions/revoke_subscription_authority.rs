@@ -5,8 +5,8 @@ use pinocchio_token_2022::instructions::Revoke as Revoke2022;
 
 use crate::{
     check_token_account_mint, check_token_account_owner, constants::TOKEN_2022_PROGRAM_ID, AccountCheck,
-    AssociatedTokenAccount, AssociatedTokenAccountCheck, SignerAccount, SubscriptionsError, TokenAccountInterface,
-    TokenProgramInterface, WritableAccount,
+    AssociatedTokenAccount, AssociatedTokenAccountCheck, MintInterface, SignerAccount, SubscriptionsError,
+    TokenAccountInterface, TokenProgramInterface, WritableAccount,
 };
 
 /// Validated accounts for the [`RevokeSubscriptionAuthority`](crate::SubscriptionsInstruction::RevokeSubscriptionAuthority) instruction.
@@ -28,6 +28,7 @@ impl<'a> TryFrom<&'a [AccountView]> for RevokeSubscriptionAuthorityAccounts<'a> 
         SignerAccount::check(user)?;
         WritableAccount::check(user_ata)?;
         TokenProgramInterface::check(token_program)?;
+        MintInterface::check_with_program(token_mint, token_program)?;
         TokenAccountInterface::check_with_program(user_ata, token_program)?;
 
         Ok(Self { user, user_ata, token_mint, token_program })
