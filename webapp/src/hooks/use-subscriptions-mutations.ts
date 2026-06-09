@@ -114,9 +114,10 @@ export function useSubscriptionsMutations() {
             if (!signer) throw new Error('Wallet not connected');
             if (!progId) throw new Error('Program address not configured');
 
+            const rpc = createSolanaRpc(rpcUrl);
+
             let storedPayer = payer;
             if (!storedPayer) {
-                const rpc = createSolanaRpc(rpcUrl);
                 const [pda] = await findSubscriptionAuthorityPda(
                     { tokenMint: address(tokenMint), user: signer.address },
                     { programAddress: progId },
@@ -126,14 +127,6 @@ export function useSubscriptionsMutations() {
             }
             const receiver = storedPayer && storedPayer !== signer.address ? address(storedPayer) : undefined;
 
-            const tokenProgram = await resolveTokenProgramForMint(address(tokenMint));
-            const revokeInstruction = await getRevokeSubscriptionAuthorityOverlayInstructionAsync({
-                programAddress: progId,
-                tokenMint: address(tokenMint),
-                tokenProgram,
-                user: signer,
-            });
-
             const closeInstruction = await getCloseSubscriptionAuthorityOverlayInstructionAsync({
                 programAddress: progId,
                 receiver,
@@ -141,7 +134,27 @@ export function useSubscriptionsMutations() {
                 user: signer,
             });
 
-            const signature = await signAndSend([revokeInstruction, closeInstruction], signer);
+            const tokenProgram = await resolveTokenProgramForMint(address(tokenMint));
+            const [userAta] = await findAssociatedTokenPda({
+                mint: address(tokenMint),
+                owner: signer.address,
+                tokenProgram,
+            });
+            const ataInfo = await rpc.getAccountInfo(userAta, { encoding: 'base64' }).send();
+
+            const instructions = ataInfo.value
+                ? [
+                      await getRevokeSubscriptionAuthorityOverlayInstructionAsync({
+                          programAddress: progId,
+                          tokenMint: address(tokenMint),
+                          tokenProgram,
+                          user: signer,
+                      }),
+                      closeInstruction,
+                  ]
+                : [closeInstruction];
+
+            const signature = await signAndSend(instructions, signer);
             return { signature };
         },
         onError: error => toast.onError(error),
