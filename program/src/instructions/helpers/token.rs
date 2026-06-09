@@ -27,47 +27,6 @@ use crate::{
     SubscriptionsError,
 };
 
-const EXTENSION_TYPE_TRANSFER_HOOK: u16 = 14;
-const TRANSFER_HOOK_EXTENSION_LEN: usize = 64;
-const TLV_ENTRY_HEADER_LEN: usize = 4;
-const TLV_EXTENSIONS_START: usize = 166;
-
-/// Validates that a Token-2022 mint does not contain any configured transfer hook.
-fn validate_mint_extensions(data: &[u8]) -> Result<(), ProgramError> {
-    let mut offset = TLV_EXTENSIONS_START;
-
-    while offset + TLV_ENTRY_HEADER_LEN <= data.len() {
-        let ext_type = u16::from_le_bytes([data[offset], data[offset + 1]]);
-        let ext_len = u16::from_le_bytes([data[offset + 2], data[offset + 3]]) as usize;
-        let ext_data_start = offset + TLV_ENTRY_HEADER_LEN;
-        let ext_data_end = ext_data_start
-            .checked_add(ext_len)
-            .ok_or::<ProgramError>(SubscriptionsError::InvalidToken2022MintAccountData.into())?;
-
-        if ext_type == 0 {
-            break;
-        }
-
-        if ext_data_end > data.len() {
-            return Err(SubscriptionsError::InvalidToken2022MintAccountData.into());
-        }
-
-        if ext_type == EXTENSION_TYPE_TRANSFER_HOOK {
-            let extension_data = &data[ext_data_start..ext_data_end];
-            if extension_data.len() != TRANSFER_HOOK_EXTENSION_LEN {
-                return Err(SubscriptionsError::InvalidToken2022MintAccountData.into());
-            }
-            if extension_data.iter().any(|byte| *byte != 0) {
-                return Err(SubscriptionsError::MintHasTransferHook.into());
-            }
-        }
-
-        offset = ext_data_end;
-    }
-
-    Ok(())
-}
-
 // Private helpers to consolidate initialization logic
 
 fn init_mint_helper(
@@ -185,8 +144,8 @@ impl TokenInit for TokenAccount {
 
 /// Validation for Token-2022 mint accounts.
 ///
-/// Checks ownership by the Token-2022 program, minimum data length, the
-/// `0x01` discriminator at byte 165, and rejects configured transfer hooks.
+/// Checks ownership by the Token-2022 program and, for extended accounts, the
+/// `0x01` mint discriminator at byte 165.
 pub struct Mint2022Account;
 
 impl AccountCheck for Mint2022Account {
@@ -201,11 +160,11 @@ impl AccountCheck for Mint2022Account {
 
         let data = account.try_borrow()?;
 
-        if data[TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET].ne(&TOKEN_2022_MINT_DISCRIMINATOR) {
+        if data.len() <= TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET
+            || data[TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET].ne(&TOKEN_2022_MINT_DISCRIMINATOR)
+        {
             return Err(SubscriptionsError::InvalidToken2022MintAccountData.into());
         }
-
-        validate_mint_extensions(&data)?;
 
         Ok(())
     }

@@ -7,6 +7,7 @@ use pinocchio_token_2022::instructions::TransferChecked;
 use solana_program_pack::Pack;
 use spl_token_interface::state::Mint as TokenMint;
 
+use super::transfer_hook_util::{invoke_transfer_checked_with_hook, mint_transfer_hook_program_id};
 use crate::{
     constants::{
         TOKEN_ACCOUNT_MINT_END, TOKEN_ACCOUNT_MINT_OFFSET, TOKEN_ACCOUNT_OWNER_END, TOKEN_ACCOUNT_OWNER_OFFSET,
@@ -62,13 +63,14 @@ pub struct DelegationTransferAccounts<'a> {
     pub delegatee: &'a AccountView,
     pub event_authority: &'a AccountView,
     pub self_program: &'a AccountView,
+    pub remaining: &'a [AccountView],
 }
 
 impl<'a> TryFrom<&'a mut [AccountView]> for DelegationTransferAccounts<'a> {
     type Error = ProgramError;
 
     fn try_from(accounts: &'a mut [AccountView]) -> Result<Self, Self::Error> {
-        let [delegation_pda, subscription_authority, delegator_ata, receiver_ata, token_mint, token_program, delegatee, event_authority, self_program] =
+        let [delegation_pda, subscription_authority, delegator_ata, receiver_ata, token_mint, token_program, delegatee, event_authority, self_program, remaining @ ..] =
             accounts
         else {
             return Err(SubscriptionsError::NotEnoughAccountKeys.into());
@@ -94,6 +96,7 @@ impl<'a> TryFrom<&'a mut [AccountView]> for DelegationTransferAccounts<'a> {
             delegatee,
             event_authority,
             self_program,
+            remaining,
         })
     }
 }
@@ -116,13 +119,15 @@ pub struct TransferAccounts<'a> {
 ///
 /// Reads the PDA bump from the [`SubscriptionAuthority`] account data, verifies the
 /// delegator and mint match, validates both token accounts, and performs the
-/// `Transfer` CPI signed by the SubscriptionAuthority PDA.
+/// `TransferChecked` CPI signed by the SubscriptionAuthority PDA. For mints with
+/// an active transfer hook, `remaining` is forwarded to the CPI; otherwise ignored.
 pub fn transfer_with_delegate(
     amount: u64,
     delegator: &Address,
     mint: &Address,
     init_id: i64,
     accounts: &TransferAccounts,
+    remaining: &[AccountView],
 ) -> ProgramResult {
     if accounts.token_mint.address() != mint {
         return Err(SubscriptionsError::MintMismatch.into());
@@ -164,9 +169,9 @@ pub fn transfer_with_delegate(
         check_token_account_mint(&to_data, mint)?;
     }
 
-    let decimals = {
+    let (decimals, hook_program_id) = {
         let mint_data = accounts.token_mint.try_borrow()?;
-        get_mint_decimals(&mint_data)?
+        (get_mint_decimals(&mint_data)?, mint_transfer_hook_program_id(&mint_data)?)
     };
 
     let bump_bytes = [bump];
@@ -177,6 +182,20 @@ pub fn transfer_with_delegate(
         Seed::from(&bump_bytes),
     ];
     let signer = [Signer::from(&seeds)];
+
+    if hook_program_id.is_some() {
+        return invoke_transfer_checked_with_hook(
+            accounts.token_program.address(),
+            accounts.delegator_ata,
+            accounts.token_mint,
+            accounts.to_ata,
+            accounts.subscription_authority_pda,
+            remaining,
+            amount,
+            decimals,
+            &signer,
+        );
+    }
 
     TransferChecked {
         from: accounts.delegator_ata,

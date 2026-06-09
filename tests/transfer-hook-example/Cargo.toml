@@ -1,0 +1,21 @@
+# Minimal Token-2022 transfer-hook program used only as a CPI target in the
+# subscriptions integration tests. Standalone workspace so the parent workspace's
+# host builds never compile this cdylib (its entrypoint emits BPF-only items).
+[workspace]
+
+[package]
+name = "transfer-hook-example"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+pinocchio = "0.11.1"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
