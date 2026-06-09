@@ -25,6 +25,7 @@ export default [
     {
         ignores: [
             '**/.claude/**',
+            '**/.remember/**',
             '**/.git/**',
             '**/dist/**',
             '**/node_modules/**',

@@ -7,9 +7,12 @@ import { resolve } from 'node:path';
 import {
     type Address,
     appendTransactionMessageInstruction,
+    type ClientWithRpc,
+    createClient,
     createTransactionMessage,
     type EncodedAccount,
     generateKeyPairSigner,
+    type GetProgramAccountsApi,
     getAddressDecoder,
     getAddressEncoder,
     getMinimumBalanceForRentExemption,
@@ -24,6 +27,8 @@ import {
     signTransactionMessageWithSigners,
     type TransactionSigner,
 } from '@solana/kit';
+import { createRpcFromSvm } from '@solana/kit-plugin-litesvm';
+import { signer } from '@solana/kit-plugin-signer';
 import {
     AccountState,
     extension,
@@ -44,6 +49,7 @@ import {
     getSubscriptionAuthorityDecoder,
     getTransferFixedOverlayInstructionAsync,
     resolveTransferHookAccounts,
+    subscriptionsProgram,
 } from '../src/index.js';
 
 const SUBSCRIPTIONS_PROGRAM_ID = 'De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44' as Address;
@@ -65,28 +71,14 @@ function encodedAccount(address: Address, data: Uint8Array, owner: Address): Enc
     };
 }
 
-/** Minimal `getAccountInfo` RPC shim over LiteSVM so the SDK resolver can read accounts. */
 function liteSvmRpc(svm: LiteSVM) {
-    return {
-        getAccountInfo(address: Address) {
-            return {
-                send: async () => {
-                    const account = svm.getAccount(address);
-                    if (!account || !account.exists) return { value: null };
-                    return {
-                        value: {
-                            data: [Buffer.from(account.data).toString('base64'), 'base64'],
-                            executable: account.executable,
-                            lamports: account.lamports,
-                            owner: account.programAddress,
-                            rentEpoch: 0n,
-                            space: BigInt(account.data.length),
-                        },
-                    };
-                },
-            };
-        },
-    } as unknown as Parameters<typeof fetchMint>[0];
+    return createRpcFromSvm(svm) as unknown as Parameters<typeof fetchMint>[0];
+}
+
+/** Injects the LiteSVM RPC as `client.rpc` so the plugin client resolves hook accounts against the VM. */
+function liteSvmRpcPlugin(svm: LiteSVM) {
+    return <T extends object>(client: T): T & ClientWithRpc<GetProgramAccountsApi> =>
+        ({ ...client, rpc: liteSvmRpc(svm) }) as T & ClientWithRpc<GetProgramAccountsApi>;
 }
 
 // One seed-derived ExtraAccountMeta: PDA from seeds [Literal("counter"), AccountKey(mint)].
@@ -278,5 +270,70 @@ describe('Token-2022 transfer hook (LiteSVM)', () => {
         expect(receiverAmount).toBe(10_000_000n);
 
         expect(svm.getAccount(counter)!.data[0]).toBe(1);
+    });
+
+    it('auto-resolves hook accounts through the plugin client transferFixed', async () => {
+        const delegatee = await generateKeyPairSigner();
+        const [delegatorAta] = await findAssociatedTokenPda({
+            mint,
+            owner: payer.address,
+            tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+        });
+        const [receiverAta] = await findAssociatedTokenPda({
+            mint,
+            owner: delegatee.address,
+            tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+        });
+        svm.setAccount(
+            encodedAccount(receiverAta, hookedTokenAccount(mint, delegatee.address, 0n), TOKEN_2022_PROGRAM_ADDRESS),
+        );
+
+        const [subscriptionAuthority] = await findSubscriptionAuthorityPda({ tokenMint: mint, user: payer.address });
+        const { initId } = getSubscriptionAuthorityDecoder().decode(svm.getAccount(subscriptionAuthority)!.data);
+
+        await send(
+            svm,
+            payer,
+            await getCreateFixedDelegationOverlayInstructionAsync({
+                amount: 50_000_000n,
+                delegatee: delegatee.address,
+                delegator: payer,
+                expectedSubscriptionAuthorityInitId: initId,
+                expiryTs: BigInt(Math.floor(Date.now() / 1000) + 86_400),
+                nonce: 1n,
+                tokenMint: mint,
+            }),
+        );
+
+        const [delegationPda] = await findFixedDelegationPda({
+            delegatee: delegatee.address,
+            delegator: payer.address,
+            nonce: 1n,
+            subscriptionAuthority,
+        });
+
+        const client = createClient().use(signer(delegatee)).use(liteSvmRpcPlugin(svm)).use(subscriptionsProgram());
+
+        const counterBefore = svm.getAccount(counter)!.data[0];
+        const instruction = await client.subscriptions.instructions.transferFixed({
+            amount: 10_000_000n,
+            delegationPda,
+            delegator: payer.address,
+            delegatorAta,
+            receiverAta,
+            tokenMint: mint,
+            tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+        });
+
+        await send(svm, payer, instruction);
+
+        const receiverData = svm.getAccount(receiverAta)!.data;
+        const receiverAmount = new DataView(
+            receiverData.buffer,
+            receiverData.byteOffset,
+            receiverData.byteLength,
+        ).getBigUint64(64, true);
+        expect(receiverAmount).toBe(10_000_000n);
+        expect(svm.getAccount(counter)!.data[0]).toBe(counterBefore + 1);
     });
 });

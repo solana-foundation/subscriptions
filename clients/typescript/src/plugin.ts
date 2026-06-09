@@ -190,7 +190,9 @@ export type TransferDelegationInput = WithProgramAddress & {
     receiverAta: Address;
     tokenMint: Address;
     tokenProgram: Address;
-    /** Auto-resolved by the plugin client; supply to override or for the standalone overlay. */
+    /** Token-2022 transfer-hook accounts. Leave unset: the plugin client resolves
+     * them from the mint's hook. Set to override resolution, or when calling the
+     * overlay instruction directly (which does not auto-resolve). */
     transferHookAccounts?: TransferHookAccount[];
 };
 
@@ -203,7 +205,9 @@ export type TransferSubscriptionInput = WithProgramAddress & {
     subscriptionPda: Address;
     tokenMint: Address;
     tokenProgram: Address;
-    /** Auto-resolved by the plugin client; supply to override or for the standalone overlay. */
+    /** Token-2022 transfer-hook accounts. Leave unset: the plugin client resolves
+     * them from the mint's hook. Set to override resolution, or when calling the
+     * overlay instruction directly (which does not auto-resolve). */
     transferHookAccounts?: TransferHookAccount[];
 };
 

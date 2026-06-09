@@ -169,7 +169,7 @@ export async function resolveTransferHookAccounts(
     rpc: ResolveRpc,
     args: ResolveTransferHookArgs,
 ): Promise<TransferHookAccount[]> {
-    if (args.transferHookAccounts) return args.transferHookAccounts;
+    if (args.transferHookAccounts?.length) return args.transferHookAccounts;
     if (args.tokenProgram !== TOKEN_2022_PROGRAM_ADDRESS) return [];
 
     const { data } = await fetchMint(rpc, args.mint);

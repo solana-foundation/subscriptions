@@ -51,6 +51,7 @@
     "devDependencies": {
         "@solana-program/system": "^0.12.0",
         "@solana/kit": "^6.9.0",
+        "@solana/kit-plugin-litesvm": "^0.10.0",
         "@solana/web3.js": "^1.98.4",
         "@sqds/multisig": "^2.1.4",
         "@swig-wallet/kit": "^2.0.0",
