@@ -71,6 +71,7 @@ pub fn process(accounts: &mut [AccountView], transfer: &TransferData) -> Program
             subscription_authority_pda: accounts_struct.subscription_authority,
             token_program: accounts_struct.token_program,
         },
+        accounts_struct.remaining,
     )?;
 
     let event = FixedTransferEvent::new(

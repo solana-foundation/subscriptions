@@ -118,6 +118,7 @@ pub fn process(accounts: &mut [AccountView], transfer_data: &TransferData) -> Pr
             subscription_authority_pda: accounts_struct.subscription_authority,
             token_program: accounts_struct.token_program,
         },
+        accounts_struct.remaining,
     )?;
 
     let period_end_ts = {
@@ -158,13 +159,14 @@ pub struct TransferSubscriptionAccounts<'a> {
     pub token_program: &'a AccountView,
     pub event_authority: &'a AccountView,
     pub self_program: &'a AccountView,
+    pub remaining: &'a [AccountView],
 }
 
 impl<'a> TryFrom<&'a mut [AccountView]> for TransferSubscriptionAccounts<'a> {
     type Error = ProgramError;
 
     fn try_from(accounts: &'a mut [AccountView]) -> Result<Self, Self::Error> {
-        let [subscription_pda, plan_pda, subscription_authority, delegator_ata, receiver_ata, caller, token_mint, token_program, event_authority, self_program] =
+        let [subscription_pda, plan_pda, subscription_authority, delegator_ata, receiver_ata, caller, token_mint, token_program, event_authority, self_program, remaining @ ..] =
             accounts
         else {
             return Err(SubscriptionsError::NotEnoughAccountKeys.into());
@@ -195,6 +197,7 @@ impl<'a> TryFrom<&'a mut [AccountView]> for TransferSubscriptionAccounts<'a> {
             token_program,
             event_authority,
             self_program,
+            remaining,
         })
     }
 }

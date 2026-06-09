@@ -1057,6 +1057,12 @@
         "name": "staleSubscriptionAuthority"
       },
       {
+        "code": 137,
+        "kind": "errorNode",
+        "message": "Too many transfer hook accounts provided",
+        "name": "transferHookTooManyAccounts"
+      },
+      {
         "code": 300,
         "kind": "errorNode",
         "message": "Transfer amount exceeds delegation limit",

@@ -47,6 +47,11 @@ export {
     type TransferSubscriptionInput,
     type UpdatePlanInput,
 } from './plugin.js';
+export {
+    resolveTransferHookAccounts,
+    type ResolveTransferHookArgs,
+    type TransferHookAccount,
+} from './transfer-hook.js';
 // Domain types
 export type { Delegation } from './types/delegation.js';
 export type { PlanWithAddress } from './types/plan.js';

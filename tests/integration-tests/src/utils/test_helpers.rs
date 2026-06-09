@@ -30,6 +30,10 @@ use spl_token_2022_interface::{
 };
 
 use solana_instruction::AccountMeta;
+#[cfg(test)]
+use spl_tlv_account_resolution::{account::ExtraAccountMeta, state::ExtraAccountMetaList};
+#[cfg(test)]
+use spl_transfer_hook_interface::instruction::ExecuteInstruction;
 
 use crate::{
     event_engine::event_authority_pda,
@@ -224,6 +228,60 @@ pub fn set_transfer_hook_config(
         extension.program_id = program_id.try_into().unwrap();
     }
     litesvm.set_account(mint, account).unwrap();
+}
+
+pub const TRANSFER_HOOK_EXAMPLE_PROGRAM_ID: Pubkey = Pubkey::new_from_array([42u8; 32]);
+
+pub fn load_transfer_hook_example(litesvm: &mut LiteSVM) {
+    let so_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../transfer-hook-example/target/deploy/transfer_hook_example.so");
+    litesvm.add_program_from_file(TRANSFER_HOOK_EXAMPLE_PROGRAM_ID.to_bytes(), so_path).unwrap();
+}
+
+#[cfg(test)]
+pub fn install_transfer_hook_extra_metas(litesvm: &mut LiteSVM, mint: Pubkey) -> (Pubkey, Pubkey) {
+    let program_id = TRANSFER_HOOK_EXAMPLE_PROGRAM_ID;
+    let (validation_pda, _) = Pubkey::find_program_address(&[b"extra-account-metas", mint.as_ref()], &program_id);
+    let counter = Pubkey::new_unique();
+
+    let meta = ExtraAccountMeta {
+        discriminator: 0,
+        address_config: counter.to_bytes(),
+        is_signer: false.into(),
+        is_writable: true.into(),
+    };
+    let mut validation_data = vec![0u8; ExtraAccountMetaList::size_of(1).unwrap()];
+    ExtraAccountMetaList::init::<ExecuteInstruction>(&mut validation_data, &[meta]).unwrap();
+
+    let validation_lamports = litesvm.minimum_balance_for_rent_exemption(validation_data.len());
+    litesvm
+        .set_account(
+            validation_pda,
+            Account {
+                lamports: validation_lamports,
+                data: validation_data,
+                owner: program_id,
+                executable: false,
+                rent_epoch: 0,
+            },
+        )
+        .unwrap();
+
+    let counter_lamports = litesvm.minimum_balance_for_rent_exemption(1);
+    litesvm
+        .set_account(
+            counter,
+            Account {
+                lamports: counter_lamports,
+                data: vec![0u8; 1],
+                owner: program_id,
+                executable: false,
+                rent_epoch: 0,
+            },
+        )
+        .unwrap();
+
+    (validation_pda, counter)
 }
 
 pub fn init_ata(litesvm: &mut LiteSVM, mint: Pubkey, owner: Pubkey, amount: u64) -> Pubkey {
@@ -485,6 +543,7 @@ pub struct TransferDelegation<'a> {
     amount: u64,
     source: Option<Pubkey>,
     receiver: Option<Pubkey>,
+    remaining: Vec<AccountMeta>,
 }
 
 impl<'a> TransferDelegation<'a> {
@@ -495,11 +554,26 @@ impl<'a> TransferDelegation<'a> {
         mint: Pubkey,
         delegation_pda: Pubkey,
     ) -> Self {
-        Self { litesvm, signer, delegator, mint, delegation_pda, amount: 0, source: None, receiver: None }
+        Self {
+            litesvm,
+            signer,
+            delegator,
+            mint,
+            delegation_pda,
+            amount: 0,
+            source: None,
+            receiver: None,
+            remaining: Vec::new(),
+        }
     }
 
     pub fn amount(mut self, amount: u64) -> Self {
         self.amount = amount;
+        self
+    }
+
+    pub fn remaining(mut self, remaining: Vec<AccountMeta>) -> Self {
+        self.remaining = remaining;
         self
     }
 
@@ -538,19 +612,22 @@ impl<'a> TransferDelegation<'a> {
 
         let event_authority = Pubkey::new_from_array(event_authority_pda::ID.to_bytes());
 
+        let mut accounts = vec![
+            AccountMeta::new(self.delegation_pda, false),
+            AccountMeta::new(subscription_authority_pda, false),
+            AccountMeta::new(delegator_ata, false),
+            AccountMeta::new(receiver_ata, false),
+            AccountMeta::new_readonly(self.mint, false),
+            AccountMeta::new_readonly(token_program, false),
+            AccountMeta::new_readonly(self.signer.pubkey(), true),
+            AccountMeta::new_readonly(event_authority, false),
+            AccountMeta::new_readonly(PROGRAM_ID, false),
+        ];
+        accounts.extend(self.remaining);
+
         let ix = Instruction {
             program_id: PROGRAM_ID,
-            accounts: vec![
-                AccountMeta::new(self.delegation_pda, false),
-                AccountMeta::new(subscription_authority_pda, false),
-                AccountMeta::new(delegator_ata, false),
-                AccountMeta::new(receiver_ata, false),
-                AccountMeta::new_readonly(self.mint, false),
-                AccountMeta::new_readonly(token_program, false),
-                AccountMeta::new_readonly(self.signer.pubkey(), true),
-                AccountMeta::new_readonly(event_authority, false),
-                AccountMeta::new_readonly(PROGRAM_ID, false),
-            ],
+            accounts,
             data: [
                 vec![discriminator],
                 self.amount.to_le_bytes().to_vec(),

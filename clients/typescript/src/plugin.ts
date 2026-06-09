@@ -85,6 +85,7 @@ import {
     type SubscriptionsPluginRequirements as GeneratedSubscriptionsPluginRequirements,
     subscriptionsProgram as generatedSubscriptionsProgram,
 } from './generated/index.js';
+import { resolveTransferHookAccounts, type TransferHookAccount } from './transfer-hook.js';
 import type { Delegation } from './types/delegation.js';
 import type { PlanWithAddress } from './types/plan.js';
 import { assertMetadataUri, assertPositive, assertSafeU64, padPlanDestinations, padPlanPullers } from './validators.js';
@@ -196,6 +197,10 @@ export type TransferDelegationInput = WithProgramAddress & {
     receiverAta: Address;
     tokenMint: Address;
     tokenProgram: Address;
+    /** Token-2022 transfer-hook accounts. Leave unset: the plugin client resolves
+     * them from the mint's hook. Set to override resolution, or when calling the
+     * overlay instruction directly (which does not auto-resolve). */
+    transferHookAccounts?: TransferHookAccount[];
 };
 
 export type TransferSubscriptionInput = WithProgramAddress & {
@@ -207,6 +212,10 @@ export type TransferSubscriptionInput = WithProgramAddress & {
     subscriptionPda: Address;
     tokenMint: Address;
     tokenProgram: Address;
+    /** Token-2022 transfer-hook accounts. Leave unset: the plugin client resolves
+     * them from the mint's hook. Set to override resolution, or when calling the
+     * overlay instruction directly (which does not auto-resolve). */
+    transferHookAccounts?: TransferHookAccount[];
 };
 
 export type CreatePlanInput = WithProgramAddress & {
@@ -454,22 +463,25 @@ async function getTransferDelegationOverlayInstructionAsync(
         { tokenMint: input.tokenMint, user: input.delegator },
         pdaConfig(input.programAddress),
     );
-    return getInstruction(
-        {
-            delegatee: input.delegatee,
-            delegationPda: input.delegationPda,
-            delegatorAta: input.delegatorAta,
-            receiverAta: input.receiverAta,
-            subscriptionAuthority,
-            tokenMint: input.tokenMint,
-            tokenProgram: input.tokenProgram,
-            transferData: {
-                amount: input.amount,
-                delegator: input.delegator,
-                mint: input.tokenMint,
+    return withTrailing(
+        getInstruction(
+            {
+                delegatee: input.delegatee,
+                delegationPda: input.delegationPda,
+                delegatorAta: input.delegatorAta,
+                receiverAta: input.receiverAta,
+                subscriptionAuthority,
+                tokenMint: input.tokenMint,
+                tokenProgram: input.tokenProgram,
+                transferData: {
+                    amount: input.amount,
+                    delegator: input.delegator,
+                    mint: input.tokenMint,
+                },
             },
-        },
-        pdaConfig(input.programAddress),
+            pdaConfig(input.programAddress),
+        ),
+        input.transferHookAccounts ?? [],
     );
 }
 
@@ -494,23 +506,26 @@ export async function getTransferSubscriptionOverlayInstructionAsync(
         owner: input.delegator,
         tokenProgram: input.tokenProgram,
     });
-    return getTransferSubscriptionInstruction(
-        {
-            caller: input.caller,
-            delegatorAta,
-            planPda: input.planPda,
-            receiverAta: input.receiverAta,
-            subscriptionAuthority,
-            subscriptionPda: input.subscriptionPda,
-            tokenMint: input.tokenMint,
-            tokenProgram: input.tokenProgram,
-            transferData: {
-                amount: input.amount,
-                delegator: input.delegator,
-                mint: input.tokenMint,
+    return withTrailing(
+        getTransferSubscriptionInstruction(
+            {
+                caller: input.caller,
+                delegatorAta,
+                planPda: input.planPda,
+                receiverAta: input.receiverAta,
+                subscriptionAuthority,
+                subscriptionPda: input.subscriptionPda,
+                tokenMint: input.tokenMint,
+                tokenProgram: input.tokenProgram,
+                transferData: {
+                    amount: input.amount,
+                    delegator: input.delegator,
+                    mint: input.tokenMint,
+                },
             },
-        },
-        pdaConfig(input.programAddress),
+            pdaConfig(input.programAddress),
+        ),
+        input.transferHookAccounts ?? [],
     );
 }
 
@@ -751,6 +766,22 @@ export function subscriptionsProgram() {
                 return subscriptionAuthority.data.initId;
             };
 
+            const resolveDelegationHookAccounts = async (input: Omit<TransferDelegationInput, 'delegatee'>) => {
+                const [subscriptionAuthority] = await findSubscriptionAuthorityPda(
+                    { tokenMint: input.tokenMint, user: input.delegator },
+                    pdaConfig(input.programAddress),
+                );
+                return await resolveTransferHookAccounts(c.rpc, {
+                    amount: input.amount,
+                    authority: subscriptionAuthority,
+                    destination: input.receiverAta,
+                    mint: input.tokenMint,
+                    source: input.delegatorAta,
+                    tokenProgram: input.tokenProgram,
+                    transferHookAccounts: input.transferHookAccounts,
+                });
+            };
+
             const instructions: SubscriptionsPluginInstructions = {
                 cancelSubscription: input =>
                     addSelfPlanAndSendFunctions(
@@ -921,26 +952,51 @@ export function subscriptionsProgram() {
                 transferFixed: input =>
                     addSelfPlanAndSendFunctions(
                         client,
-                        getTransferFixedOverlayInstructionAsync({
-                            ...input,
-                            delegatee: input.delegatee ?? client.identity,
-                        }),
+                        (async () =>
+                            await getTransferFixedOverlayInstructionAsync({
+                                ...input,
+                                delegatee: input.delegatee ?? client.identity,
+                                transferHookAccounts: await resolveDelegationHookAccounts(input),
+                            }))(),
                     ),
                 transferRecurring: input =>
                     addSelfPlanAndSendFunctions(
                         client,
-                        getTransferRecurringOverlayInstructionAsync({
-                            ...input,
-                            delegatee: input.delegatee ?? client.identity,
-                        }),
+                        (async () =>
+                            await getTransferRecurringOverlayInstructionAsync({
+                                ...input,
+                                delegatee: input.delegatee ?? client.identity,
+                                transferHookAccounts: await resolveDelegationHookAccounts(input),
+                            }))(),
                     ),
                 transferSubscription: input =>
                     addSelfPlanAndSendFunctions(
                         client,
-                        getTransferSubscriptionOverlayInstructionAsync({
-                            ...input,
-                            caller: input.caller ?? client.identity,
-                        }),
+                        (async () => {
+                            const [subscriptionAuthority] = await findSubscriptionAuthorityPda(
+                                { tokenMint: input.tokenMint, user: input.delegator },
+                                pdaConfig(input.programAddress),
+                            );
+                            const [delegatorAta] = await findAssociatedTokenPda({
+                                mint: input.tokenMint,
+                                owner: input.delegator,
+                                tokenProgram: input.tokenProgram,
+                            });
+                            const transferHookAccounts = await resolveTransferHookAccounts(c.rpc, {
+                                amount: input.amount,
+                                authority: subscriptionAuthority,
+                                destination: input.receiverAta,
+                                mint: input.tokenMint,
+                                source: delegatorAta,
+                                tokenProgram: input.tokenProgram,
+                                transferHookAccounts: input.transferHookAccounts,
+                            });
+                            return await getTransferSubscriptionOverlayInstructionAsync({
+                                ...input,
+                                caller: input.caller ?? client.identity,
+                                transferHookAccounts,
+                            });
+                        })(),
                     ),
                 updatePlan: input =>
                     addSelfPlanAndSendFunctions(

@@ -83,6 +83,7 @@ pub fn process(accounts: &mut [AccountView], transfer_data: &TransferData) -> Pr
             subscription_authority_pda: accounts_struct.subscription_authority,
             token_program: accounts_struct.token_program,
         },
+        accounts_struct.remaining,
     )?;
 
     let period_end_ts = period_start + period_length_s as i64;

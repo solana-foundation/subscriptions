@@ -52,6 +52,7 @@ impl TryFrom<u32> for SubscriptionsError {
             134 => Ok(Self::MigrationRequired),
             135 => Ok(Self::DelegationAlreadyExists),
             136 => Ok(Self::StaleSubscriptionAuthority),
+            137 => Ok(Self::TransferHookTooManyAccounts),
             // Fixed delegation errors (300-399)
             300 => Ok(Self::AmountExceedsLimit),
             301 => Ok(Self::FixedDelegationExpiryInPast),
@@ -182,6 +183,8 @@ pub enum SubscriptionsError {
     DelegationAlreadyExists,
     #[error("Delegation init_id does not match current SubscriptionAuthority")]
     StaleSubscriptionAuthority,
+    #[error("Too many transfer hook accounts provided")]
+    TransferHookTooManyAccounts,
 
     // --- Fixed delegation errors (300--399) ---
     #[error("Transfer amount exceeds delegation limit")]

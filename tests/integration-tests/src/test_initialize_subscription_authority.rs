@@ -179,7 +179,7 @@ fn initialize_subscription_authority_token_2022(
 }
 
 #[test]
-fn initialize_subscription_authority_rejects_transfer_hook_with_program_id() {
+fn initialize_subscription_authority_allows_active_transfer_hook() {
     let (litesvm, user) = &mut setup();
 
     let mint = init_mint(
@@ -191,13 +191,17 @@ fn initialize_subscription_authority_rejects_transfer_hook_with_program_id() {
         &[ExtensionType::TransferHook],
     );
     set_transfer_hook_config(litesvm, mint, None, Some(Pubkey::new_unique()));
-    init_ata(litesvm, mint, user.pubkey(), 1_000_000);
+    let user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
 
-    initialize_subscription_authority_action(litesvm, user, mint).0.assert_err(SubscriptionsError::MintHasTransferHook);
+    let (res, _pda, _bump) = initialize_subscription_authority_action(litesvm, user, mint);
+    res.assert_ok();
+
+    let ata_account = fetch_account::<spl_token_2022_interface::state::Account>(litesvm, &user_ata);
+    assert!(ata_account.delegate.is_some());
 }
 
 #[test]
-fn initialize_subscription_authority_rejects_mutable_transfer_hook() {
+fn initialize_subscription_authority_allows_mutable_inactive_transfer_hook() {
     let (litesvm, user) = &mut setup();
 
     let mint = init_mint(
@@ -209,9 +213,13 @@ fn initialize_subscription_authority_rejects_mutable_transfer_hook() {
         &[ExtensionType::TransferHook],
     );
     set_transfer_hook_config(litesvm, mint, Some(user.pubkey()), None);
-    init_ata(litesvm, mint, user.pubkey(), 1_000_000);
+    let user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
 
-    initialize_subscription_authority_action(litesvm, user, mint).0.assert_err(SubscriptionsError::MintHasTransferHook);
+    let (res, _pda, _bump) = initialize_subscription_authority_action(litesvm, user, mint);
+    res.assert_ok();
+
+    let ata_account = fetch_account::<spl_token_2022_interface::state::Account>(litesvm, &user_ata);
+    assert!(ata_account.delegate.is_some());
 }
 
 #[test]

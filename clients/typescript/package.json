@@ -40,6 +40,7 @@
     },
     "dependencies": {
         "@solana-program/token": "^0.13.0",
+        "@solana-program/token-2022": "^0.9.0",
         "@solana/kit-plugin-rpc": "^0.11.1",
         "@solana/kit-plugin-signer": "^0.10.0",
         "@solana/program-client-core": "^6.9.0"
@@ -49,12 +50,13 @@
     },
     "devDependencies": {
         "@solana-program/system": "^0.12.0",
-        "@solana-program/token-2022": "^0.9.0",
         "@solana/kit": "^6.9.0",
+        "@solana/kit-plugin-litesvm": "^0.10.0",
         "@solana/web3.js": "^1.98.4",
         "@sqds/multisig": "^2.1.4",
         "@swig-wallet/kit": "^2.0.0",
         "@types/node": "^25.7.0",
+        "litesvm": "1.1.0",
         "tsup": "^8.3.0",
         "tweetnacl": "^1.0.3",
         "typescript": "^5.7.0",
