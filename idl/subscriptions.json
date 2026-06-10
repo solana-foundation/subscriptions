@@ -1063,6 +1063,12 @@
         "name": "transferHookTooManyAccounts"
       },
       {
+        "code": 138,
+        "kind": "errorNode",
+        "message": "Transfer hook validation account missing from provided accounts",
+        "name": "transferHookValidationAccountMissing"
+      },
+      {
         "code": 300,
         "kind": "errorNode",
         "message": "Transfer amount exceeds delegation limit",
