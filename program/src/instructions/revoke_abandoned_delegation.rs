@@ -80,7 +80,10 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
             true
         } else {
             let authority_data = accounts.subscription_authority.try_borrow()?;
-            SubscriptionAuthority::load(&authority_data)?.init_id != recorded_init_id
+            match SubscriptionAuthority::load(&authority_data) {
+                Ok(authority) => authority.init_id != recorded_init_id,
+                Err(_) => true,
+            }
         };
 
         if !authority_is_dead {
