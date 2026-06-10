@@ -62,8 +62,10 @@ pub fn process(accounts: &mut [AccountView]) -> ProgramResult {
                     .checked_add(1)
                     .and_then(|p| p.checked_mul(period_length_s))
                     .and_then(|offset| period_start.checked_add(offset))
-                    // Cap at plan end so the subscriber can revoke as soon as the plan expires.
-                    .map(|ts| if plan.data.end_ts != 0 { ts.min(plan.data.end_ts) } else { ts })
+                    // end_ts is inclusive (the merchant may pull through end_ts), so cap one
+                    // second past it: revoke unlocks only once current_ts > end_ts, matching the
+                    // plan-expiry boundary used everywhere else.
+                    .map(|ts| if plan.data.end_ts != 0 { ts.min(plan.data.end_ts.saturating_add(1)) } else { ts })
                     .ok_or::<ProgramError>(SubscriptionsError::ArithmeticOverflow.into())?;
             }
         } else {

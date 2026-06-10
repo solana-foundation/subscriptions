@@ -3,8 +3,9 @@ use pinocchio::{account::AccountView, entrypoint, Address, ProgramResult};
 use crate::instructions::{
     cancel_subscription, close_subscription_authority, create_fixed_delegation, create_plan,
     create_recurring_delegation, delete_plan, emit_event, initialize_subscription_authority, resume_subscription,
-    revoke_delegation, revoke_subscription_authority, subscribe, transfer_fixed_delegation,
-    transfer_recurring_delegation, transfer_subscription, update_plan, SubscriptionsInstruction,
+    revoke_abandoned_delegation, revoke_delegation, revoke_subscription_authority, subscribe,
+    transfer_fixed_delegation, transfer_recurring_delegation, transfer_subscription, update_plan,
+    SubscriptionsInstruction,
 };
 
 entrypoint!(process_instruction);
@@ -34,6 +35,7 @@ pub fn process_instruction(
         SubscriptionsInstruction::CancelSubscription => cancel_subscription::process(accounts),
         SubscriptionsInstruction::ResumeSubscription => resume_subscription::process(accounts),
         SubscriptionsInstruction::RevokeSubscriptionAuthority => revoke_subscription_authority::process(accounts),
+        SubscriptionsInstruction::RevokeAbandonedDelegation => revoke_abandoned_delegation::process(accounts),
         SubscriptionsInstruction::EmitEvent => emit_event::process(program_id, accounts),
     }
 }

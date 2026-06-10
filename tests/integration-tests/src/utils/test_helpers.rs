@@ -42,8 +42,8 @@ use crate::{
     instructions::{
         cancel_subscription, close_subscription_authority, create_fixed_delegation, create_plan,
         create_recurring_delegation, delete_plan, initialize_subscription_authority, resume_subscription,
-        revoke_delegation, revoke_subscription_authority, subscribe, transfer_fixed_delegation,
-        transfer_recurring_delegation, transfer_subscription, update_plan,
+        revoke_abandoned_delegation, revoke_delegation, revoke_subscription_authority, subscribe,
+        transfer_fixed_delegation, transfer_recurring_delegation, transfer_subscription, update_plan,
     },
     state::common::PlanStatus,
     tests::{
@@ -769,6 +769,63 @@ impl<'a> RevokeSubscriptionAuthority<'a> {
             Instruction { program_id: PROGRAM_ID, accounts, data: vec![*revoke_subscription_authority::DISCRIMINATOR] };
 
         build_and_send_transaction(self.litesvm, &[self.user], &self.user.pubkey(), &ix)
+    }
+}
+
+pub struct RevokeAbandonedDelegation<'a> {
+    litesvm: &'a mut LiteSVM,
+    payer: &'a Keypair,
+    delegator: Pubkey,
+    mint: Pubkey,
+    delegatee: Pubkey,
+    nonce: u64,
+    custom_pda: Option<Pubkey>,
+    custom_authority: Option<Pubkey>,
+}
+
+impl<'a> RevokeAbandonedDelegation<'a> {
+    pub fn new(
+        litesvm: &'a mut LiteSVM,
+        payer: &'a Keypair,
+        delegator: Pubkey,
+        mint: Pubkey,
+        delegatee: Pubkey,
+    ) -> Self {
+        Self { litesvm, payer, delegator, mint, delegatee, nonce: 0, custom_pda: None, custom_authority: None }
+    }
+
+    pub fn nonce(mut self, nonce: u64) -> Self {
+        self.nonce = nonce;
+        self
+    }
+
+    pub fn pda(mut self, pda: Pubkey) -> Self {
+        self.custom_pda = Some(pda);
+        self
+    }
+
+    pub fn authority(mut self, authority: Pubkey) -> Self {
+        self.custom_authority = Some(authority);
+        self
+    }
+
+    #[allow(clippy::result_large_err)]
+    pub fn execute(self) -> TransactionResult {
+        let (derived_authority, _) = get_subscription_authority_pda(&self.delegator, &self.mint);
+        let subscription_authority_pda = self.custom_authority.unwrap_or(derived_authority);
+        let (derived_pda, _) = get_delegation_pda(&derived_authority, &self.delegator, &self.delegatee, self.nonce);
+        let delegation_pda = self.custom_pda.unwrap_or(derived_pda);
+
+        let accounts = vec![
+            AccountMeta::new(self.payer.pubkey(), true),
+            AccountMeta::new(delegation_pda, false),
+            AccountMeta::new_readonly(subscription_authority_pda, false),
+        ];
+
+        let ix =
+            Instruction { program_id: PROGRAM_ID, accounts, data: vec![*revoke_abandoned_delegation::DISCRIMINATOR] };
+
+        build_and_send_transaction(self.litesvm, &[self.payer], &self.payer.pubkey(), &ix)
     }
 }
 

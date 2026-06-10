@@ -26,9 +26,9 @@ jobs:
       - name: Guard allowed source branch for release publish
         run: |
           case "${{ github.ref }}" in
-            refs/heads/main|refs/heads/hotfix/*) ;;
+            refs/heads/main) ;;
             *)
-              echo "::error::Publish TypeScript Client must be run from main or hotfix/*. Current ref: ${{ github.ref }}"
+              echo "::error::Publish TypeScript Client must be run from main. Current ref: ${{ github.ref }}"
               exit 1
               ;;
           esac

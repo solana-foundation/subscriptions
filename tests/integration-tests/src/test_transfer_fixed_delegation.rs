@@ -224,6 +224,39 @@ fn test_fixed_transfer_token_2022_active_transfer_hook() {
 }
 
 #[test]
+fn active_hook_transfer_without_validation_pda_fails() {
+    let (mut litesvm, alice) = setup();
+    load_transfer_hook_example(&mut litesvm);
+    let bob = Keypair::new();
+    litesvm.airdrop(&bob.pubkey(), 10_000_000).unwrap();
+
+    let mint = init_mint(
+        &mut litesvm,
+        TOKEN_2022_PROGRAM_ID,
+        MINT_DECIMALS,
+        1_000_000_000,
+        Some(alice.pubkey()),
+        &[ExtensionType::TransferHook],
+    );
+    set_transfer_hook_config(&mut litesvm, mint, Some(alice.pubkey()), Some(TRANSFER_HOOK_EXAMPLE_PROGRAM_ID));
+    install_transfer_hook_extra_metas(&mut litesvm, mint);
+
+    let _alice_ata = init_ata(&mut litesvm, mint, alice.pubkey(), 100_000_000);
+    let _bob_ata = init_ata(&mut litesvm, mint, bob.pubkey(), 0);
+
+    initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
+    let (res, delegation_pda) = CreateDelegation::new(&mut litesvm, &alice, mint, bob.pubkey())
+        .fixed(50_000_000, current_ts() + days(1) as i64);
+    res.assert_ok();
+
+    TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
+        .amount(10_000_000)
+        .remaining(vec![AccountMeta::new_readonly(TRANSFER_HOOK_EXAMPLE_PROGRAM_ID, false)])
+        .fixed()
+        .assert_err(SubscriptionsError::TransferHookValidationAccountMissing);
+}
+
+#[test]
 fn test_fixed_transfer_multiple_times() {
     let amount: u64 = 50_000_000;
     let expiry_s: i64 = current_ts() + days(1) as i64;

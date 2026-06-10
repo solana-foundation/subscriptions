@@ -1584,7 +1584,7 @@ describe('Subscription Security', () => {
             .sendTransaction();
 
         const subData = (await fetchSubscriptionDelegation(t.rpc, subscriptionPda)).data;
-        expect(subData.expiresAtTs).toBeLessThanOrEqual(endTs);
+        expect(subData.expiresAtTs).toBe(endTs + 1n);
 
         const signature = await t.client.subscriptions.instructions
             .revokeSubscription({

@@ -505,7 +505,10 @@ Executes a transfer for a recurring delegation.
 
 ## Token-2022 Extension Policy
 
-`Mint2022Account::check` rejects only mints with a configured `TransferHook`
-(`authority` or `program_id` set). An inert `TransferHook` (both fields unset) is
-allowed: with no hook authority, `update_transfer_hook` cannot be invoked, so the hook
-stays permanently dormant.
+`Mint2022Account::check` validates that the account is a Token-2022 mint but does not
+reject any extension. Mints with a configured `TransferHook` are supported: delegated
+transfers (`transfer_fixed` / `transfer_recurring` / `transfer_subscription`) forward the
+caller-supplied hook accounts into the Token-2022 `TransferChecked` CPI, which invokes the
+hook program. `invoke_transfer_checked_with_hook` requires the hook's `ExtraAccountMetaList`
+validation PDA among the supplied accounts, so an active hook's configured policy context is
+always enforced.
