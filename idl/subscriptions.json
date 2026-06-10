@@ -2656,6 +2656,62 @@
         ],
         "kind": "instructionNode",
         "name": "revokeSubscriptionAuthority"
+      },
+      {
+        "accounts": [
+          {
+            "docs": [
+              "The recorded payer reclaiming rent"
+            ],
+            "isSigner": true,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "payer"
+          },
+          {
+            "docs": [
+              "The fixed or recurring delegation PDA to close"
+            ],
+            "isSigner": false,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "delegationAccount"
+          },
+          {
+            "docs": [
+              "The delegation's recorded SubscriptionAuthority PDA (may be closed)"
+            ],
+            "isSigner": false,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "subscriptionAuthority"
+          }
+        ],
+        "arguments": [
+          {
+            "defaultValue": {
+              "kind": "numberValueNode",
+              "number": 15
+            },
+            "defaultValueStrategy": "omitted",
+            "kind": "instructionArgumentNode",
+            "name": "discriminator",
+            "type": {
+              "endian": "le",
+              "format": "u8",
+              "kind": "numberTypeNode"
+            }
+          }
+        ],
+        "discriminators": [
+          {
+            "kind": "fieldDiscriminatorNode",
+            "name": "discriminator",
+            "offset": 0
+          }
+        ],
+        "kind": "instructionNode",
+        "name": "revokeAbandonedDelegation"
       }
     ],
     "kind": "programNode",
