@@ -16,7 +16,7 @@ Supported delegation models:
 
 The program emits on-chain events via self-CPI for indexer integration (subscription created/cancelled, fixed/recurring/subscription transfers).
 
-Token-2022 mints are supported. The only extension rejected is a configured `TransferHook` (where the hook `authority` or `program_id` is set). An inert `TransferHook` (both unset, therefore permanently immutable) is allowed.
+Token-2022 mints are supported, including mints with a configured `TransferHook`. On delegated transfers the program forwards the mint's runtime hook accounts into the Token-2022 `TransferChecked` CPI, which executes the configured hook program. The hook's `ExtraAccountMetaList` validation PDA is required among those accounts, so an active hook's configured policy context is always enforced.
 
 Delegation accounts include a version field and the program implements a three-tier migration framework (lazy in-place update, explicit migrate instruction, revoke/recreate) for future upgrades. See [ADR-003](docs/003-versioning-migration-architecture.md) for details.
 
