@@ -24,9 +24,10 @@ pub struct CreateRecurringDelegationData {
     pub amount_per_period: u64,
     /// Length of each period in seconds (must be > 0 and <= [`MAX_DELEGATION_PERIOD_SECS`]).
     pub period_length_s: u64,
-    /// Unix timestamp when the first period begins.
+    /// Unix timestamp when the first period begins, or 0 to start when the
+    /// transaction lands (requires a non-zero `expiry_ts`).
     pub start_ts: i64,
-    /// Unix timestamp after which the delegation expires.
+    /// Unix timestamp after which the delegation expires (0 = never).
     pub expiry_ts: i64,
     /// SubscriptionAuthority generation the delegator approved.
     pub expected_subscription_authority_init_id: i64,
@@ -45,17 +46,29 @@ impl CreateRecurringDelegationData {
     }
 
     /// Validates the instruction data against the current clock time.
+    ///
+    /// A `start_ts` of 0 means the delegation starts at `current_time`; that
+    /// form requires a non-zero `expiry_ts` so a held transaction (e.g. signed
+    /// with a durable nonce) cannot activate the delegation unboundedly late.
     pub fn validate(&self, current_time: i64) -> Result<(), SubscriptionsError> {
-        if self.start_ts < current_time.saturating_sub(TIME_DRIFT_ALLOWED_SECS) {
-            return Err(SubscriptionsError::RecurringDelegationStartTimeInPast);
+        if self.start_ts == 0 {
+            if self.expiry_ts == 0 {
+                return Err(SubscriptionsError::RecurringDelegationStartOnLandingRequiresExpiry);
+            }
+            if current_time >= self.expiry_ts {
+                return Err(SubscriptionsError::RecurringDelegationStartTimeGreaterThanExpiry);
+            }
+        } else {
+            if self.start_ts < current_time.saturating_sub(TIME_DRIFT_ALLOWED_SECS) {
+                return Err(SubscriptionsError::RecurringDelegationStartTimeInPast);
+            }
+            if self.expiry_ts != 0 && self.start_ts >= self.expiry_ts {
+                return Err(SubscriptionsError::RecurringDelegationStartTimeGreaterThanExpiry);
+            }
         }
 
         if self.period_length_s == 0 || self.period_length_s > MAX_DELEGATION_PERIOD_SECS {
             return Err(SubscriptionsError::InvalidPeriodLength);
-        }
-
-        if self.expiry_ts != 0 && self.start_ts >= self.expiry_ts {
-            return Err(SubscriptionsError::RecurringDelegationStartTimeGreaterThanExpiry);
         }
 
         if self.amount_per_period == 0 {
@@ -74,7 +87,8 @@ pub const DISCRIMINATOR: &u8 = &2;
 /// Validates the instruction data, creates the delegation account via CPI,
 /// and initializes its header and period-tracking fields.
 pub fn process(accounts: &mut [AccountView], call_data: &CreateRecurringDelegationData) -> ProgramResult {
-    call_data.validate(Clock::get()?.unix_timestamp)?;
+    let current_time = Clock::get()?.unix_timestamp;
+    call_data.validate(current_time)?;
 
     let accounts = CreateDelegationAccounts::try_from(accounts)?;
 
@@ -100,7 +114,7 @@ pub fn process(accounts: &mut [AccountView], call_data: &CreateRecurringDelegati
     );
     delegation.subscription_authority = *accounts.subscription_authority.address();
     delegation.mint = mint;
-    delegation.current_period_start_ts = call_data.start_ts;
+    delegation.current_period_start_ts = if call_data.start_ts == 0 { current_time } else { call_data.start_ts };
     delegation.period_length_s = call_data.period_length_s;
     delegation.expiry_ts = call_data.expiry_ts;
     delegation.amount_per_period = call_data.amount_per_period;

@@ -204,6 +204,103 @@ fn create_recurring_delegation_with_period_exceeding_max() {
 }
 
 #[test]
+fn create_recurring_delegation_with_sentinel_start_starts_at_landing() {
+    let (litesvm, user) = &mut setup();
+    let payer = user;
+    let amount_per_period: u64 = 50_000_000;
+    let period_length_s: u64 = 86400;
+    let start_ts: i64 = 0;
+    let expiry_ts = current_ts() + days(7) as i64;
+    let nonce: u64 = 0;
+
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(payer.pubkey()), &[]);
+    let _user_ata = init_ata(litesvm, mint, payer.pubkey(), 100_000_000);
+
+    initialize_subscription_authority_action(litesvm, payer, mint).0.assert_ok();
+
+    let delegatee = solana_keypair::Keypair::new();
+    litesvm.airdrop(&delegatee.pubkey(), 10_000_000).unwrap();
+    let delegatee_ata = init_ata(litesvm, mint, delegatee.pubkey(), 0);
+
+    let (res, delegation_pda) = CreateDelegation::new(litesvm, payer, mint, delegatee.pubkey()).nonce(nonce).recurring(
+        amount_per_period,
+        period_length_s,
+        start_ts,
+        expiry_ts,
+    );
+    res.assert_ok();
+
+    let clock_ts = litesvm.get_sysvar::<solana_clock::Clock>().unix_timestamp;
+    let account = litesvm.get_account(&delegation_pda).unwrap();
+    let delegation = RecurringDelegation::load(&account.data).unwrap();
+    let del_current_period_start_ts = delegation.current_period_start_ts;
+    assert_eq!(del_current_period_start_ts, clock_ts);
+    assert_ne!(del_current_period_start_ts, 0);
+
+    let transfer_amount: u64 = 10_000_000;
+    TransferDelegation::new(litesvm, &delegatee, payer.pubkey(), mint, delegation_pda)
+        .amount(transfer_amount)
+        .recurring()
+        .assert_ok();
+
+    assert_eq!(get_ata_balance(litesvm, &delegatee_ata), transfer_amount);
+}
+
+#[test]
+fn create_recurring_delegation_sentinel_start_requires_expiry() {
+    let (litesvm, user) = &mut setup();
+    let payer = user;
+    let amount_per_period: u64 = 50_000_000;
+    let period_length_s: u64 = 86400;
+    let start_ts: i64 = 0;
+    let expiry_ts: i64 = 0;
+    let nonce: u64 = 0;
+
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(payer.pubkey()), &[]);
+    let _user_ata = init_ata(litesvm, mint, payer.pubkey(), 1_000_000);
+
+    initialize_subscription_authority_action(litesvm, payer, mint).0.assert_ok();
+
+    let delegatee = Pubkey::new_unique();
+
+    let (res, _delegation_pda) = CreateDelegation::new(litesvm, payer, mint, delegatee).nonce(nonce).recurring(
+        amount_per_period,
+        period_length_s,
+        start_ts,
+        expiry_ts,
+    );
+    res.assert_err(SubscriptionsError::RecurringDelegationStartOnLandingRequiresExpiry);
+}
+
+#[test]
+fn create_recurring_delegation_sentinel_start_rejects_elapsed_expiry() {
+    let (litesvm, user) = &mut setup();
+    let payer = user;
+    let amount_per_period: u64 = 50_000_000;
+    let period_length_s: u64 = 86400;
+    let start_ts: i64 = 0;
+    let expiry_ts = current_ts() + days(7) as i64;
+    let nonce: u64 = 0;
+
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(payer.pubkey()), &[]);
+    let _user_ata = init_ata(litesvm, mint, payer.pubkey(), 1_000_000);
+
+    initialize_subscription_authority_action(litesvm, payer, mint).0.assert_ok();
+
+    move_clock_forward(litesvm, days(8));
+
+    let delegatee = Pubkey::new_unique();
+
+    let (res, _delegation_pda) = CreateDelegation::new(litesvm, payer, mint, delegatee).nonce(nonce).recurring(
+        amount_per_period,
+        period_length_s,
+        start_ts,
+        expiry_ts,
+    );
+    res.assert_err(SubscriptionsError::RecurringDelegationStartTimeGreaterThanExpiry);
+}
+
+#[test]
 fn create_recurring_delegation_with_zero_expiry() {
     let (litesvm, user) = &mut setup();
     let payer = user;

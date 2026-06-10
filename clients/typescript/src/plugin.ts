@@ -171,6 +171,8 @@ export type CreateRecurringDelegationInput = WithProgramAddress & {
     nonce: bigint | number;
     payer?: TransactionSigner;
     periodLengthS: bigint | number;
+    /** Unix timestamp when the first period begins. Pass 0 to start when the
+     * transaction lands on chain (requires a non-zero `expiryTs`). */
     startTs: bigint | number;
     tokenMint: Address;
 };

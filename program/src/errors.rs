@@ -66,6 +66,7 @@ impl TryFrom<u32> for SubscriptionsError {
             405 => Ok(Self::RecurringDelegationStartTimeGreaterThanExpiry),
             406 => Ok(Self::RecurringDelegationAmountZero),
             407 => Ok(Self::DelegationNotStarted),
+            408 => Ok(Self::RecurringDelegationStartOnLandingRequiresExpiry),
             // Plan and subscription errors (500-599)
             500 => Ok(Self::PlanSunset),
             501 => Ok(Self::PlanExpired),
@@ -211,6 +212,8 @@ pub enum SubscriptionsError {
     RecurringDelegationAmountZero,
     #[error("Delegation period has not started yet")]
     DelegationNotStarted,
+    #[error("start_ts of 0 (start on landing) requires a non-zero expiry")]
+    RecurringDelegationStartOnLandingRequiresExpiry,
 
     // --- Plan and subscription errors (500--599) ---
     #[error("Plan is in sunset status")]
