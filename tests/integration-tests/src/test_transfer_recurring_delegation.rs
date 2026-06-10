@@ -16,6 +16,7 @@ use crate::{
     SubscriptionsError,
 };
 use litesvm::LiteSVM;
+use solana_clock::Clock;
 use solana_instruction::{AccountMeta, Instruction};
 use solana_keypair::Keypair;
 use solana_pubkey::Pubkey;
@@ -857,11 +858,12 @@ fn test_recurring_transfer_token_2022_confidential_transfer_public_balance() {
 
     initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
 
+    let start_ts = litesvm.get_sysvar::<Clock>().unix_timestamp;
     let (res, delegation_pda) = CreateDelegation::new(&mut litesvm, &alice, mint, bob.pubkey()).recurring(
         50_000_000,
         hours(1),
-        current_ts(),
-        current_ts() + days(1) as i64,
+        start_ts,
+        start_ts + days(1) as i64,
     );
     res.assert_ok();
 
@@ -893,11 +895,12 @@ fn test_recurring_transfer_token_2022_unconfigured_transfer_hook() {
 
     initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
 
+    let start_ts = litesvm.get_sysvar::<Clock>().unix_timestamp;
     let (res, delegation_pda) = CreateDelegation::new(&mut litesvm, &alice, mint, bob.pubkey()).recurring(
         50_000_000,
         hours(1),
-        current_ts(),
-        current_ts() + days(1) as i64,
+        start_ts,
+        start_ts + days(1) as i64,
     );
     res.assert_ok();
 
