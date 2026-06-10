@@ -1,7 +1,7 @@
 import {
     type Address,
-    type IInstruction,
-    type IAccountMeta,
+    type Instruction,
+    type AccountMeta,
     address,
     getAddressEncoder,
     getProgramDerivedAddress,
@@ -29,23 +29,23 @@ function u64LE(value: number | bigint): Uint8Array {
 
 const AccountRole = { READONLY: 0, WRITABLE: 1, SIGNER: 2, WRITABLE_SIGNER: 3 } as const;
 
-function writable(addr: Address): IAccountMeta {
+function writable(addr: Address): AccountMeta {
     return { address: addr, role: AccountRole.WRITABLE };
 }
 
-function writableSigner(addr: Address): IAccountMeta {
+function writableSigner(addr: Address): AccountMeta {
     return { address: addr, role: AccountRole.WRITABLE_SIGNER };
 }
 
-function signer(addr: Address): IAccountMeta {
+function signer(addr: Address): AccountMeta {
     return { address: addr, role: AccountRole.SIGNER };
 }
 
-function readonly(addr: Address): IAccountMeta {
+function readonly(addr: Address): AccountMeta {
     return { address: addr, role: AccountRole.READONLY };
 }
 
-export function buildInitializeBufferIx(buffer: Address, authority: Address): IInstruction {
+export function buildInitializeBufferIx(buffer: Address, authority: Address): Instruction {
     return {
         programAddress: BPF_LOADER_UPGRADEABLE,
         accounts: [writable(buffer), readonly(authority)],
@@ -53,7 +53,7 @@ export function buildInitializeBufferIx(buffer: Address, authority: Address): II
     };
 }
 
-export function buildWriteIx(buffer: Address, authority: Address, offset: number, chunk: Uint8Array): IInstruction {
+export function buildWriteIx(buffer: Address, authority: Address, offset: number, chunk: Uint8Array): Instruction {
     const data = new Uint8Array(4 + 4 + 8 + chunk.length);
     data.set(u32LE(1), 0);
     data.set(u32LE(offset), 4);
@@ -73,7 +73,7 @@ export function buildDeployIx(
     buffer: Address,
     authority: Address,
     maxDataLen: number | bigint,
-): IInstruction {
+): Instruction {
     const data = new Uint8Array(4 + 8);
     data.set(u32LE(2), 0);
     data.set(u64LE(maxDataLen), 4);
@@ -99,7 +99,7 @@ export function buildUpgradeIx(
     buffer: Address,
     spill: Address,
     authority: Address,
-): IInstruction {
+): Instruction {
     return {
         programAddress: BPF_LOADER_UPGRADEABLE,
         accounts: [
@@ -115,7 +115,7 @@ export function buildUpgradeIx(
     };
 }
 
-export function buildSetAuthorityIx(account: Address, currentAuth: Address, newAuth: Address | null): IInstruction {
+export function buildSetAuthorityIx(account: Address, currentAuth: Address, newAuth: Address | null): Instruction {
     const accounts = [writable(account), signer(currentAuth)];
     if (newAuth) accounts.push(readonly(newAuth));
     return {
@@ -125,7 +125,7 @@ export function buildSetAuthorityIx(account: Address, currentAuth: Address, newA
     };
 }
 
-export function buildCloseBufferIx(buffer: Address, recipient: Address, authority: Address): IInstruction {
+export function buildCloseBufferIx(buffer: Address, recipient: Address, authority: Address): Instruction {
     return {
         programAddress: BPF_LOADER_UPGRADEABLE,
         accounts: [writable(buffer), writable(recipient), signer(authority)],
