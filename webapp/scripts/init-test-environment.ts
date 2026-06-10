@@ -4,8 +4,8 @@
  */
 
 import { createSolanaRpc, address } from '@solana/kit';
-import { readConfig, addToken, clearConfig, setProgramAddress } from './config-manager';
-import { createMockUsdc } from './helpers';
+import { readConfig, addToken, clearConfig, setProgramAddress } from './config-manager.js';
+import { createMockUsdc } from './helpers.js';
 
 const PROGRAM_ID = 'De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44';
 

@@ -4,8 +4,8 @@
  */
 
 import { address } from '@solana/kit';
-import { getUsdcMint } from './config-manager';
-import { mintMockUsdc } from './helpers';
+import { getUsdcMint } from './config-manager.js';
+import { mintMockUsdc } from './helpers.js';
 
 async function main() {
     const args = process.argv.slice(2);
