@@ -1129,6 +1129,12 @@
         "name": "delegationNotStarted"
       },
       {
+        "code": 408,
+        "kind": "errorNode",
+        "message": "start_ts of 0 (start on landing) requires a non-zero expiry",
+        "name": "recurringDelegationStartOnLandingRequiresExpiry"
+      },
+      {
         "code": 500,
         "kind": "errorNode",
         "message": "Plan is in sunset status",
