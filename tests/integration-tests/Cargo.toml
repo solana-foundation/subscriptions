@@ -33,7 +33,7 @@ spl-token-2022-interface = "3.0.0"
 spl-token-interface = "3.0.0"
 serde_json = { workspace = true }
 rstest = "0.26"
-tabled = "0.20"
+tabled = "0.21"
 dtor = "1.0"
 
 [dev-dependencies]
