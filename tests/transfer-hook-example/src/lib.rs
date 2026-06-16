@@ -62,7 +62,7 @@ fn execute(accounts: &mut [AccountView]) -> ProgramResult {
 
 // Accounts: [payer, validation PDA, counter PDA, mint, system program]
 fn initialize_extra_account_metas(program_id: &Address, accounts: &mut [AccountView]) -> ProgramResult {
-    if accounts.len() < 4 {
+    if accounts.len() < 5 {
         return Err(ProgramError::NotEnoughAccountKeys);
     }
 

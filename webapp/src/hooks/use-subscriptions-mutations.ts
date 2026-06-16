@@ -847,7 +847,19 @@ export function useSubscriptionsMutations() {
                     );
                 }
 
-                for (const sub of payable) {
+                const planHookAccounts = await Promise.all(
+                    payable.map(sub =>
+                        resolveSubscriptionHookAccounts(
+                            mintAddr,
+                            address(sub.delegator),
+                            receiverAta,
+                            sub.amount,
+                            tokenProgram,
+                        ),
+                    ),
+                );
+
+                for (const [i, sub] of payable.entries()) {
                     const instruction = await getTransferSubscriptionOverlayInstructionAsync({
                         amount: sub.amount,
                         caller: signer,
@@ -858,13 +870,7 @@ export function useSubscriptionsMutations() {
                         subscriptionPda: address(sub.subscriptionAddress),
                         tokenMint: mintAddr,
                         tokenProgram,
-                        transferHookAccounts: await resolveSubscriptionHookAccounts(
-                            mintAddr,
-                            address(sub.delegator),
-                            receiverAta,
-                            sub.amount,
-                            tokenProgram,
-                        ),
+                        transferHookAccounts: planHookAccounts[i],
                     });
                     transferEntries.push({ instruction, subscriber: sub });
                 }
