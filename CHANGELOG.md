@@ -11,24 +11,25 @@ _Targets `program-v1.1.0` (target deploy 2026-06-26). Additive and non-breaking;
 
 ### Added
 
-- `RevokeSubscriptionAuthority` — revoke the SPL Token / Token-2022 delegate left on a user's ATA when tearing down a `SubscriptionAuthority` (revoke + close). Fixes advisory GHSA-278q-6j9j-9c3r. ([#162])
+- `RevokeSubscriptionAuthority` — revoke the SPL Token / Token-2022 delegate left on a user's ATA when tearing down a `SubscriptionAuthority` (revoke + close). ([#162])
 - `RevokeAbandonedDelegation` — let a sponsor reclaim rent from a delegation whose token account was closed (subscription authority dead). ([#163])
-- Token-2022 Transfer Hook support — hooked mints (e.g. PYUSD) work end-to-end for fixed, recurring, and subscription transfers. ([#160])
+- Token-2022 Transfer Hook support — hooked mints work end-to-end for fixed, recurring, and subscription transfers. ([#160])
 
 ### Changed
 
 - `CreateRecurringDelegation` accepts `start_ts = 0` as a sentinel: the first period starts at the on-chain clock time when the transaction lands. Requires a non-zero `expiry_ts`. ([#164])
-- Tightened account and state validation (audit remediation MULT-54/53/56). ⚠️ Integrators relying on previously-lax behavior may now see validation errors. ([#163])
+- Tightened account and state validation. ([#163])
 
 ### Security
 
-- Cantina delta audit remediations (MULT-54/53/56); advisory GHSA-278q-6j9j-9c3r resolved. See [`audits/AUDIT_STATUS.md`](audits/AUDIT_STATUS.md).
+- See [`audits/AUDIT_STATUS.md`](audits/AUDIT_STATUS.md).
 
 ## [1.0.0] — 2026-06-01
 
 Initial audited mainnet release (`program-v1.0.0`, commit `0221a37`).
 
 [Unreleased]: https://github.com/solana-foundation/subscriptions/compare/0221a37...main
+[1.0.0]: https://github.com/solana-foundation/subscriptions/commit/0221a37
 [#160]: https://github.com/solana-foundation/subscriptions/pull/160
 [#162]: https://github.com/solana-foundation/subscriptions/pull/162
 [#163]: https://github.com/solana-foundation/subscriptions/pull/163
