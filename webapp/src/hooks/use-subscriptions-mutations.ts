@@ -75,6 +75,29 @@ export function useSubscriptionsMutations() {
         return subscriptionAuthority.data.initId;
     };
 
+    const resolveSubscriptionHookAccounts = async (
+        mint: Address,
+        delegator: Address,
+        receiverAta: Address,
+        amount: bigint,
+        tokenProgram: Address,
+    ) => {
+        if (!progId) throw new Error('Program address not configured');
+        const [subscriptionAuthority] = await findSubscriptionAuthorityPda(
+            { tokenMint: mint, user: delegator },
+            { programAddress: progId },
+        );
+        const [delegatorAta] = await findAssociatedTokenPda({ mint, owner: delegator, tokenProgram });
+        return await resolveTransferHookAccounts(createSolanaRpc(rpcUrl), {
+            amount,
+            authority: subscriptionAuthority,
+            destination: receiverAta,
+            mint,
+            source: delegatorAta,
+            tokenProgram,
+        });
+    };
+
     const initSubscriptionAuthority = useMutation({
         mutationFn: async ({
             tokenMint,
@@ -700,6 +723,13 @@ export function useSubscriptionsMutations() {
                         subscriptionPda: address(sub.subscriptionAddress),
                         tokenMint: mintAddr,
                         tokenProgram,
+                        transferHookAccounts: await resolveSubscriptionHookAccounts(
+                            mintAddr,
+                            address(sub.delegator),
+                            receiverAta,
+                            sub.amount,
+                            tokenProgram,
+                        ),
                     });
                     return { instruction, subscriber: sub };
                 }),
@@ -828,6 +858,13 @@ export function useSubscriptionsMutations() {
                         subscriptionPda: address(sub.subscriptionAddress),
                         tokenMint: mintAddr,
                         tokenProgram,
+                        transferHookAccounts: await resolveSubscriptionHookAccounts(
+                            mintAddr,
+                            address(sub.delegator),
+                            receiverAta,
+                            sub.amount,
+                            tokenProgram,
+                        ),
                     });
                     transferEntries.push({ instruction, subscriber: sub });
                 }
