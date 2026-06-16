@@ -11,6 +11,7 @@ import {
     getDeletePlanOverlayInstruction,
     getInitSubscriptionAuthorityOverlayInstructionAsync,
     getResumeSubscriptionOverlayInstructionAsync,
+    getRevokeAbandonedDelegationInstruction,
     getRevokeDelegationOverlayInstruction,
     getRevokeSubscriptionAuthorityOverlayInstructionAsync,
     getRevokeSubscriptionOverlayInstruction,
@@ -904,6 +905,47 @@ export function useSubscriptionsMutations() {
         },
     });
 
+    const revokeAbandonedDelegations = useMutation({
+        mutationFn: async ({ tokenMint, delegationAccounts }: { delegationAccounts: string[]; tokenMint: string }) => {
+            if (!signer) throw new Error('Wallet not connected');
+            if (!progId) throw new Error('Program address not configured');
+
+            const [subscriptionAuthority] = await findSubscriptionAuthorityPda(
+                { tokenMint: address(tokenMint), user: signer.address },
+                { programAddress: progId },
+            );
+
+            const revokeIxs = delegationAccounts.map(account =>
+                getRevokeAbandonedDelegationInstruction(
+                    {
+                        delegationAccount: address(account),
+                        payer: signer,
+                        subscriptionAuthority,
+                    },
+                    { programAddress: progId },
+                ),
+            );
+
+            const batches = packInstructionBatches(revokeIxs, signer);
+            const signatures: string[] = [];
+
+            for (const batch of batches) {
+                signatures.push(await signAndSend(batch, signer));
+            }
+
+            return { revoked: delegationAccounts.length, signatures };
+        },
+        onError: error => toast.onError(error),
+        onSuccess: res => {
+            toast.onSuccess(res.signatures[0]);
+            invalidateWithDelay(queryClient, [
+                ['delegations'],
+                ['subscriptionAuthorityStatus'],
+                ['get-token-accounts'],
+            ]);
+        },
+    });
+
     return {
         cancelAndRevokeSubscription,
         cancelSubscription,
@@ -916,6 +958,7 @@ export function useSubscriptionsMutations() {
         deletePlan,
         initSubscriptionAuthority,
         resumeSubscription,
+        revokeAbandonedDelegations,
         revokeDelegation,
         revokeMultipleDelegations,
         revokeSubscription,

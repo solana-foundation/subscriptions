@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/dialog';
 import { useDelegations, useIncomingDelegations, type DelegationItem } from '@/hooks/use-delegations';
 import { useSubscriptionsMutations } from '@/hooks/use-subscriptions-mutations';
+import { useFeatures } from '@/hooks/use-features';
 import { useGetTokenAccountsQuery } from '@/components/account/account-data-access';
 import { useWallet } from '@solana/connector/react';
 import { address } from '@solana/kit';
@@ -855,6 +856,8 @@ export function ActiveDelegations({
     const [outgoingSubTab, setOutgoingSubTab] = useState<OutgoingSubTab>('active');
     const [closeDialogOpen, setCloseDialogOpen] = useState(false);
     const queryClient = useQueryClient();
+    const { account } = useWallet();
+    const features = useFeatures();
     const { url: rpcUrl } = useClusterConfig();
     const { data: blockTime } = useQuery({
         queryKey: ['blockTime', rpcUrl],
@@ -892,7 +895,12 @@ export function ActiveDelegations({
         return outgoingForMint.all.filter(d => d.data.header.initId !== subscriptionAuthorityInitId);
     }, [outgoingForMint.all, subscriptionAuthorityInitId]);
 
-    const { revokeMultipleDelegations } = useSubscriptionsMutations();
+    const abandonedDelegations = useMemo(() => {
+        if (isInitialized || !account) return [];
+        return outgoingForMint.all.filter(d => d.data.header.payer === account);
+    }, [isInitialized, account, outgoingForMint.all]);
+
+    const { revokeMultipleDelegations, revokeAbandonedDelegations } = useSubscriptionsMutations();
     const approvalState = getDelegationApprovalState({
         isInitialized,
         isApproved,
@@ -903,6 +911,15 @@ export function ActiveDelegations({
         if (staleDelegations.length === 0) return;
         await revokeMultipleDelegations.mutateAsync({
             delegations: staleDelegations.map(d => ({ address: d.address, payer: d.data.header.payer })),
+        });
+        onInitSuccess?.();
+    };
+
+    const handleReclaimAbandoned = async () => {
+        if (abandonedDelegations.length === 0) return;
+        await revokeAbandonedDelegations.mutateAsync({
+            tokenMint,
+            delegationAccounts: abandonedDelegations.map(d => d.address),
         });
         onInitSuccess?.();
     };
@@ -1000,6 +1017,20 @@ export function ActiveDelegations({
                         {revokeMultipleDelegations.isPending
                             ? 'Revoking...'
                             : `Revoke ${staleDelegations.length} Stale`}
+                    </Button>
+                )}
+                {features.revokeAbandonedDelegation && abandonedDelegations.length > 0 && (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleReclaimAbandoned}
+                        disabled={revokeAbandonedDelegations.isPending}
+                        className="text-amber-600 border-amber-300 hover:bg-amber-100 hover:text-amber-700"
+                    >
+                        <Trash2 className="h-4 w-4 mr-1.5" />
+                        {revokeAbandonedDelegations.isPending
+                            ? 'Reclaiming...'
+                            : `Reclaim ${abandonedDelegations.length} Abandoned`}
                     </Button>
                 )}
                 {approvalState.canCloseSubscriptionAuthority && (

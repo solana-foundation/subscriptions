@@ -12,6 +12,7 @@ import { cn, SECONDS_PER_DAY } from '@/lib/utils';
 import { parseTokenAmount, resolvePlanTokenDisplay } from '@/lib/token-display';
 import { getBlockTimestamp } from '@/hooks/use-time-travel';
 import { useClusterConfig } from '@/hooks/use-cluster-config';
+import { useFeatures } from '@/hooks/use-features';
 
 interface CreateDelegationDialogProps {
     tokenMint: string;
@@ -58,11 +59,13 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
     const [expiryDate, setExpiryDate] = useState('');
     const [expiryHour, setExpiryHour] = useState('12');
     const [periodDays, setPeriodDays] = useState('');
+    const [startNow, setStartNow] = useState(false);
 
     const { createFixedDelegation, createRecurringDelegation } = useSubscriptionsMutations();
     const { data: authorityStatus } = useSubscriptionAuthorityStatus(tokenMint);
     const authorityInitId = authorityStatus?.data?.initId;
     const { url: rpcUrl } = useClusterConfig();
+    const features = useFeatures();
     const { data: tokens } = useTokenConfig();
     const token = useMemo(() => resolvePlanTokenDisplay(tokenMint, tokens), [tokenMint, tokens]);
     const [blockTime, setBlockTime] = useState<number | undefined>();
@@ -84,6 +87,7 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
         setExpiryDate('');
         setExpiryHour('12');
         setPeriodDays('');
+        setStartNow(false);
         setStep('kind');
         setSelectedKind('fixed');
     };
@@ -156,6 +160,7 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
                     amountPerPeriod: amountInSmallestUnits,
                     periodLengthS: periodSeconds,
                     expiryTs: expiryTimestamp,
+                    startTs: startNow ? 0n : undefined,
                     expectedSubscriptionAuthorityInitId: authorityInitId,
                 },
                 {
@@ -192,7 +197,8 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
         authorityInitId != null &&
         (noExpiry || expiryDate.length > 0) &&
         isExpiryValid() &&
-        (selectedKind === 'fixed' || (periodDays.length > 0 && Number(periodDays) > 0));
+        (selectedKind === 'fixed' || (periodDays.length > 0 && Number(periodDays) > 0)) &&
+        !(selectedKind === 'recurring' && startNow && noExpiry);
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange} modal={false}>
@@ -294,6 +300,31 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
                                     <p className="text-xs text-muted-foreground">
                                         How often the delegatee can withdraw the specified amount
                                     </p>
+                                </div>
+                            )}
+
+                            {selectedKind === 'recurring' && features.startNowRecurringDelegation && (
+                                <div className="grid gap-2">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={startNow}
+                                            onChange={e => setStartNow(e.target.checked)}
+                                            className="h-4 w-4 rounded border-sand-400 bg-card text-foreground focus:ring-foreground"
+                                        />
+                                        <span className="text-sm text-foreground">
+                                            Start when transaction lands (start_ts = 0)
+                                        </span>
+                                    </label>
+                                    {startNow && noExpiry ? (
+                                        <p className="text-xs text-destructive">
+                                            Start-on-landing requires an expiry. Turn off &ldquo;No expiry&rdquo;.
+                                        </p>
+                                    ) : (
+                                        <p className="text-xs text-muted-foreground">
+                                            First period begins at the on-chain block time instead of a fixed date.
+                                        </p>
+                                    )}
                                 </div>
                             )}
 
