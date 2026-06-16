@@ -44,3 +44,25 @@ export const STATIC_NETWORKS: Record<Network, NetworkConfig> = {
         tokens: [],
     },
 };
+
+export interface Features {
+    revokeAbandonedDelegation: boolean;
+    startNowRecurringDelegation: boolean;
+}
+
+const SOAK_FEATURES: Features = {
+    revokeAbandonedDelegation: true,
+    startNowRecurringDelegation: true,
+};
+
+const STABLE_FEATURES: Features = {
+    revokeAbandonedDelegation: false,
+    startNowRecurringDelegation: false,
+};
+
+export const FEATURES: Record<Network, Features> = {
+    devnet: SOAK_FEATURES,
+    localnet: SOAK_FEATURES,
+    mainnet: STABLE_FEATURES,
+    testnet: STABLE_FEATURES,
+};

@@ -11,6 +11,7 @@ import {
     getDeletePlanOverlayInstruction,
     getInitSubscriptionAuthorityOverlayInstructionAsync,
     getResumeSubscriptionOverlayInstructionAsync,
+    getRevokeAbandonedDelegationInstruction,
     getRevokeDelegationOverlayInstruction,
     getRevokeSubscriptionAuthorityOverlayInstructionAsync,
     getRevokeSubscriptionOverlayInstruction,
@@ -20,6 +21,7 @@ import {
     getTransferSubscriptionOverlayInstructionAsync,
     getUpdatePlanOverlayInstruction,
     PlanStatus,
+    resolveTransferHookAccounts,
     ZERO_ADDRESS,
 } from '@solana/subscriptions';
 import { findAssociatedTokenPda, getCreateAssociatedTokenIdempotentInstruction } from '@solana-program/token';
@@ -319,6 +321,19 @@ export function useSubscriptionsMutations() {
             tokenProgram,
         });
 
+        const [subscriptionAuthority] = await findSubscriptionAuthorityPda(
+            { tokenMint: mint, user: delegatorAddr },
+            { programAddress: progId },
+        );
+        const transferHookAccounts = await resolveTransferHookAccounts(createSolanaRpc(rpcUrl), {
+            amount: params.amount,
+            authority: subscriptionAuthority,
+            destination: receiver,
+            mint,
+            source: delegatorAta,
+            tokenProgram,
+        });
+
         const buildFn =
             kind === 'fixed' ? getTransferFixedOverlayInstructionAsync : getTransferRecurringOverlayInstructionAsync;
         const transferIx = await buildFn({
@@ -331,6 +346,7 @@ export function useSubscriptionsMutations() {
             receiverAta: receiver,
             tokenMint: mint,
             tokenProgram,
+            transferHookAccounts,
         });
 
         return { instructions: [createAtaIx, transferIx], signer };
@@ -904,6 +920,47 @@ export function useSubscriptionsMutations() {
         },
     });
 
+    const revokeAbandonedDelegations = useMutation({
+        mutationFn: async ({ tokenMint, delegationAccounts }: { delegationAccounts: string[]; tokenMint: string }) => {
+            if (!signer) throw new Error('Wallet not connected');
+            if (!progId) throw new Error('Program address not configured');
+
+            const [subscriptionAuthority] = await findSubscriptionAuthorityPda(
+                { tokenMint: address(tokenMint), user: signer.address },
+                { programAddress: progId },
+            );
+
+            const revokeIxs = delegationAccounts.map(delegationAccount =>
+                getRevokeAbandonedDelegationInstruction(
+                    {
+                        delegationAccount: address(delegationAccount),
+                        payer: signer,
+                        subscriptionAuthority,
+                    },
+                    { programAddress: progId },
+                ),
+            );
+
+            const batches = packInstructionBatches(revokeIxs, signer);
+            const signatures: string[] = [];
+
+            for (const batch of batches) {
+                signatures.push(await signAndSend(batch, signer));
+            }
+
+            return { revoked: delegationAccounts.length, signatures };
+        },
+        onError: error => toast.onError(error),
+        onSuccess: res => {
+            toast.onSuccess(res.signatures[0]);
+            invalidateWithDelay(queryClient, [
+                ['delegations'],
+                ['subscriptionAuthorityStatus'],
+                ['get-token-accounts'],
+            ]);
+        },
+    });
+
     return {
         cancelAndRevokeSubscription,
         cancelSubscription,
@@ -916,6 +973,7 @@ export function useSubscriptionsMutations() {
         deletePlan,
         initSubscriptionAuthority,
         resumeSubscription,
+        revokeAbandonedDelegations,
         revokeDelegation,
         revokeMultipleDelegations,
         revokeSubscription,
