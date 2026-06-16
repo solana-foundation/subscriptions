@@ -100,6 +100,7 @@ export function CreateDelegationDialog({ tokenMint, disabled }: CreateDelegation
     };
 
     const handleKindSelect = (kind: DelegationKindId) => {
+        if (kind !== 'recurring') setStartNow(false);
         setSelectedKind(kind);
     };
 

@@ -915,10 +915,10 @@ export function useSubscriptionsMutations() {
                 { programAddress: progId },
             );
 
-            const revokeIxs = delegationAccounts.map(account =>
+            const revokeIxs = delegationAccounts.map(delegationAccount =>
                 getRevokeAbandonedDelegationInstruction(
                     {
-                        delegationAccount: address(account),
+                        delegationAccount: address(delegationAccount),
                         payer: signer,
                         subscriptionAuthority,
                     },
