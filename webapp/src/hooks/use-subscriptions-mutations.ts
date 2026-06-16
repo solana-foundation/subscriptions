@@ -21,6 +21,7 @@ import {
     getTransferSubscriptionOverlayInstructionAsync,
     getUpdatePlanOverlayInstruction,
     PlanStatus,
+    resolveTransferHookAccounts,
     ZERO_ADDRESS,
 } from '@solana/subscriptions';
 import { findAssociatedTokenPda, getCreateAssociatedTokenIdempotentInstruction } from '@solana-program/token';
@@ -320,6 +321,19 @@ export function useSubscriptionsMutations() {
             tokenProgram,
         });
 
+        const [subscriptionAuthority] = await findSubscriptionAuthorityPda(
+            { tokenMint: mint, user: delegatorAddr },
+            { programAddress: progId },
+        );
+        const transferHookAccounts = await resolveTransferHookAccounts(createSolanaRpc(rpcUrl), {
+            amount: params.amount,
+            authority: subscriptionAuthority,
+            destination: receiver,
+            mint,
+            source: delegatorAta,
+            tokenProgram,
+        });
+
         const buildFn =
             kind === 'fixed' ? getTransferFixedOverlayInstructionAsync : getTransferRecurringOverlayInstructionAsync;
         const transferIx = await buildFn({
@@ -332,6 +346,7 @@ export function useSubscriptionsMutations() {
             receiverAta: receiver,
             tokenMint: mint,
             tokenProgram,
+            transferHookAccounts,
         });
 
         return { instructions: [createAtaIx, transferIx], signer };
