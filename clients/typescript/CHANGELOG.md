@@ -2,7 +2,7 @@
 
 TypeScript SDK for the Subscriptions program. Published to npm; tagged `ts-client-vX.Y.Z`.
 
-Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
+Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
