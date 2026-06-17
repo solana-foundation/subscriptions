@@ -1371,6 +1371,16 @@
             "isWritable": false,
             "kind": "instructionAccountNode",
             "name": "tokenProgram"
+          },
+          {
+            "docs": [
+              "Optional sponsor that funds the account rent. Defaults to the owner/signer when omitted."
+            ],
+            "isOptional": true,
+            "isSigner": true,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "payer"
           }
         ],
         "arguments": [
@@ -1397,7 +1407,8 @@
           }
         ],
         "kind": "instructionNode",
-        "name": "initSubscriptionAuthority"
+        "name": "initSubscriptionAuthority",
+        "optionalAccountStrategy": "omitted"
       },
       {
         "accounts": [
@@ -1449,6 +1460,16 @@
             "isWritable": false,
             "kind": "instructionAccountNode",
             "name": "systemProgram"
+          },
+          {
+            "docs": [
+              "Optional sponsor that funds the account rent. Defaults to the delegator/signer when omitted."
+            ],
+            "isOptional": true,
+            "isSigner": true,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "payer"
           }
         ],
         "arguments": [
@@ -1483,7 +1504,8 @@
           }
         ],
         "kind": "instructionNode",
-        "name": "createFixedDelegation"
+        "name": "createFixedDelegation",
+        "optionalAccountStrategy": "omitted"
       },
       {
         "accounts": [
@@ -1535,6 +1557,16 @@
             "isWritable": false,
             "kind": "instructionAccountNode",
             "name": "systemProgram"
+          },
+          {
+            "docs": [
+              "Optional sponsor that funds the account rent. Defaults to the delegator/signer when omitted."
+            ],
+            "isOptional": true,
+            "isSigner": true,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "payer"
           }
         ],
         "arguments": [
@@ -1569,7 +1601,8 @@
           }
         ],
         "kind": "instructionNode",
-        "name": "createRecurringDelegation"
+        "name": "createRecurringDelegation",
+        "optionalAccountStrategy": "omitted"
       },
       {
         "accounts": [
@@ -1889,6 +1922,16 @@
             "isWritable": true,
             "kind": "instructionAccountNode",
             "name": "subscriptionAuthority"
+          },
+          {
+            "docs": [
+              "Optional rent recipient, required when the recorded payer differs from the user. Must match the stored payer."
+            ],
+            "isOptional": true,
+            "isSigner": false,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "receiver"
           }
         ],
         "arguments": [
@@ -1915,7 +1958,8 @@
           }
         ],
         "kind": "instructionNode",
-        "name": "closeSubscriptionAuthority"
+        "name": "closeSubscriptionAuthority",
+        "optionalAccountStrategy": "omitted"
       },
       {
         "accounts": [
@@ -2354,6 +2398,16 @@
             "isWritable": false,
             "kind": "instructionAccountNode",
             "name": "selfProgram"
+          },
+          {
+            "docs": [
+              "Optional sponsor that funds the account rent. Defaults to the subscriber/signer when omitted."
+            ],
+            "isOptional": true,
+            "isSigner": true,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "payer"
           }
         ],
         "arguments": [
@@ -2388,7 +2442,8 @@
           }
         ],
         "kind": "instructionNode",
-        "name": "subscribe"
+        "name": "subscribe",
+        "optionalAccountStrategy": "omitted"
       },
       {
         "accounts": [

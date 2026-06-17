@@ -65,6 +65,14 @@ pub enum SubscriptionsInstruction {
         default_value = program("system")
     ))]
     #[codama(account(name = "token_program", docs = "Token program"))]
+    #[codama(account(
+        name = "payer",
+        signer,
+        writable,
+        optional,
+        docs = "Optional sponsor that funds the account rent. Defaults to the owner/signer when omitted."
+    ))]
+    #[codama(optional_account_strategy = omitted)]
     InitSubscriptionAuthority = 0,
 
     #[codama(account(name = "delegator", signer, writable, docs = "The user creating the delegation"))]
@@ -76,6 +84,14 @@ pub enum SubscriptionsInstruction {
         docs = "The system program",
         default_value = program("system")
     ))]
+    #[codama(account(
+        name = "payer",
+        signer,
+        writable,
+        optional,
+        docs = "Optional sponsor that funds the account rent. Defaults to the delegator/signer when omitted."
+    ))]
+    #[codama(optional_account_strategy = omitted)]
     CreateFixedDelegation(#[codama(name = "fixed_delegation")] CreateFixedDelegationData) = 1,
 
     #[codama(account(name = "delegator", signer, writable, docs = "The user creating the delegation"))]
@@ -87,6 +103,14 @@ pub enum SubscriptionsInstruction {
         docs = "The system program",
         default_value = program("system")
     ))]
+    #[codama(account(
+        name = "payer",
+        signer,
+        writable,
+        optional,
+        docs = "Optional sponsor that funds the account rent. Defaults to the delegator/signer when omitted."
+    ))]
+    #[codama(optional_account_strategy = omitted)]
     CreateRecurringDelegation(#[codama(name = "recurring_delegation")] CreateRecurringDelegationData) = 2,
 
     #[codama(account(
@@ -143,6 +167,13 @@ pub enum SubscriptionsInstruction {
         docs = "The user who owns the SubscriptionAuthority PDA (receives rent)"
     ))]
     #[codama(account(name = "subscription_authority", writable, docs = "The SubscriptionAuthority PDA to close"))]
+    #[codama(account(
+        name = "receiver",
+        writable,
+        optional,
+        docs = "Optional rent recipient, required when the recorded payer differs from the user. Must match the stored payer."
+    ))]
+    #[codama(optional_account_strategy = omitted)]
     CloseSubscriptionAuthority = 6,
 
     #[codama(account(name = "merchant", signer, writable, docs = "The merchant creating the plan"))]
@@ -221,6 +252,14 @@ pub enum SubscriptionsInstruction {
         docs = "This program (for self-CPI)",
         default_value = public_key("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44")
     ))]
+    #[codama(account(
+        name = "payer",
+        signer,
+        writable,
+        optional,
+        docs = "Optional sponsor that funds the account rent. Defaults to the subscriber/signer when omitted."
+    ))]
+    #[codama(optional_account_strategy = omitted)]
     Subscribe(#[codama(name = "subscribe_data")] SubscribeData) = 11,
 
     #[codama(account(name = "subscriber", signer, docs = "The subscriber cancelling the subscription"))]

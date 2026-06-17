@@ -189,6 +189,32 @@ getProgramAccounts(PROGRAM_ID, {
 | `transfer_fixed`     | Delegatee | Execute token transfer for a fixed delegation, enforcing limits            |
 | `transfer_recurring` | Delegatee | Execute token transfer for a recurring delegation, enforcing period limits |
 
+### Conditional trailing accounts
+
+Several instructions accept accounts after their fixed list. The IDL models them
+as optional accounts (`isOptional`) so generated clients and IDL consumers can
+build the sponsored variants; the program reads them from the trailing remainder.
+
+| Instruction                         | Trailing account | When                                                              |
+| ----------------------------------- | ---------------- | ----------------------------------------------------------------- |
+| `initialize_subscription_authority` | `payer` (signer, writable) | Sponsor funds rent; defaults to the owner/signer when omitted |
+| `create_fixed_delegation`           | `payer` (signer, writable) | Sponsor funds rent; defaults to the delegator/signer when omitted |
+| `create_recurring_delegation`       | `payer` (signer, writable) | Sponsor funds rent; defaults to the delegator/signer when omitted |
+| `subscribe`                         | `payer` (signer, writable) | Sponsor funds rent; defaults to the subscriber/signer when omitted |
+| `close_subscription_authority`      | `receiver` (writable) | Required when the recorded payer differs from the user; must match the stored payer |
+
+`revoke_delegation` is the one exception: its trailing layout is
+**delegation-type dependent** and cannot be expressed as a single static
+optional list, so it is documented here rather than in the IDL account list.
+
+- **Fixed / recurring:** optional `[receiver]` — the rent recipient when a
+  sponsor revokes (defaults to the recorded payer).
+- **Subscription:** required `[plan_pda]`, then optional `[receiver]` — the
+  `plan_pda` is needed to evaluate plan-state revocation conditions.
+
+Generated-client overlays name these per case (`revokeDelegation` exposes
+`receiver?`; `revokeSubscription` exposes `planPda` + `receiver?`).
+
 ---
 
 ## Types
