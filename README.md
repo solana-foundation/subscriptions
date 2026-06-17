@@ -273,6 +273,10 @@ The external audit baseline is commit `18a50bc21c4b91ed62e612109c371f41200385e8`
 
 Audit status, audited-through commit, and the current unaudited delta are tracked in [audits/AUDIT_STATUS.md](audits/AUDIT_STATUS.md).
 
+## Security Considerations
+
+- **`init_id` is slot-granular.** Closing and re-initializing a SubscriptionAuthority invalidates existing delegations only when the re-init lands in a later slot than the original init. If the whole create→close→reinit sequence runs in one slot (a single transaction, co-slot transactions, or an atomic bundle), the reused `init_id` keeps old delegations valid. Authority rotation is therefore not a reliable revocation mechanism — use `revokeDelegation` to stop a specific delegation.
+
 ## Acknowledgments
 
 Thanks to [Moonsong Labs](https://moonsonglabs.com) for the initial design and implementation of this program.
