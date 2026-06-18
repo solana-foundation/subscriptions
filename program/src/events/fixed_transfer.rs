@@ -16,7 +16,9 @@ pub struct FixedTransferEvent {
     pub delegatee: Address,
     /// The SPL token mint.
     pub mint: Address,
-    /// Token amount transferred.
+    /// Gross token amount debited from the delegator. For transfer-fee mints the
+    /// receiver is credited with this minus the token program's fee; derive the
+    /// net received from balances off-chain.
     pub amount: u64,
     /// Remaining allowance after this transfer.
     pub remaining_amount: u64,

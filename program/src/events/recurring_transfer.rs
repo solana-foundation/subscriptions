@@ -16,7 +16,9 @@ pub struct RecurringTransferEvent {
     pub delegatee: Address,
     /// The SPL token mint.
     pub mint: Address,
-    /// Token amount transferred.
+    /// Gross token amount debited from the delegator. For transfer-fee mints the
+    /// receiver is credited with this minus the token program's fee; derive the
+    /// net received from balances off-chain.
     pub amount: u64,
     /// Start of the period during which the transfer occurred.
     pub period_start_ts: i64,
