@@ -4,13 +4,12 @@ use pinocchio::{
     AccountView, Address, ProgramResult,
 };
 use pinocchio_token_2022::instructions::TransferChecked;
-use solana_program_pack::Pack;
-use spl_token_interface::state::Mint as TokenMint;
 
 use super::transfer_hook_util::{invoke_transfer_checked_with_hook, mint_transfer_hook_program_id};
 use crate::{
     constants::{
-        TOKEN_ACCOUNT_MINT_END, TOKEN_ACCOUNT_MINT_OFFSET, TOKEN_ACCOUNT_OWNER_END, TOKEN_ACCOUNT_OWNER_OFFSET,
+        MINT_DECIMALS_OFFSET, TOKEN_ACCOUNT_MINT_END, TOKEN_ACCOUNT_MINT_OFFSET, TOKEN_ACCOUNT_OWNER_END,
+        TOKEN_ACCOUNT_OWNER_OFFSET,
     },
     AccountCheck, MintInterface, ProgramAccount, SignerAccount, SubscriptionAuthority, SubscriptionAuthorityAccount,
     SubscriptionsError, TokenAccountInterface, TokenProgramInterface, WritableAccount,
@@ -49,7 +48,7 @@ pub fn get_token_account_owner(data: &[u8]) -> Result<Address, SubscriptionsErro
 }
 
 fn get_mint_decimals(data: &[u8]) -> Result<u8, SubscriptionsError> {
-    TokenMint::unpack_from_slice(data).map(|mint| mint.decimals).map_err(|_| SubscriptionsError::InvalidAccountData)
+    data.get(MINT_DECIMALS_OFFSET).copied().ok_or(SubscriptionsError::InvalidAccountData)
 }
 
 /// Validated accounts shared by `TransferFixed` and `TransferRecurring` (identical layouts).

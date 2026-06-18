@@ -41,6 +41,9 @@ pub const TOKEN_ACCOUNT_DELEGATE_OFFSET: usize = TOKEN_ACCOUNT_DELEGATE_TAG_OFFS
 /// Byte offset one past the end of the `delegate` pubkey (i.e., `DELEGATE_OFFSET + 32`).
 pub const TOKEN_ACCOUNT_DELEGATE_END: usize = TOKEN_ACCOUNT_DELEGATE_OFFSET + 32;
 
+/// Byte offset of the `decimals` field in an SPL Token / Token-2022 base mint.
+pub const MINT_DECIMALS_OFFSET: usize = 44;
+
 /// Byte offset of the `is_initialized` flag in an SPL Token / Token-2022 base mint.
 /// `1` means initialized; the base mint layout is shared by both programs.
 pub const MINT_IS_INITIALIZED_OFFSET: usize = 45;
