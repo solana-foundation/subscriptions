@@ -16,6 +16,8 @@ pub struct SubscriptionCreatedEvent {
     pub mint: Address,
     /// Unix timestamp when the subscription was created.
     pub created_ts: i64,
+    /// The account that funded the subscription's rent (subscriber, or a sponsor).
+    pub payer: Address,
 }
 
 impl SubscriptionCreatedEvent {
@@ -23,8 +25,8 @@ impl SubscriptionCreatedEvent {
     pub const DATA_LEN: usize = size_of::<Self>();
 
     /// Constructs a new event.
-    pub fn new(plan: Address, subscriber: Address, mint: Address, created_ts: i64) -> Self {
-        Self { plan, subscriber, mint, created_ts }
+    pub fn new(plan: Address, subscriber: Address, mint: Address, created_ts: i64, payer: Address) -> Self {
+        Self { plan, subscriber, mint, created_ts, payer }
     }
 }
 
@@ -40,6 +42,7 @@ impl EventSerialize for SubscriptionCreatedEvent {
         writer.extend_from_slice(self.subscriber.as_ref());
         writer.extend_from_slice(self.mint.as_ref());
         writer.extend_from_slice(&{ self.created_ts }.to_le_bytes());
+        writer.extend_from_slice(self.payer.as_ref());
     }
 }
 
@@ -62,9 +65,13 @@ mod tests {
         Address::new_from_array([3u8; 32])
     }
 
+    fn payer() -> Address {
+        Address::new_from_array([4u8; 32])
+    }
+
     #[test]
     fn roundtrip() {
-        let event = SubscriptionCreatedEvent::new(plan(), subscriber(), mint(), 1_700_000_000);
+        let event = SubscriptionCreatedEvent::new(plan(), subscriber(), mint(), 1_700_000_000, payer());
         let bytes = event.to_bytes();
         let decoded = decode_event(&bytes).unwrap();
 
@@ -74,6 +81,7 @@ mod tests {
                 assert_eq!(e.subscriber, subscriber());
                 assert_eq!(e.mint, mint());
                 assert_eq!({ e.created_ts }, 1_700_000_000);
+                assert_eq!(e.payer, payer());
             }
             _ => panic!("expected Created event"),
         }
@@ -81,7 +89,7 @@ mod tests {
 
     #[test]
     fn wire_format() {
-        let event = SubscriptionCreatedEvent::new(plan(), subscriber(), mint(), 42);
+        let event = SubscriptionCreatedEvent::new(plan(), subscriber(), mint(), 42, payer());
         let bytes = event.to_bytes();
 
         assert_eq!(&bytes[..8], &EVENT_IX_TAG_LE);
@@ -90,11 +98,12 @@ mod tests {
         assert_eq!(&bytes[41..73], subscriber().as_ref());
         assert_eq!(&bytes[73..105], mint().as_ref());
         assert_eq!(&bytes[105..113], &42i64.to_le_bytes());
+        assert_eq!(&bytes[113..145], payer().as_ref());
     }
 
     #[test]
     fn zero_timestamp() {
-        let event = SubscriptionCreatedEvent::new(plan(), subscriber(), mint(), 0);
+        let event = SubscriptionCreatedEvent::new(plan(), subscriber(), mint(), 0, payer());
         let bytes = event.to_bytes();
         let decoded = decode_event(&bytes).unwrap();
         match decoded {
