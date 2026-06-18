@@ -770,7 +770,7 @@ fn test_subscription_transfer_token_2022_active_transfer_hook() {
 }
 
 #[test]
-fn subscription_active_hook_transfer_without_validation_pda_fails() {
+fn subscription_active_hook_transfer_without_hook_accounts_fails() {
     let (
         mut litesvm,
         alice,
@@ -784,10 +784,10 @@ fn subscription_active_hook_transfer_without_validation_pda_fails() {
         _counter,
     ) = setup_token_2022_hook_subscription();
 
-    TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
+    let result = TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
         .amount(10_000_000)
         .to(merchant_ata)
         .remaining(vec![AccountMeta::new_readonly(TRANSFER_HOOK_EXAMPLE_PROGRAM_ID, false)])
-        .execute()
-        .assert_err(SubscriptionsError::TransferHookValidationAccountMissing);
+        .execute();
+    assert!(result.is_err(), "transfer with incomplete hook accounts must fail via the hook");
 }

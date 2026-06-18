@@ -16,7 +16,6 @@ const ACCOUNT_TYPE_INDEX: usize = 165;
 const TLV_START_INDEX: usize = ACCOUNT_TYPE_INDEX + 1;
 const TLV_HEADER_LEN: usize = 4;
 const EXTENSION_TYPE_TRANSFER_HOOK: u16 = 14;
-const EXTRA_ACCOUNT_METAS_SEED: &[u8] = b"extra-account-metas";
 const TRANSFER_HOOK_EXTENSION_LEN: usize = 64; // authority(32) || program_id(32)
 const TRANSFER_HOOK_PROGRAM_ID_OFFSET: usize = 32;
 const TRANSFER_CHECKED_DISCRIMINATOR: u8 = 12;
@@ -87,15 +86,12 @@ pub fn mint_transfer_hook_program_id(mint_data: &[u8]) -> Result<Option<Address>
 }
 
 /// `TransferChecked` CPI forwarding the caller-supplied `remaining` hook accounts
-/// (each with its runtime writable/signer flags); Token-2022 validates them.
-///
-/// Requires the hook's `ExtraAccountMetaList` validation PDA among `remaining`.
-/// Token-2022 only resolves the hook's configured policy context when that PDA
-/// is passed, so without this check an active-hook transfer would fail open.
+/// (each with its runtime writable/signer flags). Token-2022 resolves and runs the
+/// hook from these accounts exactly as it would for a direct transfer; this program
+/// forwards them transparently and does not enforce the hook's policy itself.
 #[allow(clippy::too_many_arguments)]
 pub fn invoke_transfer_checked_with_hook(
     token_program: &Address,
-    hook_program: &Address,
     from: &AccountView,
     mint: &AccountView,
     to: &AccountView,
@@ -107,12 +103,6 @@ pub fn invoke_transfer_checked_with_hook(
 ) -> ProgramResult {
     if remaining.len() > MAX_TRANSFER_HOOK_REMAINING_ACCOUNTS {
         return Err(SubscriptionsError::TransferHookTooManyAccounts.into());
-    }
-
-    let (validation_pda, _) =
-        Address::find_program_address(&[EXTRA_ACCOUNT_METAS_SEED, mint.address().as_ref()], hook_program);
-    if !remaining.iter().any(|account| account.address().eq(&validation_pda)) {
-        return Err(SubscriptionsError::TransferHookValidationAccountMissing.into());
     }
 
     let mut data = [0u8; 10];

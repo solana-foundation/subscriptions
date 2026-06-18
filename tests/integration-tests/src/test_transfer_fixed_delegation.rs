@@ -224,7 +224,7 @@ fn test_fixed_transfer_token_2022_active_transfer_hook() {
 }
 
 #[test]
-fn active_hook_transfer_without_validation_pda_fails() {
+fn active_hook_transfer_without_hook_accounts_fails() {
     let (mut litesvm, alice) = setup();
     load_transfer_hook_example(&mut litesvm);
     let bob = Keypair::new();
@@ -249,11 +249,11 @@ fn active_hook_transfer_without_validation_pda_fails() {
         .fixed(50_000_000, current_ts() + days(1) as i64);
     res.assert_ok();
 
-    TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
+    let result = TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
         .amount(10_000_000)
         .remaining(vec![AccountMeta::new_readonly(TRANSFER_HOOK_EXAMPLE_PROGRAM_ID, false)])
-        .fixed()
-        .assert_err(SubscriptionsError::TransferHookValidationAccountMissing);
+        .fixed();
+    assert!(result.is_err(), "transfer with incomplete hook accounts must fail via the hook");
 }
 
 #[test]

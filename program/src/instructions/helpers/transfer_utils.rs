@@ -182,10 +182,9 @@ pub fn transfer_with_delegate(
     ];
     let signer = [Signer::from(&seeds)];
 
-    if let Some(hook_program_id) = hook_program_id {
+    if hook_program_id.is_some() {
         return invoke_transfer_checked_with_hook(
             accounts.token_program.address(),
-            &hook_program_id,
             accounts.delegator_ata,
             accounts.token_mint,
             accounts.to_ata,
