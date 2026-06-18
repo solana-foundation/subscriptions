@@ -1207,6 +1207,7 @@ pub struct TransferSubscription<'a> {
     plan_pda: Pubkey,
     amount: u64,
     receiver: Option<Pubkey>,
+    remaining: Vec<AccountMeta>,
 }
 
 impl<'a> TransferSubscription<'a> {
@@ -1218,7 +1219,17 @@ impl<'a> TransferSubscription<'a> {
         subscription_pda: Pubkey,
         plan_pda: Pubkey,
     ) -> Self {
-        Self { litesvm, caller, delegator, mint, subscription_pda, plan_pda, amount: 0, receiver: None }
+        Self {
+            litesvm,
+            caller,
+            delegator,
+            mint,
+            subscription_pda,
+            plan_pda,
+            amount: 0,
+            receiver: None,
+            remaining: Vec::new(),
+        }
     }
 
     pub fn amount(mut self, amount: u64) -> Self {
@@ -1228,6 +1239,11 @@ impl<'a> TransferSubscription<'a> {
 
     pub fn to(mut self, receiver: Pubkey) -> Self {
         self.receiver = Some(receiver);
+        self
+    }
+
+    pub fn remaining(mut self, remaining: Vec<AccountMeta>) -> Self {
+        self.remaining = remaining;
         self
     }
 
@@ -1243,20 +1259,23 @@ impl<'a> TransferSubscription<'a> {
 
         let event_authority = Pubkey::new_from_array(event_authority_pda::ID.to_bytes());
 
+        let mut accounts = vec![
+            AccountMeta::new(self.subscription_pda, false),
+            AccountMeta::new_readonly(self.plan_pda, false),
+            AccountMeta::new_readonly(subscription_authority_pda, false),
+            AccountMeta::new(delegator_ata, false),
+            AccountMeta::new(receiver_ata, false),
+            AccountMeta::new_readonly(self.caller.pubkey(), true),
+            AccountMeta::new_readonly(self.mint, false),
+            AccountMeta::new_readonly(token_program, false),
+            AccountMeta::new_readonly(event_authority, false),
+            AccountMeta::new_readonly(PROGRAM_ID, false),
+        ];
+        accounts.extend(self.remaining);
+
         let ix = Instruction {
             program_id: PROGRAM_ID,
-            accounts: vec![
-                AccountMeta::new(self.subscription_pda, false),
-                AccountMeta::new_readonly(self.plan_pda, false),
-                AccountMeta::new_readonly(subscription_authority_pda, false),
-                AccountMeta::new(delegator_ata, false),
-                AccountMeta::new(receiver_ata, false),
-                AccountMeta::new_readonly(self.caller.pubkey(), true),
-                AccountMeta::new_readonly(self.mint, false),
-                AccountMeta::new_readonly(token_program, false),
-                AccountMeta::new_readonly(event_authority, false),
-                AccountMeta::new_readonly(PROGRAM_ID, false),
-            ],
+            accounts,
             data: [
                 vec![*transfer_subscription::DISCRIMINATOR],
                 self.amount.to_le_bytes().to_vec(),

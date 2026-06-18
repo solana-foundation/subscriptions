@@ -9,8 +9,9 @@ use crate::{
         pda::get_subscription_authority_pda,
         utils::{
             build_and_send_transaction, current_ts, days, get_ata_balance, hours, init_ata, init_aux_token_account,
-            init_mint, init_wallet, initialize_subscription_authority_action, minutes, move_clock_forward, setup,
-            CloseSubscriptionAuthority, CreateDelegation, TransferDelegation,
+            init_mint, init_wallet, initialize_subscription_authority_action, install_transfer_hook_extra_metas,
+            load_transfer_hook_example, minutes, move_clock_forward, set_transfer_hook_config, setup,
+            CloseSubscriptionAuthority, CreateDelegation, TransferDelegation, TRANSFER_HOOK_EXAMPLE_PROGRAM_ID,
         },
     },
     SubscriptionsError,
@@ -911,4 +912,93 @@ fn test_recurring_transfer_token_2022_unconfigured_transfer_hook() {
 
     assert_eq!(get_ata_balance(&litesvm, &alice_ata), 90_000_000);
     assert_eq!(get_ata_balance(&litesvm, &bob_ata), 10_000_000);
+}
+
+#[test]
+fn test_recurring_transfer_token_2022_active_transfer_hook() {
+    let (mut litesvm, alice) = setup();
+    load_transfer_hook_example(&mut litesvm);
+    let bob = Keypair::new();
+    litesvm.airdrop(&bob.pubkey(), 10_000_000).unwrap();
+
+    let mint = init_mint(
+        &mut litesvm,
+        TOKEN_2022_PROGRAM_ID,
+        MINT_DECIMALS,
+        1_000_000_000,
+        Some(alice.pubkey()),
+        &[ExtensionType::TransferHook],
+    );
+    set_transfer_hook_config(&mut litesvm, mint, Some(alice.pubkey()), Some(TRANSFER_HOOK_EXAMPLE_PROGRAM_ID));
+    let (validation_pda, counter) = install_transfer_hook_extra_metas(&mut litesvm, mint);
+
+    let alice_ata = init_ata(&mut litesvm, mint, alice.pubkey(), 100_000_000);
+    let bob_ata = init_ata(&mut litesvm, mint, bob.pubkey(), 0);
+
+    initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
+    let (res, delegation_pda) = CreateDelegation::new(&mut litesvm, &alice, mint, bob.pubkey()).recurring(
+        50_000_000,
+        hours(1),
+        current_ts(),
+        current_ts() + days(1) as i64,
+    );
+    res.assert_ok();
+
+    let missing_accounts = TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
+        .amount(10_000_000)
+        .recurring();
+    assert!(missing_accounts.is_err(), "transfer without hook accounts should fail");
+    assert_eq!(get_ata_balance(&litesvm, &bob_ata), 0);
+
+    let remaining = vec![
+        AccountMeta::new_readonly(TRANSFER_HOOK_EXAMPLE_PROGRAM_ID, false),
+        AccountMeta::new_readonly(validation_pda, false),
+        AccountMeta::new(counter, false),
+    ];
+    TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
+        .amount(10_000_000)
+        .remaining(remaining)
+        .recurring()
+        .assert_ok();
+
+    assert_eq!(get_ata_balance(&litesvm, &alice_ata), 90_000_000);
+    assert_eq!(get_ata_balance(&litesvm, &bob_ata), 10_000_000);
+    assert_eq!(litesvm.get_account(&counter).unwrap().data[0], 1, "transfer hook should have run once");
+}
+
+#[test]
+fn recurring_active_hook_transfer_without_validation_pda_fails() {
+    let (mut litesvm, alice) = setup();
+    load_transfer_hook_example(&mut litesvm);
+    let bob = Keypair::new();
+    litesvm.airdrop(&bob.pubkey(), 10_000_000).unwrap();
+
+    let mint = init_mint(
+        &mut litesvm,
+        TOKEN_2022_PROGRAM_ID,
+        MINT_DECIMALS,
+        1_000_000_000,
+        Some(alice.pubkey()),
+        &[ExtensionType::TransferHook],
+    );
+    set_transfer_hook_config(&mut litesvm, mint, Some(alice.pubkey()), Some(TRANSFER_HOOK_EXAMPLE_PROGRAM_ID));
+    install_transfer_hook_extra_metas(&mut litesvm, mint);
+
+    init_ata(&mut litesvm, mint, alice.pubkey(), 100_000_000);
+    init_ata(&mut litesvm, mint, bob.pubkey(), 0);
+
+    initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
+    let (res, delegation_pda) = CreateDelegation::new(&mut litesvm, &alice, mint, bob.pubkey()).recurring(
+        50_000_000,
+        hours(1),
+        current_ts(),
+        current_ts() + days(1) as i64,
+    );
+    res.assert_ok();
+
+    TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
+        .amount(10_000_000)
+        .remaining(vec![AccountMeta::new_readonly(TRANSFER_HOOK_EXAMPLE_PROGRAM_ID, false)])
+        .recurring()
+        .assert_err(SubscriptionsError::TransferHookValidationAccountMissing);
 }
