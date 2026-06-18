@@ -89,6 +89,7 @@ impl TryFrom<u32> for SubscriptionsError {
             517 => Ok(Self::AlreadySubscribed),
             518 => Ok(Self::PlanAlreadyExists),
             519 => Ok(Self::PlanTermsMismatch),
+            520 => Ok(Self::PlanEndTsCannotExtend),
             // Event errors (600-699)
             600 => Ok(Self::InvalidEventAuthority),
             601 => Ok(Self::InvalidEventData),
@@ -269,6 +270,8 @@ pub enum SubscriptionsError {
     PlanAlreadyExists,
     #[error("Subscription plan terms do not match the current plan")]
     PlanTermsMismatch,
+    #[error("A finite plan end timestamp can only be shortened, not removed or extended")]
+    PlanEndTsCannotExtend,
 
     // --- Event errors (600--699) ---
     #[error("Invalid event authority PDA")]

@@ -105,6 +105,12 @@ pub fn process(accounts: &mut [AccountView], data: &UpdatePlanData) -> ProgramRe
         return Err(SubscriptionsError::PlanExpired.into());
     }
 
+    // A finite end_ts may only be shortened, never removed or extended.
+    let old_end_ts = plan.data.end_ts;
+    if old_end_ts != 0 && (data.end_ts == 0 || data.end_ts > old_end_ts) {
+        return Err(SubscriptionsError::PlanEndTsCannotExtend.into());
+    }
+
     plan.status = data.status;
     plan.data.end_ts = data.end_ts;
     plan.data.pullers = data.pullers;

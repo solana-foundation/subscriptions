@@ -130,7 +130,7 @@ fn update_plan_end_ts_in_past() {
 }
 
 #[test]
-fn update_plan_clear_end_ts() {
+fn update_plan_cannot_clear_finite_end_ts() {
     let (litesvm, owner) = &mut setup();
     let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
 
@@ -140,12 +140,57 @@ fn update_plan_clear_end_ts() {
     res.assert_ok();
 
     let res = UpdatePlan::new(litesvm, owner, plan_pda).end_ts(0).execute();
+    res.assert_err(crate::SubscriptionsError::PlanEndTsCannotExtend);
+}
+
+#[test]
+fn update_plan_cannot_extend_finite_end_ts() {
+    let (litesvm, owner) = &mut setup();
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
+
+    let end_ts = current_ts() + days(10) as i64;
+    let (res, plan_pda) =
+        CreatePlan::new(litesvm, owner, mint).plan_id(1).amount(1_000).period_hours(24).end_ts(end_ts).execute();
+    res.assert_ok();
+
+    let res = UpdatePlan::new(litesvm, owner, plan_pda).end_ts(current_ts() + days(30) as i64).execute();
+    res.assert_err(crate::SubscriptionsError::PlanEndTsCannotExtend);
+}
+
+#[test]
+fn update_plan_can_shorten_finite_end_ts() {
+    let (litesvm, owner) = &mut setup();
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
+
+    let end_ts = current_ts() + days(30) as i64;
+    let (res, plan_pda) =
+        CreatePlan::new(litesvm, owner, mint).plan_id(1).amount(1_000).period_hours(24).end_ts(end_ts).execute();
+    res.assert_ok();
+
+    let shorter = current_ts() + days(10) as i64;
+    let res = UpdatePlan::new(litesvm, owner, plan_pda).end_ts(shorter).execute();
     res.assert_ok();
 
     let account = litesvm.get_account(&plan_pda).unwrap();
     let plan = Plan::load(&account.data).unwrap();
-    let ets = plan.data.end_ts;
-    assert_eq!(ets, 0);
+    assert_eq!({ plan.data.end_ts }, shorter);
+}
+
+#[test]
+fn update_plan_can_set_end_on_open_ended_plan() {
+    let (litesvm, owner) = &mut setup();
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
+
+    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint).plan_id(1).amount(1_000).period_hours(24).execute();
+    res.assert_ok();
+
+    let end_ts = current_ts() + days(30) as i64;
+    let res = UpdatePlan::new(litesvm, owner, plan_pda).end_ts(end_ts).execute();
+    res.assert_ok();
+
+    let account = litesvm.get_account(&plan_pda).unwrap();
+    let plan = Plan::load(&account.data).unwrap();
+    assert_eq!({ plan.data.end_ts }, end_ts);
 }
 
 #[test]
@@ -199,7 +244,7 @@ fn update_plan_sunset_requires_end_ts() {
 }
 
 #[test]
-fn update_plan_at_exact_expiry_boundary() {
+fn update_plan_at_exact_expiry_boundary_cannot_clear_end() {
     let (litesvm, owner) = &mut setup();
     let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
 
@@ -208,15 +253,12 @@ fn update_plan_at_exact_expiry_boundary() {
         CreatePlan::new(litesvm, owner, mint).plan_id(1).amount(1_000).period_hours(24).end_ts(end_ts).execute();
     res.assert_ok();
 
+    // current_ts == end_ts: not expired (PlanExpired uses `>`), but a metadata
+    // update that drops end_ts to 0 is still rejected as a finite-end removal.
     move_clock_forward(litesvm, days(2));
 
     let res = UpdatePlan::new(litesvm, owner, plan_pda).metadata_uri("https://example.com/at-boundary.json").execute();
-    res.assert_ok();
-
-    let account = litesvm.get_account(&plan_pda).unwrap();
-    let plan = Plan::load(&account.data).unwrap();
-    let uri = core::str::from_utf8(&plan.data.metadata_uri).unwrap();
-    assert!(uri.starts_with("https://example.com/at-boundary.json"));
+    res.assert_err(crate::SubscriptionsError::PlanEndTsCannotExtend);
 }
 
 #[test]

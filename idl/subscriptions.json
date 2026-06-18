@@ -1261,6 +1261,12 @@
         "name": "planTermsMismatch"
       },
       {
+        "code": 520,
+        "kind": "errorNode",
+        "message": "A finite plan end timestamp can only be shortened, not removed or extended",
+        "name": "planEndTsCannotExtend"
+      },
+      {
         "code": 600,
         "kind": "errorNode",
         "message": "Invalid event authority PDA",
