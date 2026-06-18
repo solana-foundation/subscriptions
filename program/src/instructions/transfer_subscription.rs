@@ -85,7 +85,7 @@ pub fn process(accounts: &mut [AccountView], transfer_data: &TransferData) -> Pr
         }
 
         amount_per_period = subscription.terms.amount;
-        period_length_s = subscription.terms.period_length_secs();
+        period_length_s = subscription.terms.period_length_secs()?;
 
         let mut ps = subscription.current_period_start_ts;
         let mut pulled = subscription.amount_pulled_in_period;
