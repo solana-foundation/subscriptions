@@ -97,6 +97,7 @@ pub fn process(accounts: &mut [AccountView], transfer_data: &TransferData) -> Pr
         period_end_ts,
         amount_pulled_in_period,
         receiver_owner,
+        *accounts_struct.receiver_ata.address(),
     );
     let event_data = event.to_bytes();
     event_engine::emit_event(&crate::ID, accounts_struct.event_authority, accounts_struct.self_program, &event_data)?;

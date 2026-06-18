@@ -26,6 +26,8 @@ pub struct SubscriptionTransferEvent {
     pub amount_pulled_in_period: u64,
     /// The receiver wallet that received the tokens.
     pub receiver: Address,
+    /// The token account credited by the transfer; its owner is `receiver`.
+    pub receiver_token_account: Address,
 }
 
 impl SubscriptionTransferEvent {
@@ -44,6 +46,7 @@ impl SubscriptionTransferEvent {
         period_end_ts: i64,
         amount_pulled_in_period: u64,
         receiver: Address,
+        receiver_token_account: Address,
     ) -> Self {
         Self {
             subscription,
@@ -55,6 +58,7 @@ impl SubscriptionTransferEvent {
             period_end_ts,
             amount_pulled_in_period,
             receiver,
+            receiver_token_account,
         }
     }
 }
@@ -76,6 +80,7 @@ impl EventSerialize for SubscriptionTransferEvent {
         writer.extend_from_slice(&{ self.period_end_ts }.to_le_bytes());
         writer.extend_from_slice(&{ self.amount_pulled_in_period }.to_le_bytes());
         writer.extend_from_slice(self.receiver.as_ref());
+        writer.extend_from_slice(self.receiver_token_account.as_ref());
     }
 }
 
@@ -103,6 +108,10 @@ mod tests {
 
     fn receiver() -> Address {
         Address::new_from_array([5u8; 32])
+    }
+
+    fn receiver_token_account() -> Address {
+        Address::new_from_array([6u8; 32])
     }
 
     fn amount() -> u64 {
@@ -133,6 +142,7 @@ mod tests {
             period_end_ts(),
             amount_pulled_in_period(),
             receiver(),
+            receiver_token_account(),
         );
         let bytes = event.to_bytes();
         let decoded = decode_event(&bytes).unwrap();
@@ -148,6 +158,7 @@ mod tests {
                 assert_eq!({ e.period_end_ts }, period_end_ts());
                 assert_eq!({ e.amount_pulled_in_period }, amount_pulled_in_period());
                 assert_eq!(e.receiver, receiver());
+                assert_eq!(e.receiver_token_account, receiver_token_account());
             }
             _ => panic!("expected SubscriptionTransfer event"),
         }
