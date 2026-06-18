@@ -133,14 +133,22 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
             AccountDiscriminator::FixedDelegation | AccountDiscriminator::RecurringDelegation => {
                 let is_sponsor = check_is_sponsor(&data, accounts.authority)?;
 
-                // Sponsor can only revoke expired delegations
+                // Sponsor recovery: an expired delegation, or a fully-spent fixed
+                // delegation (remaining `amount` is zero, which is terminal since it
+                // only ever decreases).
                 if is_sponsor {
-                    let expiry_ts = match kind {
-                        AccountDiscriminator::FixedDelegation => FixedDelegation::load_with_min_size(&data)?.expiry_ts,
-                        _ => RecurringDelegation::load_with_min_size(&data)?.expiry_ts,
-                    };
                     let current_ts = Clock::get()?.unix_timestamp;
-                    if !is_effectively_expired(expiry_ts, current_ts) {
+                    let recoverable = match kind {
+                        AccountDiscriminator::FixedDelegation => {
+                            let delegation = FixedDelegation::load_with_min_size(&data)?;
+                            is_effectively_expired(delegation.expiry_ts, current_ts) || delegation.amount == 0
+                        }
+                        _ => {
+                            let delegation = RecurringDelegation::load_with_min_size(&data)?;
+                            is_effectively_expired(delegation.expiry_ts, current_ts)
+                        }
+                    };
+                    if !recoverable {
                         return Err(SubscriptionsError::Unauthorized.into());
                     }
                 }

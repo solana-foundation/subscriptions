@@ -8,7 +8,7 @@ use crate::{
         utils::{
             current_ts, days, hours, init_ata, init_mint, init_wallet, initialize_subscription_authority_action,
             move_clock_forward, setup, setup_with_subscription, CancelSubscription, CreateDelegation,
-            CreateSubscription, RevokeDelegation, RevokeSubscription,
+            CreateSubscription, RevokeDelegation, RevokeSubscription, TransferDelegation,
         },
     },
     AccountDiscriminator, FixedDelegation, RecurringDelegation, SubscriptionsError,
@@ -653,6 +653,54 @@ fn attacker_cannot_revoke_sponsor_funded_delegation() {
         .receiver(sponsor.pubkey())
         .execute()
         .assert_err(SubscriptionsError::Unauthorized);
+}
+
+#[test]
+fn sponsor_can_revoke_fully_spent_fixed_delegation() {
+    let (litesvm, user) = &mut setup();
+    let delegator = user;
+    let sponsor = init_wallet(litesvm, 10_000_000_000);
+    let delegatee = init_wallet(litesvm, 10_000_000_000);
+
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(delegator.pubkey()), &[]);
+    let _delegator_ata = init_ata(litesvm, mint, delegator.pubkey(), 1_000_000);
+    let _delegatee_ata = init_ata(litesvm, mint, delegatee.pubkey(), 0);
+
+    initialize_subscription_authority_action(litesvm, delegator, mint).0.assert_ok();
+
+    let nonce: u64 = 0;
+    let amount: u64 = 100;
+    // Far-future expiry so recovery cannot rely on expiry -- only on amount == 0.
+    let expiry_ts = current_ts() + hours(24) as i64;
+
+    let (res, delegation_pda) = CreateDelegation::new(litesvm, delegator, mint, delegatee.pubkey())
+        .payer(&sponsor)
+        .nonce(nonce)
+        .fixed(amount, expiry_ts);
+    res.assert_ok();
+
+    // Not expired and amount > 0: sponsor cannot recover yet.
+    RevokeDelegation::new(litesvm, delegator, mint, delegatee.pubkey(), nonce)
+        .signer(&sponsor)
+        .receiver(sponsor.pubkey())
+        .execute()
+        .assert_err(SubscriptionsError::Unauthorized);
+
+    // Spend the delegation to zero.
+    TransferDelegation::new(litesvm, &delegatee, delegator.pubkey(), mint, delegation_pda)
+        .amount(amount)
+        .fixed()
+        .assert_ok();
+
+    // amount == 0 is terminal: sponsor can recover rent even though not expired.
+    RevokeDelegation::new(litesvm, delegator, mint, delegatee.pubkey(), nonce)
+        .signer(&sponsor)
+        .receiver(sponsor.pubkey())
+        .execute()
+        .assert_ok();
+
+    let account_after = litesvm.get_account(&delegation_pda);
+    assert!(account_after.is_none() || account_after.as_ref().map(|a| a.lamports).unwrap_or(0) == 0);
 }
 
 #[allow(clippy::result_large_err)]
