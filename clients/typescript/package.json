@@ -54,7 +54,7 @@
         "@solana/kit-plugin-litesvm": "^0.10.0",
         "@solana/web3.js": "^1.98.4",
         "@sqds/multisig": "^2.1.4",
-        "@swig-wallet/kit": "^2.0.0",
+        "@swig-wallet/kit": "^2.1.0",
         "@types/node": "^25.7.0",
         "litesvm": "1.1.0",
         "tsup": "^8.3.0",
