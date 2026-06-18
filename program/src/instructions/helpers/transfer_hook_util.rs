@@ -25,15 +25,25 @@ const TRANSFER_CHECKED_DISCRIMINATOR: u8 = 12;
 pub const MAX_TRANSFER_HOOK_REMAINING_ACCOUNTS: usize = 60;
 const MAX_TRANSFER_CPI_ACCOUNTS: usize = 4 + MAX_TRANSFER_HOOK_REMAINING_ACCOUNTS;
 
+const TLV_TYPE_LEN: usize = 2;
+
 fn find_extension_value(tlv_data: &[u8], target: u16) -> Result<Option<&[u8]>, ProgramError> {
     let mut offset = 0;
 
-    while offset + TLV_HEADER_LEN <= tlv_data.len() {
+    while offset < tlv_data.len() {
+        // Fewer than a type field left, or an Uninitialized (zero) type, marks
+        // the end of used TLV data; trailing realloc/multisig padding lands here.
+        if tlv_data.len() - offset < TLV_TYPE_LEN {
+            return Ok(None);
+        }
         let ext_type = u16::from_le_bytes([tlv_data[offset], tlv_data[offset + 1]]);
         if ext_type == 0 {
             return Ok(None);
         }
 
+        if tlv_data.len() - offset < TLV_HEADER_LEN {
+            return Err(SubscriptionsError::InvalidToken2022MintAccountData.into());
+        }
         let length = u16::from_le_bytes([tlv_data[offset + 2], tlv_data[offset + 3]]) as usize;
         let value_start = offset + TLV_HEADER_LEN;
         let value_end = value_start.checked_add(length).ok_or(SubscriptionsError::InvalidToken2022MintAccountData)?;
@@ -49,11 +59,7 @@ fn find_extension_value(tlv_data: &[u8], target: u16) -> Result<Option<&[u8]>, P
         offset = value_end;
     }
 
-    if offset == tlv_data.len() {
-        Ok(None)
-    } else {
-        Err(SubscriptionsError::InvalidToken2022MintAccountData.into())
-    }
+    Ok(None)
 }
 
 /// Active transfer hook program for a mint, or `None` when absent or `program_id` is unset.
@@ -220,5 +226,29 @@ mod tests {
         let tlv = tlv_entry(EXTENSION_TYPE_TRANSFER_HOOK, &[5u8; 32]);
         let data = mint_with_tlv(&tlv);
         assert!(mint_transfer_hook_program_id(&data).is_err());
+    }
+
+    #[test]
+    fn trailing_zero_padding_is_accepted() {
+        let mut tlv = tlv_entry(1, &[0u8; 4]);
+        tlv.extend_from_slice(&[0u8, 0u8]);
+        let data = mint_with_tlv(&tlv);
+        assert_eq!(mint_transfer_hook_program_id(&data).unwrap(), None);
+    }
+
+    #[test]
+    fn single_trailing_byte_is_ignored() {
+        let mut tlv = tlv_entry(1, &[0u8; 4]);
+        tlv.push(0xAB);
+        let data = mint_with_tlv(&tlv);
+        assert_eq!(mint_transfer_hook_program_id(&data).unwrap(), None);
+    }
+
+    #[test]
+    fn finds_hook_before_trailing_padding() {
+        let mut tlv = tlv_entry(EXTENSION_TYPE_TRANSFER_HOOK, &hook_value([1u8; 32], [3u8; 32]));
+        tlv.extend_from_slice(&[0u8, 0u8]);
+        let data = mint_with_tlv(&tlv);
+        assert_eq!(mint_transfer_hook_program_id(&data).unwrap(), Some(Address::new_from_array([3u8; 32])));
     }
 }
