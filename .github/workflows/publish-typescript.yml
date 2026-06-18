@@ -95,7 +95,7 @@ jobs:
 
       - name: Publish TypeScript client
         id: npm_publish
-        uses: solana-developers/github-actions/npm-publish@279ffba919ebb53b40c1f7e3b98783888942f666
+        uses: solana-foundation/github-actions/npm-publish@f0ddc2234ac4ac19c5c17f520b60bc2d7308744f
         with:
           package: '@solana/subscriptions'
           package-directory: clients/typescript

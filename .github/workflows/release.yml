@@ -71,14 +71,14 @@ jobs:
         run: just generate-idl
 
       - name: Build verified program
-        uses: solana-developers/github-actions/build-verified@eb606791e11d06eb92593dfd3404bf0d4c809121
+        uses: solana-foundation/github-actions/build-verified@f0ddc2234ac4ac19c5c17f520b60bc2d7308744f
         with:
           program: ${{ env.PROGRAM }}
 
       - id: write-buffer
         if: inputs.network == 'devnet'
         name: Write program buffer
-        uses: solana-developers/github-actions/write-program-buffer@eb606791e11d06eb92593dfd3404bf0d4c809121
+        uses: solana-foundation/github-actions/write-program-buffer@f0ddc2234ac4ac19c5c17f520b60bc2d7308744f
         with:
           program: ${{ env.PROGRAM }}
           program-id: ${{ env.PROGRAM_ID }}
@@ -92,7 +92,7 @@ jobs:
       # ============================================
       - if: inputs.network == 'devnet'
         name: Upgrade program (devnet)
-        uses: solana-developers/github-actions/program-upgrade@eb606791e11d06eb92593dfd3404bf0d4c809121
+        uses: solana-foundation/github-actions/program-upgrade@f0ddc2234ac4ac19c5c17f520b60bc2d7308744f
         with:
           program: ${{ env.PROGRAM }}
           program-id: ${{ env.PROGRAM_ID }}
@@ -102,7 +102,7 @@ jobs:
 
       - if: inputs.network == 'devnet'
         name: Upload IDL via program-metadata (devnet)
-        uses: solana-developers/github-actions/metadata-upload@eb606791e11d06eb92593dfd3404bf0d4c809121
+        uses: solana-foundation/github-actions/metadata-upload@f0ddc2234ac4ac19c5c17f520b60bc2d7308744f
         with:
           program-id: ${{ env.PROGRAM_ID }}
           rpc-url: ${{ env.RPC_URL }}
@@ -116,7 +116,7 @@ jobs:
       - if: inputs.network == 'mainnet'
         id: prepare-squads-release
         name: Prepare Squads release buffers (mainnet)
-        uses: solana-developers/github-actions/prepare-squads-release@b480a01c45f5670da8e9d76fa03d30d9deb7153d
+        uses: solana-foundation/github-actions/prepare-squads-release@f0ddc2234ac4ac19c5c17f520b60bc2d7308744f
         with:
           program: ${{ env.PROGRAM }}
           program-id: ${{ env.PROGRAM_ID }}
