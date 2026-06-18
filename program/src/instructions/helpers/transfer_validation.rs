@@ -1,26 +1,27 @@
 use pinocchio::ProgramResult;
 
-use crate::constants::TIME_DRIFT_ALLOWED_SECS;
 use crate::SubscriptionsError;
 
-/// Returns true when the delegation has expired past the drift tolerance window.
+/// Returns true when a finite-expiry delegation is past its `expiry_ts`.
 /// Shared lifecycle gate used by transfer paths and sponsor revocation so both
-/// agree on when a finite-expiry delegation is unspendable.
-pub fn is_effectively_expired(expiry_ts: i64, current_ts: i64) -> bool {
-    expiry_ts != 0 && current_ts > expiry_ts.saturating_add(TIME_DRIFT_ALLOWED_SECS)
+/// agree on when a finite-expiry delegation is unspendable. No drift tolerance
+/// here — `expiry_ts` is a hard stop for spending and sponsor revocation; drift
+/// applies only when validating timestamps at creation time.
+pub fn is_expired(expiry_ts: i64, current_ts: i64) -> bool {
+    expiry_ts != 0 && current_ts > expiry_ts
 }
 
 /// Validates a fixed transfer against the delegation's remaining allowance and expiry.
 ///
 /// Returns an error if:
 /// - `transfer_amount` is zero
-/// - the delegation has expired (`expiry_ts != 0 && current_ts > expiry_ts + TIME_DRIFT_ALLOWED_SECS`)
+/// - the delegation has expired (`expiry_ts != 0 && current_ts > expiry_ts`)
 /// - `transfer_amount` exceeds the remaining allowance
 pub fn validate_fixed_transfer(transfer_amount: u64, remaining: u64, expiry_ts: i64, current_ts: i64) -> ProgramResult {
     if transfer_amount == 0 {
         return Err(SubscriptionsError::InvalidAmount.into());
     }
-    if is_effectively_expired(expiry_ts, current_ts) {
+    if is_expired(expiry_ts, current_ts) {
         return Err(SubscriptionsError::DelegationExpired.into());
     }
     if transfer_amount > remaining {
@@ -56,7 +57,7 @@ pub fn validate_recurring_transfer(
     if transfer_amount == 0 {
         return Err(SubscriptionsError::InvalidAmount.into());
     }
-    if is_effectively_expired(expiry_ts, current_ts) {
+    if is_expired(expiry_ts, current_ts) {
         return Err(SubscriptionsError::DelegationExpired.into());
     }
 
@@ -153,12 +154,12 @@ mod tests {
     }
 
     #[test]
-    fn drift_window_caps_to_last_in_bounds_period() {
+    fn recurring_transfer_past_expiry_rejected_without_drift_grace() {
         let mut period_start = 0i64;
         let mut amount_pulled = 100u64;
         let res = validate_recurring_transfer(100, 100, 100, &mut period_start, &mut amount_pulled, 300, 350);
-        assert!(res.is_ok());
-        assert_eq!(period_start, 200);
+        assert!(res.is_err());
+        assert_eq!(period_start, 0);
         assert_eq!(amount_pulled, 100);
     }
 
@@ -168,5 +169,12 @@ mod tests {
         assert!(res.is_ok());
         assert_eq!(start, 90);
         assert_eq!(pulled, 100);
+    }
+
+    #[test]
+    fn finite_expiry_is_hard_stop_with_no_drift_grace() {
+        assert!(!is_expired(100, 100));
+        assert!(is_expired(100, 101));
+        assert!(!is_expired(0, i64::MAX));
     }
 }

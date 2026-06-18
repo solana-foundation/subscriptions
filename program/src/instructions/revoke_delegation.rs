@@ -5,7 +5,7 @@ use pinocchio::{
 };
 
 use crate::{
-    helpers::is_effectively_expired,
+    helpers::is_expired,
     state::{
         common::AccountDiscriminator, fixed_delegation::FixedDelegation, plan::Plan,
         recurring_delegation::RecurringDelegation, subscription_delegation::SubscriptionDelegation,
@@ -138,11 +138,11 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
                     let recoverable = match kind {
                         AccountDiscriminator::FixedDelegation => {
                             let delegation = FixedDelegation::load_for_revoke(&data)?;
-                            is_effectively_expired(delegation.expiry_ts, current_ts) || delegation.amount == 0
+                            is_expired(delegation.expiry_ts, current_ts) || delegation.amount == 0
                         }
                         _ => {
                             let delegation = RecurringDelegation::load_for_revoke(&data)?;
-                            is_effectively_expired(delegation.expiry_ts, current_ts)
+                            is_expired(delegation.expiry_ts, current_ts)
                         }
                     };
                     if !recoverable {
