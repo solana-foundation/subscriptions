@@ -94,6 +94,7 @@ impl TryFrom<u32> for SubscriptionsError {
             601 => Ok(Self::InvalidEventData),
             602 => Ok(Self::InvalidEventTag),
             603 => Ok(Self::InvalidEventDiscriminator),
+            604 => Ok(Self::InvalidSelfProgram),
             _ => Err(code),
         }
     }
@@ -278,4 +279,6 @@ pub enum SubscriptionsError {
     InvalidEventTag,
     #[error("Unknown event discriminator")]
     InvalidEventDiscriminator,
+    #[error("Self program account does not match this program")]
+    InvalidSelfProgram,
 }

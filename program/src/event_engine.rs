@@ -147,6 +147,10 @@ pub fn emit_event(
 ) -> ProgramResult {
     verify_event_authority(event_authority)?;
 
+    if self_program.address() != &crate::ID {
+        return Err(SubscriptionsError::InvalidSelfProgram.into());
+    }
+
     let bump = [event_authority_pda::BUMP];
     let signer_seeds: [Seed; 2] = [Seed::from(EVENT_AUTHORITY_SEED), Seed::from(&bump)];
     let signer = Signer::from(&signer_seeds);

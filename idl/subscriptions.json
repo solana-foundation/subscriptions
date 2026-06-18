@@ -1283,6 +1283,12 @@
         "kind": "errorNode",
         "message": "Unknown event discriminator",
         "name": "invalidEventDiscriminator"
+      },
+      {
+        "code": 604,
+        "kind": "errorNode",
+        "message": "Self program account does not match this program",
+        "name": "invalidSelfProgram"
       }
     ],
     "events": [
