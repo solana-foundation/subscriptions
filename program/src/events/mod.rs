@@ -6,6 +6,7 @@
 //! the event-specific payload.
 
 pub mod fixed_transfer;
+pub mod plan_updated;
 pub mod recurring_transfer;
 pub mod subscription_cancelled;
 pub mod subscription_created;
@@ -13,6 +14,7 @@ pub mod subscription_resumed;
 pub mod subscription_transfer;
 
 pub use fixed_transfer::*;
+pub use plan_updated::*;
 pub use recurring_transfer::*;
 pub use subscription_cancelled::*;
 pub use subscription_created::*;
@@ -33,4 +35,6 @@ pub enum Event<'a> {
     RecurringTransfer(&'a RecurringTransferEvent),
     /// See [`SubscriptionResumedEvent`].
     SubscriptionResumed(&'a SubscriptionResumedEvent),
+    /// See [`PlanUpdatedEvent`].
+    PlanUpdated(&'a PlanUpdatedEvent),
 }

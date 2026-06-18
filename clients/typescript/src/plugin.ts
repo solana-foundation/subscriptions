@@ -588,11 +588,12 @@ export async function getCreatePlanOverlayInstructionAsync(input: CreatePlanInpu
     );
 }
 
-export function getUpdatePlanOverlayInstruction(input: UpdatePlanInput): Instruction {
+export async function getUpdatePlanOverlayInstruction(input: UpdatePlanInput): Promise<Instruction> {
     assertMetadataUri(input.metadataUri);
     const pullers = padPlanPullers(input.pullers);
     return getUpdatePlanInstruction(
         {
+            ...(await eventAccounts(input.programAddress)),
             owner: input.owner,
             planPda: input.planPda,
             updatePlanData: {
@@ -724,7 +725,7 @@ export type SubscriptionsPluginInstructions = {
     transferFixed: (input: MakeOptional<TransferDelegationInput, 'delegatee'>) => Self<Promise<Instruction>>;
     transferRecurring: (input: MakeOptional<TransferDelegationInput, 'delegatee'>) => Self<Promise<Instruction>>;
     transferSubscription: (input: MakeOptional<TransferSubscriptionInput, 'caller'>) => Self<Promise<Instruction>>;
-    updatePlan: (input: MakeOptional<UpdatePlanInput, 'owner'>) => Self<Instruction>;
+    updatePlan: (input: MakeOptional<UpdatePlanInput, 'owner'>) => Self<Promise<Instruction>>;
 };
 
 export type SubscriptionsPluginQueries = {

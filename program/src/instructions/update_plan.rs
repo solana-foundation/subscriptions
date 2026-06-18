@@ -7,6 +7,8 @@ use pinocchio::{
 };
 
 use crate::{
+    event_engine::{self, EventSerialize},
+    events::PlanUpdatedEvent,
     state::{
         common::{validate_plan_end_ts, PlanStatus},
         plan::Plan,
@@ -56,13 +58,15 @@ impl UpdatePlanData {
 pub struct UpdatePlanAccounts<'a> {
     pub owner: &'a AccountView,
     pub plan_pda: &'a mut AccountView,
+    pub event_authority: &'a AccountView,
+    pub self_program: &'a AccountView,
 }
 
 impl<'a> TryFrom<&'a mut [AccountView]> for UpdatePlanAccounts<'a> {
     type Error = ProgramError;
 
     fn try_from(accounts: &'a mut [AccountView]) -> Result<Self, Self::Error> {
-        let [owner, plan_pda] = accounts else {
+        let [owner, plan_pda, event_authority, self_program] = accounts else {
             return Err(SubscriptionsError::NotEnoughAccountKeys.into());
         };
 
@@ -70,7 +74,7 @@ impl<'a> TryFrom<&'a mut [AccountView]> for UpdatePlanAccounts<'a> {
         WritableAccount::check(plan_pda)?;
         ProgramAccount::check(plan_pda)?;
 
-        Ok(Self { owner, plan_pda })
+        Ok(Self { owner, plan_pda, event_authority, self_program })
     }
 }
 
@@ -82,39 +86,48 @@ pub const DISCRIMINATOR: &u8 = &8;
 /// Only the plan owner may call this. Plans in `Sunset` status are immutable.
 pub fn process(accounts: &mut [AccountView], data: &UpdatePlanData) -> ProgramResult {
     let accounts = UpdatePlanAccounts::try_from(accounts)?;
-    let account_data = &mut accounts.plan_pda.try_borrow_mut()?;
-    let plan = Plan::load_mut(account_data)?;
 
-    if &plan.owner != accounts.owner.address() {
-        return Err(SubscriptionsError::NotPlanOwner.into());
-    }
+    let owner = {
+        let account_data = &mut accounts.plan_pda.try_borrow_mut()?;
+        let plan = Plan::load_mut(account_data)?;
 
-    if plan.status == PlanStatus::Sunset as u8 {
-        return Err(SubscriptionsError::PlanImmutableAfterSunset.into());
-    }
+        if &plan.owner != accounts.owner.address() {
+            return Err(SubscriptionsError::NotPlanOwner.into());
+        }
 
-    if data.status == PlanStatus::Sunset as u8 && data.end_ts == 0 {
-        return Err(SubscriptionsError::SunsetRequiresEndTs.into());
-    }
+        if plan.status == PlanStatus::Sunset as u8 {
+            return Err(SubscriptionsError::PlanImmutableAfterSunset.into());
+        }
 
-    let current_ts = Clock::get()?.unix_timestamp;
-    data.validate(current_ts)?;
-    validate_plan_end_ts(data.end_ts, plan.data.terms.period_hours, current_ts)?;
+        if data.status == PlanStatus::Sunset as u8 && data.end_ts == 0 {
+            return Err(SubscriptionsError::SunsetRequiresEndTs.into());
+        }
 
-    if plan.data.end_ts != 0 && current_ts > plan.data.end_ts {
-        return Err(SubscriptionsError::PlanExpired.into());
-    }
+        let current_ts = Clock::get()?.unix_timestamp;
+        data.validate(current_ts)?;
+        validate_plan_end_ts(data.end_ts, plan.data.terms.period_hours, current_ts)?;
 
-    // A finite end_ts may only be shortened, never removed or extended.
-    let old_end_ts = plan.data.end_ts;
-    if old_end_ts != 0 && (data.end_ts == 0 || data.end_ts > old_end_ts) {
-        return Err(SubscriptionsError::PlanEndTsCannotExtend.into());
-    }
+        if plan.data.end_ts != 0 && current_ts > plan.data.end_ts {
+            return Err(SubscriptionsError::PlanExpired.into());
+        }
 
-    plan.status = data.status;
-    plan.data.end_ts = data.end_ts;
-    plan.data.pullers = data.pullers;
-    plan.data.metadata_uri = data.metadata_uri;
+        // A finite end_ts may only be shortened, never removed or extended.
+        let old_end_ts = plan.data.end_ts;
+        if old_end_ts != 0 && (data.end_ts == 0 || data.end_ts > old_end_ts) {
+            return Err(SubscriptionsError::PlanEndTsCannotExtend.into());
+        }
+
+        plan.status = data.status;
+        plan.data.end_ts = data.end_ts;
+        plan.data.pullers = data.pullers;
+        plan.data.metadata_uri = data.metadata_uri;
+
+        plan.owner
+    };
+
+    let event = PlanUpdatedEvent::new(*accounts.plan_pda.address(), owner, data.status, data.end_ts, data.pullers);
+    let event_data = event.to_bytes();
+    event_engine::emit_event(&crate::ID, accounts.event_authority, accounts.self_program, &event_data)?;
 
     Ok(())
 }

@@ -111,6 +111,8 @@ pub enum EventDiscriminators {
     RecurringTransfer = 4,
     /// A cancelled subscription was resumed by the subscriber.
     SubscriptionResumed = 5,
+    /// A plan owner updated a plan's mutable fields.
+    PlanUpdated = 6,
 }
 
 impl TryFrom<u8> for EventDiscriminators {
@@ -124,6 +126,7 @@ impl TryFrom<u8> for EventDiscriminators {
             3 => Ok(Self::FixedTransfer),
             4 => Ok(Self::RecurringTransfer),
             5 => Ok(Self::SubscriptionResumed),
+            6 => Ok(Self::PlanUpdated),
             _ => Err(value),
         }
     }

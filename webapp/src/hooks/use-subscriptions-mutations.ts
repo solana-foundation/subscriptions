@@ -468,7 +468,7 @@ export function useSubscriptionsMutations() {
         }) => {
             if (!signer) throw new Error('Wallet not connected');
 
-            const instruction = getUpdatePlanOverlayInstruction({
+            const instruction = await getUpdatePlanOverlayInstruction({
                 endTs: BigInt(endTs),
                 metadataUri,
                 owner: signer,

@@ -1074,7 +1074,13 @@ impl<'a> UpdatePlan<'a> {
         let mut data = vec![*update_plan::DISCRIMINATOR];
         data.extend_from_slice(data_bytes);
 
-        let accounts = vec![AccountMeta::new(self.owner.pubkey(), true), AccountMeta::new(self.plan_pda, false)];
+        let event_authority = Pubkey::new_from_array(event_authority_pda::ID.to_bytes());
+        let accounts = vec![
+            AccountMeta::new(self.owner.pubkey(), true),
+            AccountMeta::new(self.plan_pda, false),
+            AccountMeta::new_readonly(event_authority, false),
+            AccountMeta::new_readonly(PROGRAM_ID, false),
+        ];
 
         let ix = Instruction { program_id: PROGRAM_ID, accounts, data };
 

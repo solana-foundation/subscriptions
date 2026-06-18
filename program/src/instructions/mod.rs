@@ -194,6 +194,16 @@ pub enum SubscriptionsInstruction {
 
     #[codama(account(name = "owner", signer, docs = "The plan owner updating the plan"))]
     #[codama(account(name = "plan_pda", writable, docs = "The plan PDA being updated"))]
+    #[codama(account(
+        name = "event_authority",
+        docs = "The event authority PDA",
+        default_value = pda("eventAuthority")
+    ))]
+    #[codama(account(
+        name = "self_program",
+        docs = "This program (for self-CPI)",
+        default_value = public_key("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44")
+    ))]
     UpdatePlan(#[codama(name = "update_plan_data")] UpdatePlanData) = 8,
 
     #[codama(account(name = "owner", signer, writable, docs = "The plan owner deleting the plan (receives rent)"))]
