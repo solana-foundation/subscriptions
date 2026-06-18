@@ -14,12 +14,12 @@ Solana's SPL Token delegate model allows only **one delegate per token account**
 
 We implement a **single-track delegation model** that provides:
 
-1. **SubscriptionAuthority Authority (SA)**: A programmatic delegate with unlimited token approval authority (`u64::MAX`) over user token accounts
+1. **SubscriptionAuthority Authority (SA)**: A programmatic delegate with near-unlimited token approval (`u64::MAX` — ~18 trillion whole tokens at 6 decimals; finite, refreshable) over user token accounts
 2. **Delegation PDAs**: Individual constraints governing SA spending behavior
 3. **Delegation Types**: Fixed (one-time with expiry) and Recurring (periodic pulls with limits)
 4. **Tech Stack**: Pinocchio framework, Codama for IDL generation and TypeScript/Rust client generation
 
-**Key Design**: SA receives unlimited approval, but can only transfer when Delegation PDA constraints allow. The program validates constraints before executing transfers, making the system as secure as traditional approval-based delegations while enabling subscription-authority capabilities.
+**Key Design**: SA receives a near-unlimited (`u64::MAX`) approval, but can only transfer when Delegation PDA constraints allow. The program validates constraints before executing transfers, making the system as secure as traditional approval-based delegations while enabling subscription-authority capabilities.
 
 ## Architecture Overview
 
