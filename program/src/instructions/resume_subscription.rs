@@ -8,8 +8,10 @@ use crate::{
     check_and_update_version,
     event_engine::{self, EventSerialize},
     events::SubscriptionResumedEvent,
-    state::{plan::Plan, subscription_delegation::SubscriptionDelegation},
-    AccountCheck, ProgramAccount, SignerAccount, SubscriptionsError, WritableAccount,
+    state::{
+        plan::Plan, subscription_authority::SubscriptionAuthority, subscription_delegation::SubscriptionDelegation,
+    },
+    AccountCheck, ProgramAccount, SignerAccount, SubscriptionAuthorityAccount, SubscriptionsError, WritableAccount,
 };
 
 /// Instruction discriminator byte for `ResumeSubscription`.
@@ -47,6 +49,7 @@ pub fn process(accounts: &mut [AccountView]) -> ProgramResult {
             return Err(SubscriptionsError::PlanClosed.into());
         }
 
+        let plan_mint;
         {
             let plan_data = accounts_struct.plan_pda.try_borrow()?;
             let plan = Plan::load(&plan_data)?;
@@ -56,6 +59,19 @@ pub fn process(accounts: &mut [AccountView]) -> ProgramResult {
             }
 
             subscription.check_plan_terms(&plan.data.terms)?;
+            plan_mint = plan.data.mint;
+        }
+
+        {
+            let authority_data = accounts_struct.subscription_authority.try_borrow()?;
+            let authority = SubscriptionAuthority::load(&authority_data)?;
+            authority.check_owner(accounts_struct.subscriber.address())?;
+            if authority.token_mint != plan_mint {
+                return Err(SubscriptionsError::MintMismatch.into());
+            }
+            if authority.init_id != subscription.header.init_id {
+                return Err(SubscriptionsError::StaleSubscriptionAuthority.into());
+            }
         }
 
         if subscription.expires_at_ts <= current_ts {
@@ -78,6 +94,7 @@ pub struct ResumeSubscriptionAccounts<'a> {
     pub subscriber: &'a AccountView,
     pub plan_pda: &'a AccountView,
     pub subscription_pda: &'a mut AccountView,
+    pub subscription_authority: &'a AccountView,
     pub event_authority: &'a AccountView,
     pub self_program: &'a AccountView,
 }
@@ -86,14 +103,16 @@ impl<'a> TryFrom<&'a mut [AccountView]> for ResumeSubscriptionAccounts<'a> {
     type Error = ProgramError;
 
     fn try_from(accounts: &'a mut [AccountView]) -> Result<Self, Self::Error> {
-        let [subscriber, plan_pda, subscription_pda, event_authority, self_program] = accounts else {
+        let [subscriber, plan_pda, subscription_pda, subscription_authority, event_authority, self_program] = accounts
+        else {
             return Err(SubscriptionsError::NotEnoughAccountKeys.into());
         };
 
         SignerAccount::check(subscriber)?;
         ProgramAccount::check(subscription_pda)?;
         WritableAccount::check(subscription_pda)?;
+        SubscriptionAuthorityAccount::check(subscription_authority)?;
 
-        Ok(Self { subscriber, plan_pda, subscription_pda, event_authority, self_program })
+        Ok(Self { subscriber, plan_pda, subscription_pda, subscription_authority, event_authority, self_program })
     }
 }

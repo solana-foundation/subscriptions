@@ -3180,6 +3180,15 @@
             "name": "subscriptionPda"
           },
           {
+            "docs": [
+              "The subscriber's SubscriptionAuthority PDA for the plan's mint"
+            ],
+            "isSigner": false,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "subscriptionAuthority"
+          },
+          {
             "defaultValue": {
               "kind": "pdaValueNode",
               "pda": {

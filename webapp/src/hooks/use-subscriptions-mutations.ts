@@ -574,7 +574,15 @@ export function useSubscriptionsMutations() {
     });
 
     const resumeSubscription = useMutation({
-        mutationFn: async ({ planPda, subscriptionPda }: { planPda: string; subscriptionPda: string }) => {
+        mutationFn: async ({
+            planPda,
+            subscriptionPda,
+            tokenMint,
+        }: {
+            planPda: string;
+            subscriptionPda: string;
+            tokenMint: string;
+        }) => {
             if (!signer) throw new Error('Wallet not connected');
             if (!progId) throw new Error('Program address not configured');
 
@@ -583,6 +591,7 @@ export function useSubscriptionsMutations() {
                 programAddress: progId,
                 subscriber: signer,
                 subscriptionPda: address(subscriptionPda),
+                tokenMint: address(tokenMint),
             });
 
             const signature = await signAndSend([instruction], signer);

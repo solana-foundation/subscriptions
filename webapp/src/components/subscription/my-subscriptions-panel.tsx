@@ -163,6 +163,7 @@ function ResumeSubscriptionDialog({
                                 {
                                     planPda: item.subscription.header.delegatee,
                                     subscriptionPda: item.address,
+                                    tokenMint: item.mint ?? '',
                                 },
                                 { onSuccess: () => onOpenChange(false) },
                             )

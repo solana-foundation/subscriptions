@@ -282,6 +282,7 @@ export type ResumeSubscriptionInput = WithProgramAddress & {
     planPda: Address;
     subscriber: TransactionSigner;
     subscriptionPda?: Address;
+    tokenMint: Address;
 };
 
 // ============================================================================
@@ -670,11 +671,16 @@ export async function getCancelSubscriptionOverlayInstructionAsync(
 export async function getResumeSubscriptionOverlayInstructionAsync(
     input: ResumeSubscriptionInput,
 ): Promise<Instruction> {
+    const [subscriptionAuthority] = await findSubscriptionAuthorityPda(
+        { tokenMint: input.tokenMint, user: input.subscriber.address },
+        pdaConfig(input.programAddress),
+    );
     return await getResumeSubscriptionInstructionAsync(
         {
             ...(await eventAccounts(input.programAddress)),
             planPda: input.planPda,
             subscriber: input.subscriber,
+            subscriptionAuthority,
             subscriptionPda: input.subscriptionPda,
         },
         pdaConfig(input.programAddress),

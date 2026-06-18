@@ -930,6 +930,7 @@ export function PlanCard({
                                         resumeSubscription.mutate({
                                             planPda: plan.address,
                                             subscriptionPda: matchingSub.address,
+                                            tokenMint: plan.data.mint,
                                         });
                                     }}
                                     disabled={resumeSubscription.isPending}

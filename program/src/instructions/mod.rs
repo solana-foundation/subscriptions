@@ -292,6 +292,10 @@ pub enum SubscriptionsInstruction {
         default_value = pda("subscriptionDelegation", [seed("planPda", account("plan_pda")), seed("subscriber", account("subscriber"))])
     ))]
     #[codama(account(
+        name = "subscription_authority",
+        docs = "The subscriber's SubscriptionAuthority PDA for the plan's mint"
+    ))]
+    #[codama(account(
         name = "event_authority",
         docs = "The event authority PDA",
         default_value = pda("eventAuthority")

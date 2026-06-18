@@ -1394,21 +1394,38 @@ pub struct ResumeSubscription<'a> {
     subscriber: &'a Keypair,
     plan_pda: Pubkey,
     subscription_pda: Pubkey,
+    mint: Pubkey,
+    subscription_authority: Option<Pubkey>,
 }
 
 impl<'a> ResumeSubscription<'a> {
-    pub fn new(litesvm: &'a mut LiteSVM, subscriber: &'a Keypair, plan_pda: Pubkey, subscription_pda: Pubkey) -> Self {
-        Self { litesvm, subscriber, plan_pda, subscription_pda }
+    pub fn new(
+        litesvm: &'a mut LiteSVM,
+        subscriber: &'a Keypair,
+        plan_pda: Pubkey,
+        subscription_pda: Pubkey,
+        mint: Pubkey,
+    ) -> Self {
+        Self { litesvm, subscriber, plan_pda, subscription_pda, mint, subscription_authority: None }
+    }
+
+    pub fn subscription_authority(mut self, authority: Pubkey) -> Self {
+        self.subscription_authority = Some(authority);
+        self
     }
 
     #[allow(clippy::result_large_err)]
     pub fn execute(self) -> TransactionResult {
         let event_authority = Pubkey::new_from_array(event_authority_pda::ID.to_bytes());
+        let subscription_authority = self
+            .subscription_authority
+            .unwrap_or_else(|| get_subscription_authority_pda(&self.subscriber.pubkey(), &self.mint).0);
 
         let accounts = vec![
             AccountMeta::new_readonly(self.subscriber.pubkey(), true),
             AccountMeta::new_readonly(self.plan_pda, false),
             AccountMeta::new(self.subscription_pda, false),
+            AccountMeta::new_readonly(subscription_authority, false),
             AccountMeta::new_readonly(event_authority, false),
             AccountMeta::new_readonly(PROGRAM_ID, false),
         ];
