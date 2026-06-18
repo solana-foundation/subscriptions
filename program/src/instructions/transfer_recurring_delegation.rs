@@ -29,6 +29,7 @@ pub fn process(accounts: &mut [AccountView], transfer_data: &TransferData) -> Pr
     let period_start: i64;
     let amount_pulled_in_period: u64;
     let period_length_s: u64;
+    let expiry_ts: i64;
     let delegatee_address: Address;
     let init_id: i64;
     {
@@ -63,6 +64,7 @@ pub fn process(accounts: &mut [AccountView], transfer_data: &TransferData) -> Pr
 
         period_start = ps;
         amount_pulled_in_period = pulled;
+        expiry_ts = delegation_mut.expiry_ts;
         init_id = delegation_mut.header.init_id;
     }
 
@@ -86,7 +88,14 @@ pub fn process(accounts: &mut [AccountView], transfer_data: &TransferData) -> Pr
         accounts_struct.remaining,
     )?;
 
-    let period_end_ts = period_start + period_length_s as i64;
+    let period_end_ts = {
+        let end = period_start + period_length_s as i64;
+        if expiry_ts != 0 && end > expiry_ts {
+            expiry_ts
+        } else {
+            end
+        }
+    };
     let event = RecurringTransferEvent::new(
         *accounts_struct.delegation_pda.address(),
         transfer_data.delegator,
