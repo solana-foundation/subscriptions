@@ -47,16 +47,19 @@ export const STATIC_NETWORKS: Record<Network, NetworkConfig> = {
 
 export interface Features {
     revokeAbandonedDelegation: boolean;
+    revokeSubscriptionAuthority: boolean;
     startNowRecurringDelegation: boolean;
 }
 
 const SOAK_FEATURES: Features = {
     revokeAbandonedDelegation: true,
+    revokeSubscriptionAuthority: true,
     startNowRecurringDelegation: true,
 };
 
 const STABLE_FEATURES: Features = {
     revokeAbandonedDelegation: false,
+    revokeSubscriptionAuthority: false,
     startNowRecurringDelegation: false,
 };
 
