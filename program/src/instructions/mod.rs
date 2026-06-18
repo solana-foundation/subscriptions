@@ -19,6 +19,7 @@ pub mod helpers;
 pub mod initialize_subscription_authority;
 pub mod resume_subscription;
 pub mod revoke_abandoned_delegation;
+pub mod revoke_abandoned_subscription;
 pub mod revoke_delegation;
 pub mod revoke_subscription_authority;
 pub mod transfer_fixed_delegation;
@@ -316,6 +317,15 @@ pub enum SubscriptionsInstruction {
     ))]
     RevokeAbandonedDelegation = 15,
 
+    #[codama(account(name = "payer", signer, writable, docs = "The recorded payer reclaiming rent"))]
+    #[codama(account(name = "subscription_account", writable, docs = "The abandoned subscription PDA to close"))]
+    #[codama(account(
+        name = "subscription_authority",
+        docs = "The subscriber's recorded SubscriptionAuthority PDA for the plan's mint (may be closed)"
+    ))]
+    #[codama(account(name = "plan_pda", docs = "The plan the subscription belongs to; provides the mint"))]
+    RevokeAbandonedSubscription = 16,
+
     #[codama(skip)]
     #[codama(account(
         name = "event_authority",
@@ -373,6 +383,7 @@ impl SubscriptionsInstruction {
             resume_subscription::DISCRIMINATOR => Ok(Self::ResumeSubscription),
             revoke_subscription_authority::DISCRIMINATOR => Ok(Self::RevokeSubscriptionAuthority),
             revoke_abandoned_delegation::DISCRIMINATOR => Ok(Self::RevokeAbandonedDelegation),
+            revoke_abandoned_subscription::DISCRIMINATOR => Ok(Self::RevokeAbandonedSubscription),
             &EMIT_EVENT_IX_DISC => Ok(Self::EmitEvent),
             _ => Err(SubscriptionsError::InvalidInstruction.into()),
         }
@@ -398,6 +409,7 @@ impl fmt::Display for SubscriptionsInstruction {
             Self::ResumeSubscription => write!(f, "resume_subscription"),
             Self::RevokeSubscriptionAuthority => write!(f, "revoke_subscription_authority"),
             Self::RevokeAbandonedDelegation => write!(f, "revoke_abandoned_delegation"),
+            Self::RevokeAbandonedSubscription => write!(f, "revoke_abandoned_subscription"),
             Self::EmitEvent => write!(f, "emit_event"),
         }
     }

@@ -2779,6 +2779,71 @@
         ],
         "kind": "instructionNode",
         "name": "revokeAbandonedDelegation"
+      },
+      {
+        "accounts": [
+          {
+            "docs": [
+              "The recorded payer reclaiming rent"
+            ],
+            "isSigner": true,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "payer"
+          },
+          {
+            "docs": [
+              "The abandoned subscription PDA to close"
+            ],
+            "isSigner": false,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "subscriptionAccount"
+          },
+          {
+            "docs": [
+              "The subscriber's recorded SubscriptionAuthority PDA for the plan's mint (may be closed)"
+            ],
+            "isSigner": false,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "subscriptionAuthority"
+          },
+          {
+            "docs": [
+              "The plan the subscription belongs to; provides the mint"
+            ],
+            "isSigner": false,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "planPda"
+          }
+        ],
+        "arguments": [
+          {
+            "defaultValue": {
+              "kind": "numberValueNode",
+              "number": 16
+            },
+            "defaultValueStrategy": "omitted",
+            "kind": "instructionArgumentNode",
+            "name": "discriminator",
+            "type": {
+              "endian": "le",
+              "format": "u8",
+              "kind": "numberTypeNode"
+            }
+          }
+        ],
+        "discriminators": [
+          {
+            "kind": "fieldDiscriminatorNode",
+            "name": "discriminator",
+            "offset": 0
+          }
+        ],
+        "kind": "instructionNode",
+        "name": "revokeAbandonedSubscription"
       }
     ],
     "kind": "programNode",

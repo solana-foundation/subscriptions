@@ -42,8 +42,8 @@ use crate::{
     instructions::{
         cancel_subscription, close_subscription_authority, create_fixed_delegation, create_plan,
         create_recurring_delegation, delete_plan, initialize_subscription_authority, resume_subscription,
-        revoke_abandoned_delegation, revoke_delegation, revoke_subscription_authority, subscribe,
-        transfer_fixed_delegation, transfer_recurring_delegation, transfer_subscription, update_plan,
+        revoke_abandoned_delegation, revoke_abandoned_subscription, revoke_delegation, revoke_subscription_authority,
+        subscribe, transfer_fixed_delegation, transfer_recurring_delegation, transfer_subscription, update_plan,
     },
     state::common::PlanStatus,
     tests::{
@@ -824,6 +824,51 @@ impl<'a> RevokeAbandonedDelegation<'a> {
 
         let ix =
             Instruction { program_id: PROGRAM_ID, accounts, data: vec![*revoke_abandoned_delegation::DISCRIMINATOR] };
+
+        build_and_send_transaction(self.litesvm, &[self.payer], &self.payer.pubkey(), &ix)
+    }
+}
+
+pub struct RevokeAbandonedSubscription<'a> {
+    litesvm: &'a mut LiteSVM,
+    payer: &'a Keypair,
+    subscriber: Pubkey,
+    mint: Pubkey,
+    plan_pda: Pubkey,
+    custom_authority: Option<Pubkey>,
+}
+
+impl<'a> RevokeAbandonedSubscription<'a> {
+    pub fn new(
+        litesvm: &'a mut LiteSVM,
+        payer: &'a Keypair,
+        subscriber: Pubkey,
+        mint: Pubkey,
+        plan_pda: Pubkey,
+    ) -> Self {
+        Self { litesvm, payer, subscriber, mint, plan_pda, custom_authority: None }
+    }
+
+    pub fn authority(mut self, authority: Pubkey) -> Self {
+        self.custom_authority = Some(authority);
+        self
+    }
+
+    #[allow(clippy::result_large_err)]
+    pub fn execute(self) -> TransactionResult {
+        let (derived_authority, _) = get_subscription_authority_pda(&self.subscriber, &self.mint);
+        let subscription_authority = self.custom_authority.unwrap_or(derived_authority);
+        let (subscription_pda, _) = get_subscription_pda(&self.plan_pda, &self.subscriber);
+
+        let accounts = vec![
+            AccountMeta::new(self.payer.pubkey(), true),
+            AccountMeta::new(subscription_pda, false),
+            AccountMeta::new_readonly(subscription_authority, false),
+            AccountMeta::new_readonly(self.plan_pda, false),
+        ];
+
+        let ix =
+            Instruction { program_id: PROGRAM_ID, accounts, data: vec![*revoke_abandoned_subscription::DISCRIMINATOR] };
 
         build_and_send_transaction(self.litesvm, &[self.payer], &self.payer.pubkey(), &ix)
     }
