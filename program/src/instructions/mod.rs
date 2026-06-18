@@ -133,7 +133,7 @@ pub enum SubscriptionsInstruction {
     #[codama(account(
         name = "event_authority",
         docs = "The event authority PDA",
-        default_value = public_key("3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7")
+        default_value = pda("eventAuthority")
     ))]
     #[codama(account(
         name = "self_program",
@@ -152,7 +152,7 @@ pub enum SubscriptionsInstruction {
     #[codama(account(
         name = "event_authority",
         docs = "The event authority PDA",
-        default_value = public_key("3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7")
+        default_value = pda("eventAuthority")
     ))]
     #[codama(account(
         name = "self_program",
@@ -211,7 +211,7 @@ pub enum SubscriptionsInstruction {
     #[codama(account(
         name = "event_authority",
         docs = "The event authority PDA",
-        default_value = public_key("3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7")
+        default_value = pda("eventAuthority")
     ))]
     #[codama(account(
         name = "self_program",
@@ -246,7 +246,7 @@ pub enum SubscriptionsInstruction {
     #[codama(account(
         name = "event_authority",
         docs = "The event authority PDA",
-        default_value = public_key("3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7")
+        default_value = pda("eventAuthority")
     ))]
     #[codama(account(
         name = "self_program",
@@ -274,7 +274,7 @@ pub enum SubscriptionsInstruction {
     #[codama(account(
         name = "event_authority",
         docs = "The event authority PDA",
-        default_value = public_key("3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7")
+        default_value = pda("eventAuthority")
     ))]
     #[codama(account(
         name = "self_program",
@@ -294,7 +294,7 @@ pub enum SubscriptionsInstruction {
     #[codama(account(
         name = "event_authority",
         docs = "The event authority PDA",
-        default_value = public_key("3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7")
+        default_value = pda("eventAuthority")
     ))]
     #[codama(account(
         name = "self_program",
@@ -349,7 +349,7 @@ pub enum SubscriptionsInstruction {
         name = "event_authority",
         signer,
         docs = "The event authority PDA",
-        default_value = public_key("3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7")
+        default_value = pda("eventAuthority")
     ))]
     EmitEvent = 228,
 }

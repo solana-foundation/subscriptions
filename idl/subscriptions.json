@@ -2271,8 +2271,12 @@
           },
           {
             "defaultValue": {
-              "kind": "publicKeyValueNode",
-              "publicKey": "3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7"
+              "kind": "pdaValueNode",
+              "pda": {
+                "kind": "pdaLinkNode",
+                "name": "eventAuthority"
+              },
+              "seeds": []
             },
             "docs": [
               "The event authority PDA"
@@ -2397,8 +2401,12 @@
           },
           {
             "defaultValue": {
-              "kind": "publicKeyValueNode",
-              "publicKey": "3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7"
+              "kind": "pdaValueNode",
+              "pda": {
+                "kind": "pdaLinkNode",
+                "name": "eventAuthority"
+              },
+              "seeds": []
             },
             "docs": [
               "The event authority PDA"
@@ -2782,8 +2790,12 @@
           },
           {
             "defaultValue": {
-              "kind": "publicKeyValueNode",
-              "publicKey": "3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7"
+              "kind": "pdaValueNode",
+              "pda": {
+                "kind": "pdaLinkNode",
+                "name": "eventAuthority"
+              },
+              "seeds": []
             },
             "docs": [
               "The event authority PDA"
@@ -2928,8 +2940,12 @@
           },
           {
             "defaultValue": {
-              "kind": "publicKeyValueNode",
-              "publicKey": "3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7"
+              "kind": "pdaValueNode",
+              "pda": {
+                "kind": "pdaLinkNode",
+                "name": "eventAuthority"
+              },
+              "seeds": []
             },
             "docs": [
               "The event authority PDA"
@@ -3054,8 +3070,12 @@
           },
           {
             "defaultValue": {
-              "kind": "publicKeyValueNode",
-              "publicKey": "3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7"
+              "kind": "pdaValueNode",
+              "pda": {
+                "kind": "pdaLinkNode",
+                "name": "eventAuthority"
+              },
+              "seeds": []
             },
             "docs": [
               "The event authority PDA"
@@ -3161,8 +3181,12 @@
           },
           {
             "defaultValue": {
-              "kind": "publicKeyValueNode",
-              "publicKey": "3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7"
+              "kind": "pdaValueNode",
+              "pda": {
+                "kind": "pdaLinkNode",
+                "name": "eventAuthority"
+              },
+              "seeds": []
             },
             "docs": [
               "The event authority PDA"

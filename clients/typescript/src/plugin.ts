@@ -61,6 +61,7 @@ import { fetchPlansForOwner } from './accounts/plans.js';
 import {
     fetchMaybeSubscriptionAuthority,
     fetchPlan,
+    findEventAuthorityPda,
     findFixedDelegationPda,
     findPlanPda,
     findRecurringDelegationPda,
@@ -81,6 +82,7 @@ import {
     getTransferSubscriptionInstruction,
     getUpdatePlanInstruction,
     type PlanStatus,
+    SUBSCRIPTIONS_PROGRAM_ADDRESS,
     type SubscriptionsPlugin as GeneratedSubscriptionsPlugin,
     type SubscriptionsPluginRequirements as GeneratedSubscriptionsPluginRequirements,
     subscriptionsProgram as generatedSubscriptionsProgram,
@@ -98,6 +100,11 @@ type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [P in K]?: T[P] };
 
 function pdaConfig(programAddress?: Address) {
     return programAddress ? { programAddress } : {};
+}
+
+async function eventAccounts(programAddress?: Address) {
+    const [eventAuthority] = await findEventAuthorityPda(pdaConfig(programAddress));
+    return { eventAuthority, selfProgram: programAddress ?? SUBSCRIPTIONS_PROGRAM_ADDRESS };
 }
 
 function withTrailing<I extends Instruction>(
@@ -478,6 +485,7 @@ async function getTransferDelegationOverlayInstructionAsync(
     return withTrailing(
         getInstruction(
             {
+                ...(await eventAccounts(input.programAddress)),
                 delegatee: input.delegatee,
                 delegationPda: input.delegationPda,
                 delegatorAta: input.delegatorAta,
@@ -521,6 +529,7 @@ export async function getTransferSubscriptionOverlayInstructionAsync(
     return withTrailing(
         getTransferSubscriptionInstruction(
             {
+                ...(await eventAccounts(input.programAddress)),
                 caller: input.caller,
                 delegatorAta,
                 planPda: input.planPda,
@@ -623,6 +632,7 @@ export async function getSubscribeOverlayInstructionAsync(input: SubscribeInput)
     return appendPayer(
         await getSubscribeInstructionAsync(
             {
+                ...(await eventAccounts(input.programAddress)),
                 merchant: input.merchant,
                 planPda,
                 subscribeData: {
@@ -643,9 +653,12 @@ export async function getSubscribeOverlayInstructionAsync(input: SubscribeInput)
     );
 }
 
-export function getCancelSubscriptionOverlayInstructionAsync(input: CancelSubscriptionInput): Promise<Instruction> {
-    return getCancelSubscriptionInstructionAsync(
+export async function getCancelSubscriptionOverlayInstructionAsync(
+    input: CancelSubscriptionInput,
+): Promise<Instruction> {
+    return await getCancelSubscriptionInstructionAsync(
         {
+            ...(await eventAccounts(input.programAddress)),
             planPda: input.planPda,
             subscriber: input.subscriber,
             subscriptionPda: input.subscriptionPda,
@@ -654,9 +667,12 @@ export function getCancelSubscriptionOverlayInstructionAsync(input: CancelSubscr
     );
 }
 
-export function getResumeSubscriptionOverlayInstructionAsync(input: ResumeSubscriptionInput): Promise<Instruction> {
-    return getResumeSubscriptionInstructionAsync(
+export async function getResumeSubscriptionOverlayInstructionAsync(
+    input: ResumeSubscriptionInput,
+): Promise<Instruction> {
+    return await getResumeSubscriptionInstructionAsync(
         {
+            ...(await eventAccounts(input.programAddress)),
             planPda: input.planPda,
             subscriber: input.subscriber,
             subscriptionPda: input.subscriptionPda,
