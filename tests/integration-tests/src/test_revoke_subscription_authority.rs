@@ -1,3 +1,4 @@
+use solana_account::Account;
 use solana_instruction::{AccountMeta, Instruction};
 use solana_pubkey::Pubkey;
 use solana_signer::Signer;
@@ -221,4 +222,30 @@ fn revoke_subscription_authority_rejects_ata_mint_mismatch() {
         .ata(ata_a)
         .execute()
         .assert_err(SubscriptionsError::MintMismatch);
+}
+
+#[test]
+fn revoke_subscription_authority_rejects_short_token_2022_ata() {
+    let (litesvm, user) = &mut setup();
+
+    let mint = init_mint(litesvm, TOKEN_2022_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(user.pubkey()), &[]);
+
+    let short_ata = Pubkey::new_unique();
+    litesvm
+        .set_account(
+            short_ata,
+            Account {
+                lamports: 1_000_000_000,
+                data: vec![0u8; 100],
+                owner: TOKEN_2022_PROGRAM_ID,
+                executable: false,
+                rent_epoch: 0,
+            },
+        )
+        .unwrap();
+
+    RevokeSubscriptionAuthority::new(litesvm, user, mint)
+        .ata(short_ata)
+        .execute()
+        .assert_err(SubscriptionsError::InvalidToken2022TokenAccountData);
 }

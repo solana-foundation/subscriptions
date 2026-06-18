@@ -240,7 +240,9 @@ impl AccountCheck for TokenAccount2022Account {
 
         let data = account.try_borrow()?;
 
-        if data[TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET].ne(&TOKEN_2022_TOKEN_ACCOUNT_DISCRIMINATOR) {
+        if data.len() <= TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET
+            || data[TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET].ne(&TOKEN_2022_TOKEN_ACCOUNT_DISCRIMINATOR)
+        {
             return Err(SubscriptionsError::InvalidToken2022TokenAccountData.into());
         }
 
