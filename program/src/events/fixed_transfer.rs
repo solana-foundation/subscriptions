@@ -1,12 +1,17 @@
 use core::mem::size_of;
 
 use alloc::vec::Vec;
+use codama::CodamaEvent;
 use pinocchio::Address;
 
 use crate::event_engine::{EventDiscriminator, EventDiscriminators, EventSerialize};
 
 /// Emitted when a transfer is executed against a fixed delegation.
 #[repr(C, packed)]
+#[derive(CodamaEvent)]
+// EVENT_IX_TAG_LE @0, EventDiscriminators::FixedTransfer @8
+#[codama(discriminator(bytes = [228, 69, 165, 46, 81, 203, 154, 29], offset = 0))]
+#[codama(discriminator(bytes = [3], offset = 8))]
 pub struct FixedTransferEvent {
     /// The fixed delegation PDA.
     pub delegation: Address,

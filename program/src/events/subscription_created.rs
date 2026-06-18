@@ -1,12 +1,17 @@
 use core::mem::size_of;
 
 use alloc::vec::Vec;
+use codama::CodamaEvent;
 use pinocchio::Address;
 
 use crate::event_engine::{EventDiscriminator, EventDiscriminators, EventSerialize};
 
 /// Emitted when a user subscribes to a plan.
 #[repr(C, packed)]
+#[derive(CodamaEvent)]
+// EVENT_IX_TAG_LE @0, EventDiscriminators::SubscriptionCreated @8
+#[codama(discriminator(bytes = [228, 69, 165, 46, 81, 203, 154, 29], offset = 0))]
+#[codama(discriminator(bytes = [0], offset = 8))]
 pub struct SubscriptionCreatedEvent {
     /// The plan PDA the subscription was created against.
     pub plan: Address,
