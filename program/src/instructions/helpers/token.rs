@@ -22,10 +22,25 @@ use super::traits::{AccountCheck, AssociatedTokenAccountCheck, AssociatedTokenAc
 use crate::{
     constants::{
         TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET, TOKEN_2022_MINT_DISCRIMINATOR, TOKEN_2022_PROGRAM_ID,
-        TOKEN_2022_TOKEN_ACCOUNT_DISCRIMINATOR,
+        TOKEN_2022_TOKEN_ACCOUNT_DISCRIMINATOR, TOKEN_ACCOUNT_DELEGATE_END, TOKEN_ACCOUNT_DELEGATE_OFFSET,
+        TOKEN_ACCOUNT_DELEGATE_TAG_OFFSET,
     },
     SubscriptionsError,
 };
+
+/// Reads the `delegate` field from raw SPL token account data.
+/// Returns `None` when no delegate is set (`COption::None`).
+pub fn get_token_account_delegate(data: &[u8]) -> Result<Option<Address>, SubscriptionsError> {
+    if data.len() < TOKEN_ACCOUNT_DELEGATE_END {
+        return Err(SubscriptionsError::InvalidAccountData);
+    }
+    if data[TOKEN_ACCOUNT_DELEGATE_TAG_OFFSET..TOKEN_ACCOUNT_DELEGATE_OFFSET].iter().all(|&b| b == 0) {
+        return Ok(None);
+    }
+    let mut delegate = [0u8; 32];
+    delegate.copy_from_slice(&data[TOKEN_ACCOUNT_DELEGATE_OFFSET..TOKEN_ACCOUNT_DELEGATE_END]);
+    Ok(Some(Address::from(delegate)))
+}
 
 // Private helpers to consolidate initialization logic
 
