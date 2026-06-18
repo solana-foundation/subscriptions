@@ -740,15 +740,21 @@ pub struct RevokeSubscriptionAuthority<'a> {
     user: &'a Keypair,
     mint: Pubkey,
     custom_ata: Option<Pubkey>,
+    receiver: Option<Pubkey>,
 }
 
 impl<'a> RevokeSubscriptionAuthority<'a> {
     pub fn new(litesvm: &'a mut LiteSVM, user: &'a Keypair, mint: Pubkey) -> Self {
-        Self { litesvm, user, mint, custom_ata: None }
+        Self { litesvm, user, mint, custom_ata: None, receiver: None }
     }
 
     pub fn ata(mut self, ata: Pubkey) -> Self {
         self.custom_ata = Some(ata);
+        self
+    }
+
+    pub fn receiver(mut self, receiver: Pubkey) -> Self {
+        self.receiver = Some(receiver);
         self
     }
 
@@ -758,12 +764,19 @@ impl<'a> RevokeSubscriptionAuthority<'a> {
         let derived_ata = get_associated_token_address_with_program_id(&self.user.pubkey(), &self.mint, &token_program);
         let user_ata = self.custom_ata.unwrap_or(derived_ata);
 
-        let accounts = vec![
-            AccountMeta::new_readonly(self.user.pubkey(), true),
+        let (subscription_authority_pda, _) = get_subscription_authority_pda(&self.user.pubkey(), &self.mint);
+
+        let mut accounts = vec![
+            AccountMeta::new(self.user.pubkey(), true),
             AccountMeta::new(user_ata, false),
             AccountMeta::new_readonly(self.mint, false),
             AccountMeta::new_readonly(token_program, false),
+            AccountMeta::new(subscription_authority_pda, false),
         ];
+
+        if let Some(receiver) = self.receiver {
+            accounts.push(AccountMeta::new(receiver, false));
+        }
 
         let ix =
             Instruction { program_id: PROGRAM_ID, accounts, data: vec![*revoke_subscription_authority::DISCRIMINATOR] };

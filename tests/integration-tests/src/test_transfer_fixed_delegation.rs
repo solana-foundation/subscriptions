@@ -707,7 +707,7 @@ fn test_close_subscription_authority_blocks_all_transfers() {
 }
 
 #[test]
-fn test_fixed_transfer_within_drift_window() {
+fn test_fixed_transfer_just_after_expiry_rejected() {
     let amount: u64 = 50_000_000;
     let expiry_ts: i64 = current_ts() + 100;
     let nonce = 0;
@@ -720,7 +720,7 @@ fn test_fixed_transfer_within_drift_window() {
     TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
         .amount(transfer_amount)
         .fixed()
-        .assert_ok();
+        .assert_err(SubscriptionsError::DelegationExpired);
 }
 
 #[test]

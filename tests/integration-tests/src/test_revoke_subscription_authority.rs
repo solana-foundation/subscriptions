@@ -8,9 +8,11 @@ use crate::{
     tests::{
         asserts::TransactionResultExt,
         constants::{MINT_DECIMALS, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID},
+        pda::get_subscription_authority_pda,
         utils::{
-            build_and_send_transaction, fetch_account, init_ata, init_mint, initialize_subscription_authority_action,
-            setup, CloseSubscriptionAuthority, RevokeSubscriptionAuthority,
+            build_and_send_transaction, fetch_account, init_ata, init_mint, init_wallet,
+            initialize_subscription_authority_action, initialize_subscription_authority_action_with_sponsor, setup,
+            CloseSubscriptionAuthority, RevokeSubscriptionAuthority,
         },
     },
     SubscriptionsError,
@@ -78,7 +80,7 @@ fn revoke_subscription_authority_works_after_close() {
 }
 
 #[test]
-fn revoke_subscription_authority_rejects_unrelated_delegate() {
+fn revoke_subscription_authority_leaves_unrelated_delegate_untouched() {
     let (litesvm, user) = &mut setup();
 
     let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(user.pubkey()), &[]);
@@ -96,11 +98,100 @@ fn revoke_subscription_authority_rejects_unrelated_delegate() {
     };
     build_and_send_transaction(litesvm, &[&*user], &user.pubkey(), &approve).assert_ok();
 
-    RevokeSubscriptionAuthority::new(litesvm, user, mint).execute().assert_err(SubscriptionsError::Unauthorized);
+    RevokeSubscriptionAuthority::new(litesvm, user, mint).execute().assert_ok();
 
     let after = fetch_account::<TokenAccount>(litesvm, &user_ata);
     assert!(after.delegate.is_some(), "unrelated delegate must not be cleared");
     assert_eq!(after.delegated_amount, 500, "unrelated delegate's amount must be left untouched");
+}
+
+#[test]
+fn revoke_subscription_authority_closes_open_authority() {
+    let (litesvm, user) = &mut setup();
+
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(user.pubkey()), &[]);
+    init_ata(litesvm, mint, user.pubkey(), 1_000_000);
+
+    initialize_subscription_authority_action(litesvm, user, mint).0.assert_ok();
+    let authority_pda = get_subscription_authority_pda(&user.pubkey(), &mint).0;
+    assert!(litesvm.get_account(&authority_pda).is_some_and(|a| a.lamports > 0));
+
+    RevokeSubscriptionAuthority::new(litesvm, user, mint).execute().assert_ok();
+
+    let after = litesvm.get_account(&authority_pda);
+    assert!(
+        after.is_none() || after.as_ref().map(|a| a.lamports).unwrap_or(0) == 0,
+        "revoke must close the open SubscriptionAuthority PDA (the spend kill switch)"
+    );
+}
+
+#[test]
+fn revoke_subscription_authority_closes_authority_but_keeps_foreign_delegate() {
+    let (litesvm, user) = &mut setup();
+
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(user.pubkey()), &[]);
+    let user_ata = init_ata(litesvm, mint, user.pubkey(), 1_000_000);
+
+    initialize_subscription_authority_action(litesvm, user, mint).0.assert_ok();
+    let authority_pda = get_subscription_authority_pda(&user.pubkey(), &mint).0;
+
+    let other_delegate = Pubkey::new_unique();
+    let approve = Instruction {
+        program_id: TOKEN_PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new(user_ata, false),
+            AccountMeta::new(other_delegate, false),
+            AccountMeta::new(user.pubkey(), true),
+        ],
+        data: Approve { amount: 500 }.pack(),
+    };
+    build_and_send_transaction(litesvm, &[&*user], &user.pubkey(), &approve).assert_ok();
+
+    RevokeSubscriptionAuthority::new(litesvm, user, mint).execute().assert_ok();
+
+    let after_authority = litesvm.get_account(&authority_pda);
+    assert!(
+        after_authority.is_none() || after_authority.as_ref().map(|a| a.lamports).unwrap_or(0) == 0,
+        "open authority must be closed even when the ATA delegate is foreign"
+    );
+    let ata = fetch_account::<TokenAccount>(litesvm, &user_ata);
+    assert!(ata.delegate.is_some(), "foreign delegate must be left untouched");
+    assert_eq!(ata.delegated_amount, 500);
+}
+
+#[test]
+fn revoke_subscription_authority_closes_sponsor_funded_authority_with_receiver() {
+    let (litesvm, user) = &mut setup();
+    let sponsor = init_wallet(litesvm, 10_000_000_000);
+
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(user.pubkey()), &[]);
+    init_ata(litesvm, mint, user.pubkey(), 1_000_000);
+
+    initialize_subscription_authority_action_with_sponsor(litesvm, user, mint, Some(&sponsor)).0.assert_ok();
+    let authority_pda = get_subscription_authority_pda(&user.pubkey(), &mint).0;
+    let sponsor_before = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
+
+    RevokeSubscriptionAuthority::new(litesvm, user, mint).receiver(sponsor.pubkey()).execute().assert_ok();
+
+    let after = litesvm.get_account(&authority_pda);
+    assert!(after.is_none() || after.as_ref().map(|a| a.lamports).unwrap_or(0) == 0);
+    let sponsor_after = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
+    assert!(sponsor_after > sponsor_before, "rent must return to the recorded sponsor payer");
+}
+
+#[test]
+fn revoke_subscription_authority_sponsor_funded_requires_receiver() {
+    let (litesvm, user) = &mut setup();
+    let sponsor = init_wallet(litesvm, 10_000_000_000);
+
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(user.pubkey()), &[]);
+    init_ata(litesvm, mint, user.pubkey(), 1_000_000);
+
+    initialize_subscription_authority_action_with_sponsor(litesvm, user, mint, Some(&sponsor)).0.assert_ok();
+
+    RevokeSubscriptionAuthority::new(litesvm, user, mint)
+        .execute()
+        .assert_err(SubscriptionsError::NotEnoughAccountKeys);
 }
 
 #[test]

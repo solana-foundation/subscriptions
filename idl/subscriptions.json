@@ -2663,10 +2663,10 @@
         "accounts": [
           {
             "docs": [
-              "The ATA owner revoking the program's delegate"
+              "The ATA owner: revokes the program's delegate and, when still open, closes the SubscriptionAuthority PDA (receives rent when self-funded)"
             ],
             "isSigner": true,
-            "isWritable": false,
+            "isWritable": true,
             "kind": "instructionAccountNode",
             "name": "user"
           },
@@ -2696,6 +2696,50 @@
             "isWritable": false,
             "kind": "instructionAccountNode",
             "name": "tokenProgram"
+          },
+          {
+            "defaultValue": {
+              "kind": "pdaValueNode",
+              "pda": {
+                "kind": "pdaLinkNode",
+                "name": "subscriptionAuthority"
+              },
+              "seeds": [
+                {
+                  "kind": "pdaSeedValueNode",
+                  "name": "user",
+                  "value": {
+                    "kind": "accountValueNode",
+                    "name": "user"
+                  }
+                },
+                {
+                  "kind": "pdaSeedValueNode",
+                  "name": "tokenMint",
+                  "value": {
+                    "kind": "accountValueNode",
+                    "name": "tokenMint"
+                  }
+                }
+              ]
+            },
+            "docs": [
+              "The SubscriptionAuthority PDA. Closed when still open; ignored when already closed."
+            ],
+            "isSigner": false,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "subscriptionAuthority"
+          },
+          {
+            "docs": [
+              "Optional rent recipient, required when the SubscriptionAuthority is still open and its recorded payer differs from the user. Must match the stored payer."
+            ],
+            "isOptional": true,
+            "isSigner": false,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "receiver"
           }
         ],
         "arguments": [
@@ -2722,7 +2766,8 @@
           }
         ],
         "kind": "instructionNode",
-        "name": "revokeSubscriptionAuthority"
+        "name": "revokeSubscriptionAuthority",
+        "optionalAccountStrategy": "omitted"
       },
       {
         "accounts": [

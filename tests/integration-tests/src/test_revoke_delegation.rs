@@ -596,7 +596,7 @@ fn sponsor_cannot_revoke_no_expiry_delegation() {
 }
 
 #[test]
-fn sponsor_cannot_revoke_within_drift_window() {
+fn sponsor_can_revoke_just_after_expiry() {
     let (litesvm, user) = &mut setup();
     let delegator = user;
     let sponsor = init_wallet(litesvm, 10_000_000_000);
@@ -614,16 +614,7 @@ fn sponsor_cannot_revoke_within_drift_window() {
         CreateDelegation::new(litesvm, delegator, mint, delegatee).payer(&sponsor).nonce(nonce).fixed(100, expiry_ts);
     res.assert_ok();
 
-    // 110s after creation: past expiry but still within 120s drift window.
     move_clock_forward(litesvm, 110);
-
-    RevokeDelegation::new(litesvm, delegator, mint, delegatee, nonce)
-        .signer(&sponsor)
-        .execute()
-        .assert_err(SubscriptionsError::Unauthorized);
-
-    // Past the drift window: sponsor can revoke.
-    move_clock_forward(litesvm, 121);
 
     RevokeDelegation::new(litesvm, delegator, mint, delegatee, nonce).signer(&sponsor).execute().assert_ok();
 }

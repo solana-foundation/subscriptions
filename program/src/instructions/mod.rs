@@ -303,10 +303,28 @@ pub enum SubscriptionsInstruction {
     ))]
     ResumeSubscription = 13,
 
-    #[codama(account(name = "user", signer, docs = "The ATA owner revoking the program's delegate"))]
+    #[codama(account(
+        name = "user",
+        signer,
+        writable,
+        docs = "The ATA owner: revokes the program's delegate and, when still open, closes the SubscriptionAuthority PDA (receives rent when self-funded)"
+    ))]
     #[codama(account(name = "user_ata", writable, docs = "The user's ATA whose delegate is being revoked"))]
     #[codama(account(name = "token_mint", docs = "The token mint of the user's ATA"))]
     #[codama(account(name = "token_program", docs = "Token program"))]
+    #[codama(account(
+        name = "subscription_authority",
+        writable,
+        docs = "The SubscriptionAuthority PDA. Closed when still open; ignored when already closed.",
+        default_value = pda("subscriptionAuthority", [seed("user", account("user")), seed("tokenMint", account("token_mint"))])
+    ))]
+    #[codama(account(
+        name = "receiver",
+        writable,
+        optional,
+        docs = "Optional rent recipient, required when the SubscriptionAuthority is still open and its recorded payer differs from the user. Must match the stored payer."
+    ))]
+    #[codama(optional_account_strategy = omitted)]
     RevokeSubscriptionAuthority = 14,
 
     #[codama(account(name = "payer", signer, writable, docs = "The recorded payer reclaiming rent"))]

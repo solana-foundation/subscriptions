@@ -733,7 +733,7 @@ fn test_recurring_transfer_not_started() {
 }
 
 #[test]
-fn test_recurring_transfer_within_drift_window() {
+fn test_recurring_transfer_just_after_expiry_rejected() {
     let amount_per_period: u64 = 50_000_000;
     let period_length_s: u64 = hours(1);
     let start_ts: i64 = current_ts();
@@ -749,7 +749,7 @@ fn test_recurring_transfer_within_drift_window() {
     TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
         .amount(transfer_amount)
         .recurring()
-        .assert_ok();
+        .assert_err(SubscriptionsError::DelegationExpired);
 }
 
 #[test]

@@ -146,6 +146,7 @@ export type CloseSubscriptionAuthorityInput = WithProgramAddress & {
 };
 
 export type RevokeSubscriptionAuthorityInput = WithProgramAddress & {
+    receiver?: Address;
     tokenMint: Address;
     tokenProgram: Address;
     user: TransactionSigner;
@@ -322,8 +323,13 @@ export async function getRevokeSubscriptionAuthorityOverlayInstructionAsync(
         owner: input.user.address,
         tokenProgram: input.tokenProgram,
     });
-    return getRevokeSubscriptionAuthorityInstruction(
+    const [subscriptionAuthority] = await findSubscriptionAuthorityPda(
+        { tokenMint: input.tokenMint, user: input.user.address },
+        pdaConfig(input.programAddress),
+    );
+    let ix: Instruction = getRevokeSubscriptionAuthorityInstruction(
         {
+            subscriptionAuthority,
             tokenMint: input.tokenMint,
             tokenProgram: input.tokenProgram,
             user: input.user,
@@ -331,6 +337,10 @@ export async function getRevokeSubscriptionAuthorityOverlayInstructionAsync(
         },
         pdaConfig(input.programAddress),
     );
+    if (input.receiver) {
+        ix = withTrailing(ix, [{ address: input.receiver, role: AccountRole.WRITABLE }]);
+    }
+    return ix;
 }
 
 export async function getCreateFixedDelegationOverlayInstructionAsync(
