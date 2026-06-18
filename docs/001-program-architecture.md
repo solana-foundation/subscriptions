@@ -174,6 +174,8 @@ getProgramAccounts(PROGRAM_ID, {
 | `initialize_subscription_authority` | Delegator | Create SA and approve `u64::MAX` delegate authority |
 | `close_subscription_authority`      | Delegator | Close SA account and return rent                    |
 
+> **Note:** Only the user (owner) can close their SubscriptionAuthority. A sponsor that funded the account is recorded as the rent recipient but cannot initiate the close, so sponsoring a SubscriptionAuthority is a non-recoverable subsidy unless the user cooperates. This is intentional: the authority is the user's, and a sponsor-forced close of a healthy authority would rotate its `init_id` and break the user's live subscriptions.
+
 ### Delegation Management
 
 | Instruction                   | Actor               | Purpose                                                                                                 |

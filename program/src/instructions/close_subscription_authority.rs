@@ -41,6 +41,12 @@ pub const DISCRIMINATOR: &u8 = &6;
 /// Only the user who owns the SubscriptionAuthority can close it. When the recorded
 /// payer differs from the user, an optional `receiver` account must be
 /// provided that matches the stored payer.
+///
+/// A sponsor (recorded `payer != user`) receives the rent on close but cannot
+/// initiate it: sponsoring a SubscriptionAuthority is a non-recoverable subsidy
+/// unless the user closes the account. This is intentional — the authority is
+/// the user's; letting a sponsor force-close a healthy one would rotate its
+/// `init_id` and break the user's live subscriptions.
 pub fn process(accounts: &[AccountView]) -> ProgramResult {
     let accounts = CloseSubscriptionAuthorityAccounts::try_from(accounts)?;
 
