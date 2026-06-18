@@ -277,6 +277,7 @@ Audit status, audited-through commit, and the current unaudited delta are tracke
 
 - **`init_id` is slot-granular.** Closing and re-initializing a SubscriptionAuthority invalidates existing delegations only when the re-init lands in a later slot than the original init. If the whole create→close→reinit sequence runs in one slot (a single transaction, co-slot transactions, or an atomic bundle), the reused `init_id` keeps old delegations valid. Authority rotation is therefore not a reliable revocation mechanism — use `revokeDelegation` to stop a specific delegation.
 - **Signed creation transactions have no on-chain freshness deadline.** Creation instructions bind the user to terms but not to a latest-submission time. Recent-blockhash transactions expire in ~150 slots (~60-90s), but a durable-nonce transaction stays valid until the nonce advances and can create state long after signing.
+- **On-chain "Active" is not proof of collectability.** A subscriber can revoke the SPL approval or freeze/empty/close their source token account — future pulls then fail while the subscription still reads active (`expires_at_ts == 0`); there is no on-chain delinquency state. Confirm collectability off-chain before granting service.
 
 ## Acknowledgments
 
