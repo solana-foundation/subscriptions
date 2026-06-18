@@ -51,7 +51,7 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
 
     {
         let data = accounts.subscription_account.try_borrow()?;
-        let subscription = SubscriptionDelegation::load_with_min_size(&data)?;
+        let subscription = SubscriptionDelegation::load_for_revoke(&data)?;
 
         let delegator = subscription.header.delegator;
         let delegatee = subscription.header.delegatee;

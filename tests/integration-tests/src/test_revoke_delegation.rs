@@ -393,7 +393,7 @@ fn test_revoke_recurring_version_agnostic() {
 }
 
 #[test]
-fn test_revoke_subscription_version_mismatch() {
+fn test_revoke_subscription_version_agnostic() {
     use crate::state::header::VERSION_OFFSET;
 
     let (mut litesvm, alice, _merchant, _mint, plan_pda, _, subscription_pda) = setup_with_subscription();
@@ -406,9 +406,43 @@ fn test_revoke_subscription_version_mismatch() {
     account.data[VERSION_OFFSET] = 0;
     litesvm.set_account(subscription_pda, account).unwrap();
 
-    RevokeSubscription::new(&mut litesvm, &alice, subscription_pda, plan_pda)
-        .execute()
-        .assert_err(SubscriptionsError::MigrationRequired);
+    RevokeSubscription::new(&mut litesvm, &alice, subscription_pda, plan_pda).execute().assert_ok();
+
+    let account_after = litesvm.get_account(&subscription_pda);
+    assert!(account_after.is_none() || account_after.as_ref().map(|a| a.lamports).unwrap_or(0) == 0);
+}
+
+#[test]
+fn sponsor_revokes_recurring_with_appended_trailing_bytes() {
+    let (litesvm, user) = &mut setup();
+    let delegator = user;
+    let sponsor = init_wallet(litesvm, 10_000_000_000);
+
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(delegator.pubkey()), &[]);
+    let _user_ata = init_ata(litesvm, mint, delegator.pubkey(), 1_000_000);
+    initialize_subscription_authority_action(litesvm, delegator, mint).0.assert_ok();
+
+    let delegatee = Pubkey::new_unique();
+    let nonce: u64 = 0;
+    let expiry_ts = current_ts() + 100;
+    let (res, delegation_pda) = CreateDelegation::new(litesvm, delegator, mint, delegatee)
+        .payer(&sponsor)
+        .nonce(nonce)
+        .recurring(100, hours(1), current_ts(), expiry_ts);
+    res.assert_ok();
+
+    // Append trailing bytes (simulates a newer, larger account version).
+    let mut account = litesvm.get_account(&delegation_pda).unwrap();
+    account.data.extend_from_slice(&[0u8; 16]);
+    account.lamports += 1_000_000;
+    litesvm.set_account(delegation_pda, account).unwrap();
+
+    move_clock_forward(litesvm, 250);
+
+    RevokeDelegation::new(litesvm, delegator, mint, delegatee, nonce).signer(&sponsor).execute().assert_ok();
+
+    let after = litesvm.get_account(&delegation_pda);
+    assert!(after.is_none() || after.as_ref().map(|a| a.lamports).unwrap_or(0) == 0);
 }
 
 #[test]

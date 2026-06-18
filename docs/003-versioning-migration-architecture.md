@@ -154,3 +154,24 @@ Replaces strict `bytes.len() != Self::LEN` with `bytes.len() < Self::LEN`.
 When `Self::LEN` grows in a new version, old accounts (smaller) would fail the strict check,
 trapping rent lamports. The minimum-size check allows old accounts to load safely,
 combined with `check_and_update_version` to ensure schema compatibility.
+
+### Recovery (revoke) is version-agnostic
+
+The delegation/subscription structs are **append-only**: later versions add fields at the end,
+so `Self::LEN` may grow but never shrinks (`const`-asserted `Self::LEN >= V1_LEN`). Each closable
+struct exposes a frozen `V1_LEN` — the first on-chain version's length — which is the minimum
+length at which every original field is present.
+
+Recovery's read loader, `load_with_min_size`, gates on `V1_LEN` (not `Self::LEN`), copies the
+account into a zero-padded `Self::LEN` buffer, and returns an owned value. So an account from an
+older, smaller version (length in `V1_LEN..Self::LEN`) reads its not-yet-written trailing fields
+as zero, and a newer, larger account is truncated to `Self::LEN`. **Invariant:** recovery must
+read only first-version fields, so those zeros are inert; never make a close decision depend on a
+field added after `V1_LEN`.
+
+Recovery paths (`revoke_delegation`, `revoke_abandoned_delegation`,
+`revoke_abandoned_subscription`) therefore do **not** gate on `check_and_update_version`: a
+delegation or subscription stays closable on any version, and the delegator/sponsor can always
+reclaim rent without a prior migration. The mutable loader (`load_mut_with_min_size`) keeps the
+exact `Self::LEN` gate, since transfer paths mutate the full current struct (and migrate first via
+`check_and_update_version`).

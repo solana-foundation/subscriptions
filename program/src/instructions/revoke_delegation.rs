@@ -5,7 +5,6 @@ use pinocchio::{
 };
 
 use crate::{
-    check_and_update_version,
     helpers::is_effectively_expired,
     state::{
         common::AccountDiscriminator, fixed_delegation::FixedDelegation, plan::Plan,
@@ -74,8 +73,7 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
     let accounts = RevokeDelegationAccounts::try_from(accounts)?;
 
     let destination = {
-        let mut delegation_account = *accounts.delegation_account;
-        let mut data = delegation_account.try_borrow_mut()?;
+        let data = accounts.delegation_account.try_borrow()?;
 
         if data.len() < Header::LEN {
             return Err(SubscriptionsError::InvalidHeaderData.into());
@@ -85,8 +83,7 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
 
         match kind {
             AccountDiscriminator::SubscriptionDelegation => {
-                check_and_update_version(&mut data)?;
-                let subscription = SubscriptionDelegation::load_with_min_size(&data)?;
+                let subscription = SubscriptionDelegation::load_for_revoke(&data)?;
                 let current_ts = Clock::get()?.unix_timestamp;
 
                 // Subscription branch consumes `[plan_pda, receiver?]`.
@@ -140,11 +137,11 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
                     let current_ts = Clock::get()?.unix_timestamp;
                     let recoverable = match kind {
                         AccountDiscriminator::FixedDelegation => {
-                            let delegation = FixedDelegation::load_with_min_size(&data)?;
+                            let delegation = FixedDelegation::load_for_revoke(&data)?;
                             is_effectively_expired(delegation.expiry_ts, current_ts) || delegation.amount == 0
                         }
                         _ => {
-                            let delegation = RecurringDelegation::load_with_min_size(&data)?;
+                            let delegation = RecurringDelegation::load_for_revoke(&data)?;
                             is_effectively_expired(delegation.expiry_ts, current_ts)
                         }
                     };
