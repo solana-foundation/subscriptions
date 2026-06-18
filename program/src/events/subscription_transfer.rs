@@ -28,6 +28,8 @@ pub struct SubscriptionTransferEvent {
     pub receiver: Address,
     /// The token account credited by the transfer; its owner is `receiver`.
     pub receiver_token_account: Address,
+    /// The authorized puller that initiated the transfer (plan owner or a whitelisted puller).
+    pub puller: Address,
 }
 
 impl SubscriptionTransferEvent {
@@ -47,6 +49,7 @@ impl SubscriptionTransferEvent {
         amount_pulled_in_period: u64,
         receiver: Address,
         receiver_token_account: Address,
+        puller: Address,
     ) -> Self {
         Self {
             subscription,
@@ -59,6 +62,7 @@ impl SubscriptionTransferEvent {
             amount_pulled_in_period,
             receiver,
             receiver_token_account,
+            puller,
         }
     }
 }
@@ -81,6 +85,7 @@ impl EventSerialize for SubscriptionTransferEvent {
         writer.extend_from_slice(&{ self.amount_pulled_in_period }.to_le_bytes());
         writer.extend_from_slice(self.receiver.as_ref());
         writer.extend_from_slice(self.receiver_token_account.as_ref());
+        writer.extend_from_slice(self.puller.as_ref());
     }
 }
 
@@ -114,6 +119,10 @@ mod tests {
         Address::new_from_array([6u8; 32])
     }
 
+    fn puller() -> Address {
+        Address::new_from_array([7u8; 32])
+    }
+
     fn amount() -> u64 {
         1_000_000
     }
@@ -143,6 +152,7 @@ mod tests {
             amount_pulled_in_period(),
             receiver(),
             receiver_token_account(),
+            puller(),
         );
         let bytes = event.to_bytes();
         let decoded = decode_event(&bytes).unwrap();
@@ -159,6 +169,7 @@ mod tests {
                 assert_eq!({ e.amount_pulled_in_period }, amount_pulled_in_period());
                 assert_eq!(e.receiver, receiver());
                 assert_eq!(e.receiver_token_account, receiver_token_account());
+                assert_eq!(e.puller, puller());
             }
             _ => panic!("expected SubscriptionTransfer event"),
         }
