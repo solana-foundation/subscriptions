@@ -146,19 +146,28 @@ pub enum SubscriptionsError {
     ArithmeticUnderflow,
     #[error("Invalid account discriminator")]
     InvalidAccountDiscriminator,
-    /// Reserved for backwards compatibility.
+    // The Token-2022 extension guards below (codes 118--124) are no longer enforced;
+    // the program does not reject mints by extension. Each is retained only for
+    // backward compatibility so existing clients keep decoding these error codes.
+    /// Unused; retained for backward compatibility.
     #[error("Mint has ConfidentialTransfer extension")]
     MintHasConfidentialTransfer,
+    /// Unused; retained for backward compatibility.
     #[error("Mint has NonTransferable extension")]
     MintHasNonTransferable,
+    /// Unused; retained for backward compatibility.
     #[error("Mint has PermanentDelegate extension")]
     MintHasPermanentDelegate,
+    /// Unused; retained for backward compatibility.
     #[error("Mint has TransferHook extension")]
     MintHasTransferHook,
+    /// Unused; retained for backward compatibility.
     #[error("Mint has TransferFee extension")]
     MintHasTransferFee,
+    /// Unused; retained for backward compatibility.
     #[error("Mint has MintCloseAuthority extension")]
     MintHasMintCloseAuthority,
+    /// Unused; retained for backward compatibility.
     #[error("Mint has Pausable extension")]
     MintHasPausable,
     #[error("Token mint mismatch")]
