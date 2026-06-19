@@ -9,7 +9,7 @@ use crate::{
     event_engine::{self, EventSerialize},
     events::SubscriptionTransferEvent,
     helpers::{transfer_with_delegate, validate_recurring_transfer, TransferAccounts, TransferData},
-    state::{plan::Plan, subscription_delegation::SubscriptionDelegation},
+    state::{common::AccountDiscriminator, plan::Plan, subscription_delegation::SubscriptionDelegation},
     AccountCheck, MintInterface, ProgramAccount, SignerAccount, SubscriptionAuthorityAccount, SubscriptionsError,
     TokenAccountInterface, TokenProgramInterface, WritableAccount,
 };
@@ -63,7 +63,7 @@ pub fn process(accounts: &mut [AccountView], transfer_data: &TransferData) -> Pr
     let init_id: i64;
     {
         let mut binding = accounts_struct.subscription_pda.try_borrow_mut()?;
-        check_and_update_version(&mut binding)?;
+        check_and_update_version(&mut binding, AccountDiscriminator::SubscriptionDelegation)?;
         let subscription = SubscriptionDelegation::load_mut(&mut binding)?;
 
         subscription.check_plan_terms(&plan_terms)?;

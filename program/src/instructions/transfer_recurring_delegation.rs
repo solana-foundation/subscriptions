@@ -6,6 +6,7 @@ use crate::{
         get_token_account_owner, transfer_with_delegate, validate_recurring_transfer, Delegation,
         DelegationTransferAccounts, TransferAccounts, TransferData,
     },
+    state::common::AccountDiscriminator,
     state::RecurringDelegation,
     SubscriptionsError,
 };
@@ -34,7 +35,7 @@ pub fn process(accounts: &mut [AccountView], transfer_data: &TransferData) -> Pr
     let init_id: i64;
     {
         let mut binding = accounts_struct.delegation_pda.try_borrow_mut()?;
-        check_and_update_version(&mut binding)?;
+        check_and_update_version(&mut binding, AccountDiscriminator::RecurringDelegation)?;
         let delegation_mut = RecurringDelegation::load_mut(&mut binding)?;
 
         Delegation::check(&delegation_mut.header, &transfer_data.delegator, accounts_struct.delegatee.address())?;

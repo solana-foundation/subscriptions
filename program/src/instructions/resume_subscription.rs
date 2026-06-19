@@ -9,7 +9,8 @@ use crate::{
     event_engine::{self, EventSerialize},
     events::SubscriptionResumedEvent,
     state::{
-        plan::Plan, subscription_authority::SubscriptionAuthority, subscription_delegation::SubscriptionDelegation,
+        common::AccountDiscriminator, plan::Plan, subscription_authority::SubscriptionAuthority,
+        subscription_delegation::SubscriptionDelegation,
     },
     AccountCheck, ProgramAccount, SignerAccount, SubscriptionAuthorityAccount, SubscriptionsError, WritableAccount,
 };
@@ -30,7 +31,7 @@ pub fn process(accounts: &mut [AccountView]) -> ProgramResult {
     let plan_pda;
     {
         let mut binding = accounts_struct.subscription_pda.try_borrow_mut()?;
-        check_and_update_version(&mut binding)?;
+        check_and_update_version(&mut binding, AccountDiscriminator::SubscriptionDelegation)?;
         let subscription = SubscriptionDelegation::load_mut_with_min_size(&mut binding)?;
 
         if subscription.header.delegator != *accounts_struct.subscriber.address() {
