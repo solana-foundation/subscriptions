@@ -307,3 +307,5 @@ GitHub Actions runs split workflows on PRs and pushes to `main`:
 ## Smart Wallet Support
 
 The TypeScript client integration tests cover smart wallet flows with [Squads](https://squads.so/) (multisig) and [Swig](https://swig.so/) wallets, verifying that delegations work when the delegator or delegatee is a program-controlled authority.
+
+Native **`Multisig`** account owners (the SPL Token / Token-2022 built-in multisig account type) are not supported — init/revoke require the owner to sign and don't forward multisig member signers to the `Approve`/`Revoke` CPI. Use a smart-wallet program (Squads, Swig) for multi-signer treasuries.
