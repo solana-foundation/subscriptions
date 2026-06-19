@@ -18,6 +18,8 @@ The program emits on-chain events via self-CPI for indexer integration (subscrip
 
 Token-2022 mints are supported, including mints with a configured `TransferHook`. On delegated transfers the program forwards the caller-supplied hook accounts into the Token-2022 `TransferChecked` CPI, which resolves and runs the hook exactly as it would for a direct transfer; the program does not add or require extra hook-account guards of its own.
 
+Destination accounts with the `MemoTransfer` extension (require-incoming-memo) are not supported: the program does not emit a Memo CPI before the transfer, so Token-2022 rejects the transfer atomically (no funds move). Use a destination without the incoming-memo requirement.
+
 Delegation accounts include a version field and the program implements a three-tier migration framework (lazy in-place update, explicit migrate instruction, revoke/recreate) for future upgrades. See [ADR-003](docs/003-versioning-migration-architecture.md) for details.
 
 This repository contains:
