@@ -686,6 +686,48 @@ fn test_transfer_subscription_ghost_plan_rejected() {
     result.assert_err(SubscriptionsError::PlanTermsMismatch);
 }
 
+#[test]
+fn transfer_subscription_rejects_puller_removed_after_sunset() {
+    use crate::state::common::PlanStatus;
+
+    let amount_per_period = 50_000_000u64;
+    let period_hours = 1u64;
+    let end_ts = current_ts() + days(30) as i64;
+    let puller = Keypair::new();
+
+    let (mut litesvm, alice, merchant, mint, plan_pda, _, subscription_pda, _, merchant_ata) =
+        setup_plan_and_subscription(amount_per_period, period_hours, end_ts, vec![], vec![puller.pubkey()]);
+    litesvm.airdrop(&puller.pubkey(), 10_000_000_000).unwrap();
+
+    // Puller can pull while whitelisted.
+    TransferSubscription::new(&mut litesvm, &puller, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(10_000_000)
+        .to(merchant_ata)
+        .execute()
+        .assert_ok();
+
+    // Sunset (preserving the puller), then remove it as incident response.
+    UpdatePlan::new(&mut litesvm, &merchant, plan_pda)
+        .status(PlanStatus::Sunset)
+        .end_ts(end_ts)
+        .pullers(vec![puller.pubkey()])
+        .execute()
+        .assert_ok();
+    UpdatePlan::new(&mut litesvm, &merchant, plan_pda)
+        .status(PlanStatus::Sunset)
+        .end_ts(end_ts)
+        .pullers(vec![])
+        .execute()
+        .assert_ok();
+
+    // The removed puller can no longer pull from the still-billable sunset plan.
+    let result = TransferSubscription::new(&mut litesvm, &puller, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(10_000_000)
+        .to(merchant_ata)
+        .execute();
+    result.assert_err(SubscriptionsError::Unauthorized);
+}
+
 #[allow(clippy::type_complexity)]
 fn setup_token_2022_hook_subscription(
 ) -> (LiteSVM, Keypair, Keypair, Pubkey, Pubkey, Pubkey, Pubkey, Pubkey, Pubkey, Pubkey) {

@@ -215,6 +215,78 @@ fn update_plan_sunset_is_terminal() {
 }
 
 #[test]
+fn update_plan_sunset_can_remove_puller() {
+    let (litesvm, owner) = &mut setup();
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
+    let p = Pubkey::new_unique();
+    let q = Pubkey::new_unique();
+    let end = current_ts() + days(60) as i64;
+
+    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint)
+        .plan_id(1)
+        .amount(1_000)
+        .period_hours(24)
+        .end_ts(end)
+        .pullers(vec![p, q])
+        .execute();
+    res.assert_ok();
+
+    UpdatePlan::new(litesvm, owner, plan_pda)
+        .status(PlanStatus::Sunset)
+        .end_ts(end)
+        .pullers(vec![p, q])
+        .execute()
+        .assert_ok();
+
+    // Subset of the current pullers (drop p, keep q) is allowed after sunset.
+    UpdatePlan::new(litesvm, owner, plan_pda)
+        .status(PlanStatus::Sunset)
+        .end_ts(end)
+        .pullers(vec![q])
+        .execute()
+        .assert_ok();
+
+    let account = litesvm.get_account(&plan_pda).unwrap();
+    let plan = Plan::load(&account.data).unwrap();
+    assert_eq!(plan.data.pullers[0].to_bytes(), q.to_bytes());
+    assert_eq!(plan.data.pullers[1].to_bytes(), [0u8; 32]);
+}
+
+#[test]
+fn update_plan_sunset_cannot_add_puller() {
+    let (litesvm, owner) = &mut setup();
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
+    let p = Pubkey::new_unique();
+    let r = Pubkey::new_unique();
+    let end = current_ts() + days(60) as i64;
+
+    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint)
+        .plan_id(1)
+        .amount(1_000)
+        .period_hours(24)
+        .end_ts(end)
+        .pullers(vec![p])
+        .execute();
+    res.assert_ok();
+    UpdatePlan::new(litesvm, owner, plan_pda)
+        .status(PlanStatus::Sunset)
+        .end_ts(end)
+        .pullers(vec![p])
+        .execute()
+        .assert_ok();
+
+    // Adding a puller not already present is not a subset -> rejected.
+    let res =
+        UpdatePlan::new(litesvm, owner, plan_pda).status(PlanStatus::Sunset).end_ts(end).pullers(vec![p, r]).execute();
+    res.assert_err(crate::SubscriptionsError::PlanImmutableAfterSunset);
+
+    // Changing end_ts on a sunset plan is rejected too.
+    let res =
+        UpdatePlan::new(litesvm, owner, plan_pda).status(PlanStatus::Sunset).end_ts(end - 1).pullers(vec![p]).execute();
+    res.assert_err(crate::SubscriptionsError::PlanImmutableAfterSunset);
+}
+
+#[test]
 fn update_plan_no_op() {
     let (litesvm, owner) = &mut setup();
     let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);

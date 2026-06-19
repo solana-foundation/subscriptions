@@ -81,9 +81,36 @@ impl<'a> TryFrom<&'a mut [AccountView]> for UpdatePlanAccounts<'a> {
 /// Instruction discriminator byte for `UpdatePlan`.
 pub const DISCRIMINATOR: &u8 = &8;
 
+/// Validates a post-sunset update: everything but the puller list must be
+/// unchanged, and the new pullers must be a subset of the current ones (removals
+/// only — no reactivation, additions, substitutions, or term changes).
+fn assert_sunset_puller_reduction(plan: &Plan, data: &UpdatePlanData) -> Result<(), ProgramError> {
+    if data.status != PlanStatus::Sunset as u8 || data.end_ts != plan.data.end_ts {
+        return Err(SubscriptionsError::PlanImmutableAfterSunset.into());
+    }
+
+    let new_metadata = data.metadata_uri;
+    let current_metadata = plan.data.metadata_uri;
+    if new_metadata != current_metadata {
+        return Err(SubscriptionsError::PlanImmutableAfterSunset.into());
+    }
+
+    let zero = Address::default();
+    let current_pullers = plan.data.pullers;
+    let new_pullers = data.pullers;
+    for new_puller in new_pullers.iter() {
+        if *new_puller != zero && !current_pullers.iter().any(|p| p == new_puller) {
+            return Err(SubscriptionsError::PlanImmutableAfterSunset.into());
+        }
+    }
+
+    Ok(())
+}
+
 /// Updates the mutable fields of an existing [`Plan`].
 ///
-/// Only the plan owner may call this. Plans in `Sunset` status are immutable.
+/// Only the plan owner may call this. A `Sunset` plan is immutable except for
+/// removing pullers (see [`assert_sunset_puller_reduction`]).
 pub fn process(accounts: &mut [AccountView], data: &UpdatePlanData) -> ProgramResult {
     let accounts = UpdatePlanAccounts::try_from(accounts)?;
 
@@ -96,33 +123,37 @@ pub fn process(accounts: &mut [AccountView], data: &UpdatePlanData) -> ProgramRe
         }
 
         if plan.status == PlanStatus::Sunset as u8 {
-            return Err(SubscriptionsError::PlanImmutableAfterSunset.into());
+            // Sunset plans are otherwise immutable, but the owner may still remove
+            // pullers as incident response against a compromised one.
+            assert_sunset_puller_reduction(plan, data)?;
+            plan.data.pullers = data.pullers;
+            plan.owner
+        } else {
+            if data.status == PlanStatus::Sunset as u8 && data.end_ts == 0 {
+                return Err(SubscriptionsError::SunsetRequiresEndTs.into());
+            }
+
+            let current_ts = Clock::get()?.unix_timestamp;
+            data.validate(current_ts)?;
+            validate_plan_end_ts(data.end_ts, plan.data.terms.period_hours, current_ts)?;
+
+            if plan.data.end_ts != 0 && current_ts > plan.data.end_ts {
+                return Err(SubscriptionsError::PlanExpired.into());
+            }
+
+            // A finite end_ts may only be shortened, never removed or extended.
+            let old_end_ts = plan.data.end_ts;
+            if old_end_ts != 0 && (data.end_ts == 0 || data.end_ts > old_end_ts) {
+                return Err(SubscriptionsError::PlanEndTsCannotExtend.into());
+            }
+
+            plan.status = data.status;
+            plan.data.end_ts = data.end_ts;
+            plan.data.pullers = data.pullers;
+            plan.data.metadata_uri = data.metadata_uri;
+
+            plan.owner
         }
-
-        if data.status == PlanStatus::Sunset as u8 && data.end_ts == 0 {
-            return Err(SubscriptionsError::SunsetRequiresEndTs.into());
-        }
-
-        let current_ts = Clock::get()?.unix_timestamp;
-        data.validate(current_ts)?;
-        validate_plan_end_ts(data.end_ts, plan.data.terms.period_hours, current_ts)?;
-
-        if plan.data.end_ts != 0 && current_ts > plan.data.end_ts {
-            return Err(SubscriptionsError::PlanExpired.into());
-        }
-
-        // A finite end_ts may only be shortened, never removed or extended.
-        let old_end_ts = plan.data.end_ts;
-        if old_end_ts != 0 && (data.end_ts == 0 || data.end_ts > old_end_ts) {
-            return Err(SubscriptionsError::PlanEndTsCannotExtend.into());
-        }
-
-        plan.status = data.status;
-        plan.data.end_ts = data.end_ts;
-        plan.data.pullers = data.pullers;
-        plan.data.metadata_uri = data.metadata_uri;
-
-        plan.owner
     };
 
     let event = PlanUpdatedEvent::new(*accounts.plan_pda.address(), owner, data.status, data.end_ts, data.pullers);
