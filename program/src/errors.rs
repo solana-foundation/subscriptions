@@ -195,6 +195,7 @@ pub enum SubscriptionsError {
     DelegationAlreadyExists,
     #[error("Delegation init_id does not match current SubscriptionAuthority")]
     StaleSubscriptionAuthority,
+    /// Reserved for backwards compatibility.
     #[error("Too many transfer hook accounts provided")]
     TransferHookTooManyAccounts,
 

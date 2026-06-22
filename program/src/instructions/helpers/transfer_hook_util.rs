@@ -4,7 +4,7 @@
 use alloc::vec::Vec;
 
 use pinocchio::{
-    cpi::{invoke_signed_with_bounds, Signer},
+    cpi::{invoke_signed_with_slice, Signer},
     error::ProgramError,
     instruction::{InstructionAccount, InstructionView},
     AccountView, Address, ProgramResult,
@@ -19,10 +19,6 @@ const EXTENSION_TYPE_TRANSFER_HOOK: u16 = 14;
 const TRANSFER_HOOK_EXTENSION_LEN: usize = 64; // authority(32) || program_id(32)
 const TRANSFER_HOOK_PROGRAM_ID_OFFSET: usize = 32;
 const TRANSFER_CHECKED_DISCRIMINATOR: u8 = 12;
-
-// 4 base accounts + remaining must fit the CPI stack buffer (MAX_STATIC_CPI_ACCOUNTS = 64).
-pub const MAX_TRANSFER_HOOK_REMAINING_ACCOUNTS: usize = 60;
-const MAX_TRANSFER_CPI_ACCOUNTS: usize = 4 + MAX_TRANSFER_HOOK_REMAINING_ACCOUNTS;
 
 const TLV_TYPE_LEN: usize = 2;
 
@@ -101,10 +97,6 @@ pub fn invoke_transfer_checked_with_hook(
     decimals: u8,
     signers: &[Signer],
 ) -> ProgramResult {
-    if remaining.len() > MAX_TRANSFER_HOOK_REMAINING_ACCOUNTS {
-        return Err(SubscriptionsError::TransferHookTooManyAccounts.into());
-    }
-
     let mut data = [0u8; 10];
     data[0] = TRANSFER_CHECKED_DISCRIMINATOR;
     data[1..9].copy_from_slice(&amount.to_le_bytes());
@@ -129,7 +121,7 @@ pub fn invoke_transfer_checked_with_hook(
 
     let instruction = InstructionView { program_id: token_program, data: &data, accounts: &metas };
 
-    invoke_signed_with_bounds::<MAX_TRANSFER_CPI_ACCOUNTS, _>(&instruction, &views, signers)
+    invoke_signed_with_slice(&instruction, &views, signers)
 }
 
 #[cfg(test)]
