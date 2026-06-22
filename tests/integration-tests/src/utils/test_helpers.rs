@@ -740,16 +740,22 @@ pub struct RevokeSubscriptionAuthority<'a> {
     user: &'a Keypair,
     mint: Pubkey,
     custom_ata: Option<Pubkey>,
+    custom_authority: Option<Pubkey>,
     receiver: Option<Pubkey>,
 }
 
 impl<'a> RevokeSubscriptionAuthority<'a> {
     pub fn new(litesvm: &'a mut LiteSVM, user: &'a Keypair, mint: Pubkey) -> Self {
-        Self { litesvm, user, mint, custom_ata: None, receiver: None }
+        Self { litesvm, user, mint, custom_ata: None, custom_authority: None, receiver: None }
     }
 
     pub fn ata(mut self, ata: Pubkey) -> Self {
         self.custom_ata = Some(ata);
+        self
+    }
+
+    pub fn authority(mut self, authority: Pubkey) -> Self {
+        self.custom_authority = Some(authority);
         self
     }
 
@@ -764,7 +770,8 @@ impl<'a> RevokeSubscriptionAuthority<'a> {
         let derived_ata = get_associated_token_address_with_program_id(&self.user.pubkey(), &self.mint, &token_program);
         let user_ata = self.custom_ata.unwrap_or(derived_ata);
 
-        let (subscription_authority_pda, _) = get_subscription_authority_pda(&self.user.pubkey(), &self.mint);
+        let (derived_authority, _) = get_subscription_authority_pda(&self.user.pubkey(), &self.mint);
+        let subscription_authority_pda = self.custom_authority.unwrap_or(derived_authority);
 
         let mut accounts = vec![
             AccountMeta::new(self.user.pubkey(), true),

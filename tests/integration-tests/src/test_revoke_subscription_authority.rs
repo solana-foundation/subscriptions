@@ -127,6 +127,29 @@ fn revoke_subscription_authority_closes_open_authority() {
 }
 
 #[test]
+fn revoke_subscription_authority_rejects_spoofed_authority_account() {
+    let (litesvm, user) = &mut setup();
+
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(user.pubkey()), &[]);
+    init_ata(litesvm, mint, user.pubkey(), 1_000_000);
+
+    initialize_subscription_authority_action(litesvm, user, mint).0.assert_ok();
+    let authority_pda = get_subscription_authority_pda(&user.pubkey(), &mint).0;
+
+    let spoofed = Pubkey::new_unique();
+    RevokeSubscriptionAuthority::new(litesvm, user, mint)
+        .authority(spoofed)
+        .execute()
+        .assert_err(SubscriptionsError::InvalidSubscriptionAuthorityPda);
+
+    let authority = litesvm.get_account(&authority_pda);
+    assert!(
+        authority.is_some_and(|a| a.lamports > 0),
+        "a non-canonical authority account must error, not silently leave the real PDA open"
+    );
+}
+
+#[test]
 fn revoke_subscription_authority_closes_authority_but_keeps_foreign_delegate() {
     let (litesvm, user) = &mut setup();
 

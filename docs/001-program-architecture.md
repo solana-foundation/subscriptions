@@ -197,13 +197,13 @@ Several instructions accept accounts after their fixed list. The IDL models them
 as optional accounts (`isOptional`) so generated clients and IDL consumers can
 build the sponsored variants; the program reads them from the trailing remainder.
 
-| Instruction                         | Trailing account | When                                                              |
-| ----------------------------------- | ---------------- | ----------------------------------------------------------------- |
-| `initialize_subscription_authority` | `payer` (signer, writable) | Sponsor funds rent; defaults to the owner/signer when omitted |
-| `create_fixed_delegation`           | `payer` (signer, writable) | Sponsor funds rent; defaults to the delegator/signer when omitted |
-| `create_recurring_delegation`       | `payer` (signer, writable) | Sponsor funds rent; defaults to the delegator/signer when omitted |
-| `subscribe`                         | `payer` (signer, writable) | Sponsor funds rent; defaults to the subscriber/signer when omitted |
-| `close_subscription_authority`      | `receiver` (writable) | Required when the recorded payer differs from the user; must match the stored payer |
+| Instruction                         | Trailing account           | When                                                                                |
+| ----------------------------------- | -------------------------- | ----------------------------------------------------------------------------------- |
+| `initialize_subscription_authority` | `payer` (signer, writable) | Sponsor funds rent; defaults to the owner/signer when omitted                       |
+| `create_fixed_delegation`           | `payer` (signer, writable) | Sponsor funds rent; defaults to the delegator/signer when omitted                   |
+| `create_recurring_delegation`       | `payer` (signer, writable) | Sponsor funds rent; defaults to the delegator/signer when omitted                   |
+| `subscribe`                         | `payer` (signer, writable) | Sponsor funds rent; defaults to the subscriber/signer when omitted                  |
+| `close_subscription_authority`      | `receiver` (writable)      | Required when the recorded payer differs from the user; must match the stored payer |
 
 `revoke_delegation` is the one exception: its trailing layout is
 **delegation-type dependent** and cannot be expressed as a single static

@@ -76,10 +76,10 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
     }
 
     let authority = accounts.subscription_authority;
+    if expected_delegate != *authority.address() {
+        return Err(SubscriptionsError::InvalidSubscriptionAuthorityPda.into());
+    }
     if authority.owned_by(&crate::ID) && authority.data_len() > 0 {
-        if expected_delegate != *authority.address() {
-            return Err(SubscriptionsError::InvalidSubscriptionAuthorityPda.into());
-        }
         close_authority(accounts.user, authority, accounts.receiver)?;
     }
 
