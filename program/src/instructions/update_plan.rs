@@ -44,12 +44,9 @@ impl UpdatePlanData {
         Ok(unsafe { &*transmute::<*const u8, *const Self>(data.as_ptr()) })
     }
 
-    /// Validates update data against the current clock time.
-    pub fn validate(&self, current_time: i64) -> Result<(), SubscriptionsError> {
+    /// Validates the update's status byte is a known [`PlanStatus`].
+    pub fn validate(&self) -> Result<(), SubscriptionsError> {
         PlanStatus::try_from(self.status).map_err(|_| SubscriptionsError::InvalidPlanStatus)?;
-        if self.end_ts != 0 && self.end_ts <= current_time {
-            return Err(SubscriptionsError::InvalidEndTs);
-        }
         Ok(())
     }
 }
@@ -134,8 +131,7 @@ pub fn process(accounts: &mut [AccountView], data: &UpdatePlanData) -> ProgramRe
             }
 
             let current_ts = Clock::get()?.unix_timestamp;
-            data.validate(current_ts)?;
-            validate_plan_end_ts(data.end_ts, plan.data.terms.period_hours, current_ts)?;
+            data.validate()?;
 
             if plan.data.end_ts != 0 && current_ts > plan.data.end_ts {
                 return Err(SubscriptionsError::PlanExpired.into());
@@ -145,6 +141,13 @@ pub fn process(accounts: &mut [AccountView], data: &UpdatePlanData) -> ProgramRe
             let old_end_ts = plan.data.end_ts;
             if old_end_ts != 0 && (data.end_ts == 0 || data.end_ts > old_end_ts) {
                 return Err(SubscriptionsError::PlanEndTsCannotExtend.into());
+            }
+
+            // Only a new or shortened end is range-checked (future + one period out); an unchanged
+            // end stays editable through its final instant, since PlanExpired's strict `>` already
+            // rejected a past end.
+            if data.end_ts != old_end_ts {
+                validate_plan_end_ts(data.end_ts, plan.data.terms.period_hours, current_ts)?;
             }
 
             plan.status = data.status;

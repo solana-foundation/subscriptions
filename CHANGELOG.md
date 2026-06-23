@@ -32,6 +32,7 @@ _Targets `program-v1.1.0` (target deploy 2026-06-26). Reproducible via `solana-v
 - Delegation `expiry_ts` is now a hard stop for transfer execution and sponsor rent recovery; the 120s spend-time drift grace was removed (drift tolerance remains only at creation-time validation).
 - `UpdatePlan` — a finite `end_ts` may only be shortened, never extended or cleared (`PlanEndTsCannotExtend`, 520).
 - `UpdatePlan` — a plan owner may remove pullers from a Sunset plan (status, `end_ts`, and metadata stay immutable; the new puller set must be a subset of the current one) to revoke a compromised puller.
+- `UpdatePlan` — the one-period `end_ts` horizon is enforced only when the finite end changes; re-sending the unchanged `end_ts` keeps puller removal, metadata edits, and the Active→Sunset transition available during a plan's final billing period (previously frozen with `InvalidEndTs`).
 - `emit_event` rejects a `self_program` account that is not this program (`InvalidSelfProgram`, 604).
 - Account kind is validated (`InvalidAccountDiscriminator`) before version migration in cancel, resume, transfer-subscription, and transfer fixed/recurring.
 - Mint validators reject token-program-owned but uninitialized (zeroed) mint-sized accounts.

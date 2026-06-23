@@ -9,7 +9,7 @@ use crate::{
     tests::{
         asserts::TransactionResultExt,
         constants::{MINT_DECIMALS, TOKEN_PROGRAM_ID},
-        utils::{current_ts, days, init_mint, move_clock_forward, setup, CreatePlan, UpdatePlan},
+        utils::{current_ts, days, hours, init_mint, move_clock_forward, setup, CreatePlan, UpdatePlan},
     },
 };
 
@@ -334,6 +334,33 @@ fn update_plan_at_exact_expiry_boundary_cannot_clear_end() {
 }
 
 #[test]
+fn update_plan_at_exact_expiry_boundary_allows_unchanged_end() {
+    let (litesvm, owner) = &mut setup();
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
+
+    let end_ts = current_ts() + days(2) as i64;
+    let (res, plan_pda) =
+        CreatePlan::new(litesvm, owner, mint).plan_id(1).amount(1_000).period_hours(24).end_ts(end_ts).execute();
+    res.assert_ok();
+
+    // current_ts == end_ts: not expired (PlanExpired uses `>`); re-sending the
+    // unchanged end must still allow a metadata edit at the boundary instant.
+    move_clock_forward(litesvm, days(2));
+
+    UpdatePlan::new(litesvm, owner, plan_pda)
+        .end_ts(end_ts)
+        .metadata_uri("https://example.com/at-boundary.json")
+        .execute()
+        .assert_ok();
+
+    let account = litesvm.get_account(&plan_pda).unwrap();
+    let plan = Plan::load(&account.data).unwrap();
+    assert_eq!({ plan.data.end_ts }, end_ts);
+    let uri = core::str::from_utf8(&plan.data.metadata_uri).unwrap();
+    assert!(uri.starts_with("https://example.com/at-boundary.json"));
+}
+
+#[test]
 fn update_plan_expired() {
     let (litesvm, owner) = &mut setup();
     let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
@@ -452,6 +479,55 @@ fn update_plan_max_pullers() {
     for (i, p) in pullers.iter().enumerate() {
         assert_eq!(plan.data.pullers[i].to_bytes(), p.to_bytes());
     }
+}
+
+#[test]
+fn update_plan_active_final_period_can_remove_puller_with_unchanged_end() {
+    let (litesvm, owner) = &mut setup();
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
+    let p = Pubkey::new_unique();
+    let q = Pubkey::new_unique();
+
+    let end = current_ts() + days(2) as i64;
+    let (res, plan_pda) = CreatePlan::new(litesvm, owner, mint)
+        .plan_id(1)
+        .amount(1_000)
+        .period_hours(24)
+        .end_ts(end)
+        .pullers(vec![p, q])
+        .execute();
+    res.assert_ok();
+
+    // Inside the final billing period: less than one 24h period remains before
+    // `end`, but the plan has not expired.
+    move_clock_forward(litesvm, days(1) + hours(12));
+
+    UpdatePlan::new(litesvm, owner, plan_pda).end_ts(end).pullers(vec![q]).execute().assert_ok();
+
+    let account = litesvm.get_account(&plan_pda).unwrap();
+    let plan = Plan::load(&account.data).unwrap();
+    assert_eq!(plan.data.pullers[0].to_bytes(), q.to_bytes());
+    assert_eq!(plan.data.pullers[1].to_bytes(), [0u8; 32]);
+}
+
+#[test]
+fn update_plan_active_final_period_can_sunset_with_unchanged_end() {
+    let (litesvm, owner) = &mut setup();
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
+
+    let end = current_ts() + days(2) as i64;
+    let (res, plan_pda) =
+        CreatePlan::new(litesvm, owner, mint).plan_id(1).amount(1_000).period_hours(24).end_ts(end).execute();
+    res.assert_ok();
+
+    move_clock_forward(litesvm, days(1) + hours(12));
+
+    UpdatePlan::new(litesvm, owner, plan_pda).status(PlanStatus::Sunset).end_ts(end).execute().assert_ok();
+
+    let account = litesvm.get_account(&plan_pda).unwrap();
+    let plan = Plan::load(&account.data).unwrap();
+    assert_eq!(plan.status, PlanStatus::Sunset as u8);
+    assert_eq!({ plan.data.end_ts }, end);
 }
 
 #[test]

@@ -346,10 +346,10 @@ Plan owner updates mutable admin fields (status, end_ts, pullers, metadata_uri).
 2. Verify caller is Plan owner (else `NotPlanOwner`)
 3. If the plan is already in Sunset status, reject the update (`PlanImmutableAfterSunset`) **unless** it only removes existing pullers — `status` stays Sunset, `end_ts` and `metadata_uri` are unchanged, and the new `pullers` are a subset of the current set (removal/reorder only). On this sunset puller-removal path only `pullers` is rewritten and the remaining steps are skipped.
 4. Reject if status=Sunset and end_ts=0 (else `SunsetRequiresEndTs`) - sunsetting requires a finite expiration
-5. Validate input data: `PlanStatus::try_from(status)` must succeed (else `InvalidPlanStatus`), `end_ts == 0` or `end_ts > current_time` (else `InvalidEndTs`)
-6. Validate end_ts is at least one billing period in the future: `end_ts == 0` or `end_ts >= current_time + (terms.period_hours * 3600)` (else `InvalidEndTs`)
-7. Reject if plan has expired: `plan.end_ts != 0 && current_ts > plan.end_ts` (else `PlanExpired`)
-8. Enforce shorten-only end_ts: when the stored `end_ts != 0`, a new `end_ts` of `0` or greater than the stored value is rejected (`PlanEndTsCannotExtend`). A finite `end_ts` may only be shortened. Because UpdatePlan is full-replacement, metadata- or puller-only edits to a finite-end plan must re-send the existing `end_ts`.
+5. Validate the status byte: `PlanStatus::try_from(status)` must succeed (else `InvalidPlanStatus`)
+6. Reject if plan has expired: `plan.end_ts != 0 && current_ts > plan.end_ts` (else `PlanExpired`)
+7. Enforce shorten-only end_ts: when the stored `end_ts != 0`, a new `end_ts` of `0` or greater than the stored value is rejected (`PlanEndTsCannotExtend`). A finite `end_ts` may only be shortened. Because UpdatePlan is full-replacement, metadata- or puller-only edits to a finite-end plan must re-send the existing `end_ts`.
+8. Only when `end_ts` changes from the stored value, validate the new finite end is at least one billing period out: `end_ts == 0` or `end_ts >= current_time + (terms.period_hours * 3600)` (else `InvalidEndTs`). An unchanged `end_ts` skips this check, so puller removal, metadata edits, and the Active→Sunset transition stay available during the final billing period.
 9. Write status, end_ts, pullers, and metadata_uri from input data
 10. Emit `PlanUpdatedEvent` (plan, owner, status, end_ts, pullers)
 
