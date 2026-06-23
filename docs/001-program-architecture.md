@@ -142,7 +142,7 @@ sequenceDiagram
     end
 ```
 
-> **Note:** Sponsors of delegations with `expiry_ts == 0` (no expiry) cannot independently reclaim rent.
+> **Note:** Sponsors of a recurring delegation, or a fixed delegation with unspent `amount`, that has `expiry_ts == 0` (no expiry) cannot independently reclaim rent. A fully-spent fixed delegation (`amount == 0`) is recoverable regardless of expiry.
 
 ---
 
@@ -169,20 +169,22 @@ getProgramAccounts(PROGRAM_ID, {
 
 ### Initialization
 
-| Instruction                         | Actor     | Purpose                                             |
-| ----------------------------------- | --------- | --------------------------------------------------- |
-| `initialize_subscription_authority` | Delegator | Create SA and approve `u64::MAX` delegate authority |
-| `close_subscription_authority`      | Delegator | Close SA account and return rent                    |
+| Instruction                         | Actor     | Purpose                                                                                                                               |
+| ----------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `initialize_subscription_authority` | Delegator | Create SA and approve `u64::MAX` delegate authority                                                                                   |
+| `close_subscription_authority`      | Delegator | Close SA account and return rent                                                                                                      |
+| `revoke_subscription_authority`     | ATA owner | Revoke the program's SPL delegate on the user's ATA (only when it equals the derived SA PDA) and close the SA account when still open |
 
 > **Note:** Only the user (owner) can close their SubscriptionAuthority. A sponsor that funded the account is recorded as the rent recipient but cannot initiate the close, so sponsoring a SubscriptionAuthority is a non-recoverable subsidy unless the user cooperates. This is intentional: the authority is the user's, and a sponsor-forced close of a healthy authority would rotate its `init_id` and break the user's live subscriptions.
 
 ### Delegation Management
 
-| Instruction                   | Actor               | Purpose                                                                                                 |
-| ----------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------- |
-| `create_fixed_delegation`     | Delegator           | Create one-time delegation with nonce, amount, and expiry (payer can be sponsor)                        |
-| `create_recurring_delegation` | Delegator           | Create recurring delegation with period limits (payer can be sponsor)                                   |
-| `revoke_delegation`           | Delegator / Sponsor | Close a delegation account and return rent to the original payer. Sponsor can only revoke after expiry. |
+| Instruction                   | Actor               | Purpose                                                                                                                                                |
+| ----------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `create_fixed_delegation`     | Delegator           | Create one-time delegation with nonce, amount, and expiry (payer can be sponsor)                                                                       |
+| `create_recurring_delegation` | Delegator           | Create recurring delegation with period limits (payer can be sponsor)                                                                                  |
+| `revoke_delegation`           | Delegator / Sponsor | Close a delegation account and return rent to the original payer. Sponsor can revoke only after expiry (or, for a fixed delegation, once fully spent). |
+| `revoke_abandoned_delegation` | Recorded payer      | Close a fixed/recurring delegation whose SubscriptionAuthority is dead (closed or `init_id` rotated) — the recovery path for no-expiry delegations.    |
 
 ### Transfer
 
@@ -242,13 +244,14 @@ pub struct SubscriptionAuthority {
     pub discriminator: u8,    // 1 byte - AccountDiscriminator::SubscriptionAuthority
     pub user: Address,        // 32 bytes - delegator key
     pub token_mint: Address,  // 32 bytes - mint this SA controls
+    pub payer: Address,       // 32 bytes - funded creation; receives rent on close (defaults to user)
     pub bump: u8,             // 1 byte
     pub init_id: i64,         // 8 bytes - slot-based generation identifier
 }
 
 impl SubscriptionAuthority {
     pub const SEED: &[u8] = b"SubscriptionAuthority";
-    pub const LEN: usize = 74;
+    pub const LEN: usize = 106;
 
     pub fn find_pda(user: &Address, token_mint: &Address) -> (Address, u8) {
         Address::find_program_address(
@@ -309,13 +312,16 @@ One-time delegation with explicit amount and expiry:
 ```rust
 #[repr(C, packed)]
 pub struct FixedDelegation {
-    pub header: Header,     // 107 bytes
-    pub amount: u64,        // 8 bytes - remaining pullable amount
-    pub expiry_ts: i64,     // 8 bytes - Unix timestamp (0 = no expiry)
+    pub header: Header,                 // 107 bytes
+    pub subscription_authority: Address, // 32 bytes - SA PDA used at creation
+    pub mint: Address,                  // 32 bytes - mint this delegation authorizes
+    pub amount: u64,                    // 8 bytes - remaining pullable amount
+    pub expiry_ts: i64,                 // 8 bytes - Unix timestamp (0 = no expiry)
 }
 
 impl FixedDelegation {
-    pub const LEN: usize = 123;
+    pub const LEN: usize = 187;
+    pub const V1_LEN: usize = 187; // frozen first-version length used by load_for_revoke
 }
 ```
 
@@ -330,16 +336,19 @@ Recurring delegation with period tracking:
 ```rust
 #[repr(C, packed)]
 pub struct RecurringDelegation {
-    pub header: Header,              // 107 bytes
-    pub current_period_start_ts: i64, // 8 bytes - start of current period
-    pub period_length_s: u64,         // 8 bytes - seconds per period
-    pub expiry_ts: i64,               // 8 bytes - delegation expiry (0 = no expiry)
-    pub amount_per_period: u64,       // 8 bytes - max per period
-    pub amount_pulled_in_period: u64, // 8 bytes - tracking
+    pub header: Header,                  // 107 bytes
+    pub subscription_authority: Address, // 32 bytes - SA PDA used at creation
+    pub mint: Address,                   // 32 bytes - mint this delegation authorizes
+    pub current_period_start_ts: i64,    // 8 bytes - start of current period
+    pub period_length_s: u64,            // 8 bytes - seconds per period
+    pub expiry_ts: i64,                  // 8 bytes - delegation expiry (0 = no expiry)
+    pub amount_per_period: u64,          // 8 bytes - max per period
+    pub amount_pulled_in_period: u64,    // 8 bytes - tracking
 }
 
 impl RecurringDelegation {
-    pub const LEN: usize = 147;
+    pub const LEN: usize = 211;
+    pub const V1_LEN: usize = 211; // frozen first-version length used by load_for_revoke
 }
 ```
 
@@ -436,7 +445,7 @@ Revokes a delegation by closing the delegation PDA and returning rent to the ori
 
 **Process:**
 
-1. Authorize caller: must be the `delegator` or the `payer` (sponsor). Sponsor requires `expiry_ts != 0 && expiry_ts < current_ts`.
+1. Authorize caller: must be the `delegator` or the `payer` (sponsor). Sponsor requires the delegation be expired (`expiry_ts != 0 && expiry_ts < current_ts`) or, for a **fixed** delegation, fully spent (`amount == 0`).
 2. Close the delegation account and return rent to the original payer.
 
 ### `close_subscription_authority` (Discriminator: 6)
@@ -537,6 +546,8 @@ Executes a transfer for a recurring delegation.
 reject any extension. Mints with a configured `TransferHook` are supported: delegated
 transfers (`transfer_fixed` / `transfer_recurring` / `transfer_subscription`) forward the
 caller-supplied hook accounts into the Token-2022 `TransferChecked` CPI, which invokes the
-hook program. `invoke_transfer_checked_with_hook` requires the hook's `ExtraAccountMetaList`
-validation PDA among the supplied accounts, so an active hook's configured policy context is
-always enforced.
+hook program. `invoke_transfer_checked_with_hook` forwards the caller-supplied hook accounts
+(with their runtime writable/signer flags) into the `TransferChecked` CPI and does not itself
+assert the `ExtraAccountMetaList` validation PDA is present or enforce the hook's policy;
+Token-2022 resolves and runs the hook exactly as for a direct transfer, and a missing required
+hook account fails inside the Token-2022 CPI.

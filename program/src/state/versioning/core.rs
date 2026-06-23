@@ -12,9 +12,10 @@ pub const CURRENT_VERSION: u8 = 1;
 ///
 /// Returns `Ok` if the account is at CURRENT_VERSION (fast path) or was
 /// successfully migrated in-place. Returns an error otherwise:
+/// - `InvalidAccountData`: data too short for version byte
+/// - `InvalidAccountDiscriminator`: account kind byte at offset 0 != `expected`
 /// - `DelegationVersionMismatch`: version > CURRENT (program downgrade)
 /// - `MigrationRequired`: version < CURRENT and no lazy path exists
-/// - `InvalidAccountData`: data too short for version byte
 ///
 /// Must be called on raw bytes **before** typed struct loading, since a
 /// migration may change the struct layout. The account kind is validated against

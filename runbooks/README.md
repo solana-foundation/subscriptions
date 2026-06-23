@@ -8,6 +8,10 @@
 
 Deploy programs
 
+### surfnet-setup
+
+Install the subscriptions program at its canonical address into a surfnet via direct account write
+
 ## Getting Started
 
 This repository is using [Surfpool](https://surfpool.run) as a part of its development workflow.
@@ -79,6 +83,7 @@ Our [Surfpool 101 Series](https://www.youtube.com/playlist?list=PL0FMgRjJMRzO1Fd
 $ surfpool ls
 Name                                    Description
 deployment                              Deploy programs
+surfnet-setup                           Install subscriptions program at canonical address
 ```
 
 ### Start a Surfnet, automatically executing the `deployment` runbook on program recompile:

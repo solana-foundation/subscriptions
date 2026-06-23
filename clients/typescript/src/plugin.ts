@@ -1,8 +1,9 @@
 /**
  * `subscriptionsProgram()` — `@solana/kit` plugin that wraps the Codama-generated
  * `subscriptionsProgram()` plugin with higher-level instruction overlays
- * (PDA derivation, sponsor `payer` trailing accounts, ATA derivation, validators)
- * and a `queries` namespace for common account fetches.
+ * (PDA derivation, event-account resolution [`eventAuthority` + `selfProgram`
+ * from the active `programAddress`], sponsor `payer` trailing accounts, ATA
+ * derivation, validators) and a `queries` namespace for common account fetches.
  *
  * Each overlay defaults its actor field (`owner` / `delegator` / `subscriber`
  * / `authority` / `delegatee` / `caller`) to `client.identity`, and any
@@ -153,6 +154,7 @@ export type CloseSubscriptionAuthorityInput = WithProgramAddress & {
 };
 
 export type RevokeSubscriptionAuthorityInput = WithProgramAddress & {
+    /** Rent recipient for closing the SubscriptionAuthority PDA. Required when the authority's stored payer differs from `user`, and must equal that stored payer. */
     receiver?: Address;
     tokenMint: Address;
     tokenProgram: Address;

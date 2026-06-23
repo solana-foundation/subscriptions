@@ -63,8 +63,9 @@ pub const DISCRIMINATOR: &u8 = &3;
 /// Authorization rules:
 ///
 /// * Fixed / Recurring: the delegator can close at any time. The sponsor
-///   (original payer) can close only after the delegation's `expiry_ts` is in
-///   the past (and non-zero).
+///   (original payer) can close a Fixed delegation once it is expired
+///   (`expiry_ts` non-zero and in the past) or fully spent (remaining
+///   `amount == 0`); a Recurring delegation only once expired.
 /// * Subscription: the subscriber (delegator) can close once `expires_at_ts`
 ///   has elapsed (set by `cancel_subscription`). The sponsor can close when
 ///   the plan ended naturally, the plan account was deleted, or the

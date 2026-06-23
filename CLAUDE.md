@@ -79,7 +79,7 @@ clients/typescript/src/generated/  (auto-generated; wrapped by hand-written SDK 
 
 ### Key Modules
 
-- `program/src/instructions/` — 14 instruction handlers + `helpers/` (validation, token ops, traits)
+- `program/src/instructions/` — 17 instruction handlers (discriminators 0–16) + an internal `emit_event` self-CPI handler + `helpers/` (validation, token ops, traits)
 - `program/src/state/` — Account structs (SubscriptionAuthority, FixedDelegation, RecurringDelegation, Plan, Subscription) + `versioning/`
 - `program/src/events/` — Event structs and self-CPI emission
 - `program/src/errors.rs` — Error codes (ranges 100-699)
