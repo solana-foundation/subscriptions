@@ -10,7 +10,7 @@ use crate::{
         utils::{
             build_and_send_transaction, current_ts, days, get_ata_balance, hours, init_ata, init_aux_token_account,
             init_mint, init_wallet, initialize_subscription_authority_action, install_transfer_hook_extra_metas,
-            load_transfer_hook_example, minutes, move_clock_forward, set_transfer_hook_config, setup,
+            load_transfer_hook_example, minutes, move_clock_forward, set_clock, set_transfer_hook_config, setup,
             CloseSubscriptionAuthority, CreateDelegation, TransferDelegation, TRANSFER_HOOK_EXAMPLE_PROGRAM_ID,
         },
     },
@@ -764,13 +764,14 @@ fn test_recurring_rollover_blocked_at_expiry_boundary() {
     let (mut litesvm, alice, bob, delegation_pda, mint, _, bob_ata, _) =
         setup_recurring_delegation(amount_per_period, period_length_s, start_ts, expiry_ts, nonce);
 
+    set_clock(&mut litesvm, start_ts);
     TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
         .amount(amount_per_period)
         .recurring()
         .assert_ok();
     assert_eq!(get_ata_balance(&litesvm, &bob_ata), amount_per_period);
 
-    move_clock_forward(&mut litesvm, period_length_s);
+    set_clock(&mut litesvm, expiry_ts);
 
     let result = TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
         .amount(amount_per_period)

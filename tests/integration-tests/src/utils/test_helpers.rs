@@ -80,6 +80,12 @@ pub fn move_clock_forward(litesvm: &mut LiteSVM, seconds: u64) {
     litesvm.set_sysvar::<Clock>(&initial_clock);
 }
 
+pub fn set_clock(litesvm: &mut LiteSVM, unix_timestamp: i64) {
+    let mut clock = litesvm.get_sysvar::<Clock>();
+    clock.unix_timestamp = unix_timestamp;
+    litesvm.set_sysvar::<Clock>(&clock);
+}
+
 pub fn get_ata_balance(litesvm: &LiteSVM, ata: &Pubkey) -> u64 {
     let account = fetch_account::<spl_token_2022_interface::state::Account>(litesvm, ata);
     account.amount
