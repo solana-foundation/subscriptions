@@ -1,5 +1,6 @@
 //! Shared helper types, account check traits, and utility functions used by instruction processors.
 
+pub mod authority;
 pub mod delegation;
 mod plan;
 pub mod program;
@@ -11,6 +12,7 @@ pub mod transfer_hook_util;
 pub mod transfer_utils;
 pub mod transfer_validation;
 
+pub use authority::*;
 pub use delegation::*;
 pub use plan::{create_plan_account, CreatePlanAccounts};
 pub use program::*;

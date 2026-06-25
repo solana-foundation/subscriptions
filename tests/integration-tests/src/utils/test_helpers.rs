@@ -42,8 +42,8 @@ use crate::{
     instructions::{
         cancel_subscription, close_subscription_authority, create_fixed_delegation, create_plan,
         create_recurring_delegation, delete_plan, initialize_subscription_authority, resume_subscription,
-        revoke_abandoned_delegation, revoke_delegation, revoke_subscription_authority, subscribe,
-        transfer_fixed_delegation, transfer_recurring_delegation, transfer_subscription, update_plan,
+        revoke_abandoned_delegation, revoke_abandoned_subscription, revoke_delegation, revoke_subscription_authority,
+        subscribe, transfer_fixed_delegation, transfer_recurring_delegation, transfer_subscription, update_plan,
     },
     state::common::PlanStatus,
     tests::{
@@ -78,6 +78,12 @@ pub fn move_clock_forward(litesvm: &mut LiteSVM, seconds: u64) {
     initial_clock.unix_timestamp += seconds as i64;
     initial_clock.slot += seconds * 2;
     litesvm.set_sysvar::<Clock>(&initial_clock);
+}
+
+pub fn set_clock(litesvm: &mut LiteSVM, unix_timestamp: i64) {
+    let mut clock = litesvm.get_sysvar::<Clock>();
+    clock.unix_timestamp = unix_timestamp;
+    litesvm.set_sysvar::<Clock>(&clock);
 }
 
 pub fn get_ata_balance(litesvm: &LiteSVM, ata: &Pubkey) -> u64 {
@@ -740,15 +746,27 @@ pub struct RevokeSubscriptionAuthority<'a> {
     user: &'a Keypair,
     mint: Pubkey,
     custom_ata: Option<Pubkey>,
+    custom_authority: Option<Pubkey>,
+    receiver: Option<Pubkey>,
 }
 
 impl<'a> RevokeSubscriptionAuthority<'a> {
     pub fn new(litesvm: &'a mut LiteSVM, user: &'a Keypair, mint: Pubkey) -> Self {
-        Self { litesvm, user, mint, custom_ata: None }
+        Self { litesvm, user, mint, custom_ata: None, custom_authority: None, receiver: None }
     }
 
     pub fn ata(mut self, ata: Pubkey) -> Self {
         self.custom_ata = Some(ata);
+        self
+    }
+
+    pub fn authority(mut self, authority: Pubkey) -> Self {
+        self.custom_authority = Some(authority);
+        self
+    }
+
+    pub fn receiver(mut self, receiver: Pubkey) -> Self {
+        self.receiver = Some(receiver);
         self
     }
 
@@ -758,12 +776,20 @@ impl<'a> RevokeSubscriptionAuthority<'a> {
         let derived_ata = get_associated_token_address_with_program_id(&self.user.pubkey(), &self.mint, &token_program);
         let user_ata = self.custom_ata.unwrap_or(derived_ata);
 
-        let accounts = vec![
-            AccountMeta::new_readonly(self.user.pubkey(), true),
+        let (derived_authority, _) = get_subscription_authority_pda(&self.user.pubkey(), &self.mint);
+        let subscription_authority_pda = self.custom_authority.unwrap_or(derived_authority);
+
+        let mut accounts = vec![
+            AccountMeta::new(self.user.pubkey(), true),
             AccountMeta::new(user_ata, false),
             AccountMeta::new_readonly(self.mint, false),
             AccountMeta::new_readonly(token_program, false),
+            AccountMeta::new(subscription_authority_pda, false),
         ];
+
+        if let Some(receiver) = self.receiver {
+            accounts.push(AccountMeta::new(receiver, false));
+        }
 
         let ix =
             Instruction { program_id: PROGRAM_ID, accounts, data: vec![*revoke_subscription_authority::DISCRIMINATOR] };
@@ -824,6 +850,51 @@ impl<'a> RevokeAbandonedDelegation<'a> {
 
         let ix =
             Instruction { program_id: PROGRAM_ID, accounts, data: vec![*revoke_abandoned_delegation::DISCRIMINATOR] };
+
+        build_and_send_transaction(self.litesvm, &[self.payer], &self.payer.pubkey(), &ix)
+    }
+}
+
+pub struct RevokeAbandonedSubscription<'a> {
+    litesvm: &'a mut LiteSVM,
+    payer: &'a Keypair,
+    subscriber: Pubkey,
+    mint: Pubkey,
+    plan_pda: Pubkey,
+    custom_authority: Option<Pubkey>,
+}
+
+impl<'a> RevokeAbandonedSubscription<'a> {
+    pub fn new(
+        litesvm: &'a mut LiteSVM,
+        payer: &'a Keypair,
+        subscriber: Pubkey,
+        mint: Pubkey,
+        plan_pda: Pubkey,
+    ) -> Self {
+        Self { litesvm, payer, subscriber, mint, plan_pda, custom_authority: None }
+    }
+
+    pub fn authority(mut self, authority: Pubkey) -> Self {
+        self.custom_authority = Some(authority);
+        self
+    }
+
+    #[allow(clippy::result_large_err)]
+    pub fn execute(self) -> TransactionResult {
+        let (derived_authority, _) = get_subscription_authority_pda(&self.subscriber, &self.mint);
+        let subscription_authority = self.custom_authority.unwrap_or(derived_authority);
+        let (subscription_pda, _) = get_subscription_pda(&self.plan_pda, &self.subscriber);
+
+        let accounts = vec![
+            AccountMeta::new(self.payer.pubkey(), true),
+            AccountMeta::new(subscription_pda, false),
+            AccountMeta::new_readonly(subscription_authority, false),
+            AccountMeta::new_readonly(self.plan_pda, false),
+        ];
+
+        let ix =
+            Instruction { program_id: PROGRAM_ID, accounts, data: vec![*revoke_abandoned_subscription::DISCRIMINATOR] };
 
         build_and_send_transaction(self.litesvm, &[self.payer], &self.payer.pubkey(), &ix)
     }
@@ -1016,7 +1087,13 @@ impl<'a> UpdatePlan<'a> {
         let mut data = vec![*update_plan::DISCRIMINATOR];
         data.extend_from_slice(data_bytes);
 
-        let accounts = vec![AccountMeta::new(self.owner.pubkey(), true), AccountMeta::new(self.plan_pda, false)];
+        let event_authority = Pubkey::new_from_array(event_authority_pda::ID.to_bytes());
+        let accounts = vec![
+            AccountMeta::new(self.owner.pubkey(), true),
+            AccountMeta::new(self.plan_pda, false),
+            AccountMeta::new_readonly(event_authority, false),
+            AccountMeta::new_readonly(PROGRAM_ID, false),
+        ];
 
         let ix = Instruction { program_id: PROGRAM_ID, accounts, data };
 
@@ -1149,6 +1226,7 @@ pub struct TransferSubscription<'a> {
     plan_pda: Pubkey,
     amount: u64,
     receiver: Option<Pubkey>,
+    remaining: Vec<AccountMeta>,
 }
 
 impl<'a> TransferSubscription<'a> {
@@ -1160,7 +1238,17 @@ impl<'a> TransferSubscription<'a> {
         subscription_pda: Pubkey,
         plan_pda: Pubkey,
     ) -> Self {
-        Self { litesvm, caller, delegator, mint, subscription_pda, plan_pda, amount: 0, receiver: None }
+        Self {
+            litesvm,
+            caller,
+            delegator,
+            mint,
+            subscription_pda,
+            plan_pda,
+            amount: 0,
+            receiver: None,
+            remaining: Vec::new(),
+        }
     }
 
     pub fn amount(mut self, amount: u64) -> Self {
@@ -1170,6 +1258,11 @@ impl<'a> TransferSubscription<'a> {
 
     pub fn to(mut self, receiver: Pubkey) -> Self {
         self.receiver = Some(receiver);
+        self
+    }
+
+    pub fn remaining(mut self, remaining: Vec<AccountMeta>) -> Self {
+        self.remaining = remaining;
         self
     }
 
@@ -1185,20 +1278,23 @@ impl<'a> TransferSubscription<'a> {
 
         let event_authority = Pubkey::new_from_array(event_authority_pda::ID.to_bytes());
 
+        let mut accounts = vec![
+            AccountMeta::new(self.subscription_pda, false),
+            AccountMeta::new_readonly(self.plan_pda, false),
+            AccountMeta::new_readonly(subscription_authority_pda, false),
+            AccountMeta::new(delegator_ata, false),
+            AccountMeta::new(receiver_ata, false),
+            AccountMeta::new_readonly(self.caller.pubkey(), true),
+            AccountMeta::new_readonly(self.mint, false),
+            AccountMeta::new_readonly(token_program, false),
+            AccountMeta::new_readonly(event_authority, false),
+            AccountMeta::new_readonly(PROGRAM_ID, false),
+        ];
+        accounts.extend(self.remaining);
+
         let ix = Instruction {
             program_id: PROGRAM_ID,
-            accounts: vec![
-                AccountMeta::new(self.subscription_pda, false),
-                AccountMeta::new_readonly(self.plan_pda, false),
-                AccountMeta::new_readonly(subscription_authority_pda, false),
-                AccountMeta::new(delegator_ata, false),
-                AccountMeta::new(receiver_ata, false),
-                AccountMeta::new_readonly(self.caller.pubkey(), true),
-                AccountMeta::new_readonly(self.mint, false),
-                AccountMeta::new_readonly(token_program, false),
-                AccountMeta::new_readonly(event_authority, false),
-                AccountMeta::new_readonly(PROGRAM_ID, false),
-            ],
+            accounts,
             data: [
                 vec![*transfer_subscription::DISCRIMINATOR],
                 self.amount.to_le_bytes().to_vec(),
@@ -1336,21 +1432,38 @@ pub struct ResumeSubscription<'a> {
     subscriber: &'a Keypair,
     plan_pda: Pubkey,
     subscription_pda: Pubkey,
+    mint: Pubkey,
+    subscription_authority: Option<Pubkey>,
 }
 
 impl<'a> ResumeSubscription<'a> {
-    pub fn new(litesvm: &'a mut LiteSVM, subscriber: &'a Keypair, plan_pda: Pubkey, subscription_pda: Pubkey) -> Self {
-        Self { litesvm, subscriber, plan_pda, subscription_pda }
+    pub fn new(
+        litesvm: &'a mut LiteSVM,
+        subscriber: &'a Keypair,
+        plan_pda: Pubkey,
+        subscription_pda: Pubkey,
+        mint: Pubkey,
+    ) -> Self {
+        Self { litesvm, subscriber, plan_pda, subscription_pda, mint, subscription_authority: None }
+    }
+
+    pub fn subscription_authority(mut self, authority: Pubkey) -> Self {
+        self.subscription_authority = Some(authority);
+        self
     }
 
     #[allow(clippy::result_large_err)]
     pub fn execute(self) -> TransactionResult {
         let event_authority = Pubkey::new_from_array(event_authority_pda::ID.to_bytes());
+        let subscription_authority = self
+            .subscription_authority
+            .unwrap_or_else(|| get_subscription_authority_pda(&self.subscriber.pubkey(), &self.mint).0);
 
         let accounts = vec![
             AccountMeta::new_readonly(self.subscriber.pubkey(), true),
             AccountMeta::new_readonly(self.plan_pda, false),
             AccountMeta::new(self.subscription_pda, false),
+            AccountMeta::new_readonly(subscription_authority, false),
             AccountMeta::new_readonly(event_authority, false),
             AccountMeta::new_readonly(PROGRAM_ID, false),
         ];

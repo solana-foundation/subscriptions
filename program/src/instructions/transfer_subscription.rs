@@ -9,7 +9,7 @@ use crate::{
     event_engine::{self, EventSerialize},
     events::SubscriptionTransferEvent,
     helpers::{transfer_with_delegate, validate_recurring_transfer, TransferAccounts, TransferData},
-    state::{plan::Plan, subscription_delegation::SubscriptionDelegation},
+    state::{common::AccountDiscriminator, plan::Plan, subscription_delegation::SubscriptionDelegation},
     AccountCheck, MintInterface, ProgramAccount, SignerAccount, SubscriptionAuthorityAccount, SubscriptionsError,
     TokenAccountInterface, TokenProgramInterface, WritableAccount,
 };
@@ -63,7 +63,7 @@ pub fn process(accounts: &mut [AccountView], transfer_data: &TransferData) -> Pr
     let init_id: i64;
     {
         let mut binding = accounts_struct.subscription_pda.try_borrow_mut()?;
-        check_and_update_version(&mut binding)?;
+        check_and_update_version(&mut binding, AccountDiscriminator::SubscriptionDelegation)?;
         let subscription = SubscriptionDelegation::load_mut(&mut binding)?;
 
         subscription.check_plan_terms(&plan_terms)?;
@@ -85,7 +85,7 @@ pub fn process(accounts: &mut [AccountView], transfer_data: &TransferData) -> Pr
         }
 
         amount_per_period = subscription.terms.amount;
-        period_length_s = subscription.terms.period_length_secs();
+        period_length_s = subscription.terms.period_length_secs()?;
 
         let mut ps = subscription.current_period_start_ts;
         let mut pulled = subscription.amount_pulled_in_period;
@@ -140,6 +140,8 @@ pub fn process(accounts: &mut [AccountView], transfer_data: &TransferData) -> Pr
         period_end_ts,
         amount_pulled_in_period,
         receiver_owner,
+        *accounts_struct.receiver_ata.address(),
+        *accounts_struct.caller.address(),
     );
     let event_data = event.to_bytes();
     event_engine::emit_event(&crate::ID, accounts_struct.event_authority, accounts_struct.self_program, &event_data)?;

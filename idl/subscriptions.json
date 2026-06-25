@@ -1063,12 +1063,6 @@
         "name": "transferHookTooManyAccounts"
       },
       {
-        "code": 138,
-        "kind": "errorNode",
-        "message": "Transfer hook validation account missing from provided accounts",
-        "name": "transferHookValidationAccountMissing"
-      },
-      {
         "code": 300,
         "kind": "errorNode",
         "message": "Transfer amount exceeds delegation limit",
@@ -1261,6 +1255,12 @@
         "name": "planTermsMismatch"
       },
       {
+        "code": 520,
+        "kind": "errorNode",
+        "message": "A finite plan end timestamp can only be shortened, not removed or extended",
+        "name": "planEndTsCannotExtend"
+      },
+      {
         "code": 600,
         "kind": "errorNode",
         "message": "Invalid event authority PDA",
@@ -1283,9 +1283,655 @@
         "kind": "errorNode",
         "message": "Unknown event discriminator",
         "name": "invalidEventDiscriminator"
+      },
+      {
+        "code": 604,
+        "kind": "errorNode",
+        "message": "Self program account does not match this program",
+        "name": "invalidSelfProgram"
       }
     ],
-    "events": [],
+    "events": [
+      {
+        "data": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "delegation",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "delegator",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "delegatee",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "mint",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "amount",
+              "type": {
+                "endian": "le",
+                "format": "u64",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "remainingAmount",
+              "type": {
+                "endian": "le",
+                "format": "u64",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "receiver",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "receiverTokenAccount",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        },
+        "discriminators": [
+          {
+            "constant": {
+              "kind": "constantValueNode",
+              "type": {
+                "kind": "bytesTypeNode"
+              },
+              "value": {
+                "data": "e445a52e51cb9a1d",
+                "encoding": "base16",
+                "kind": "bytesValueNode"
+              }
+            },
+            "kind": "constantDiscriminatorNode",
+            "offset": 0
+          },
+          {
+            "constant": {
+              "kind": "constantValueNode",
+              "type": {
+                "kind": "bytesTypeNode"
+              },
+              "value": {
+                "data": "03",
+                "encoding": "base16",
+                "kind": "bytesValueNode"
+              }
+            },
+            "kind": "constantDiscriminatorNode",
+            "offset": 8
+          }
+        ],
+        "kind": "eventNode",
+        "name": "fixedTransferEvent"
+      },
+      {
+        "data": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "plan",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "owner",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "status",
+              "type": {
+                "endian": "le",
+                "format": "u8",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "endTs",
+              "type": {
+                "endian": "le",
+                "format": "i64",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "pullers",
+              "type": {
+                "count": {
+                  "kind": "fixedCountNode",
+                  "value": 4
+                },
+                "item": {
+                  "kind": "publicKeyTypeNode"
+                },
+                "kind": "arrayTypeNode"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        },
+        "discriminators": [
+          {
+            "constant": {
+              "kind": "constantValueNode",
+              "type": {
+                "kind": "bytesTypeNode"
+              },
+              "value": {
+                "data": "e445a52e51cb9a1d",
+                "encoding": "base16",
+                "kind": "bytesValueNode"
+              }
+            },
+            "kind": "constantDiscriminatorNode",
+            "offset": 0
+          },
+          {
+            "constant": {
+              "kind": "constantValueNode",
+              "type": {
+                "kind": "bytesTypeNode"
+              },
+              "value": {
+                "data": "06",
+                "encoding": "base16",
+                "kind": "bytesValueNode"
+              }
+            },
+            "kind": "constantDiscriminatorNode",
+            "offset": 8
+          }
+        ],
+        "kind": "eventNode",
+        "name": "planUpdatedEvent"
+      },
+      {
+        "data": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "delegation",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "delegator",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "delegatee",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "mint",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "amount",
+              "type": {
+                "endian": "le",
+                "format": "u64",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "periodStartTs",
+              "type": {
+                "endian": "le",
+                "format": "i64",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "periodEndTs",
+              "type": {
+                "endian": "le",
+                "format": "i64",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "amountPulledInPeriod",
+              "type": {
+                "endian": "le",
+                "format": "u64",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "receiver",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "receiverTokenAccount",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        },
+        "discriminators": [
+          {
+            "constant": {
+              "kind": "constantValueNode",
+              "type": {
+                "kind": "bytesTypeNode"
+              },
+              "value": {
+                "data": "e445a52e51cb9a1d",
+                "encoding": "base16",
+                "kind": "bytesValueNode"
+              }
+            },
+            "kind": "constantDiscriminatorNode",
+            "offset": 0
+          },
+          {
+            "constant": {
+              "kind": "constantValueNode",
+              "type": {
+                "kind": "bytesTypeNode"
+              },
+              "value": {
+                "data": "04",
+                "encoding": "base16",
+                "kind": "bytesValueNode"
+              }
+            },
+            "kind": "constantDiscriminatorNode",
+            "offset": 8
+          }
+        ],
+        "kind": "eventNode",
+        "name": "recurringTransferEvent"
+      },
+      {
+        "data": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "plan",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "subscriber",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "expiresAtTs",
+              "type": {
+                "endian": "le",
+                "format": "i64",
+                "kind": "numberTypeNode"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        },
+        "discriminators": [
+          {
+            "constant": {
+              "kind": "constantValueNode",
+              "type": {
+                "kind": "bytesTypeNode"
+              },
+              "value": {
+                "data": "e445a52e51cb9a1d",
+                "encoding": "base16",
+                "kind": "bytesValueNode"
+              }
+            },
+            "kind": "constantDiscriminatorNode",
+            "offset": 0
+          },
+          {
+            "constant": {
+              "kind": "constantValueNode",
+              "type": {
+                "kind": "bytesTypeNode"
+              },
+              "value": {
+                "data": "01",
+                "encoding": "base16",
+                "kind": "bytesValueNode"
+              }
+            },
+            "kind": "constantDiscriminatorNode",
+            "offset": 8
+          }
+        ],
+        "kind": "eventNode",
+        "name": "subscriptionCancelledEvent"
+      },
+      {
+        "data": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "plan",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "subscriber",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "mint",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "createdTs",
+              "type": {
+                "endian": "le",
+                "format": "i64",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "payer",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        },
+        "discriminators": [
+          {
+            "constant": {
+              "kind": "constantValueNode",
+              "type": {
+                "kind": "bytesTypeNode"
+              },
+              "value": {
+                "data": "e445a52e51cb9a1d",
+                "encoding": "base16",
+                "kind": "bytesValueNode"
+              }
+            },
+            "kind": "constantDiscriminatorNode",
+            "offset": 0
+          },
+          {
+            "constant": {
+              "kind": "constantValueNode",
+              "type": {
+                "kind": "bytesTypeNode"
+              },
+              "value": {
+                "data": "00",
+                "encoding": "base16",
+                "kind": "bytesValueNode"
+              }
+            },
+            "kind": "constantDiscriminatorNode",
+            "offset": 8
+          }
+        ],
+        "kind": "eventNode",
+        "name": "subscriptionCreatedEvent"
+      },
+      {
+        "data": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "plan",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "subscriber",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "resumedTs",
+              "type": {
+                "endian": "le",
+                "format": "i64",
+                "kind": "numberTypeNode"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        },
+        "discriminators": [
+          {
+            "constant": {
+              "kind": "constantValueNode",
+              "type": {
+                "kind": "bytesTypeNode"
+              },
+              "value": {
+                "data": "e445a52e51cb9a1d",
+                "encoding": "base16",
+                "kind": "bytesValueNode"
+              }
+            },
+            "kind": "constantDiscriminatorNode",
+            "offset": 0
+          },
+          {
+            "constant": {
+              "kind": "constantValueNode",
+              "type": {
+                "kind": "bytesTypeNode"
+              },
+              "value": {
+                "data": "05",
+                "encoding": "base16",
+                "kind": "bytesValueNode"
+              }
+            },
+            "kind": "constantDiscriminatorNode",
+            "offset": 8
+          }
+        ],
+        "kind": "eventNode",
+        "name": "subscriptionResumedEvent"
+      },
+      {
+        "data": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "subscription",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "plan",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "delegator",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "mint",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "amount",
+              "type": {
+                "endian": "le",
+                "format": "u64",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "periodStartTs",
+              "type": {
+                "endian": "le",
+                "format": "i64",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "periodEndTs",
+              "type": {
+                "endian": "le",
+                "format": "i64",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "amountPulledInPeriod",
+              "type": {
+                "endian": "le",
+                "format": "u64",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "receiver",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "receiverTokenAccount",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "puller",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        },
+        "discriminators": [
+          {
+            "constant": {
+              "kind": "constantValueNode",
+              "type": {
+                "kind": "bytesTypeNode"
+              },
+              "value": {
+                "data": "e445a52e51cb9a1d",
+                "encoding": "base16",
+                "kind": "bytesValueNode"
+              }
+            },
+            "kind": "constantDiscriminatorNode",
+            "offset": 0
+          },
+          {
+            "constant": {
+              "kind": "constantValueNode",
+              "type": {
+                "kind": "bytesTypeNode"
+              },
+              "value": {
+                "data": "02",
+                "encoding": "base16",
+                "kind": "bytesValueNode"
+              }
+            },
+            "kind": "constantDiscriminatorNode",
+            "offset": 8
+          }
+        ],
+        "kind": "eventNode",
+        "name": "subscriptionTransferEvent"
+      }
+    ],
     "instructions": [
       {
         "accounts": [
@@ -1371,6 +2017,16 @@
             "isWritable": false,
             "kind": "instructionAccountNode",
             "name": "tokenProgram"
+          },
+          {
+            "docs": [
+              "Optional sponsor that funds the account rent. Defaults to the owner/signer when omitted."
+            ],
+            "isOptional": true,
+            "isSigner": true,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "payer"
           }
         ],
         "arguments": [
@@ -1397,7 +2053,8 @@
           }
         ],
         "kind": "instructionNode",
-        "name": "initSubscriptionAuthority"
+        "name": "initSubscriptionAuthority",
+        "optionalAccountStrategy": "omitted"
       },
       {
         "accounts": [
@@ -1449,6 +2106,16 @@
             "isWritable": false,
             "kind": "instructionAccountNode",
             "name": "systemProgram"
+          },
+          {
+            "docs": [
+              "Optional sponsor that funds the account rent. Defaults to the delegator/signer when omitted."
+            ],
+            "isOptional": true,
+            "isSigner": true,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "payer"
           }
         ],
         "arguments": [
@@ -1483,7 +2150,8 @@
           }
         ],
         "kind": "instructionNode",
-        "name": "createFixedDelegation"
+        "name": "createFixedDelegation",
+        "optionalAccountStrategy": "omitted"
       },
       {
         "accounts": [
@@ -1535,6 +2203,16 @@
             "isWritable": false,
             "kind": "instructionAccountNode",
             "name": "systemProgram"
+          },
+          {
+            "docs": [
+              "Optional sponsor that funds the account rent. Defaults to the delegator/signer when omitted."
+            ],
+            "isOptional": true,
+            "isSigner": true,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "payer"
           }
         ],
         "arguments": [
@@ -1569,7 +2247,8 @@
           }
         ],
         "kind": "instructionNode",
-        "name": "createRecurringDelegation"
+        "name": "createRecurringDelegation",
+        "optionalAccountStrategy": "omitted"
       },
       {
         "accounts": [
@@ -1685,8 +2364,12 @@
           },
           {
             "defaultValue": {
-              "kind": "publicKeyValueNode",
-              "publicKey": "3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7"
+              "kind": "pdaValueNode",
+              "pda": {
+                "kind": "pdaLinkNode",
+                "name": "eventAuthority"
+              },
+              "seeds": []
             },
             "docs": [
               "The event authority PDA"
@@ -1811,8 +2494,12 @@
           },
           {
             "defaultValue": {
-              "kind": "publicKeyValueNode",
-              "publicKey": "3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7"
+              "kind": "pdaValueNode",
+              "pda": {
+                "kind": "pdaLinkNode",
+                "name": "eventAuthority"
+              },
+              "seeds": []
             },
             "docs": [
               "The event authority PDA"
@@ -1889,6 +2576,16 @@
             "isWritable": true,
             "kind": "instructionAccountNode",
             "name": "subscriptionAuthority"
+          },
+          {
+            "docs": [
+              "Optional rent recipient, required when the recorded payer differs from the user. Must match the stored payer."
+            ],
+            "isOptional": true,
+            "isSigner": false,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "receiver"
           }
         ],
         "arguments": [
@@ -1915,7 +2612,8 @@
           }
         ],
         "kind": "instructionNode",
-        "name": "closeSubscriptionAuthority"
+        "name": "closeSubscriptionAuthority",
+        "optionalAccountStrategy": "omitted"
       },
       {
         "accounts": [
@@ -2026,6 +2724,36 @@
             "isWritable": true,
             "kind": "instructionAccountNode",
             "name": "planPda"
+          },
+          {
+            "defaultValue": {
+              "kind": "pdaValueNode",
+              "pda": {
+                "kind": "pdaLinkNode",
+                "name": "eventAuthority"
+              },
+              "seeds": []
+            },
+            "docs": [
+              "The event authority PDA"
+            ],
+            "isSigner": false,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "eventAuthority"
+          },
+          {
+            "defaultValue": {
+              "kind": "publicKeyValueNode",
+              "publicKey": "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44"
+            },
+            "docs": [
+              "This program (for self-CPI)"
+            ],
+            "isSigner": false,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "selfProgram"
           }
         ],
         "arguments": [
@@ -2185,8 +2913,12 @@
           },
           {
             "defaultValue": {
-              "kind": "publicKeyValueNode",
-              "publicKey": "3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7"
+              "kind": "pdaValueNode",
+              "pda": {
+                "kind": "pdaLinkNode",
+                "name": "eventAuthority"
+              },
+              "seeds": []
             },
             "docs": [
               "The event authority PDA"
@@ -2331,8 +3063,12 @@
           },
           {
             "defaultValue": {
-              "kind": "publicKeyValueNode",
-              "publicKey": "3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7"
+              "kind": "pdaValueNode",
+              "pda": {
+                "kind": "pdaLinkNode",
+                "name": "eventAuthority"
+              },
+              "seeds": []
             },
             "docs": [
               "The event authority PDA"
@@ -2354,6 +3090,16 @@
             "isWritable": false,
             "kind": "instructionAccountNode",
             "name": "selfProgram"
+          },
+          {
+            "docs": [
+              "Optional sponsor that funds the account rent. Defaults to the subscriber/signer when omitted."
+            ],
+            "isOptional": true,
+            "isSigner": true,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "payer"
           }
         ],
         "arguments": [
@@ -2388,7 +3134,8 @@
           }
         ],
         "kind": "instructionNode",
-        "name": "subscribe"
+        "name": "subscribe",
+        "optionalAccountStrategy": "omitted"
       },
       {
         "accounts": [
@@ -2446,8 +3193,12 @@
           },
           {
             "defaultValue": {
-              "kind": "publicKeyValueNode",
-              "publicKey": "3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7"
+              "kind": "pdaValueNode",
+              "pda": {
+                "kind": "pdaLinkNode",
+                "name": "eventAuthority"
+              },
+              "seeds": []
             },
             "docs": [
               "The event authority PDA"
@@ -2552,9 +3303,22 @@
             "name": "subscriptionPda"
           },
           {
+            "docs": [
+              "The subscriber's SubscriptionAuthority PDA for the plan's mint"
+            ],
+            "isSigner": false,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "subscriptionAuthority"
+          },
+          {
             "defaultValue": {
-              "kind": "publicKeyValueNode",
-              "publicKey": "3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7"
+              "kind": "pdaValueNode",
+              "pda": {
+                "kind": "pdaLinkNode",
+                "name": "eventAuthority"
+              },
+              "seeds": []
             },
             "docs": [
               "The event authority PDA"
@@ -2608,10 +3372,10 @@
         "accounts": [
           {
             "docs": [
-              "The ATA owner revoking the program's delegate"
+              "The ATA owner: revokes the program's delegate and, when still open, closes the SubscriptionAuthority PDA (receives rent when self-funded)"
             ],
             "isSigner": true,
-            "isWritable": false,
+            "isWritable": true,
             "kind": "instructionAccountNode",
             "name": "user"
           },
@@ -2641,6 +3405,50 @@
             "isWritable": false,
             "kind": "instructionAccountNode",
             "name": "tokenProgram"
+          },
+          {
+            "defaultValue": {
+              "kind": "pdaValueNode",
+              "pda": {
+                "kind": "pdaLinkNode",
+                "name": "subscriptionAuthority"
+              },
+              "seeds": [
+                {
+                  "kind": "pdaSeedValueNode",
+                  "name": "user",
+                  "value": {
+                    "kind": "accountValueNode",
+                    "name": "user"
+                  }
+                },
+                {
+                  "kind": "pdaSeedValueNode",
+                  "name": "tokenMint",
+                  "value": {
+                    "kind": "accountValueNode",
+                    "name": "tokenMint"
+                  }
+                }
+              ]
+            },
+            "docs": [
+              "The SubscriptionAuthority PDA. Closed when still open; ignored when already closed."
+            ],
+            "isSigner": false,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "subscriptionAuthority"
+          },
+          {
+            "docs": [
+              "Optional rent recipient, required when the SubscriptionAuthority is still open and its recorded payer differs from the user. Must match the stored payer."
+            ],
+            "isOptional": true,
+            "isSigner": false,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "receiver"
           }
         ],
         "arguments": [
@@ -2667,7 +3475,8 @@
           }
         ],
         "kind": "instructionNode",
-        "name": "revokeSubscriptionAuthority"
+        "name": "revokeSubscriptionAuthority",
+        "optionalAccountStrategy": "omitted"
       },
       {
         "accounts": [
@@ -2724,6 +3533,71 @@
         ],
         "kind": "instructionNode",
         "name": "revokeAbandonedDelegation"
+      },
+      {
+        "accounts": [
+          {
+            "docs": [
+              "The recorded payer reclaiming rent"
+            ],
+            "isSigner": true,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "payer"
+          },
+          {
+            "docs": [
+              "The abandoned subscription PDA to close"
+            ],
+            "isSigner": false,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "subscriptionAccount"
+          },
+          {
+            "docs": [
+              "The subscriber's recorded SubscriptionAuthority PDA for the plan's mint (may be closed)"
+            ],
+            "isSigner": false,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "subscriptionAuthority"
+          },
+          {
+            "docs": [
+              "The plan the subscription belongs to; provides the mint"
+            ],
+            "isSigner": false,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "planPda"
+          }
+        ],
+        "arguments": [
+          {
+            "defaultValue": {
+              "kind": "numberValueNode",
+              "number": 16
+            },
+            "defaultValueStrategy": "omitted",
+            "kind": "instructionArgumentNode",
+            "name": "discriminator",
+            "type": {
+              "endian": "le",
+              "format": "u8",
+              "kind": "numberTypeNode"
+            }
+          }
+        ],
+        "discriminators": [
+          {
+            "kind": "fieldDiscriminatorNode",
+            "name": "discriminator",
+            "offset": 0
+          }
+        ],
+        "kind": "instructionNode",
+        "name": "revokeAbandonedSubscription"
       }
     ],
     "kind": "programNode",

@@ -6,6 +6,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import { eventAccountDefaultsVisitor } from './event-account-fixups.js';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const projectRoot = path.join(__dirname, '..');
@@ -24,6 +26,8 @@ void codama.accept(
         generatedFolder: 'src/generated',
     }),
 );
+
+codama.update(eventAccountDefaultsVisitor());
 
 void codama.accept(
     renderJavaScriptVisitor(typescriptClientsDir, {

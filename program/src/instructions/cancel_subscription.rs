@@ -8,7 +8,7 @@ use crate::{
     check_and_update_version,
     event_engine::{self, EventSerialize},
     events::SubscriptionCancelledEvent,
-    state::{plan::Plan, subscription_delegation::SubscriptionDelegation},
+    state::{common::AccountDiscriminator, plan::Plan, subscription_delegation::SubscriptionDelegation},
     AccountCheck, ProgramAccount, SignerAccount, SubscriptionsError, WritableAccount,
 };
 
@@ -29,7 +29,7 @@ pub fn process(accounts: &mut [AccountView]) -> ProgramResult {
     let plan_pda;
     {
         let mut binding = accounts_struct.subscription_pda.try_borrow_mut()?;
-        check_and_update_version(&mut binding)?;
+        check_and_update_version(&mut binding, AccountDiscriminator::SubscriptionDelegation)?;
         let subscription = SubscriptionDelegation::load_mut_with_min_size(&mut binding)?;
 
         if subscription.header.delegator != *accounts_struct.subscriber.address() {
@@ -54,7 +54,7 @@ pub fn process(accounts: &mut [AccountView]) -> ProgramResult {
                 // Ghost plan (terms mismatch) — expire immediately so the subscriber can revoke without paying.
                 expires_at_ts = current_ts;
             } else {
-                let period_length_s = subscription.terms.period_length_secs() as i64;
+                let period_length_s = subscription.terms.period_length_secs()? as i64;
                 let period_start = subscription.current_period_start_ts;
                 let elapsed = current_ts.saturating_sub(period_start);
                 let periods_elapsed = elapsed / period_length_s;

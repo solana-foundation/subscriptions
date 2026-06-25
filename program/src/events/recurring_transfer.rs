@@ -1,12 +1,17 @@
 use core::mem::size_of;
 
 use alloc::vec::Vec;
+use codama::CodamaEvent;
 use pinocchio::Address;
 
 use crate::event_engine::{EventDiscriminator, EventDiscriminators, EventSerialize};
 
 /// Emitted when a transfer is executed against a recurring delegation.
 #[repr(C, packed)]
+#[derive(CodamaEvent)]
+// EVENT_IX_TAG_LE @0, EventDiscriminators::RecurringTransfer @8
+#[codama(discriminator(bytes = [228, 69, 165, 46, 81, 203, 154, 29], offset = 0))]
+#[codama(discriminator(bytes = [4], offset = 8))]
 pub struct RecurringTransferEvent {
     /// The recurring delegation PDA.
     pub delegation: Address,
@@ -16,7 +21,9 @@ pub struct RecurringTransferEvent {
     pub delegatee: Address,
     /// The SPL token mint.
     pub mint: Address,
-    /// Token amount transferred.
+    /// Gross token amount debited from the delegator. For transfer-fee mints the
+    /// receiver is credited with this minus the token program's fee; derive the
+    /// net received from balances off-chain.
     pub amount: u64,
     /// Start of the period during which the transfer occurred.
     pub period_start_ts: i64,
@@ -26,6 +33,8 @@ pub struct RecurringTransferEvent {
     pub amount_pulled_in_period: u64,
     /// The receiver wallet that received the tokens.
     pub receiver: Address,
+    /// The token account credited by the transfer; its owner is `receiver`.
+    pub receiver_token_account: Address,
 }
 
 impl RecurringTransferEvent {
@@ -44,6 +53,7 @@ impl RecurringTransferEvent {
         period_end_ts: i64,
         amount_pulled_in_period: u64,
         receiver: Address,
+        receiver_token_account: Address,
     ) -> Self {
         Self {
             delegation,
@@ -55,6 +65,7 @@ impl RecurringTransferEvent {
             period_end_ts,
             amount_pulled_in_period,
             receiver,
+            receiver_token_account,
         }
     }
 }
@@ -76,6 +87,7 @@ impl EventSerialize for RecurringTransferEvent {
         writer.extend_from_slice(&{ self.period_end_ts }.to_le_bytes());
         writer.extend_from_slice(&{ self.amount_pulled_in_period }.to_le_bytes());
         writer.extend_from_slice(self.receiver.as_ref());
+        writer.extend_from_slice(self.receiver_token_account.as_ref());
     }
 }
 
@@ -103,6 +115,10 @@ mod tests {
 
     fn receiver() -> Address {
         Address::new_from_array([5u8; 32])
+    }
+
+    fn receiver_token_account() -> Address {
+        Address::new_from_array([6u8; 32])
     }
 
     fn amount() -> u64 {
@@ -133,6 +149,7 @@ mod tests {
             period_end_ts(),
             amount_pulled_in_period(),
             receiver(),
+            receiver_token_account(),
         );
         let bytes = event.to_bytes();
         let decoded = decode_event(&bytes).unwrap();
@@ -148,6 +165,7 @@ mod tests {
                 assert_eq!({ e.period_end_ts }, period_end_ts());
                 assert_eq!({ e.amount_pulled_in_period }, amount_pulled_in_period());
                 assert_eq!(e.receiver, receiver());
+                assert_eq!(e.receiver_token_account, receiver_token_account());
             }
             _ => panic!("expected RecurringTransfer event"),
         }

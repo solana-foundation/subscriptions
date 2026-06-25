@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import {
+    SUBSCRIPTIONS_ERROR__INVALID_SUBSCRIPTION_AUTHORITY_PDA,
     SUBSCRIPTIONS_ERROR__PLAN_TERMS_MISMATCH,
     SUBSCRIPTIONS_ERROR__SUBSCRIPTION_NOT_CANCELLED,
-    SUBSCRIPTIONS_ERROR__UNAUTHORIZED,
 } from '../src/generated/errors/subscriptions.ts';
 import {
     fetchMaybePlan,
@@ -402,7 +402,7 @@ describe('Subscription Lifecycle', () => {
         const amountPulled = subAfterCancel.amountPulledInPeriod;
 
         await t.client.subscriptions.instructions
-            .resumeSubscription({ subscriber, planPda, subscriptionPda })
+            .resumeSubscription({ subscriber, planPda, subscriptionPda, tokenMint: t.tokenMint })
             .sendTransaction();
 
         const subAfterResume = (await fetchSubscriptionDelegation(t.rpc, subscriptionPda)).data;
@@ -463,7 +463,7 @@ describe('Subscription Lifecycle', () => {
 
         await expectProgramError(
             t.client.subscriptions.instructions
-                .resumeSubscription({ subscriber, planPda, subscriptionPda })
+                .resumeSubscription({ subscriber, planPda, subscriptionPda, tokenMint: t.tokenMint })
                 .sendTransaction(),
             SUBSCRIPTIONS_ERROR__SUBSCRIPTION_NOT_CANCELLED,
         );
@@ -509,9 +509,9 @@ describe('Subscription Lifecycle', () => {
         const attacker = await t.createFundedKeypair();
         await expectProgramError(
             t.client.subscriptions.instructions
-                .resumeSubscription({ subscriber: attacker, planPda, subscriptionPda })
+                .resumeSubscription({ subscriber: attacker, planPda, subscriptionPda, tokenMint: t.tokenMint })
                 .sendTransaction(),
-            SUBSCRIPTIONS_ERROR__UNAUTHORIZED,
+            SUBSCRIPTIONS_ERROR__INVALID_SUBSCRIPTION_AUTHORITY_PDA,
         );
     });
 });

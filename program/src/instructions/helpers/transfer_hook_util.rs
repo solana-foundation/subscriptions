@@ -4,7 +4,7 @@
 use alloc::vec::Vec;
 
 use pinocchio::{
-    cpi::{invoke_signed_with_bounds, Signer},
+    cpi::{invoke_signed_with_slice, Signer},
     error::ProgramError,
     instruction::{InstructionAccount, InstructionView},
     AccountView, Address, ProgramResult,
@@ -16,24 +16,29 @@ const ACCOUNT_TYPE_INDEX: usize = 165;
 const TLV_START_INDEX: usize = ACCOUNT_TYPE_INDEX + 1;
 const TLV_HEADER_LEN: usize = 4;
 const EXTENSION_TYPE_TRANSFER_HOOK: u16 = 14;
-const EXTRA_ACCOUNT_METAS_SEED: &[u8] = b"extra-account-metas";
 const TRANSFER_HOOK_EXTENSION_LEN: usize = 64; // authority(32) || program_id(32)
 const TRANSFER_HOOK_PROGRAM_ID_OFFSET: usize = 32;
 const TRANSFER_CHECKED_DISCRIMINATOR: u8 = 12;
 
-// 4 base accounts + remaining must fit the CPI stack buffer (MAX_STATIC_CPI_ACCOUNTS = 64).
-pub const MAX_TRANSFER_HOOK_REMAINING_ACCOUNTS: usize = 60;
-const MAX_TRANSFER_CPI_ACCOUNTS: usize = 4 + MAX_TRANSFER_HOOK_REMAINING_ACCOUNTS;
+const TLV_TYPE_LEN: usize = 2;
 
 fn find_extension_value(tlv_data: &[u8], target: u16) -> Result<Option<&[u8]>, ProgramError> {
     let mut offset = 0;
 
-    while offset + TLV_HEADER_LEN <= tlv_data.len() {
+    while offset < tlv_data.len() {
+        // Fewer than a type field left, or an Uninitialized (zero) type, marks
+        // the end of used TLV data; trailing realloc/multisig padding lands here.
+        if tlv_data.len() - offset < TLV_TYPE_LEN {
+            return Ok(None);
+        }
         let ext_type = u16::from_le_bytes([tlv_data[offset], tlv_data[offset + 1]]);
         if ext_type == 0 {
             return Ok(None);
         }
 
+        if tlv_data.len() - offset < TLV_HEADER_LEN {
+            return Err(SubscriptionsError::InvalidToken2022MintAccountData.into());
+        }
         let length = u16::from_le_bytes([tlv_data[offset + 2], tlv_data[offset + 3]]) as usize;
         let value_start = offset + TLV_HEADER_LEN;
         let value_end = value_start.checked_add(length).ok_or(SubscriptionsError::InvalidToken2022MintAccountData)?;
@@ -49,11 +54,7 @@ fn find_extension_value(tlv_data: &[u8], target: u16) -> Result<Option<&[u8]>, P
         offset = value_end;
     }
 
-    if offset == tlv_data.len() {
-        Ok(None)
-    } else {
-        Err(SubscriptionsError::InvalidToken2022MintAccountData.into())
-    }
+    Ok(None)
 }
 
 /// Active transfer hook program for a mint, or `None` when absent or `program_id` is unset.
@@ -81,15 +82,12 @@ pub fn mint_transfer_hook_program_id(mint_data: &[u8]) -> Result<Option<Address>
 }
 
 /// `TransferChecked` CPI forwarding the caller-supplied `remaining` hook accounts
-/// (each with its runtime writable/signer flags); Token-2022 validates them.
-///
-/// Requires the hook's `ExtraAccountMetaList` validation PDA among `remaining`.
-/// Token-2022 only resolves the hook's configured policy context when that PDA
-/// is passed, so without this check an active-hook transfer would fail open.
+/// (each with its runtime writable/signer flags). Token-2022 resolves and runs the
+/// hook from these accounts exactly as it would for a direct transfer; this program
+/// forwards them transparently and does not enforce the hook's policy itself.
 #[allow(clippy::too_many_arguments)]
 pub fn invoke_transfer_checked_with_hook(
     token_program: &Address,
-    hook_program: &Address,
     from: &AccountView,
     mint: &AccountView,
     to: &AccountView,
@@ -99,16 +97,6 @@ pub fn invoke_transfer_checked_with_hook(
     decimals: u8,
     signers: &[Signer],
 ) -> ProgramResult {
-    if remaining.len() > MAX_TRANSFER_HOOK_REMAINING_ACCOUNTS {
-        return Err(SubscriptionsError::TransferHookTooManyAccounts.into());
-    }
-
-    let (validation_pda, _) =
-        Address::find_program_address(&[EXTRA_ACCOUNT_METAS_SEED, mint.address().as_ref()], hook_program);
-    if !remaining.iter().any(|account| account.address().eq(&validation_pda)) {
-        return Err(SubscriptionsError::TransferHookValidationAccountMissing.into());
-    }
-
     let mut data = [0u8; 10];
     data[0] = TRANSFER_CHECKED_DISCRIMINATOR;
     data[1..9].copy_from_slice(&amount.to_le_bytes());
@@ -133,7 +121,7 @@ pub fn invoke_transfer_checked_with_hook(
 
     let instruction = InstructionView { program_id: token_program, data: &data, accounts: &metas };
 
-    invoke_signed_with_bounds::<MAX_TRANSFER_CPI_ACCOUNTS, _>(&instruction, &views, signers)
+    invoke_signed_with_slice(&instruction, &views, signers)
 }
 
 #[cfg(test)]
@@ -220,5 +208,29 @@ mod tests {
         let tlv = tlv_entry(EXTENSION_TYPE_TRANSFER_HOOK, &[5u8; 32]);
         let data = mint_with_tlv(&tlv);
         assert!(mint_transfer_hook_program_id(&data).is_err());
+    }
+
+    #[test]
+    fn trailing_zero_padding_is_accepted() {
+        let mut tlv = tlv_entry(1, &[0u8; 4]);
+        tlv.extend_from_slice(&[0u8, 0u8]);
+        let data = mint_with_tlv(&tlv);
+        assert_eq!(mint_transfer_hook_program_id(&data).unwrap(), None);
+    }
+
+    #[test]
+    fn single_trailing_byte_is_ignored() {
+        let mut tlv = tlv_entry(1, &[0u8; 4]);
+        tlv.push(0xAB);
+        let data = mint_with_tlv(&tlv);
+        assert_eq!(mint_transfer_hook_program_id(&data).unwrap(), None);
+    }
+
+    #[test]
+    fn finds_hook_before_trailing_padding() {
+        let mut tlv = tlv_entry(EXTENSION_TYPE_TRANSFER_HOOK, &hook_value([1u8; 32], [3u8; 32]));
+        tlv.extend_from_slice(&[0u8, 0u8]);
+        let data = mint_with_tlv(&tlv);
+        assert_eq!(mint_transfer_hook_program_id(&data).unwrap(), Some(Address::new_from_array([3u8; 32])));
     }
 }

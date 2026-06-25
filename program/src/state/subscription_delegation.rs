@@ -75,12 +75,20 @@ impl SubscriptionDelegation {
         Ok(unsafe { &mut *transmute::<*mut u8, *mut Self>(bytes.as_mut_ptr()) })
     }
 
-    pub fn load_with_min_size(bytes: &[u8]) -> Result<&Self, ProgramError> {
-        check_min_account_size(bytes.len(), Self::LEN)?;
+    /// First-version length; recovery's frozen minimum. Never change: later versions append trailing bytes, not fields.
+    pub const V1_LEN: usize = 155;
+
+    /// Owned, version-agnostic load for revoke/close: gates on frozen [`V1_LEN`](Self::V1_LEN),
+    /// zero-pads an older (smaller) account to `LEN` so appended fields read as zero.
+    pub fn load_for_revoke(bytes: &[u8]) -> Result<Self, ProgramError> {
+        check_min_account_size(bytes.len(), Self::V1_LEN)?;
         if bytes[DISCRIMINATOR_OFFSET] != AccountDiscriminator::SubscriptionDelegation as u8 {
             return Err(SubscriptionsError::InvalidAccountDiscriminator.into());
         }
-        Ok(unsafe { &*transmute::<*const u8, *const Self>(bytes.as_ptr()) })
+        let mut buf = [0u8; Self::LEN];
+        let n = bytes.len().min(Self::LEN);
+        buf[..n].copy_from_slice(&bytes[..n]);
+        Ok(unsafe { core::ptr::read_unaligned(buf.as_ptr() as *const Self) })
     }
 
     pub fn load_mut_with_min_size(bytes: &mut [u8]) -> Result<&mut Self, ProgramError> {
@@ -102,5 +110,4 @@ impl SubscriptionDelegation {
     }
 }
 
-pub const SUBSCRIPTION_DELEGATION_LEN_V1: usize = 155;
-const _: () = assert!(SubscriptionDelegation::LEN == SUBSCRIPTION_DELEGATION_LEN_V1);
+const _: () = assert!(SubscriptionDelegation::LEN >= SubscriptionDelegation::V1_LEN);

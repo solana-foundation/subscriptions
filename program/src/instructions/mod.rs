@@ -19,6 +19,7 @@ pub mod helpers;
 pub mod initialize_subscription_authority;
 pub mod resume_subscription;
 pub mod revoke_abandoned_delegation;
+pub mod revoke_abandoned_subscription;
 pub mod revoke_delegation;
 pub mod revoke_subscription_authority;
 pub mod transfer_fixed_delegation;
@@ -65,6 +66,14 @@ pub enum SubscriptionsInstruction {
         default_value = program("system")
     ))]
     #[codama(account(name = "token_program", docs = "Token program"))]
+    #[codama(account(
+        name = "payer",
+        signer,
+        writable,
+        optional,
+        docs = "Optional sponsor that funds the account rent. Defaults to the owner/signer when omitted."
+    ))]
+    #[codama(optional_account_strategy = omitted)]
     InitSubscriptionAuthority = 0,
 
     #[codama(account(name = "delegator", signer, writable, docs = "The user creating the delegation"))]
@@ -76,6 +85,14 @@ pub enum SubscriptionsInstruction {
         docs = "The system program",
         default_value = program("system")
     ))]
+    #[codama(account(
+        name = "payer",
+        signer,
+        writable,
+        optional,
+        docs = "Optional sponsor that funds the account rent. Defaults to the delegator/signer when omitted."
+    ))]
+    #[codama(optional_account_strategy = omitted)]
     CreateFixedDelegation(#[codama(name = "fixed_delegation")] CreateFixedDelegationData) = 1,
 
     #[codama(account(name = "delegator", signer, writable, docs = "The user creating the delegation"))]
@@ -87,6 +104,14 @@ pub enum SubscriptionsInstruction {
         docs = "The system program",
         default_value = program("system")
     ))]
+    #[codama(account(
+        name = "payer",
+        signer,
+        writable,
+        optional,
+        docs = "Optional sponsor that funds the account rent. Defaults to the delegator/signer when omitted."
+    ))]
+    #[codama(optional_account_strategy = omitted)]
     CreateRecurringDelegation(#[codama(name = "recurring_delegation")] CreateRecurringDelegationData) = 2,
 
     #[codama(account(
@@ -108,7 +133,7 @@ pub enum SubscriptionsInstruction {
     #[codama(account(
         name = "event_authority",
         docs = "The event authority PDA",
-        default_value = public_key("3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7")
+        default_value = pda("eventAuthority")
     ))]
     #[codama(account(
         name = "self_program",
@@ -127,7 +152,7 @@ pub enum SubscriptionsInstruction {
     #[codama(account(
         name = "event_authority",
         docs = "The event authority PDA",
-        default_value = public_key("3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7")
+        default_value = pda("eventAuthority")
     ))]
     #[codama(account(
         name = "self_program",
@@ -143,6 +168,13 @@ pub enum SubscriptionsInstruction {
         docs = "The user who owns the SubscriptionAuthority PDA (receives rent)"
     ))]
     #[codama(account(name = "subscription_authority", writable, docs = "The SubscriptionAuthority PDA to close"))]
+    #[codama(account(
+        name = "receiver",
+        writable,
+        optional,
+        docs = "Optional rent recipient, required when the recorded payer differs from the user. Must match the stored payer."
+    ))]
+    #[codama(optional_account_strategy = omitted)]
     CloseSubscriptionAuthority = 6,
 
     #[codama(account(name = "merchant", signer, writable, docs = "The merchant creating the plan"))]
@@ -162,6 +194,16 @@ pub enum SubscriptionsInstruction {
 
     #[codama(account(name = "owner", signer, docs = "The plan owner updating the plan"))]
     #[codama(account(name = "plan_pda", writable, docs = "The plan PDA being updated"))]
+    #[codama(account(
+        name = "event_authority",
+        docs = "The event authority PDA",
+        default_value = pda("eventAuthority")
+    ))]
+    #[codama(account(
+        name = "self_program",
+        docs = "This program (for self-CPI)",
+        default_value = public_key("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44")
+    ))]
     UpdatePlan(#[codama(name = "update_plan_data")] UpdatePlanData) = 8,
 
     #[codama(account(name = "owner", signer, writable, docs = "The plan owner deleting the plan (receives rent)"))]
@@ -179,7 +221,7 @@ pub enum SubscriptionsInstruction {
     #[codama(account(
         name = "event_authority",
         docs = "The event authority PDA",
-        default_value = public_key("3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7")
+        default_value = pda("eventAuthority")
     ))]
     #[codama(account(
         name = "self_program",
@@ -214,13 +256,21 @@ pub enum SubscriptionsInstruction {
     #[codama(account(
         name = "event_authority",
         docs = "The event authority PDA",
-        default_value = public_key("3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7")
+        default_value = pda("eventAuthority")
     ))]
     #[codama(account(
         name = "self_program",
         docs = "This program (for self-CPI)",
         default_value = public_key("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44")
     ))]
+    #[codama(account(
+        name = "payer",
+        signer,
+        writable,
+        optional,
+        docs = "Optional sponsor that funds the account rent. Defaults to the subscriber/signer when omitted."
+    ))]
+    #[codama(optional_account_strategy = omitted)]
     Subscribe(#[codama(name = "subscribe_data")] SubscribeData) = 11,
 
     #[codama(account(name = "subscriber", signer, docs = "The subscriber cancelling the subscription"))]
@@ -234,7 +284,7 @@ pub enum SubscriptionsInstruction {
     #[codama(account(
         name = "event_authority",
         docs = "The event authority PDA",
-        default_value = public_key("3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7")
+        default_value = pda("eventAuthority")
     ))]
     #[codama(account(
         name = "self_program",
@@ -252,9 +302,13 @@ pub enum SubscriptionsInstruction {
         default_value = pda("subscriptionDelegation", [seed("planPda", account("plan_pda")), seed("subscriber", account("subscriber"))])
     ))]
     #[codama(account(
+        name = "subscription_authority",
+        docs = "The subscriber's SubscriptionAuthority PDA for the plan's mint"
+    ))]
+    #[codama(account(
         name = "event_authority",
         docs = "The event authority PDA",
-        default_value = public_key("3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7")
+        default_value = pda("eventAuthority")
     ))]
     #[codama(account(
         name = "self_program",
@@ -263,10 +317,28 @@ pub enum SubscriptionsInstruction {
     ))]
     ResumeSubscription = 13,
 
-    #[codama(account(name = "user", signer, docs = "The ATA owner revoking the program's delegate"))]
+    #[codama(account(
+        name = "user",
+        signer,
+        writable,
+        docs = "The ATA owner: revokes the program's delegate and, when still open, closes the SubscriptionAuthority PDA (receives rent when self-funded)"
+    ))]
     #[codama(account(name = "user_ata", writable, docs = "The user's ATA whose delegate is being revoked"))]
     #[codama(account(name = "token_mint", docs = "The token mint of the user's ATA"))]
     #[codama(account(name = "token_program", docs = "Token program"))]
+    #[codama(account(
+        name = "subscription_authority",
+        writable,
+        docs = "The SubscriptionAuthority PDA. Closed when still open; ignored when already closed.",
+        default_value = pda("subscriptionAuthority", [seed("user", account("user")), seed("tokenMint", account("token_mint"))])
+    ))]
+    #[codama(account(
+        name = "receiver",
+        writable,
+        optional,
+        docs = "Optional rent recipient, required when the SubscriptionAuthority is still open and its recorded payer differs from the user. Must match the stored payer."
+    ))]
+    #[codama(optional_account_strategy = omitted)]
     RevokeSubscriptionAuthority = 14,
 
     #[codama(account(name = "payer", signer, writable, docs = "The recorded payer reclaiming rent"))]
@@ -277,12 +349,21 @@ pub enum SubscriptionsInstruction {
     ))]
     RevokeAbandonedDelegation = 15,
 
+    #[codama(account(name = "payer", signer, writable, docs = "The recorded payer reclaiming rent"))]
+    #[codama(account(name = "subscription_account", writable, docs = "The abandoned subscription PDA to close"))]
+    #[codama(account(
+        name = "subscription_authority",
+        docs = "The subscriber's recorded SubscriptionAuthority PDA for the plan's mint (may be closed)"
+    ))]
+    #[codama(account(name = "plan_pda", docs = "The plan the subscription belongs to; provides the mint"))]
+    RevokeAbandonedSubscription = 16,
+
     #[codama(skip)]
     #[codama(account(
         name = "event_authority",
         signer,
         docs = "The event authority PDA",
-        default_value = public_key("3Hnj4BYoDgtpBuqXfiy7Y8cNa3jXaNd4oqgSXBzkMcH7")
+        default_value = pda("eventAuthority")
     ))]
     EmitEvent = 228,
 }
@@ -334,6 +415,7 @@ impl SubscriptionsInstruction {
             resume_subscription::DISCRIMINATOR => Ok(Self::ResumeSubscription),
             revoke_subscription_authority::DISCRIMINATOR => Ok(Self::RevokeSubscriptionAuthority),
             revoke_abandoned_delegation::DISCRIMINATOR => Ok(Self::RevokeAbandonedDelegation),
+            revoke_abandoned_subscription::DISCRIMINATOR => Ok(Self::RevokeAbandonedSubscription),
             &EMIT_EVENT_IX_DISC => Ok(Self::EmitEvent),
             _ => Err(SubscriptionsError::InvalidInstruction.into()),
         }
@@ -359,6 +441,7 @@ impl fmt::Display for SubscriptionsInstruction {
             Self::ResumeSubscription => write!(f, "resume_subscription"),
             Self::RevokeSubscriptionAuthority => write!(f, "revoke_subscription_authority"),
             Self::RevokeAbandonedDelegation => write!(f, "revoke_abandoned_delegation"),
+            Self::RevokeAbandonedSubscription => write!(f, "revoke_abandoned_subscription"),
             Self::EmitEvent => write!(f, "emit_event"),
         }
     }

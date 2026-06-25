@@ -52,13 +52,15 @@ For custom wallet flows, use the exported `get*OverlayInstruction*` functions. T
 
 ### Delegation Management
 
-| Plugin instruction / builder                                                          | Description                                                                 |
-| ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `initSubscriptionAuthority` / `getInitSubscriptionAuthorityOverlayInstructionAsync`   | Set up the per-mint SubscriptionAuthority PDA and token approval            |
-| `closeSubscriptionAuthority` / `getCloseSubscriptionAuthorityOverlayInstructionAsync` | Tear down SubscriptionAuthority, invalidating all delegations (kill switch) |
-| `createFixedDelegation` / `getCreateFixedDelegationOverlayInstructionAsync`           | One-time token allowance with optional expiry                               |
-| `createRecurringDelegation` / `getCreateRecurringDelegationOverlayInstructionAsync`   | Periodic allowance (amount per time period)                                 |
-| `revokeDelegation` / `getRevokeDelegationOverlayInstruction`                          | Permanently close any delegation and reclaim rent                           |
+| Plugin instruction / builder                                                            | Description                                                                                                                          |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `initSubscriptionAuthority` / `getInitSubscriptionAuthorityOverlayInstructionAsync`     | Set up the per-mint SubscriptionAuthority PDA and token approval                                                                     |
+| `closeSubscriptionAuthority` / `getCloseSubscriptionAuthorityOverlayInstructionAsync`   | Tear down SubscriptionAuthority, invalidating all delegations (kill switch)                                                          |
+| `createFixedDelegation` / `getCreateFixedDelegationOverlayInstructionAsync`             | One-time token allowance with optional expiry                                                                                        |
+| `createRecurringDelegation` / `getCreateRecurringDelegationOverlayInstructionAsync`     | Periodic allowance (amount per time period)                                                                                          |
+| `revokeDelegation` / `getRevokeDelegationOverlayInstruction`                            | Permanently close a fixed or recurring delegation and reclaim rent                                                                   |
+| `revokeSubscription` / `getRevokeSubscriptionOverlayInstruction`                        | Close a subscription delegation PDA (requires `planPda`) and reclaim rent                                                            |
+| `revokeSubscriptionAuthority` / `getRevokeSubscriptionAuthorityOverlayInstructionAsync` | Revoke the per-mint SPL delegate and close the SubscriptionAuthority PDA, reclaiming rent (pass `receiver` when a sponsor funded it) |
 
 ### Transfers
 
@@ -93,12 +95,14 @@ For custom wallet flows, use the exported `get*OverlayInstruction*` functions. T
 
 Use the generated `find*Pda` helpers directly: `findSubscriptionAuthorityPda`,
 `findFixedDelegationPda`, `findRecurringDelegationPda`, `findSubscriptionDelegationPda`,
-`findPlanPda`, `findEventAuthorityPda`. All take a seeds object and return `[address, bump]`.
+`findPlanPda`, `findEventAuthorityPda`. They return `[address, bump]`. The first five take a
+seeds object; `findEventAuthorityPda` takes only an optional `{ programAddress }` config (its
+seed is the constant `"event_authority"`).
 
 ### Types
 
 - `Delegation` - discriminated union: `{ kind: "fixed" | "recurring" | "subscription"; address; data }`. Narrow with `d.kind === '...'`.
-- `PlanWithAddress`, `DelegationKindId` (string union), `TransferParams`
+- `PlanWithAddress`, `DelegationKindId` (string union); transfer input types are `TransferDelegationInput` / `TransferSubscriptionInput`
 - Error handling: client-side `ValidationError`; on-chain errors use the generated `SUBSCRIPTIONS_ERROR__*` constants and `isSubscriptionsError` / `getSubscriptionsErrorMessage`.
 
 ## API Reference

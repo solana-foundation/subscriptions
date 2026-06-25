@@ -5,8 +5,7 @@ use pinocchio::{
 };
 
 use crate::{
-    check_and_update_version,
-    helpers::is_effectively_expired,
+    helpers::is_expired,
     state::{
         common::AccountDiscriminator, fixed_delegation::FixedDelegation, plan::Plan,
         recurring_delegation::RecurringDelegation, subscription_delegation::SubscriptionDelegation,
@@ -64,8 +63,9 @@ pub const DISCRIMINATOR: &u8 = &3;
 /// Authorization rules:
 ///
 /// * Fixed / Recurring: the delegator can close at any time. The sponsor
-///   (original payer) can close only after the delegation's `expiry_ts` is in
-///   the past (and non-zero).
+///   (original payer) can close a Fixed delegation once it is expired
+///   (`expiry_ts` non-zero and in the past) or fully spent (remaining
+///   `amount == 0`); a Recurring delegation only once expired.
 /// * Subscription: the subscriber (delegator) can close once `expires_at_ts`
 ///   has elapsed (set by `cancel_subscription`). The sponsor can close when
 ///   the plan ended naturally, the plan account was deleted, or the
@@ -74,8 +74,7 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
     let accounts = RevokeDelegationAccounts::try_from(accounts)?;
 
     let destination = {
-        let mut delegation_account = *accounts.delegation_account;
-        let mut data = delegation_account.try_borrow_mut()?;
+        let data = accounts.delegation_account.try_borrow()?;
 
         if data.len() < Header::LEN {
             return Err(SubscriptionsError::InvalidHeaderData.into());
@@ -85,8 +84,7 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
 
         match kind {
             AccountDiscriminator::SubscriptionDelegation => {
-                check_and_update_version(&mut data)?;
-                let subscription = SubscriptionDelegation::load_with_min_size(&data)?;
+                let subscription = SubscriptionDelegation::load_for_revoke(&data)?;
                 let current_ts = Clock::get()?.unix_timestamp;
 
                 // Subscription branch consumes `[plan_pda, receiver?]`.
@@ -133,14 +131,22 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
             AccountDiscriminator::FixedDelegation | AccountDiscriminator::RecurringDelegation => {
                 let is_sponsor = check_is_sponsor(&data, accounts.authority)?;
 
-                // Sponsor can only revoke expired delegations
+                // Sponsor recovery: an expired delegation, or a fully-spent fixed
+                // delegation (remaining `amount` is zero, which is terminal since it
+                // only ever decreases).
                 if is_sponsor {
-                    let expiry_ts = match kind {
-                        AccountDiscriminator::FixedDelegation => FixedDelegation::load_with_min_size(&data)?.expiry_ts,
-                        _ => RecurringDelegation::load_with_min_size(&data)?.expiry_ts,
-                    };
                     let current_ts = Clock::get()?.unix_timestamp;
-                    if !is_effectively_expired(expiry_ts, current_ts) {
+                    let recoverable = match kind {
+                        AccountDiscriminator::FixedDelegation => {
+                            let delegation = FixedDelegation::load_for_revoke(&data)?;
+                            is_expired(delegation.expiry_ts, current_ts) || delegation.amount == 0
+                        }
+                        _ => {
+                            let delegation = RecurringDelegation::load_for_revoke(&data)?;
+                            is_expired(delegation.expiry_ts, current_ts)
+                        }
+                    };
+                    if !recoverable {
                         return Err(SubscriptionsError::Unauthorized.into());
                     }
                 }

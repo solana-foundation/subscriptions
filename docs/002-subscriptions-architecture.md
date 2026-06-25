@@ -115,7 +115,7 @@ ADR-001 provides the core delegation infrastructure. Plans add a subscription mo
 
 5. **Management Flexibility**
     - `update_plan` allows:
-        - Set status to Sunset (stop accepting new subscribers, terminal and irreversible, requires non-zero end_ts)
+        - Set status to Sunset (stop accepting new subscribers; effectively terminal — status/end_ts/metadata can no longer change, though the owner may still remove existing pullers; requires non-zero end_ts)
         - Set end_ts (graceful discontinuation, or 0 to remove expiry; cannot be 0 when sunsetting)
         - Update pullers array (change authorized callers)
         - Update metadata_uri (change plan description/branding)
@@ -161,7 +161,7 @@ When a subscriber subscribes, the plan's `PlanTerms` (amount, period_hours, crea
 
 **What SubscriptionDelegation Stores:**
 
-- `header` (delegator = subscriber, delegatee = plan_pda, payer = subscriber)
+- `header` (delegator = subscriber, delegatee = plan_pda, payer = subscriber, `init_id` = the subscriber's SubscriptionAuthority incarnation at subscribe time) — `resume`/abandon paths compare this `init_id` against the live authority to detect a stale (closed-and-reinitialized) authority
 - `terms` - snapshot of plan's PlanTerms (amount, period_hours, created_at)
 - `amount_pulled_in_period` - tracking for the current billing period
 - `current_period_start_ts` - start of the current billing period
@@ -189,18 +189,19 @@ When a subscriber subscribes, the plan's `PlanTerms` (amount, period_hours, crea
 
 **Component Overview:**
 
-| Component                                    | ADR-001               | ADR-002                                           |
-| -------------------------------------------- | --------------------- | ------------------------------------------------- |
-| `SubscriptionAuthority` PDA                  | Used                  | Same SA                                           |
-| `FixedDelegation`                            | Standalone delegation | Not used for subscriptions                        |
-| `RecurringDelegation`                        | Standalone delegation | Not used for subscriptions                        |
-| `transfer_fixed` / `transfer_recurring`      | Delegation transfers  | Not used for subscriptions                        |
-| **NEW**: `Plan` PDA                          | -                     | Stores subscription terms                         |
-| **NEW**: `SubscriptionDelegation` PDA        | -                     | Tracks per-subscriber billing state               |
-| **NEW**: `subscribe` instruction             | -                     | Creates SubscriptionDelegation referencing a Plan |
-| **NEW**: `cancel_subscription` instruction   | -                     | Sets expires_at_ts, grace period                  |
-| **NEW**: `resume_subscription` instruction   | -                     | Clears expires_at_ts to resume autopay            |
-| **NEW**: `transfer_subscription` instruction | -                     | Pulls tokens using Plan terms + Delegation state  |
+| Component                                            | ADR-001               | ADR-002                                                                       |
+| ---------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------- |
+| `SubscriptionAuthority` PDA                          | Used                  | Same SA                                                                       |
+| `FixedDelegation`                                    | Standalone delegation | Not used for subscriptions                                                    |
+| `RecurringDelegation`                                | Standalone delegation | Not used for subscriptions                                                    |
+| `transfer_fixed` / `transfer_recurring`              | Delegation transfers  | Not used for subscriptions                                                    |
+| **NEW**: `Plan` PDA                                  | -                     | Stores subscription terms                                                     |
+| **NEW**: `SubscriptionDelegation` PDA                | -                     | Tracks per-subscriber billing state                                           |
+| **NEW**: `subscribe` instruction                     | -                     | Creates SubscriptionDelegation referencing a Plan                             |
+| **NEW**: `cancel_subscription` instruction           | -                     | Sets expires_at_ts, grace period                                              |
+| **NEW**: `resume_subscription` instruction           | -                     | Clears expires_at_ts to resume autopay                                        |
+| **NEW**: `transfer_subscription` instruction         | -                     | Pulls tokens using Plan terms + Delegation state                              |
+| **NEW**: `revoke_abandoned_subscription` instruction | -                     | Sponsor reclaims rent from a subscription whose SubscriptionAuthority is dead |
 
 **Seeded Separation for Coexistence:**
 
@@ -212,7 +213,7 @@ When a subscriber subscribes, the plan's `PlanTerms` (amount, period_hours, crea
 **Flows Remain Available:**
 
 - All ADR-001 instructions (`initialize_subscription_authority`, `create_fixed_delegation`, `create_recurring_delegation`) continue to work unchanged
-- New ADR-002 instructions (`create_plan`, `update_plan`, `delete_plan`, `subscribe`, `cancel_subscription`, `resume_subscription`, `transfer_subscription`) add subscription capability
+- New ADR-002 instructions (`create_plan`, `update_plan`, `delete_plan`, `subscribe`, `cancel_subscription`, `resume_subscription`, `transfer_subscription`, `revoke_abandoned_subscription`) add subscription capability
 - Direct delegations and subscriptions can be created and withdrawn independently
 
 ---
@@ -325,15 +326,17 @@ Merchant publishes a Plan with subscription terms.
 
 Plan owner updates mutable admin fields (status, end_ts, pullers, metadata_uri). Core terms (mint, terms, destinations, plan_id) are immutable.
 
-| Account | Type     | Description        |
-| ------- | -------- | ------------------ |
-| 0       | signer   | Plan owner         |
-| 1       | writable | Plan PDA to update |
+| Account | Type     | Description         |
+| ------- | -------- | ------------------- |
+| 0       | signer   | Plan owner          |
+| 1       | writable | Plan PDA to update  |
+| 2       |          | Event authority PDA |
+| 3       |          | Self program        |
 
 **Parameters (UpdatePlanData, 265 bytes):**
 
 - `status: u8` - PlanStatus (Sunset=0, Active=1)
-- `end_ts: i64` - Plan expiration timestamp (0 = remove expiry, cannot be 0 when status=Sunset)
+- `end_ts: i64` - Plan expiration timestamp (0 = no expiry, valid only when the plan currently has no finite end_ts; cannot be 0 when status=Sunset; a finite end_ts may only be shortened)
 - `pullers: [Address; 4]` - Updated puller whitelist (128 bytes)
 - `metadata_uri: [u8; 128]` - Metadata URI
 
@@ -341,12 +344,14 @@ Plan owner updates mutable admin fields (status, end_ts, pullers, metadata_uri).
 
 1. Load Plan account, verify discriminator and size
 2. Verify caller is Plan owner (else `NotPlanOwner`)
-3. Reject if plan is already in Sunset status (else `PlanImmutableAfterSunset`) - Sunset is a terminal state
+3. If the plan is already in Sunset status, reject the update (`PlanImmutableAfterSunset`) **unless** it only removes existing pullers — `status` stays Sunset, `end_ts` and `metadata_uri` are unchanged, and the new `pullers` are a subset of the current set (removal/reorder only). On this sunset puller-removal path only `pullers` is rewritten and the remaining steps are skipped.
 4. Reject if status=Sunset and end_ts=0 (else `SunsetRequiresEndTs`) - sunsetting requires a finite expiration
-5. Validate input data: `PlanStatus::try_from(status)` must succeed (else `InvalidPlanStatus`), `end_ts == 0` or `end_ts > current_time` (else `InvalidEndTs`)
-6. Validate end_ts is at least one billing period in the future: `end_ts == 0` or `end_ts >= current_time + (terms.period_hours * 3600)` (else `InvalidEndTs`)
-7. Reject if plan has expired: `plan.end_ts != 0 && current_ts > plan.end_ts` (else `PlanExpired`)
-8. Write status, end_ts, pullers, and metadata_uri from input data
+5. Validate the status byte: `PlanStatus::try_from(status)` must succeed (else `InvalidPlanStatus`)
+6. Reject if plan has expired: `plan.end_ts != 0 && current_ts > plan.end_ts` (else `PlanExpired`)
+7. Enforce shorten-only end_ts: when the stored `end_ts != 0`, a new `end_ts` of `0` or greater than the stored value is rejected (`PlanEndTsCannotExtend`). A finite `end_ts` may only be shortened. Because UpdatePlan is full-replacement, metadata- or puller-only edits to a finite-end plan must re-send the existing `end_ts`.
+8. Only when `end_ts` changes from the stored value, validate the new finite end is at least one billing period out: `end_ts == 0` or `end_ts >= current_time + (terms.period_hours * 3600)` (else `InvalidEndTs`). An unchanged `end_ts` skips this check, so puller removal, metadata edits, and the Active→Sunset transition stay available during the final billing period.
+9. Write status, end_ts, pullers, and metadata_uri from input data
+10. Emit `PlanUpdatedEvent` (plan, owner, status, end_ts, pullers)
 
 **Immutable fields (never modified by update_plan):**
 `plan_id`, `owner`, `bump`, `mint`, `terms` (amount, period_hours, created_at), `destinations`
@@ -413,17 +418,19 @@ Subscriber subscribes to a Plan, creating a lightweight `SubscriptionDelegation`
 
 Authorized caller (plan owner or whitelisted puller) pulls tokens from a subscriber's account through their SubscriptionDelegation, validated against the Plan's terms.
 
-| Account | Type     | Description                                |
-| ------- | -------- | ------------------------------------------ |
-| 0       | writable | SubscriptionDelegation PDA                 |
-| 1       |          | Plan PDA                                   |
-| 2       |          | SubscriptionAuthority PDA                  |
-| 3       | writable | Delegator's ATA (source of funds)          |
-| 4       | writable | Receiver's ATA (destination)               |
-| 5       | signer   | Caller (plan owner or whitelisted puller)  |
-| 6       |          | Token program                              |
-| 7       |          | Event authority PDA                        |
-| 8       |          | This program (for self-CPI event emission) |
+| Account | Type     | Description                                                                    |
+| ------- | -------- | ------------------------------------------------------------------------------ |
+| 0       | writable | SubscriptionDelegation PDA                                                     |
+| 1       |          | Plan PDA                                                                       |
+| 2       |          | SubscriptionAuthority PDA                                                      |
+| 3       | writable | Delegator's ATA (source of funds)                                              |
+| 4       | writable | Receiver's ATA (destination)                                                   |
+| 5       | signer   | Caller (plan owner or whitelisted puller)                                      |
+| 6       |          | Token mint                                                                     |
+| 7       |          | Token program                                                                  |
+| 8       |          | Event authority PDA                                                            |
+| 9       |          | This program (for self-CPI event emission)                                     |
+| 10+     |          | Optional transfer-hook accounts (`ExtraAccountMetas`), forwarded to Token-2022 |
 
 **Parameters (TransferData):**
 
@@ -445,7 +452,7 @@ Authorized caller (plan owner or whitelisted puller) pulls tokens from a subscri
 10. Validate recurring transfer using subscription's snapshotted terms: amount within period limit, handle period rollover
 11. Update subscription state (`current_period_start_ts`, `amount_pulled_in_period`)
 12. Execute transfer via SubscriptionAuthority PDA (CPI to Token Program)
-13. Emit `SubscriptionTransferEvent` via self-CPI
+13. Emit `SubscriptionTransferEvent` via self-CPI (its `period_end_ts` is clamped to the plan's `end_ts`, and it records the receiver ATA and the caller as `puller`)
 
 **Authorization Logic:**
 
@@ -482,7 +489,7 @@ After `expires_at_ts` passes, pulls are blocked. The subscriber can then call `r
 
 **Process:**
 
-1. If plan is valid (program-owned) and `check_plan_terms()` passes: compute `expires_at_ts = current_period_start + (periods_elapsed + 1) * period_length` using subscription's snapshotted `terms.period_hours`, then cap at `plan.end_ts` if `end_ts != 0` (so a cancelled subscription cannot outlive the plan itself)
+1. If plan is valid (program-owned) and `check_plan_terms()` passes: compute `expires_at_ts = current_period_start + (periods_elapsed + 1) * period_length` using subscription's snapshotted `terms.period_hours`, then cap at `plan.end_ts + 1` if `end_ts != 0` (`end_ts` is inclusive — the merchant may pull through `end_ts` — so the cancellation expiry sits one second past it, matching the plan-expiry boundary used elsewhere, and a cancelled subscription cannot outlive the plan)
 2. If plan is valid but `check_plan_terms()` fails (ghost plan): set `expires_at_ts = current_ts` (immediate, no grace period)
 3. If plan is closed (not program-owned): set `expires_at_ts = current_ts`
 4. Emit `SubscriptionCancelled` event via self-CPI
@@ -497,13 +504,14 @@ After `expires_at_ts` passes, pulls are blocked. The subscriber can then call `r
 
 Subscriber resumes a cancelled subscription by clearing `expires_at_ts`. This does not change `current_period_start_ts` or `amount_pulled_in_period`, so the billing period and allowance accounting continue from the existing subscription state.
 
-| Account | Type     | Description                |
-| ------- | -------- | -------------------------- |
-| 0       | signer   | Subscriber (delegator)     |
-| 1       |          | Plan PDA                   |
-| 2       | writable | SubscriptionDelegation PDA |
-| 3       |          | Event authority PDA        |
-| 4       |          | Self program               |
+| Account | Type     | Description                                                   |
+| ------- | -------- | ------------------------------------------------------------- |
+| 0       | signer   | Subscriber (delegator)                                        |
+| 1       |          | Plan PDA                                                      |
+| 2       | writable | SubscriptionDelegation PDA                                    |
+| 3       |          | SubscriptionAuthority PDA (subscriber's, for the plan's mint) |
+| 4       |          | Event authority PDA                                           |
+| 5       |          | Self program                                                  |
 
 **Parameters:** None (only discriminator byte)
 
@@ -516,12 +524,38 @@ Subscriber resumes a cancelled subscription by clearing `expires_at_ts`. This do
 5. Verify the plan has not reached `end_ts` (else `PlanExpired`)
 6. Verify the live plan terms still match the subscription's snapshotted terms (else `PlanTermsMismatch`)
 7. Verify `expires_at_ts > current_ts` (else `SubscriptionCancelled`)
+8. Verify the SubscriptionAuthority is owned by the subscriber (else `Unauthorized`), its mint matches the plan (else `MintMismatch`), and its `init_id` equals the subscription's recorded `init_id` (else `StaleSubscriptionAuthority`) — prevents resuming against a closed-and-reinitialized authority.
 
 **Process:**
 
 1. Clear `expires_at_ts` to `0`
 2. Leave `current_period_start_ts` and `amount_pulled_in_period` unchanged
 3. Emit `SubscriptionResumed` event via self-CPI
+
+### `revoke_abandoned_subscription` (Discriminator: 16)
+
+Sponsor-driven recovery: the recorded `payer` reclaims rent from a SubscriptionDelegation once its SubscriptionAuthority is dead. This is the sponsor counterpart to `resume_subscription`'s `init_id` liveness check.
+
+| Account | Type             | Description                                                   |
+| ------- | ---------------- | ------------------------------------------------------------- |
+| 0       | signer, writable | Recorded payer (sponsor) reclaiming rent                      |
+| 1       | writable         | SubscriptionDelegation PDA to close                           |
+| 2       |                  | SubscriptionAuthority PDA (subscriber's, for the plan's mint) |
+| 3       |                  | Plan PDA (used to recover the mint)                           |
+
+**Parameters:** None (only discriminator byte)
+
+**Validation:**
+
+1. Verify the caller equals the subscription's recorded `payer` (else `Unauthorized`)
+2. Verify the subscription's `delegatee` matches the supplied Plan PDA (else `SubscriptionPlanMismatch`)
+3. Verify the Plan account is still program-owned — a closed plan is recoverable via `revoke_delegation` instead (else `PlanClosed`)
+4. Verify the supplied SubscriptionAuthority is the canonical `find_pda(delegator, plan.mint)` — the mint is taken from the bound plan, never the supplied authority, so a sponsor cannot spoof "abandoned" with an unrelated-mint authority
+5. Verify the authority is abandoned: it is closed (not program-owned / fails to load) or its `init_id` no longer matches the subscription's recorded `init_id`. A still-live, matching authority is rejected (else `Unauthorized`), since the subscription remains billable.
+
+**Process:**
+
+1. Close the SubscriptionDelegation account and return rent to the recorded payer.
 
 ---
 
@@ -650,7 +684,7 @@ sequenceDiagram
     participant X as Anyone/Whitelist
 
     M->>P: update_plan(status=Sunset, end_ts=future)
-    Note over P: Plan status set to Sunset<br/>(terminal, no further updates allowed)<br/>Requires non-zero end_ts
+    Note over P: Plan status set to Sunset<br/>(status/end_ts/metadata frozen;<br/>owner may still remove pullers)<br/>Requires non-zero end_ts
 
     X->>P: transfer_subscription(amount, delegator, mint)
     Note over P: Plan is Sunset:<br/>new subscriptions rejected<br/>existing subscriptions honored until end_ts
@@ -715,14 +749,17 @@ All transfer and lifecycle instructions emit events via self-CPI through an even
 
 **Events:**
 
-| Event                        | Emitted By              | Data                                                              |
-| ---------------------------- | ----------------------- | ----------------------------------------------------------------- |
-| `SubscriptionCreatedEvent`   | `subscribe`             | plan_pda, subscriber, mint, timestamp                             |
-| `SubscriptionCancelledEvent` | `cancel_subscription`   | plan_pda, subscriber, expires_at_ts, timestamp                    |
-| `SubscriptionResumedEvent`   | `resume_subscription`   | plan_pda, subscriber, timestamp                                   |
-| `SubscriptionTransferEvent`  | `transfer_subscription` | plan_pda, subscriber, amount, receiver, timestamp                 |
-| `FixedTransferEvent`         | `transfer_fixed`        | delegation_pda, delegator, delegatee, amount, receiver, timestamp |
-| `RecurringTransferEvent`     | `transfer_recurring`    | delegation_pda, delegator, delegatee, amount, receiver, timestamp |
+| Event                        | Emitted By              | Data                                                                                                                                           |
+| ---------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SubscriptionCreatedEvent`   | `subscribe`             | plan, subscriber, mint, created_ts, payer                                                                                                      |
+| `SubscriptionCancelledEvent` | `cancel_subscription`   | plan, subscriber, expires_at_ts                                                                                                                |
+| `SubscriptionResumedEvent`   | `resume_subscription`   | plan, subscriber, resumed_ts                                                                                                                   |
+| `SubscriptionTransferEvent`  | `transfer_subscription` | subscription, plan, delegator, mint, amount, period_start_ts, period_end_ts, amount_pulled_in_period, receiver, receiver_token_account, puller |
+| `FixedTransferEvent`         | `transfer_fixed`        | delegation, delegator, delegatee, mint, amount, remaining_amount, receiver, receiver_token_account                                             |
+| `RecurringTransferEvent`     | `transfer_recurring`    | delegation, delegator, delegatee, mint, amount, period_start_ts, period_end_ts, amount_pulled_in_period, receiver, receiver_token_account      |
+| `PlanUpdatedEvent`           | `update_plan`           | plan, owner, status, end_ts, pullers[4]                                                                                                        |
+
+> **Note:** `amount` on transfer events is the gross debited value; for transfer-fee mints the receiver gets `amount` minus the fee.
 
 Instructions that emit events require two additional accounts: the event authority PDA and the program itself (for self-CPI).
 

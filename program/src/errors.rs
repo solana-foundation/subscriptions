@@ -53,7 +53,6 @@ impl TryFrom<u32> for SubscriptionsError {
             135 => Ok(Self::DelegationAlreadyExists),
             136 => Ok(Self::StaleSubscriptionAuthority),
             137 => Ok(Self::TransferHookTooManyAccounts),
-            138 => Ok(Self::TransferHookValidationAccountMissing),
             // Fixed delegation errors (300-399)
             300 => Ok(Self::AmountExceedsLimit),
             301 => Ok(Self::FixedDelegationExpiryInPast),
@@ -89,11 +88,13 @@ impl TryFrom<u32> for SubscriptionsError {
             517 => Ok(Self::AlreadySubscribed),
             518 => Ok(Self::PlanAlreadyExists),
             519 => Ok(Self::PlanTermsMismatch),
+            520 => Ok(Self::PlanEndTsCannotExtend),
             // Event errors (600-699)
             600 => Ok(Self::InvalidEventAuthority),
             601 => Ok(Self::InvalidEventData),
             602 => Ok(Self::InvalidEventTag),
             603 => Ok(Self::InvalidEventDiscriminator),
+            604 => Ok(Self::InvalidSelfProgram),
             _ => Err(code),
         }
     }
@@ -146,19 +147,28 @@ pub enum SubscriptionsError {
     ArithmeticUnderflow,
     #[error("Invalid account discriminator")]
     InvalidAccountDiscriminator,
-    /// Reserved for backwards compatibility.
+    // The Token-2022 extension guards below (codes 118--124) are no longer enforced;
+    // the program does not reject mints by extension. Each is retained only for
+    // backward compatibility so existing clients keep decoding these error codes.
+    /// Unused; retained for backward compatibility.
     #[error("Mint has ConfidentialTransfer extension")]
     MintHasConfidentialTransfer,
+    /// Unused; retained for backward compatibility.
     #[error("Mint has NonTransferable extension")]
     MintHasNonTransferable,
+    /// Unused; retained for backward compatibility.
     #[error("Mint has PermanentDelegate extension")]
     MintHasPermanentDelegate,
+    /// Unused; retained for backward compatibility.
     #[error("Mint has TransferHook extension")]
     MintHasTransferHook,
+    /// Unused; retained for backward compatibility.
     #[error("Mint has TransferFee extension")]
     MintHasTransferFee,
+    /// Unused; retained for backward compatibility.
     #[error("Mint has MintCloseAuthority extension")]
     MintHasMintCloseAuthority,
+    /// Unused; retained for backward compatibility.
     #[error("Mint has Pausable extension")]
     MintHasPausable,
     #[error("Token mint mismatch")]
@@ -185,10 +195,9 @@ pub enum SubscriptionsError {
     DelegationAlreadyExists,
     #[error("Delegation init_id does not match current SubscriptionAuthority")]
     StaleSubscriptionAuthority,
+    /// Reserved for backwards compatibility.
     #[error("Too many transfer hook accounts provided")]
     TransferHookTooManyAccounts,
-    #[error("Transfer hook validation account missing from provided accounts")]
-    TransferHookValidationAccountMissing,
 
     // --- Fixed delegation errors (300--399) ---
     #[error("Transfer amount exceeds delegation limit")]
@@ -259,6 +268,8 @@ pub enum SubscriptionsError {
     PlanAlreadyExists,
     #[error("Subscription plan terms do not match the current plan")]
     PlanTermsMismatch,
+    #[error("A finite plan end timestamp can only be shortened, not removed or extended")]
+    PlanEndTsCannotExtend,
 
     // --- Event errors (600--699) ---
     #[error("Invalid event authority PDA")]
@@ -269,4 +280,6 @@ pub enum SubscriptionsError {
     InvalidEventTag,
     #[error("Unknown event discriminator")]
     InvalidEventDiscriminator,
+    #[error("Self program account does not match this program")]
+    InvalidSelfProgram,
 }
