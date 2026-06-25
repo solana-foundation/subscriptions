@@ -29,6 +29,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast as sonnerToast } from 'sonner';
 
 import { useClusterConfig } from '@/hooks/use-cluster-config';
+import { useFeatures } from '@/hooks/use-features';
 import { getBlockTimestamp } from '@/hooks/use-time-travel';
 import { useProgramAddress } from '@/hooks/use-token-config';
 import { type ConfirmedPlanTransfer, createAllPlanPaymentCollectionResult } from '@/lib/collect-all-results';
@@ -52,6 +53,7 @@ export function useSubscriptionsMutations() {
     const queryClient = useQueryClient();
     const toast = useTransactionToast();
     const { url: rpcUrl } = useClusterConfig();
+    const features = useFeatures();
     const programAddress = useProgramAddress();
 
     const progId = programAddress ? address(programAddress) : undefined;
@@ -167,17 +169,18 @@ export function useSubscriptionsMutations() {
             });
             const ataInfo = await rpc.getAccountInfo(userAta, { encoding: 'base64' }).send();
 
-            const instructions = ataInfo.value
-                ? [
-                      await getRevokeSubscriptionAuthorityOverlayInstructionAsync({
-                          programAddress: progId,
-                          tokenMint: address(tokenMint),
-                          tokenProgram,
-                          user: signer,
-                      }),
-                      closeInstruction,
-                  ]
-                : [closeInstruction];
+            const instructions =
+                ataInfo.value && features.revokeSubscriptionAuthority
+                    ? [
+                          await getRevokeSubscriptionAuthorityOverlayInstructionAsync({
+                              programAddress: progId,
+                              tokenMint: address(tokenMint),
+                              tokenProgram,
+                              user: signer,
+                          }),
+                          closeInstruction,
+                      ]
+                    : [closeInstruction];
 
             const signature = await signAndSend(instructions, signer);
             return { signature };

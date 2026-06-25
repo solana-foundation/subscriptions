@@ -120,9 +120,19 @@ integration-test *args: build-program build-test-hook
 test-and-benchmark: build-program build-test-hook
     CU_REPORT=1 CU_REPORT_DATE=$(date +%Y-%m-%d) cargo test -p tests-subscriptions
 
-# Run TypeScript client integration tests
-test-client: build-program build-test-hook generate-clients ensure-surfpool
-    cd {{ts_client_dir}} && pnpm run test
+# Run TypeScript client integration tests (fork pass, then offline pass for getProgramAccounts)
+test-client: build-program build-test-hook generate-clients
+    #!/usr/bin/env bash
+    set -euo pipefail
+    trap 'just kill-validator' EXIT
+
+    just kill-validator
+    just _start-surfpool fork
+    ( cd {{ts_client_dir}} && pnpm run test )
+
+    just kill-validator
+    just _start-surfpool offline
+    ( cd {{ts_client_dir}} && pnpm run test:offline )
 
 # ============================================
 # Validator management
@@ -140,15 +150,27 @@ ensure-surfpool:
         exit 0
     fi
 
+    just _start-surfpool fork
+
+# Start a fresh surfpool validator and deploy the program. mode=fork|offline
+_start-surfpool mode="fork":
+    #!/usr/bin/env bash
+    set -euo pipefail
+
     PROG_ID=$(sed -n 's/.*declare_id!("\([^"]*\)").*/\1/p' "{{program_dir}}/src/lib.rs")
     if [[ -z "$PROG_ID" ]]; then
         echo "Error: could not parse declare_id! from {{program_dir}}/src/lib.rs"
         exit 1
     fi
 
-    echo "Starting surfpool validator..."
+    extra=""
+    if [[ "{{mode}}" == "offline" ]]; then
+        extra="--offline"
+    fi
+
+    echo "Starting surfpool validator ({{mode}})..."
     mkdir -p .surfpool
-    nohup surfpool start --ci --no-tui --block-production-mode transaction \
+    nohup surfpool start --ci --no-tui --block-production-mode transaction $extra \
         --runbook surfnet-setup \
         > /tmp/surfpool.log 2>&1 &
     echo $! > .surfpool/pid.txt
