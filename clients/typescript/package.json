@@ -34,6 +34,7 @@
     "scripts": {
         "build": "tsup",
         "test": "vitest run --config vitest.config.ts",
+        "test:offline": "vitest run --config vitest.offline.config.ts",
         "clean": "rm -rf dist",
         "clean:generated": "rm -rf src/generated",
         "docs": "npx typedoc"
