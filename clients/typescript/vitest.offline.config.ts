@@ -1,4 +1,4 @@
-import { configDefaults, defineConfig } from 'vitest/config';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
     test: {
@@ -6,6 +6,6 @@ export default defineConfig({
         hookTimeout: 60000,
         teardownTimeout: 60000,
         fileParallelism: false,
-        exclude: [...configDefaults.exclude, '**/*.offline.test.ts'],
+        include: ['**/*.offline.test.ts'],
     },
 });
