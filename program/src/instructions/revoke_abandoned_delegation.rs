@@ -58,11 +58,11 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
         let (recorded_authority, recorded_init_id, payer) =
             match AccountDiscriminator::try_from(data[DISCRIMINATOR_OFFSET])? {
                 AccountDiscriminator::FixedDelegation => {
-                    let delegation = FixedDelegation::load_with_min_size(&data)?;
+                    let delegation = FixedDelegation::load_for_revoke(&data)?;
                     (delegation.subscription_authority, delegation.header.init_id, delegation.header.payer)
                 }
                 AccountDiscriminator::RecurringDelegation => {
-                    let delegation = RecurringDelegation::load_with_min_size(&data)?;
+                    let delegation = RecurringDelegation::load_for_revoke(&data)?;
                     (delegation.subscription_authority, delegation.header.init_id, delegation.header.payer)
                 }
                 _ => return Err(SubscriptionsError::InvalidAccountDiscriminator.into()),

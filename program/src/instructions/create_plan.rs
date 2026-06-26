@@ -38,11 +38,10 @@ pub struct PlanTerms {
 
 impl PlanTerms {
     /// Returns the period length in seconds.
-    ///
-    /// Overflow is impossible because `period_hours` is bounded by [`MAX_PLAN_PERIOD_HOURS`]
-    /// (validated at plan creation in [`PlanData::validate`]); the maximum result is well below `u64::MAX`.
-    pub fn period_length_secs(&self) -> u64 {
-        self.period_hours * crate::constants::SECS_PER_HOUR
+    pub fn period_length_secs(&self) -> Result<u64, ProgramError> {
+        self.period_hours
+            .checked_mul(crate::constants::SECS_PER_HOUR)
+            .ok_or(SubscriptionsError::ArithmeticOverflow.into())
     }
 }
 

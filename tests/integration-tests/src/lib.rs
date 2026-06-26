@@ -29,6 +29,8 @@ mod test_resume_subscription;
 #[cfg(test)]
 mod test_revoke_abandoned_delegation;
 #[cfg(test)]
+mod test_revoke_abandoned_subscription;
+#[cfg(test)]
 mod test_revoke_delegation;
 #[cfg(test)]
 mod test_revoke_subscription_authority;

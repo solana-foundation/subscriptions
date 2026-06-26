@@ -21,11 +21,26 @@ use pinocchio_token::{
 use super::traits::{AccountCheck, AssociatedTokenAccountCheck, AssociatedTokenAccountInit, MintInit, TokenInit};
 use crate::{
     constants::{
-        TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET, TOKEN_2022_MINT_DISCRIMINATOR, TOKEN_2022_PROGRAM_ID,
-        TOKEN_2022_TOKEN_ACCOUNT_DISCRIMINATOR,
+        MINT_IS_INITIALIZED_OFFSET, TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET, TOKEN_2022_MINT_DISCRIMINATOR,
+        TOKEN_2022_PROGRAM_ID, TOKEN_2022_TOKEN_ACCOUNT_DISCRIMINATOR, TOKEN_ACCOUNT_DELEGATE_END,
+        TOKEN_ACCOUNT_DELEGATE_OFFSET, TOKEN_ACCOUNT_DELEGATE_TAG_OFFSET,
     },
     SubscriptionsError,
 };
+
+/// Reads the `delegate` field from raw SPL token account data.
+/// Returns `None` when no delegate is set (`COption::None`).
+pub fn get_token_account_delegate(data: &[u8]) -> Result<Option<Address>, SubscriptionsError> {
+    if data.len() < TOKEN_ACCOUNT_DELEGATE_END {
+        return Err(SubscriptionsError::InvalidAccountData);
+    }
+    if data[TOKEN_ACCOUNT_DELEGATE_TAG_OFFSET..TOKEN_ACCOUNT_DELEGATE_OFFSET].iter().all(|&b| b == 0) {
+        return Ok(None);
+    }
+    let mut delegate = [0u8; 32];
+    delegate.copy_from_slice(&data[TOKEN_ACCOUNT_DELEGATE_OFFSET..TOKEN_ACCOUNT_DELEGATE_END]);
+    Ok(Some(Address::from(delegate)))
+}
 
 // Private helpers to consolidate initialization logic
 
@@ -71,6 +86,11 @@ impl AccountCheck for MintAccount {
         }
 
         if account.data_len() != Mint::LEN {
+            return Err(SubscriptionsError::InvalidTokenSplMintAccountData.into());
+        }
+
+        let data = account.try_borrow()?;
+        if data[MINT_IS_INITIALIZED_OFFSET] != 1 {
             return Err(SubscriptionsError::InvalidTokenSplMintAccountData.into());
         }
 
@@ -144,8 +164,8 @@ impl TokenInit for TokenAccount {
 
 /// Validation for Token-2022 mint accounts.
 ///
-/// Checks ownership by the Token-2022 program and, for extended accounts, the
-/// `0x01` mint discriminator at byte 165.
+/// Checks ownership by the Token-2022 program, that the base mint is initialized,
+/// and, for extended accounts, the `0x01` mint discriminator at byte 165.
 pub struct Mint2022Account;
 
 impl AccountCheck for Mint2022Account {
@@ -154,14 +174,15 @@ impl AccountCheck for Mint2022Account {
             return Err(SubscriptionsError::InvalidToken2022MintAccountData.into());
         }
 
-        if account.data_len() == Mint::LEN {
-            return Ok(());
-        }
-
         let data = account.try_borrow()?;
 
-        if data.len() <= TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET
-            || data[TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET].ne(&TOKEN_2022_MINT_DISCRIMINATOR)
+        if data.len() < Mint::LEN || data[MINT_IS_INITIALIZED_OFFSET] != 1 {
+            return Err(SubscriptionsError::InvalidToken2022MintAccountData.into());
+        }
+
+        if data.len() != Mint::LEN
+            && (data.len() <= TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET
+                || data[TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET].ne(&TOKEN_2022_MINT_DISCRIMINATOR))
         {
             return Err(SubscriptionsError::InvalidToken2022MintAccountData.into());
         }
@@ -219,7 +240,9 @@ impl AccountCheck for TokenAccount2022Account {
 
         let data = account.try_borrow()?;
 
-        if data[TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET].ne(&TOKEN_2022_TOKEN_ACCOUNT_DISCRIMINATOR) {
+        if data.len() <= TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET
+            || data[TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET].ne(&TOKEN_2022_TOKEN_ACCOUNT_DISCRIMINATOR)
+        {
             return Err(SubscriptionsError::InvalidToken2022TokenAccountData.into());
         }
 

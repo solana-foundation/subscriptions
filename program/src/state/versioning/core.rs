@@ -1,6 +1,10 @@
 use pinocchio::error::ProgramError;
 
-use crate::{state::header::VERSION_OFFSET, SubscriptionsError};
+use crate::{
+    state::common::AccountDiscriminator,
+    state::header::{DISCRIMINATOR_OFFSET, VERSION_OFFSET},
+    SubscriptionsError,
+};
 
 pub const CURRENT_VERSION: u8 = 1;
 
@@ -8,16 +12,22 @@ pub const CURRENT_VERSION: u8 = 1;
 ///
 /// Returns `Ok` if the account is at CURRENT_VERSION (fast path) or was
 /// successfully migrated in-place. Returns an error otherwise:
+/// - `InvalidAccountData`: data too short for version byte
+/// - `InvalidAccountDiscriminator`: account kind byte at offset 0 != `expected`
 /// - `DelegationVersionMismatch`: version > CURRENT (program downgrade)
 /// - `MigrationRequired`: version < CURRENT and no lazy path exists
-/// - `InvalidAccountData`: data too short for version byte
 ///
 /// Must be called on raw bytes **before** typed struct loading, since a
-/// migration may change the struct layout.
+/// migration may change the struct layout. The account kind is validated against
+/// `expected` up front so no migration step mutates a wrong-kind account.
 /// See `docs/003-versioning-migration-architecture.md` for full details.
-pub fn check_and_update_version(data: &mut [u8]) -> Result<(), ProgramError> {
+pub fn check_and_update_version(data: &mut [u8], expected: AccountDiscriminator) -> Result<(), ProgramError> {
     if data.len() <= VERSION_OFFSET {
         return Err(SubscriptionsError::InvalidAccountData.into());
+    }
+
+    if data[DISCRIMINATOR_OFFSET] != expected as u8 {
+        return Err(SubscriptionsError::InvalidAccountDiscriminator.into());
     }
 
     let version = data[VERSION_OFFSET];
@@ -89,6 +99,7 @@ mod tests {
 
     fn make_data(version: u8) -> Vec<u8> {
         let mut data = vec![0u8; VERSION_OFFSET + 8];
+        data[DISCRIMINATOR_OFFSET] = AccountDiscriminator::FixedDelegation as u8;
         data[VERSION_OFFSET] = version;
         data
     }
@@ -97,49 +108,57 @@ mod tests {
     fn test_version_current_ok() {
         let mut data = make_data(CURRENT_VERSION);
         let original = data.clone();
-        assert!(check_and_update_version(&mut data).is_ok());
+        assert!(check_and_update_version(&mut data, AccountDiscriminator::FixedDelegation).is_ok());
         assert_eq!(data, original);
     }
 
     #[test]
     fn test_version_future_rejects() {
         let mut data = make_data(CURRENT_VERSION + 1);
-        let err = check_and_update_version(&mut data).unwrap_err();
+        let err = check_and_update_version(&mut data, AccountDiscriminator::FixedDelegation).unwrap_err();
         assert_custom_error(err, SubscriptionsError::DelegationVersionMismatch);
     }
 
     #[test]
     fn test_version_zero_needs_migration() {
         let mut data = make_data(0);
-        let err = check_and_update_version(&mut data).unwrap_err();
+        let err = check_and_update_version(&mut data, AccountDiscriminator::FixedDelegation).unwrap_err();
         assert_custom_error(err, SubscriptionsError::MigrationRequired);
     }
 
     #[test]
     fn test_version_data_too_short() {
         let mut data = vec![0u8; VERSION_OFFSET];
-        let err = check_and_update_version(&mut data).unwrap_err();
+        let err = check_and_update_version(&mut data, AccountDiscriminator::FixedDelegation).unwrap_err();
         assert_custom_error(err, SubscriptionsError::InvalidAccountData);
     }
 
     #[test]
     fn test_version_u8_max_rejects() {
         let mut data = make_data(u8::MAX);
-        let err = check_and_update_version(&mut data).unwrap_err();
+        let err = check_and_update_version(&mut data, AccountDiscriminator::FixedDelegation).unwrap_err();
         assert_custom_error(err, SubscriptionsError::DelegationVersionMismatch);
     }
 
     #[test]
     fn test_version_minimum_valid_data_length() {
         let mut data = vec![0u8; VERSION_OFFSET + 1];
+        data[DISCRIMINATOR_OFFSET] = AccountDiscriminator::FixedDelegation as u8;
         data[VERSION_OFFSET] = CURRENT_VERSION;
-        assert!(check_and_update_version(&mut data).is_ok());
+        assert!(check_and_update_version(&mut data, AccountDiscriminator::FixedDelegation).is_ok());
+    }
+
+    #[test]
+    fn test_version_wrong_discriminator_rejects() {
+        let mut data = make_data(CURRENT_VERSION);
+        let err = check_and_update_version(&mut data, AccountDiscriminator::RecurringDelegation).unwrap_err();
+        assert_custom_error(err, SubscriptionsError::InvalidAccountDiscriminator);
     }
 
     #[test]
     fn test_version_empty_data() {
         let mut data: Vec<u8> = vec![];
-        let err = check_and_update_version(&mut data).unwrap_err();
+        let err = check_and_update_version(&mut data, AccountDiscriminator::FixedDelegation).unwrap_err();
         assert_custom_error(err, SubscriptionsError::InvalidAccountData);
     }
 

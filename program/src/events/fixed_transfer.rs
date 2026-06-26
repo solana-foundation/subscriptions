@@ -1,12 +1,17 @@
 use core::mem::size_of;
 
 use alloc::vec::Vec;
+use codama::CodamaEvent;
 use pinocchio::Address;
 
 use crate::event_engine::{EventDiscriminator, EventDiscriminators, EventSerialize};
 
 /// Emitted when a transfer is executed against a fixed delegation.
 #[repr(C, packed)]
+#[derive(CodamaEvent)]
+// EVENT_IX_TAG_LE @0, EventDiscriminators::FixedTransfer @8
+#[codama(discriminator(bytes = [228, 69, 165, 46, 81, 203, 154, 29], offset = 0))]
+#[codama(discriminator(bytes = [3], offset = 8))]
 pub struct FixedTransferEvent {
     /// The fixed delegation PDA.
     pub delegation: Address,
@@ -16,12 +21,16 @@ pub struct FixedTransferEvent {
     pub delegatee: Address,
     /// The SPL token mint.
     pub mint: Address,
-    /// Token amount transferred.
+    /// Gross token amount debited from the delegator. For transfer-fee mints the
+    /// receiver is credited with this minus the token program's fee; derive the
+    /// net received from balances off-chain.
     pub amount: u64,
     /// Remaining allowance after this transfer.
     pub remaining_amount: u64,
     /// The receiver wallet that received the tokens.
     pub receiver: Address,
+    /// The token account credited by the transfer; its owner is `receiver`.
+    pub receiver_token_account: Address,
 }
 
 impl FixedTransferEvent {
@@ -38,8 +47,9 @@ impl FixedTransferEvent {
         amount: u64,
         remaining_amount: u64,
         receiver: Address,
+        receiver_token_account: Address,
     ) -> Self {
-        Self { delegation, delegator, delegatee, mint, amount, remaining_amount, receiver }
+        Self { delegation, delegator, delegatee, mint, amount, remaining_amount, receiver, receiver_token_account }
     }
 }
 
@@ -58,6 +68,7 @@ impl EventSerialize for FixedTransferEvent {
         writer.extend_from_slice(&{ self.amount }.to_le_bytes());
         writer.extend_from_slice(&{ self.remaining_amount }.to_le_bytes());
         writer.extend_from_slice(self.receiver.as_ref());
+        writer.extend_from_slice(self.receiver_token_account.as_ref());
     }
 }
 
@@ -87,6 +98,10 @@ mod tests {
         Address::new_from_array([5u8; 32])
     }
 
+    fn receiver_token_account() -> Address {
+        Address::new_from_array([6u8; 32])
+    }
+
     fn amount() -> u64 {
         1_000_000
     }
@@ -105,6 +120,7 @@ mod tests {
             amount(),
             remaining_amount(),
             receiver(),
+            receiver_token_account(),
         );
         let bytes = event.to_bytes();
         let decoded = decode_event(&bytes).unwrap();
@@ -118,6 +134,7 @@ mod tests {
                 assert_eq!({ e.amount }, amount());
                 assert_eq!({ e.remaining_amount }, remaining_amount());
                 assert_eq!(e.receiver, receiver());
+                assert_eq!(e.receiver_token_account, receiver_token_account());
             }
             _ => panic!("expected FixedTransfer event"),
         }

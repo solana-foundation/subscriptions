@@ -180,6 +180,7 @@ pub fn process(accounts: &mut [AccountView], data: &SubscribeData) -> ProgramRes
         *accounts_struct.subscriber.address(),
         plan_mint,
         current_ts,
+        *accounts_struct.payer.address(),
     );
     let event_data = event.to_bytes();
     event_engine::emit_event(&crate::ID, accounts_struct.event_authority, accounts_struct.self_program, &event_data)?;

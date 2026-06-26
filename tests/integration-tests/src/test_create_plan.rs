@@ -249,6 +249,33 @@ fn create_plan_mint_mismatch_attack() {
 }
 
 #[test]
+fn create_plan_rejects_uninitialized_mint() {
+    let (litesvm, merchant) = &mut setup();
+
+    let fake_mint = Pubkey::new_unique();
+    litesvm
+        .set_account(
+            fake_mint,
+            Account {
+                lamports: 1_000_000_000,
+                data: vec![0u8; 82],
+                owner: TOKEN_PROGRAM_ID,
+                executable: false,
+                rent_epoch: 0,
+            },
+        )
+        .unwrap();
+
+    let (res, _) = CreatePlan::new(litesvm, merchant, fake_mint)
+        .plan_id(7)
+        .amount(1_000_000)
+        .period_hours(720)
+        .destinations(vec![Pubkey::new_unique()])
+        .execute();
+    res.assert_err(crate::SubscriptionsError::InvalidTokenSplMintAccountData);
+}
+
+#[test]
 fn create_plan_prefunded_pda() {
     let (litesvm, merchant) = &mut setup();
     let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);

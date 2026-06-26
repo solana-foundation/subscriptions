@@ -14,11 +14,13 @@ Supported delegation models:
 - **Recurring delegation**: authorize a delegatee to spend up to a per-period amount that resets each period, with configurable period length and overall expiry.
 - **Subscription plan**: a merchant publishes a plan with pricing terms; subscribers accept those terms and the merchant (or whitelisted pullers) can pull funds each billing period.
 
-The program emits on-chain events via self-CPI for indexer integration (subscription created/cancelled, fixed/recurring/subscription transfers).
+The program emits on-chain events via self-CPI for indexer integration (subscription created/cancelled/resumed, plan updated, and fixed/recurring/subscription transfers). The events are registered in the Codama IDL, so indexers can decode them.
 
-Token-2022 mints are supported, including mints with a configured `TransferHook`. On delegated transfers the program forwards the mint's runtime hook accounts into the Token-2022 `TransferChecked` CPI, which executes the configured hook program. The hook's `ExtraAccountMetaList` validation PDA is required among those accounts, so an active hook's configured policy context is always enforced.
+Token-2022 mints are supported, including mints with a configured `TransferHook`. On delegated transfers the program forwards the caller-supplied hook accounts into the Token-2022 `TransferChecked` CPI, which resolves and runs the hook exactly as it would for a direct transfer; the program does not add or require extra hook-account guards of its own.
 
-Delegation accounts include a version field and the program implements a three-tier migration framework (lazy in-place update, explicit migrate instruction, revoke/recreate) for future upgrades. See [ADR-003](docs/003-versioning-migration-architecture.md) for details.
+Destination accounts with the `MemoTransfer` extension (require-incoming-memo) are not supported: the program does not emit a Memo CPI before the transfer, so Token-2022 rejects the transfer atomically (no funds move). Use a destination without the incoming-memo requirement.
+
+Delegation accounts include a version field and a versioning scaffold (lazy in-place update plus revoke/recreate) with a planned explicit-migrate path for future upgrades. No live migration step is wired yet (`CURRENT_VERSION == 1`). See [ADR-003](docs/003-versioning-migration-architecture.md) for details.
 
 This repository contains:
 
@@ -202,20 +204,23 @@ Both default to `http://localhost:8899`.
 
 ## TypeScript Client SDK
 
-The `@solana/subscriptions` package in `clients/typescript` provides a high-level `SubscriptionsClient` class wrapping all program instructions:
+The `@solana/subscriptions` package in `clients/typescript` is a [`@solana/kit`](https://github.com/anza-xyz/kit) plugin (`subscriptionsProgram()`) plus hand-written overlay instruction builders that wrap the Codama-generated client (PDA/ATA derivation, sponsor `payer` trailing accounts, event-account resolution).
 
-| Method                                                                             | Purpose                                                        |
-| ---------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `initSubscriptionAuthority` / `closeSubscriptionAuthority`                         | Create or close the SA for a (user, mint) pair                 |
-| `createFixedDelegation` / `transferFixed`                                          | Create a fixed delegation and execute transfers against it     |
-| `createRecurringDelegation` / `transferRecurring`                                  | Create a recurring delegation and execute transfers against it |
-| `createPlan` / `updatePlan` / `deletePlan`                                         | Manage merchant subscription plans                             |
-| `subscribe` / `cancelSubscription` / `resumeSubscription` / `transferSubscription` | Subscribe to plans, cancel or resume, and pull payments        |
-| `revokeDelegation`                                                                 | Close any delegation PDA and return rent to the original payer |
-| `getDelegationsForWallet` / `getPlansForOwner`                                     | Query on-chain accounts                                        |
-| `isSubscriptionAuthorityInitialized`                                               | Check if an SA exists for a wallet/mint pair                   |
+**Overlay instruction builders** (`get*OverlayInstruction[Async]`):
 
-PDA derivation helpers are exported from `pdas.ts`: `getSubscriptionAuthorityPDA`, `getDelegationPDA`, `getPlanPDA`, `getSubscriptionPDA`, `getEventAuthorityPDA`.
+| Builder                                                                                                                                                                                    | Purpose                                                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| `getInitSubscriptionAuthorityOverlayInstructionAsync` / `getCloseSubscriptionAuthorityOverlayInstructionAsync`                                                                             | Create or close the SA for a (user, mint) pair                              |
+| `getCreateFixedDelegationOverlayInstructionAsync` / `getTransferFixedOverlayInstructionAsync`                                                                                              | Create a fixed delegation and pull against it                               |
+| `getCreateRecurringDelegationOverlayInstructionAsync` / `getTransferRecurringOverlayInstructionAsync`                                                                                      | Create a recurring delegation and pull against it                           |
+| `getCreatePlanOverlayInstructionAsync` / `getUpdatePlanOverlayInstruction` / `getDeletePlanOverlayInstruction`                                                                             | Manage merchant subscription plans                                          |
+| `getSubscribeOverlayInstructionAsync` / `getCancelSubscriptionOverlayInstructionAsync` / `getResumeSubscriptionOverlayInstructionAsync` / `getTransferSubscriptionOverlayInstructionAsync` | Subscribe, cancel/resume, and pull payments                                 |
+| `getRevokeDelegationOverlayInstruction` / `getRevokeSubscriptionOverlayInstruction`                                                                                                        | Close a fixed/recurring delegation, or a subscription PDA, and reclaim rent |
+| `getRevokeSubscriptionAuthorityOverlayInstructionAsync`                                                                                                                                    | Revoke the program's SPL delegate and close the SA PDA                      |
+
+**Account fetchers**: `fetchDelegationsByDelegatee`, `fetchDelegationsByDelegator`, `fetchPlansForOwner`, `fetchSubscriptionsForUser`. The plugin's `queries` namespace includes `isSubscriptionAuthorityInitialized`.
+
+PDA derivation helpers are Codama-generated `async` functions re-exported from the package root: `findSubscriptionAuthorityPda`, `findFixedDelegationPda`, `findRecurringDelegationPda`, `findPlanPda`, `findSubscriptionDelegationPda`, `findEventAuthorityPda`.
 
 Install and use:
 
@@ -224,7 +229,7 @@ pnpm add @solana/subscriptions
 ```
 
 ```typescript
-import { SubscriptionsClient } from '@solana/subscriptions';
+import { subscriptionsProgram } from '@solana/subscriptions';
 ```
 
 ## Webapp Demo
@@ -274,6 +279,8 @@ The full audit history, audited-through commits, and the current unaudited delta
 ## Security Considerations
 
 - **`init_id` is slot-granular.** Closing and re-initializing a SubscriptionAuthority invalidates existing delegations only when the re-init lands in a later slot than the original init. If the whole create→close→reinit sequence runs in one slot (a single transaction, co-slot transactions, or an atomic bundle), the reused `init_id` keeps old delegations valid. Authority rotation is therefore not a reliable revocation mechanism — use `revokeDelegation` to stop a specific delegation.
+- **Signed creation transactions have no on-chain freshness deadline.** Creation instructions bind the user to terms but not to a latest-submission time. Recent-blockhash transactions expire in ~150 slots (~60-90s), but a durable-nonce transaction stays valid until the nonce advances and can create state long after signing.
+- **On-chain "Active" is not proof of collectability.** A subscriber can revoke the SPL approval or freeze/empty/close their source token account — future pulls then fail while the subscription still reads active (`expires_at_ts == 0`); there is no on-chain delinquency state. Confirm collectability off-chain before granting service.
 
 ## Acknowledgments
 
@@ -303,3 +310,5 @@ GitHub Actions runs split workflows on PRs and pushes to `main`:
 ## Smart Wallet Support
 
 The TypeScript client integration tests cover smart wallet flows with [Squads](https://squads.so/) (multisig) and [Swig](https://swig.so/) wallets, verifying that delegations work when the delegator or delegatee is a program-controlled authority.
+
+Native **`Multisig`** account owners (the SPL Token / Token-2022 built-in multisig account type) are not supported — init/revoke require the owner to sign and don't forward multisig member signers to the `Approve`/`Revoke` CPI. Use a smart-wallet program (Squads, Swig) for multi-signer treasuries.

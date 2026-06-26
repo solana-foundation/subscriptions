@@ -5,12 +5,13 @@ use crate::{
     state::{plan::Plan, subscription_delegation::SubscriptionDelegation},
     tests::{
         asserts::TransactionResultExt,
-        constants::{MINT_DECIMALS, PROGRAM_ID, TOKEN_PROGRAM_ID},
+        constants::{MINT_DECIMALS, PROGRAM_ID, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID},
         pda::{get_plan_pda, get_subscription_authority_pda},
         utils::{
             build_and_send_transaction, current_ts, days, get_ata_balance, hours, init_ata, init_mint, init_wallet,
-            initialize_subscription_authority_action, move_clock_forward, setup, CancelSubscription, CreatePlan,
-            CreateSubscription, DeletePlan, TransferSubscription, UpdatePlan,
+            initialize_subscription_authority_action, install_transfer_hook_extra_metas, load_transfer_hook_example,
+            move_clock_forward, set_transfer_hook_config, setup, CancelSubscription, CreatePlan, CreateSubscription,
+            DeletePlan, TransferSubscription, UpdatePlan, TRANSFER_HOOK_EXAMPLE_PROGRAM_ID,
         },
     },
     SubscriptionsError,
@@ -21,6 +22,7 @@ use solana_keypair::Keypair;
 use solana_pubkey::Pubkey;
 use solana_signer::Signer;
 use spl_associated_token_account_interface::address::get_associated_token_address_with_program_id;
+use spl_token_2022_interface::extension::ExtensionType;
 
 #[allow(clippy::type_complexity)]
 fn setup_plan_and_subscription(
@@ -682,4 +684,152 @@ fn test_transfer_subscription_ghost_plan_rejected() {
         .execute();
 
     result.assert_err(SubscriptionsError::PlanTermsMismatch);
+}
+
+#[test]
+fn transfer_subscription_rejects_puller_removed_after_sunset() {
+    use crate::state::common::PlanStatus;
+
+    let amount_per_period = 50_000_000u64;
+    let period_hours = 1u64;
+    let end_ts = current_ts() + days(30) as i64;
+    let puller = Keypair::new();
+
+    let (mut litesvm, alice, merchant, mint, plan_pda, _, subscription_pda, _, merchant_ata) =
+        setup_plan_and_subscription(amount_per_period, period_hours, end_ts, vec![], vec![puller.pubkey()]);
+    litesvm.airdrop(&puller.pubkey(), 10_000_000_000).unwrap();
+
+    // Puller can pull while whitelisted.
+    TransferSubscription::new(&mut litesvm, &puller, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(10_000_000)
+        .to(merchant_ata)
+        .execute()
+        .assert_ok();
+
+    // Sunset (preserving the puller), then remove it as incident response.
+    UpdatePlan::new(&mut litesvm, &merchant, plan_pda)
+        .status(PlanStatus::Sunset)
+        .end_ts(end_ts)
+        .pullers(vec![puller.pubkey()])
+        .execute()
+        .assert_ok();
+    UpdatePlan::new(&mut litesvm, &merchant, plan_pda)
+        .status(PlanStatus::Sunset)
+        .end_ts(end_ts)
+        .pullers(vec![])
+        .execute()
+        .assert_ok();
+
+    // The removed puller can no longer pull from the still-billable sunset plan.
+    let result = TransferSubscription::new(&mut litesvm, &puller, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(10_000_000)
+        .to(merchant_ata)
+        .execute();
+    result.assert_err(SubscriptionsError::Unauthorized);
+}
+
+#[allow(clippy::type_complexity)]
+fn setup_token_2022_hook_subscription(
+) -> (LiteSVM, Keypair, Keypair, Pubkey, Pubkey, Pubkey, Pubkey, Pubkey, Pubkey, Pubkey) {
+    let (mut litesvm, alice) = setup();
+    load_transfer_hook_example(&mut litesvm);
+    let merchant = Keypair::new();
+    litesvm.airdrop(&merchant.pubkey(), 10_000_000_000).unwrap();
+
+    let mint = init_mint(
+        &mut litesvm,
+        TOKEN_2022_PROGRAM_ID,
+        MINT_DECIMALS,
+        1_000_000_000,
+        Some(alice.pubkey()),
+        &[ExtensionType::TransferHook],
+    );
+    set_transfer_hook_config(&mut litesvm, mint, Some(alice.pubkey()), Some(TRANSFER_HOOK_EXAMPLE_PROGRAM_ID));
+    let (validation_pda, counter) = install_transfer_hook_extra_metas(&mut litesvm, mint);
+
+    let alice_ata = init_ata(&mut litesvm, mint, alice.pubkey(), 100_000_000);
+    let merchant_ata = init_ata(&mut litesvm, mint, merchant.pubkey(), 0);
+
+    initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
+
+    let (res, plan_pda) = CreatePlan::new(&mut litesvm, &merchant, mint)
+        .plan_id(1)
+        .amount(50_000_000)
+        .period_hours(1)
+        .end_ts(current_ts() + days(30) as i64)
+        .execute();
+    res.assert_ok();
+
+    let svm_ts = litesvm.get_sysvar::<solana_clock::Clock>().unix_timestamp;
+    let plan_terms = {
+        let plan_account = litesvm.get_account(&plan_pda).unwrap();
+        let plan = Plan::load(&plan_account.data).unwrap();
+        plan.data.terms
+    };
+    let subscription_pda =
+        CreateSubscription::new(&mut litesvm, plan_pda, alice.pubkey(), mint, svm_ts).terms(plan_terms).execute();
+
+    (litesvm, alice, merchant, mint, plan_pda, subscription_pda, alice_ata, merchant_ata, validation_pda, counter)
+}
+
+#[test]
+fn test_subscription_transfer_token_2022_active_transfer_hook() {
+    let (
+        mut litesvm,
+        alice,
+        merchant,
+        mint,
+        plan_pda,
+        subscription_pda,
+        alice_ata,
+        merchant_ata,
+        validation_pda,
+        counter,
+    ) = setup_token_2022_hook_subscription();
+
+    let missing = TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(10_000_000)
+        .to(merchant_ata)
+        .execute();
+    assert!(missing.is_err(), "transfer without hook accounts should fail");
+    assert_eq!(get_ata_balance(&litesvm, &merchant_ata), 0);
+
+    let remaining = vec![
+        AccountMeta::new_readonly(TRANSFER_HOOK_EXAMPLE_PROGRAM_ID, false),
+        AccountMeta::new_readonly(validation_pda, false),
+        AccountMeta::new(counter, false),
+    ];
+    TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(10_000_000)
+        .to(merchant_ata)
+        .remaining(remaining)
+        .execute()
+        .assert_ok();
+
+    assert_eq!(get_ata_balance(&litesvm, &alice_ata), 90_000_000);
+    assert_eq!(get_ata_balance(&litesvm, &merchant_ata), 10_000_000);
+    assert_eq!(litesvm.get_account(&counter).unwrap().data[0], 1, "transfer hook should have run once");
+}
+
+#[test]
+fn subscription_active_hook_transfer_without_hook_accounts_fails() {
+    let (
+        mut litesvm,
+        alice,
+        merchant,
+        mint,
+        plan_pda,
+        subscription_pda,
+        _alice_ata,
+        merchant_ata,
+        _validation_pda,
+        _counter,
+    ) = setup_token_2022_hook_subscription();
+
+    let result = TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
+        .amount(10_000_000)
+        .to(merchant_ata)
+        .remaining(vec![AccountMeta::new_readonly(TRANSFER_HOOK_EXAMPLE_PROGRAM_ID, false)])
+        .execute();
+    assert!(result.is_err(), "transfer with incomplete hook accounts must fail via the hook");
 }

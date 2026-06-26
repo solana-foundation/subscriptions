@@ -31,5 +31,22 @@ pub const TOKEN_ACCOUNT_OWNER_OFFSET: usize = 32;
 /// Byte offset one past the end of the `owner` pubkey (i.e., `OWNER_OFFSET + 32`).
 pub const TOKEN_ACCOUNT_OWNER_END: usize = TOKEN_ACCOUNT_OWNER_OFFSET + 32;
 
+/// Byte offset of the `delegate` `COption` tag in an SPL token account's data.
+/// `0` means no delegate; `1` means the 32-byte pubkey at [`TOKEN_ACCOUNT_DELEGATE_OFFSET`] is set.
+pub const TOKEN_ACCOUNT_DELEGATE_TAG_OFFSET: usize = 72;
+
+/// Byte offset where the `delegate` pubkey begins (immediately after its 4-byte `COption` tag).
+pub const TOKEN_ACCOUNT_DELEGATE_OFFSET: usize = TOKEN_ACCOUNT_DELEGATE_TAG_OFFSET + 4;
+
+/// Byte offset one past the end of the `delegate` pubkey (i.e., `DELEGATE_OFFSET + 32`).
+pub const TOKEN_ACCOUNT_DELEGATE_END: usize = TOKEN_ACCOUNT_DELEGATE_OFFSET + 32;
+
+/// Byte offset of the `decimals` field in an SPL Token / Token-2022 base mint.
+pub const MINT_DECIMALS_OFFSET: usize = 44;
+
+/// Byte offset of the `is_initialized` flag in an SPL Token / Token-2022 base mint.
+/// `1` means initialized; the base mint layout is shared by both programs.
+pub const MINT_IS_INITIALIZED_OFFSET: usize = 45;
+
 /// Number of seconds in one hour. Used to convert plan/subscription period (hours) to seconds.
 pub const SECS_PER_HOUR: u64 = 3600;

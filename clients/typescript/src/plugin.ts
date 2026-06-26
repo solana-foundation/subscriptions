@@ -1,8 +1,9 @@
 /**
  * `subscriptionsProgram()` — `@solana/kit` plugin that wraps the Codama-generated
  * `subscriptionsProgram()` plugin with higher-level instruction overlays
- * (PDA derivation, sponsor `payer` trailing accounts, ATA derivation, validators)
- * and a `queries` namespace for common account fetches.
+ * (PDA derivation, event-account resolution [`eventAuthority` + `selfProgram`
+ * from the active `programAddress`], sponsor `payer` trailing accounts, ATA
+ * derivation, validators) and a `queries` namespace for common account fetches.
  *
  * Each overlay defaults its actor field (`owner` / `delegator` / `subscriber`
  * / `authority` / `delegatee` / `caller`) to `client.identity`, and any
@@ -61,6 +62,7 @@ import { fetchPlansForOwner } from './accounts/plans.js';
 import {
     fetchMaybeSubscriptionAuthority,
     fetchPlan,
+    findEventAuthorityPda,
     findFixedDelegationPda,
     findPlanPda,
     findRecurringDelegationPda,
@@ -81,6 +83,7 @@ import {
     getTransferSubscriptionInstruction,
     getUpdatePlanInstruction,
     type PlanStatus,
+    SUBSCRIPTIONS_PROGRAM_ADDRESS,
     type SubscriptionsPlugin as GeneratedSubscriptionsPlugin,
     type SubscriptionsPluginRequirements as GeneratedSubscriptionsPluginRequirements,
     subscriptionsProgram as generatedSubscriptionsProgram,
@@ -98,6 +101,11 @@ type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [P in K]?: T[P] };
 
 function pdaConfig(programAddress?: Address) {
     return programAddress ? { programAddress } : {};
+}
+
+async function eventAccounts(programAddress?: Address) {
+    const [eventAuthority] = await findEventAuthorityPda(pdaConfig(programAddress));
+    return { eventAuthority, selfProgram: programAddress ?? SUBSCRIPTIONS_PROGRAM_ADDRESS };
 }
 
 function withTrailing<I extends Instruction>(
@@ -146,6 +154,8 @@ export type CloseSubscriptionAuthorityInput = WithProgramAddress & {
 };
 
 export type RevokeSubscriptionAuthorityInput = WithProgramAddress & {
+    /** Rent recipient for closing the SubscriptionAuthority PDA. Required when the authority's stored payer differs from `user`, and must equal that stored payer. */
+    receiver?: Address;
     tokenMint: Address;
     tokenProgram: Address;
     user: TransactionSigner;
@@ -274,6 +284,7 @@ export type ResumeSubscriptionInput = WithProgramAddress & {
     planPda: Address;
     subscriber: TransactionSigner;
     subscriptionPda?: Address;
+    tokenMint: Address;
 };
 
 // ============================================================================
@@ -322,8 +333,13 @@ export async function getRevokeSubscriptionAuthorityOverlayInstructionAsync(
         owner: input.user.address,
         tokenProgram: input.tokenProgram,
     });
-    return getRevokeSubscriptionAuthorityInstruction(
+    const [subscriptionAuthority] = await findSubscriptionAuthorityPda(
+        { tokenMint: input.tokenMint, user: input.user.address },
+        pdaConfig(input.programAddress),
+    );
+    let ix: Instruction = getRevokeSubscriptionAuthorityInstruction(
         {
+            subscriptionAuthority,
             tokenMint: input.tokenMint,
             tokenProgram: input.tokenProgram,
             user: input.user,
@@ -331,6 +347,10 @@ export async function getRevokeSubscriptionAuthorityOverlayInstructionAsync(
         },
         pdaConfig(input.programAddress),
     );
+    if (input.receiver) {
+        ix = withTrailing(ix, [{ address: input.receiver, role: AccountRole.WRITABLE }]);
+    }
+    return ix;
 }
 
 export async function getCreateFixedDelegationOverlayInstructionAsync(
@@ -468,6 +488,7 @@ async function getTransferDelegationOverlayInstructionAsync(
     return withTrailing(
         getInstruction(
             {
+                ...(await eventAccounts(input.programAddress)),
                 delegatee: input.delegatee,
                 delegationPda: input.delegationPda,
                 delegatorAta: input.delegatorAta,
@@ -511,6 +532,7 @@ export async function getTransferSubscriptionOverlayInstructionAsync(
     return withTrailing(
         getTransferSubscriptionInstruction(
             {
+                ...(await eventAccounts(input.programAddress)),
                 caller: input.caller,
                 delegatorAta,
                 planPda: input.planPda,
@@ -568,11 +590,12 @@ export async function getCreatePlanOverlayInstructionAsync(input: CreatePlanInpu
     );
 }
 
-export function getUpdatePlanOverlayInstruction(input: UpdatePlanInput): Instruction {
+export async function getUpdatePlanOverlayInstruction(input: UpdatePlanInput): Promise<Instruction> {
     assertMetadataUri(input.metadataUri);
     const pullers = padPlanPullers(input.pullers);
     return getUpdatePlanInstruction(
         {
+            ...(await eventAccounts(input.programAddress)),
             owner: input.owner,
             planPda: input.planPda,
             updatePlanData: {
@@ -613,6 +636,7 @@ export async function getSubscribeOverlayInstructionAsync(input: SubscribeInput)
     return appendPayer(
         await getSubscribeInstructionAsync(
             {
+                ...(await eventAccounts(input.programAddress)),
                 merchant: input.merchant,
                 planPda,
                 subscribeData: {
@@ -633,9 +657,12 @@ export async function getSubscribeOverlayInstructionAsync(input: SubscribeInput)
     );
 }
 
-export function getCancelSubscriptionOverlayInstructionAsync(input: CancelSubscriptionInput): Promise<Instruction> {
-    return getCancelSubscriptionInstructionAsync(
+export async function getCancelSubscriptionOverlayInstructionAsync(
+    input: CancelSubscriptionInput,
+): Promise<Instruction> {
+    return await getCancelSubscriptionInstructionAsync(
         {
+            ...(await eventAccounts(input.programAddress)),
             planPda: input.planPda,
             subscriber: input.subscriber,
             subscriptionPda: input.subscriptionPda,
@@ -644,11 +671,19 @@ export function getCancelSubscriptionOverlayInstructionAsync(input: CancelSubscr
     );
 }
 
-export function getResumeSubscriptionOverlayInstructionAsync(input: ResumeSubscriptionInput): Promise<Instruction> {
-    return getResumeSubscriptionInstructionAsync(
+export async function getResumeSubscriptionOverlayInstructionAsync(
+    input: ResumeSubscriptionInput,
+): Promise<Instruction> {
+    const [subscriptionAuthority] = await findSubscriptionAuthorityPda(
+        { tokenMint: input.tokenMint, user: input.subscriber.address },
+        pdaConfig(input.programAddress),
+    );
+    return await getResumeSubscriptionInstructionAsync(
         {
+            ...(await eventAccounts(input.programAddress)),
             planPda: input.planPda,
             subscriber: input.subscriber,
+            subscriptionAuthority,
             subscriptionPda: input.subscriptionPda,
         },
         pdaConfig(input.programAddress),
@@ -692,7 +727,7 @@ export type SubscriptionsPluginInstructions = {
     transferFixed: (input: MakeOptional<TransferDelegationInput, 'delegatee'>) => Self<Promise<Instruction>>;
     transferRecurring: (input: MakeOptional<TransferDelegationInput, 'delegatee'>) => Self<Promise<Instruction>>;
     transferSubscription: (input: MakeOptional<TransferSubscriptionInput, 'caller'>) => Self<Promise<Instruction>>;
-    updatePlan: (input: MakeOptional<UpdatePlanInput, 'owner'>) => Self<Instruction>;
+    updatePlan: (input: MakeOptional<UpdatePlanInput, 'owner'>) => Self<Promise<Instruction>>;
 };
 
 export type SubscriptionsPluginQueries = {

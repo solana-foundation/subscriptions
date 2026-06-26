@@ -22,7 +22,7 @@ Web interface for managing Solana token delegations (USDC). Connects to the Subs
 | ----------------- | ----------------------------------------------------- |
 | `npm run dev`     | Start the Vite dev server with hot module replacement |
 | `npm run build`   | Type-check with TypeScript and build for production   |
-| `npm run lint`    | Run ESLint across the project                         |
+| `npm run test`    | Run the Node test runner over `test/*.test.ts`        |
 | `npm run preview` | Preview the production build locally                  |
 
 From the project root, `just webapp-run` builds the program and clients, starts a local validator + API, and launches the webapp.

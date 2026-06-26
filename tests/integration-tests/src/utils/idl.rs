@@ -11,6 +11,7 @@ pub struct IdlAccount {
     pub name: String,
     pub is_writable: bool,
     pub is_signer: bool,
+    pub is_optional: bool,
 }
 
 /// Returns account metadata for all accounts of the given instruction.
@@ -31,24 +32,25 @@ pub fn instruction_accounts(instruction_name: &str) -> Vec<IdlAccount> {
             name: acc["name"].as_str().unwrap().to_string(),
             is_writable: acc["isWritable"].as_bool().unwrap(),
             is_signer: acc["isSigner"].as_bool().unwrap(),
+            is_optional: acc.get("isOptional").and_then(Value::as_bool).unwrap_or(false),
         })
         .collect()
 }
 
-/// Returns (index, name, is_signer) for writable accounts.
+/// Returns (index, name, is_signer) for required (non-optional) writable accounts.
 pub fn writable_account_indices(instruction_name: &str) -> Vec<(usize, String, bool)> {
     instruction_accounts(instruction_name)
         .into_iter()
-        .filter(|a| a.is_writable)
+        .filter(|a| a.is_writable && !a.is_optional)
         .map(|a| (a.index, a.name, a.is_signer))
         .collect()
 }
 
-/// Returns (index, name, is_writable) for signer accounts.
+/// Returns (index, name, is_writable) for required (non-optional) signer accounts.
 pub fn signer_account_indices(instruction_name: &str) -> Vec<(usize, String, bool)> {
     instruction_accounts(instruction_name)
         .into_iter()
-        .filter(|a| a.is_signer)
+        .filter(|a| a.is_signer && !a.is_optional)
         .map(|a| (a.index, a.name, a.is_writable))
         .collect()
 }

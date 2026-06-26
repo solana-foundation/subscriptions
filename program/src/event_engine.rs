@@ -111,6 +111,8 @@ pub enum EventDiscriminators {
     RecurringTransfer = 4,
     /// A cancelled subscription was resumed by the subscriber.
     SubscriptionResumed = 5,
+    /// A plan owner updated a plan's mutable fields.
+    PlanUpdated = 6,
 }
 
 impl TryFrom<u8> for EventDiscriminators {
@@ -124,6 +126,7 @@ impl TryFrom<u8> for EventDiscriminators {
             3 => Ok(Self::FixedTransfer),
             4 => Ok(Self::RecurringTransfer),
             5 => Ok(Self::SubscriptionResumed),
+            6 => Ok(Self::PlanUpdated),
             _ => Err(value),
         }
     }
@@ -146,6 +149,10 @@ pub fn emit_event(
     event_data: &[u8],
 ) -> ProgramResult {
     verify_event_authority(event_authority)?;
+
+    if self_program.address() != &crate::ID {
+        return Err(SubscriptionsError::InvalidSelfProgram.into());
+    }
 
     let bump = [event_authority_pda::BUMP];
     let signer_seeds: [Seed; 2] = [Seed::from(EVENT_AUTHORITY_SEED), Seed::from(&bump)];

@@ -5,6 +5,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import { eventAccountDefaultsVisitor } from './event-account-fixups.js';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const projectRoot = path.join(__dirname, '..');
@@ -13,6 +15,8 @@ const idl = JSON.parse(fs.readFileSync(idlPath, 'utf-8')) as AnchorIdl;
 const typescriptClientsDir = path.join(projectRoot, 'clients', 'typescript');
 
 const codama = createFromJson(JSON.stringify(idl));
+
+codama.update(eventAccountDefaultsVisitor());
 
 await Promise.resolve(
     codama.accept(

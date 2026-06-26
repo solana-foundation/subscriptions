@@ -74,14 +74,21 @@ impl RecurringDelegation {
         Ok(unsafe { &mut *transmute::<*mut u8, *mut Self>(bytes.as_mut_ptr()) })
     }
 
-    pub fn load_with_min_size(bytes: &[u8]) -> Result<&Self, ProgramError> {
-        check_min_account_size(bytes.len(), Self::LEN)?;
+    /// First-version length; recovery's frozen minimum. Never change: later versions append trailing bytes, not fields.
+    pub const V1_LEN: usize = 211;
+
+    /// Owned, version-agnostic load for revoke/close: gates on frozen [`V1_LEN`](Self::V1_LEN),
+    /// zero-pads an older (smaller) account to `LEN` so appended fields read as zero.
+    pub fn load_for_revoke(bytes: &[u8]) -> Result<Self, ProgramError> {
+        check_min_account_size(bytes.len(), Self::V1_LEN)?;
         if bytes[DISCRIMINATOR_OFFSET] != AccountDiscriminator::RecurringDelegation as u8 {
             return Err(SubscriptionsError::InvalidAccountDiscriminator.into());
         }
-        Ok(unsafe { &*transmute::<*const u8, *const Self>(bytes.as_ptr()) })
+        let mut buf = [0u8; Self::LEN];
+        let n = bytes.len().min(Self::LEN);
+        buf[..n].copy_from_slice(&bytes[..n]);
+        Ok(unsafe { core::ptr::read_unaligned(buf.as_ptr() as *const Self) })
     }
 }
 
-pub const RECURRING_DELEGATION_LEN: usize = 211;
-const _: () = assert!(RecurringDelegation::LEN == RECURRING_DELEGATION_LEN);
+const _: () = assert!(RecurringDelegation::LEN >= RecurringDelegation::V1_LEN);

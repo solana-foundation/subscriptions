@@ -58,7 +58,8 @@ the user must revoke/close the old delegation or subscription and create a new o
 ```
 state/
   versioning/
-    mod.rs          # CURRENT_VERSION, check_and_update_version, try_lazy_update, check_min_account_size
+    mod.rs          # module declarations + re-export of core::*
+    core.rs         # CURRENT_VERSION, check_and_update_version, try_lazy_update, check_min_account_size
     v1_to_v2.rs     # Stub: lazy_update + migrate for future v1->v2 transition
 ```
 
@@ -66,9 +67,11 @@ state/
 
 ```mermaid
 flowchart TD
-    A[check_and_update_version] --> B{data too short?}
+    A["check_and_update_version(data, expected)"] --> B{data too short?}
     B -- yes --> C[Err InvalidAccountData]
-    B -- no --> D{version == CURRENT?}
+    B -- no --> B2{"data[0] == expected discriminator?"}
+    B2 -- no --> C2[Err InvalidAccountDiscriminator]
+    B2 -- yes --> D{version == CURRENT?}
     D -- yes --> E[Ok fast path]
     D -- no --> F{version > CURRENT?}
     F -- yes --> G[Err DelegationVersionMismatch]
@@ -107,8 +110,10 @@ sequenceDiagram
     participant V as check_and_update_version
 
     IX->>IX: borrow_mut account data
-    IX->>V: &mut raw_bytes
-    alt version == CURRENT
+    IX->>V: (&mut raw_bytes, expected discriminator)
+    alt discriminator != expected
+        V-->>IX: Err (InvalidAccountDiscriminator)
+    else version == CURRENT
         V-->>IX: Ok (no-op, data unchanged)
     else version < CURRENT and lazy update exists
         V->>V: migrate bytes in-place
@@ -119,13 +124,20 @@ sequenceDiagram
     IX->>IX: load typed struct from data
 ```
 
+`check_and_update_version(data, expected)` takes the expected `AccountDiscriminator` and, after
+the length guard, rejects the account with `InvalidAccountDiscriminator` when `data[0] != expected`
+**before** reading the version byte. Validating the account kind up front prevents a future
+in-place migration step from mutating a wrong-kind account. Every call site passes its expected
+discriminator (cancel/resume/transfer_subscription pass `SubscriptionDelegation`; transfer_fixed
+passes `FixedDelegation`; transfer_recurring passes `RecurringDelegation`).
+
 Normal instructions (transfer, create) use exact-size `load`/`load_mut`.
-Defensive instructions (revoke, cancel) use `load_with_min_size`/`load_mut_with_min_size`
-so users can always reclaim funds from old-version accounts.
+Revoke instructions use the version-agnostic owned loader `load_for_revoke`; cancel/resume use
+`load_mut_with_min_size`, so users can always reclaim funds from old-version accounts.
 
 ## Adding a New Version
 
-1. Bump `CURRENT_VERSION` in `versioning/mod.rs`
+1. Bump `CURRENT_VERSION` in `versioning/core.rs`
 2. Implement `lazy_update` in `vN_to_vN+1.rs`
 3. Add match arm in try_lazy_update dispatcher: `N => { vN_to_vN1::lazy_update(data)?; v = N+1; }`
 4. If lazy isn't possible, return `MigrationRequired` from `lazy_update` (Tier 2)
@@ -135,13 +147,14 @@ so users can always reclaim funds from old-version accounts.
 
 ## Error Semantics
 
-| Error                       | Tier | When                                                        | User Action               |
-| --------------------------- | ---- | ----------------------------------------------------------- | ------------------------- |
-| `Ok`                        | -    | version == CURRENT or lazy migration succeeded              | None                      |
-| `DelegationVersionMismatch` | -    | version > CURRENT (program downgrade)                       | Use newer program         |
-| `MigrationRequired`         | 2    | version < CURRENT, no lazy path, explicit migrate IX exists | Call migrate instruction  |
-| `NeedsAccountRecreate`      | 3    | no migration path at all (future)                           | Revoke/close and recreate |
-| `InvalidAccountData`        | -    | data too short for version byte                             | Account corrupted         |
+| Error                         | Tier | When                                                        | User Action                                |
+| ----------------------------- | ---- | ----------------------------------------------------------- | ------------------------------------------ |
+| `Ok`                          | -    | version == CURRENT or lazy migration succeeded              | None                                       |
+| `DelegationVersionMismatch`   | -    | version > CURRENT (program downgrade)                       | Use newer program                          |
+| `MigrationRequired`           | 2    | version < CURRENT, no lazy path, explicit migrate IX exists | Call migrate instruction                   |
+| `NeedsAccountRecreate`        | 3    | no migration path at all (future)                           | Revoke/close and recreate                  |
+| `InvalidAccountData`          | -    | data too short for version byte                             | Account corrupted                          |
+| `InvalidAccountDiscriminator` | -    | account kind byte (offset 0) != the expected discriminator  | Wrong account passed (caller bug / attack) |
 
 **Note**: `NeedsAccountRecreate` is not yet implemented. Currently `MigrationRequired`
 covers both Tier 2 and Tier 3 since CURRENT_VERSION == 1 and no migrations exist.
@@ -154,3 +167,25 @@ Replaces strict `bytes.len() != Self::LEN` with `bytes.len() < Self::LEN`.
 When `Self::LEN` grows in a new version, old accounts (smaller) would fail the strict check,
 trapping rent lamports. The minimum-size check allows old accounts to load safely,
 combined with `check_and_update_version` to ensure schema compatibility.
+
+### Recovery (revoke) is version-agnostic
+
+The delegation/subscription structs are **append-only**: later versions add fields at the end,
+so `Self::LEN` may grow but never shrinks (`const`-asserted `Self::LEN >= V1_LEN`). Each closable
+struct exposes a frozen `V1_LEN` — the first on-chain version's length — which is the minimum
+length at which every original field is present.
+
+Recovery's read loader, `load_for_revoke`, validates the discriminator (`InvalidAccountDiscriminator`),
+gates on `V1_LEN` (not `Self::LEN`) via `check_min_account_size`, copies the account into a
+zero-padded `Self::LEN` buffer, and returns an owned value. So an account from an
+older, smaller version (length in `V1_LEN..Self::LEN`) reads its not-yet-written trailing fields
+as zero, and a newer, larger account is truncated to `Self::LEN`. **Invariant:** recovery must
+read only first-version fields, so those zeros are inert; never make a close decision depend on a
+field added after `V1_LEN`.
+
+Recovery paths (`revoke_delegation`, `revoke_abandoned_delegation`,
+`revoke_abandoned_subscription`) therefore do **not** gate on `check_and_update_version`: a
+delegation or subscription stays closable on any version, and the delegator/sponsor can always
+reclaim rent without a prior migration. The mutable loader (`load_mut_with_min_size`) keeps the
+exact `Self::LEN` gate, since transfer paths mutate the full current struct (and migrate first via
+`check_and_update_version`).
