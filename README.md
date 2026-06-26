@@ -272,11 +272,9 @@ just webapp-clean     # also removes generated state
 
 ## Security Audit
 
-`subscriptions` has been audited by [Cantina](https://cantina.xyz). View the [audit report](audits/report-cli-cantina-db2ffeea-c85c-4f35-b188-e861cdcd785d-solana-multi-delegator.pdf).
+`subscriptions` has been audited multiple times by [Cantina](https://cantina.xyz). The latest audit is the [Subscriptions security review](audits/report-cli-cantina-0c329845-47bc-4915-a50d-56dbc442b76a-solana-subscriptions.pdf), with external audit baseline commit `38b88bebd2c3f13ba2fbd54795e9ecc8619f8c0c` and audit fixes implemented and verified through commit `2d7b45bdc998dc582874fc8ab32ac03f9c786c1e`.
 
-The external audit baseline is commit `18a50bc21c4b91ed62e612109c371f41200385e8`, and audit fixes were implemented and verified through commit `b4b0345f9fd616e1355b7b6628362283fd6b1691`.
-
-Audit status, audited-through commit, and the current unaudited delta are tracked in [audits/AUDIT_STATUS.md](audits/AUDIT_STATUS.md).
+The full audit history, audited-through commits, and the current unaudited delta are tracked in [audits/AUDIT_STATUS.md](audits/AUDIT_STATUS.md).
 
 ## Security Considerations
 
