@@ -47,7 +47,7 @@ use crate::{
     },
     state::common::PlanStatus,
     tests::{
-        constants::{PROGRAM_ID, SYSTEM_PROGRAM_ID},
+        constants::{INSTRUCTIONS_SYSVAR_ID, PROGRAM_ID, SYSTEM_PROGRAM_ID},
         cu_tracker::{is_tracking_enabled, record_cu},
         pda::{get_delegation_pda, get_plan_pda, get_subscription_authority_pda, get_subscription_pda},
     },
@@ -129,6 +129,19 @@ pub fn build_and_send_transaction(
         }
     }
 
+    result
+}
+
+#[allow(clippy::result_large_err)]
+pub fn build_and_send_transaction_multi(
+    litesvm: &mut LiteSVM,
+    signers: &[&Keypair],
+    payer: &Pubkey,
+    ixs: &[Instruction],
+) -> TransactionResult {
+    let tx = Transaction::new(signers, Message::new(ixs, Some(payer)), litesvm.latest_blockhash());
+    let result = litesvm.send_transaction(tx);
+    litesvm.expire_blockhash();
     result
 }
 
@@ -523,6 +536,7 @@ impl<'a> CreateDelegation<'a> {
             AccountMeta::new(delegation_pda, false),
             AccountMeta::new_readonly(self.delegatee, false),
             AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+            AccountMeta::new_readonly(INSTRUCTIONS_SYSVAR_ID, false),
         ];
 
         let mut signers = vec![self.delegator];
@@ -1317,6 +1331,7 @@ pub struct Subscribe<'a> {
     plan_bump: u8,
     mint: Pubkey,
     payer: Option<&'a Keypair>,
+    expected_init_id: Option<i64>,
 }
 
 impl<'a> Subscribe<'a> {
@@ -1329,11 +1344,16 @@ impl<'a> Subscribe<'a> {
         plan_bump: u8,
         mint: Pubkey,
     ) -> Self {
-        Self { litesvm, subscriber, merchant, plan_pda, plan_id, plan_bump, mint, payer: None }
+        Self { litesvm, subscriber, merchant, plan_pda, plan_id, plan_bump, mint, payer: None, expected_init_id: None }
     }
 
     pub fn payer(mut self, payer: &'a Keypair) -> Self {
         self.payer = Some(payer);
+        self
+    }
+
+    pub fn expected_init_id(mut self, init_id: i64) -> Self {
+        self.expected_init_id = Some(init_id);
         self
     }
 
@@ -1353,6 +1373,7 @@ impl<'a> Subscribe<'a> {
             AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
             AccountMeta::new_readonly(event_authority, false),
             AccountMeta::new_readonly(PROGRAM_ID, false),
+            AccountMeta::new_readonly(INSTRUCTIONS_SYSVAR_ID, false),
         ];
 
         let mut signers: Vec<&Keypair> = vec![self.subscriber];
@@ -1371,13 +1392,14 @@ impl<'a> Subscribe<'a> {
         let expected_period_hours = plan.data.terms.period_hours;
         let expected_created_at = plan.data.terms.created_at;
         let expected_mint = plan.data.mint;
-        let expected_subscription_authority_init_id = self
-            .litesvm
-            .get_account(&subscription_authority_pda)
-            .and_then(|account| {
-                crate::state::SubscriptionAuthority::load(&account.data).ok().map(|authority| authority.init_id)
-            })
-            .unwrap_or_default();
+        let expected_subscription_authority_init_id = self.expected_init_id.unwrap_or_else(|| {
+            self.litesvm
+                .get_account(&subscription_authority_pda)
+                .and_then(|account| {
+                    crate::state::SubscriptionAuthority::load(&account.data).ok().map(|authority| authority.init_id)
+                })
+                .unwrap_or_default()
+        });
 
         let data = [
             vec![*subscribe::DISCRIMINATOR],
