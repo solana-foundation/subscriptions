@@ -46,6 +46,10 @@ impl UpToDelegation {
     /// Total serialized size in bytes.
     pub const LEN: usize = size_of::<Self>();
 
+    /// `max_amount` value written on the single draw to mark this delegation consumed.
+    /// Creation rejects a zero `max_amount`, so a zero here unambiguously means spent.
+    pub const CONSUMED_SENTINEL: u64 = 0;
+
     /// Deserializes an immutable reference from raw account data.
     ///
     /// Returns an error if the data length or discriminator does not match.

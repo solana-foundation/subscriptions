@@ -146,7 +146,8 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
                         }
                         AccountDiscriminator::UpToDelegation => {
                             let delegation = UpToDelegation::load_for_revoke(&data)?;
-                            is_expired(delegation.expiry_ts, current_ts) || delegation.max_amount == 0
+                            is_expired(delegation.expiry_ts, current_ts)
+                                || delegation.max_amount == UpToDelegation::CONSUMED_SENTINEL
                         }
                         _ => {
                             let delegation = RecurringDelegation::load_for_revoke(&data)?;

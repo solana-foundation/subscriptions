@@ -92,6 +92,11 @@ pub fn get_ata_balance(litesvm: &LiteSVM, ata: &Pubkey) -> u64 {
     account.amount
 }
 
+pub fn get_up_to_max_amount(litesvm: &LiteSVM, delegation_pda: &Pubkey) -> u64 {
+    let account = litesvm.get_account(delegation_pda).unwrap();
+    crate::UpToDelegation::load(&account.data).unwrap().max_amount
+}
+
 pub fn setup() -> (LiteSVM, Keypair) {
     let mut litesvm = LiteSVM::new();
 

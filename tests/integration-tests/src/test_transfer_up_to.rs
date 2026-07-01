@@ -1,11 +1,10 @@
 use crate::{
-    state::UpToDelegation,
     tests::{
         asserts::TransactionResultExt,
         constants::{MINT_DECIMALS, TOKEN_PROGRAM_ID},
         utils::{
-            current_ts, days, get_ata_balance, init_ata, init_mint, initialize_subscription_authority_action,
-            move_clock_forward, setup, CreateDelegation, TransferDelegation,
+            current_ts, days, get_ata_balance, get_up_to_max_amount, init_ata, init_mint,
+            initialize_subscription_authority_action, move_clock_forward, setup, CreateDelegation, TransferDelegation,
         },
     },
     SubscriptionsError,
@@ -15,7 +14,6 @@ use solana_keypair::Keypair;
 use solana_pubkey::Pubkey;
 use solana_signer::Signer;
 
-/// alice = delegator/funds, bob = delegatee/spender, charlie = bound recipient.
 fn setup_up_to(
     max_amount: u64,
     expiry_ts: i64,
@@ -42,11 +40,6 @@ fn setup_up_to(
     (litesvm, alice, bob, charlie, delegation_pda, mint, alice_ata, charlie_ata)
 }
 
-fn max_amount_of(litesvm: &LiteSVM, delegation_pda: &Pubkey) -> u64 {
-    let account = litesvm.get_account(delegation_pda).unwrap();
-    UpToDelegation::load(&account.data).unwrap().max_amount
-}
-
 #[test]
 fn test_up_to_partial_draw_consumes() {
     let max_amount: u64 = 50_000_000;
@@ -62,7 +55,7 @@ fn test_up_to_partial_draw_consumes() {
 
     assert_eq!(get_ata_balance(&litesvm, &charlie_ata), 30_000_000);
     assert_eq!(get_ata_balance(&litesvm, &alice_ata), 70_000_000);
-    assert_eq!(max_amount_of(&litesvm, &delegation_pda), 0);
+    assert_eq!(get_up_to_max_amount(&litesvm, &delegation_pda), 0);
 
     TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
         .amount(10_000_000)
@@ -86,7 +79,7 @@ fn test_up_to_full_draw_consumes() {
         .assert_ok();
 
     assert_eq!(get_ata_balance(&litesvm, &charlie_ata), 50_000_000);
-    assert_eq!(max_amount_of(&litesvm, &delegation_pda), 0);
+    assert_eq!(get_up_to_max_amount(&litesvm, &delegation_pda), 0);
 }
 
 #[test]
@@ -104,7 +97,7 @@ fn test_up_to_zero_draw_is_valid_and_consumes() {
 
     assert_eq!(get_ata_balance(&litesvm, &charlie_ata), 0);
     assert_eq!(get_ata_balance(&litesvm, &alice_ata), 100_000_000);
-    assert_eq!(max_amount_of(&litesvm, &delegation_pda), 0);
+    assert_eq!(get_up_to_max_amount(&litesvm, &delegation_pda), 0);
 
     TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
         .amount(0)
@@ -128,7 +121,7 @@ fn test_up_to_exceeds_ceiling_rejected() {
 
     assert_eq!(get_ata_balance(&litesvm, &charlie_ata), 0);
     assert_eq!(get_ata_balance(&litesvm, &alice_ata), 100_000_000);
-    assert_eq!(max_amount_of(&litesvm, &delegation_pda), max_amount);
+    assert_eq!(get_up_to_max_amount(&litesvm, &delegation_pda), max_amount);
 }
 
 #[test]
@@ -147,7 +140,7 @@ fn test_up_to_wrong_recipient_rejected_and_not_consumed() {
 
     assert_eq!(get_ata_balance(&litesvm, &bob_ata), 0);
     assert_eq!(get_ata_balance(&litesvm, &alice_ata), 100_000_000);
-    assert_eq!(max_amount_of(&litesvm, &delegation_pda), max_amount);
+    assert_eq!(get_up_to_max_amount(&litesvm, &delegation_pda), max_amount);
 
     TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
         .amount(10_000_000)
@@ -155,7 +148,26 @@ fn test_up_to_wrong_recipient_rejected_and_not_consumed() {
         .up_to()
         .assert_ok();
     assert_eq!(get_ata_balance(&litesvm, &charlie_ata), 10_000_000);
-    assert_eq!(max_amount_of(&litesvm, &delegation_pda), 0);
+    assert_eq!(get_up_to_max_amount(&litesvm, &delegation_pda), 0);
+}
+
+#[test]
+fn test_up_to_zero_draw_wrong_mint_receiver_rejected() {
+    let max_amount: u64 = 50_000_000;
+    let expiry_ts: i64 = current_ts() + days(1) as i64;
+    let (mut litesvm, alice, bob, charlie, delegation_pda, mint, _alice_ata, _charlie_ata) =
+        setup_up_to(max_amount, expiry_ts, 7);
+
+    let other_mint = init_mint(&mut litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(alice.pubkey()), &[]);
+    let charlie_other_ata = init_ata(&mut litesvm, other_mint, charlie.pubkey(), 0);
+
+    TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
+        .amount(0)
+        .to(charlie_other_ata)
+        .up_to()
+        .assert_err(SubscriptionsError::MintMismatch);
+
+    assert_eq!(get_up_to_max_amount(&litesvm, &delegation_pda), max_amount);
 }
 
 #[test]

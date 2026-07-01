@@ -8,7 +8,7 @@ use crate::{
     event_engine::{self, EventSerialize},
     events::UpToTransferEvent,
     helpers::{
-        get_token_account_owner, transfer_with_delegate, validate_up_to_transfer, Delegation,
+        check_token_account_mint, get_token_account_owner, transfer_with_delegate, validate_up_to_transfer, Delegation,
         DelegationTransferAccounts, TransferAccounts, TransferData,
     },
     state::common::AccountDiscriminator,
@@ -50,13 +50,14 @@ pub fn process(accounts: &mut [AccountView], transfer: &TransferData) -> Program
         let current_ts = Clock::get()?.unix_timestamp;
         validate_up_to_transfer(transfer.amount, delegation.max_amount, delegation.expiry_ts, current_ts)?;
 
-        delegation.max_amount = 0;
+        delegation.max_amount = UpToDelegation::CONSUMED_SENTINEL;
 
         init_id = delegation.header.init_id;
     }
 
     let receiver_owner: Address = {
         let receiver_data = accounts_struct.receiver_ata.try_borrow()?;
+        check_token_account_mint(&receiver_data, &transfer.mint)?;
         get_token_account_owner(&receiver_data)?
     };
     if receiver_owner != recipient {

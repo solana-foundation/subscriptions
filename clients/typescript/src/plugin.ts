@@ -542,7 +542,7 @@ async function getTransferDelegationOverlayInstructionAsync(
         | typeof getTransferRecurringInstruction
         | typeof getTransferUpToInstruction,
 ): Promise<Instruction> {
-    assertPositive(input.amount, 'amount');
+    assertSafeU64(input.amount, 'amount');
     const [subscriptionAuthority] = await findSubscriptionAuthorityPda(
         { tokenMint: input.tokenMint, user: input.delegator },
         pdaConfig(input.programAddress),
@@ -571,10 +571,12 @@ async function getTransferDelegationOverlayInstructionAsync(
 }
 
 export function getTransferFixedOverlayInstructionAsync(input: TransferDelegationInput): Promise<Instruction> {
+    assertPositive(input.amount, 'amount');
     return getTransferDelegationOverlayInstructionAsync(input, getTransferFixedInstruction);
 }
 
 export function getTransferRecurringOverlayInstructionAsync(input: TransferDelegationInput): Promise<Instruction> {
+    assertPositive(input.amount, 'amount');
     return getTransferDelegationOverlayInstructionAsync(input, getTransferRecurringInstruction);
 }
 

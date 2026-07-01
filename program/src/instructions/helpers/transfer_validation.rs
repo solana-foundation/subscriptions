@@ -1,6 +1,6 @@
 use pinocchio::ProgramResult;
 
-use crate::SubscriptionsError;
+use crate::{state::UpToDelegation, SubscriptionsError};
 
 /// Returns true when a finite-expiry delegation is past its `expiry_ts`.
 /// Shared lifecycle gate used by transfer paths and sponsor revocation so both
@@ -46,7 +46,7 @@ pub fn validate_up_to_transfer(
     expiry_ts: i64,
     current_ts: i64,
 ) -> ProgramResult {
-    if max_amount == 0 {
+    if max_amount == UpToDelegation::CONSUMED_SENTINEL {
         return Err(SubscriptionsError::UpToDelegationConsumed.into());
     }
     if is_expired(expiry_ts, current_ts) {
