@@ -9,7 +9,7 @@ use crate::{
         asserts::TransactionResultExt,
         constants::{MINT_DECIMALS, TOKEN_PROGRAM_ID},
         pda::get_plan_pda,
-        utils::{current_ts, days, init_mint, setup, CreatePlan},
+        utils::{current_ts, days, init_mint, init_wallet, setup, CreatePlan},
     },
 };
 
@@ -57,6 +57,36 @@ fn create_plan_happy_path() {
     assert_eq!(dests[0].to_bytes(), dest.to_bytes());
     assert_eq!(pulls[0].to_bytes(), puller.to_bytes());
     assert_ne!(bump, 0);
+}
+
+#[test]
+fn create_plan_gasless_sponsor_funds_rent() {
+    let (litesvm, merchant) = &mut setup();
+    let sponsor = init_wallet(litesvm, 10_000_000_000);
+    let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, None, &[]);
+    let dest = Pubkey::new_unique();
+
+    let merchant_before = litesvm.get_account(&merchant.pubkey()).unwrap().lamports;
+    let sponsor_before = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
+
+    let (res, plan_pda) = CreatePlan::new(litesvm, merchant, mint)
+        .plan_id(1)
+        .amount(1_000_000)
+        .period_hours(720)
+        .destinations(vec![dest])
+        .sponsor(&sponsor)
+        .execute();
+    res.assert_ok();
+
+    let account = litesvm.get_account(&plan_pda).unwrap();
+    let rent = account.lamports;
+    let owner = Plan::load(&account.data).unwrap().owner;
+    let merchant_after = litesvm.get_account(&merchant.pubkey()).unwrap().lamports;
+    let sponsor_after = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
+
+    assert_eq!(merchant_after, merchant_before, "merchant must pay nothing for a sponsored create");
+    assert!(sponsor_before - sponsor_after >= rent, "sponsor must fund the plan rent");
+    assert_eq!(owner.to_bytes(), merchant.pubkey().to_bytes(), "merchant still owns the sponsored plan");
 }
 
 #[test]

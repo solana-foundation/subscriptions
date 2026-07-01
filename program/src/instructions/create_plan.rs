@@ -105,6 +105,11 @@ pub const DISCRIMINATOR: &u8 = &7;
 ///
 /// Validates the plan data, creates the plan account via CPI, and initializes
 /// its fields including owner, status, and the embedded [`PlanData`].
+///
+/// A trailing `payer` account, if supplied, funds plan rent while the merchant
+/// still owns the plan. Sponsored rent is NOT recoverable by the payer:
+/// `delete_plan` refunds the owner, not the payer. Only sponsor merchants you
+/// trust; never expose plan-creation sponsorship through an open relayer.
 pub fn process(accounts: &mut [AccountView], data: &PlanData) -> ProgramResult {
     let current_ts = Clock::get()?.unix_timestamp;
     data.validate(current_ts)?;

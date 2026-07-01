@@ -1,8 +1,9 @@
 use pinocchio::{cpi::Seed, error::ProgramError, AccountView};
 
 use crate::{
-    find_plan_pda, state::plan::Plan, AccountCheck, MintInterface, ProgramAccount, ProgramAccountInit, SignerAccount,
-    SubscriptionsError, SystemAccount, TokenProgramInterface, WritableAccount,
+    find_plan_pda, helpers::system::resolve_optional_payer, state::plan::Plan, AccountCheck, MintInterface,
+    ProgramAccount, ProgramAccountInit, SignerAccount, SubscriptionsError, SystemAccount, TokenProgramInterface,
+    WritableAccount,
 };
 
 /// Validated accounts for the [`CreatePlan`](crate::SubscriptionsInstruction::CreatePlan) instruction.
@@ -12,13 +13,15 @@ pub struct CreatePlanAccounts<'a> {
     pub token_mint: &'a AccountView,
     pub system_program: &'a AccountView,
     pub token_program: &'a AccountView,
+    /// The account funding rent. Defaults to `merchant` if no extra account is provided.
+    pub payer: &'a AccountView,
 }
 
 impl<'a> TryFrom<&'a mut [AccountView]> for CreatePlanAccounts<'a> {
     type Error = ProgramError;
 
     fn try_from(accounts: &'a mut [AccountView]) -> Result<Self, Self::Error> {
-        let [merchant, plan_pda, token_mint, system_program, token_program] = accounts else {
+        let [merchant, plan_pda, token_mint, system_program, token_program, rem @ ..] = accounts else {
             return Err(SubscriptionsError::NotEnoughAccountKeys.into());
         };
 
@@ -29,7 +32,9 @@ impl<'a> TryFrom<&'a mut [AccountView]> for CreatePlanAccounts<'a> {
         TokenProgramInterface::check(token_program)?;
         SystemAccount::check(system_program)?;
 
-        Ok(Self { merchant, plan_pda, token_mint, system_program, token_program })
+        let payer = resolve_optional_payer(merchant, rem)?;
+
+        Ok(Self { merchant, plan_pda, token_mint, system_program, token_program, payer })
     }
 }
 
@@ -57,7 +62,7 @@ pub fn create_plan_account(accounts: &CreatePlanAccounts, plan_id: u64) -> Resul
         Seed::from(&bump_bytes[..]),
     ];
 
-    ProgramAccount::init::<()>(accounts.merchant, accounts.plan_pda, &seeds, Plan::LEN)?;
+    ProgramAccount::init::<()>(accounts.payer, accounts.plan_pda, &seeds, Plan::LEN)?;
 
     Ok(bump)
 }

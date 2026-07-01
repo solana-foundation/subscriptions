@@ -237,6 +237,7 @@ export type CreatePlanInput = WithProgramAddress & {
     metadataUri: string;
     mint: Address;
     owner: TransactionSigner;
+    payer?: TransactionSigner;
     periodHours: bigint | number;
     planId: bigint | number;
     pullers: Address[];
@@ -566,27 +567,30 @@ export async function getCreatePlanOverlayInstructionAsync(input: CreatePlanInpu
         pdaConfig(input.programAddress),
     );
 
-    return getCreatePlanInstruction(
-        {
-            merchant: input.owner,
-            planData: {
-                destinations,
-                endTs: input.endTs,
-                metadataUri: input.metadataUri,
-                mint: input.mint,
-                planId: input.planId,
-                pullers,
-                terms: {
-                    amount: input.amount,
-                    createdAt: 0n,
-                    periodHours: input.periodHours,
+    return appendPayer(
+        getCreatePlanInstruction(
+            {
+                merchant: input.owner,
+                planData: {
+                    destinations,
+                    endTs: input.endTs,
+                    metadataUri: input.metadataUri,
+                    mint: input.mint,
+                    planId: input.planId,
+                    pullers,
+                    terms: {
+                        amount: input.amount,
+                        createdAt: 0n,
+                        periodHours: input.periodHours,
+                    },
                 },
+                planPda,
+                tokenMint: input.mint,
+                tokenProgram: input.tokenProgram,
             },
-            planPda,
-            tokenMint: input.mint,
-            tokenProgram: input.tokenProgram,
-        },
-        pdaConfig(input.programAddress),
+            pdaConfig(input.programAddress),
+        ),
+        input.payer,
     );
 }
 
@@ -862,6 +866,7 @@ export function subscriptionsProgram() {
                         getCreatePlanOverlayInstructionAsync({
                             ...input,
                             owner: input.owner ?? client.identity,
+                            payer: input.payer ?? (client.payer === client.identity ? undefined : client.payer),
                         }),
                     ),
                 createRecurringDelegation: input =>
