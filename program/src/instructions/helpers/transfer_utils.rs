@@ -37,7 +37,7 @@ pub fn check_token_account_mint(data: &[u8], expected: &Address) -> Result<(), S
     Ok(())
 }
 
-/// Reads the owner pubkey from raw SPL token account data.
+/// Reads the owner address from raw SPL token account data.
 pub fn get_token_account_owner(data: &[u8]) -> Result<Address, SubscriptionsError> {
     if data.len() < TOKEN_ACCOUNT_OWNER_END {
         return Err(SubscriptionsError::InvalidAccountData);

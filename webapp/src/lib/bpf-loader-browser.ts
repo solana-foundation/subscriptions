@@ -194,11 +194,11 @@ export function buildCloseProgramIx(
 }
 
 export async function deriveProgramDataAddress(programId: Address | string): Promise<Address> {
-    const pubkeyEncoder = getAddressEncoder();
+    const addressEncoder = getAddressEncoder();
     const addr = typeof programId === 'string' ? address(programId) : programId;
     const [pda] = await getProgramDerivedAddress({
         programAddress: BPF_LOADER_UPGRADEABLE,
-        seeds: [pubkeyEncoder.encode(addr)],
+        seeds: [addressEncoder.encode(addr)],
     });
     return pda;
 }
