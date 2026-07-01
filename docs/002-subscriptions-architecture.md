@@ -289,13 +289,20 @@ Per-subscriber billing state linked to a Plan:
 
 Merchant publishes a Plan with subscription terms.
 
-| Account | Type             | Description           |
-| ------- | ---------------- | --------------------- |
-| 0       | signer, writable | Merchant (Plan owner) |
-| 1       | writable         | Plan PDA to create    |
-| 2       |                  | Token mint            |
-| 3       |                  | System program        |
-| 4       |                  | Token program         |
+| Account | Type             | Description                     |
+| ------- | ---------------- | ------------------------------- |
+| 0       | signer, writable | Merchant (Plan owner)           |
+| 1       | writable         | Plan PDA to create              |
+| 2       |                  | Token mint                      |
+| 3       |                  | System program                  |
+| 4       |                  | Token program                   |
+| 5       | signer, writable | Optional payer/sponsor for rent |
+
+When account 5 is supplied it funds plan rent (gasless create); the merchant
+still owns the plan. **Security:** sponsored rent is not recoverable by the
+payer — `delete_plan` refunds the owner, not the payer. Sponsor only merchants
+you trust and gate sponsorship off-chain; never expose it through an open
+relayer, which would let merchants siphon rent by creating and deleting plans.
 
 **Parameters (PlanData):**
 
@@ -372,6 +379,8 @@ Plan owner deletes an expired plan, closing the account and reclaiming rent. Doe
 1. Verify caller is Plan owner (else `NotPlanOwner`)
 2. Verify plan is expired: `end_ts != 0 && current_ts > end_ts` (else `PlanNotExpired`)
 3. Close account: zero all data, transfer lamports to owner
+
+Rent always returns to the owner, even when a sponsor funded creation via `create_plan`'s optional payer. The payer does not recover sponsored rent.
 
 **Lifecycle paths to deletion:**
 
