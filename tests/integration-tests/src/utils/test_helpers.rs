@@ -41,9 +41,10 @@ use crate::{
     instructions::update_plan::UpdatePlanData,
     instructions::{
         cancel_subscription, close_subscription_authority, create_fixed_delegation, create_plan,
-        create_recurring_delegation, delete_plan, initialize_subscription_authority, resume_subscription,
-        revoke_abandoned_delegation, revoke_abandoned_subscription, revoke_delegation, revoke_subscription_authority,
-        subscribe, transfer_fixed_delegation, transfer_recurring_delegation, transfer_subscription, update_plan,
+        create_recurring_delegation, create_up_to_delegation, delete_plan, initialize_subscription_authority,
+        resume_subscription, revoke_abandoned_delegation, revoke_abandoned_subscription, revoke_delegation,
+        revoke_subscription_authority, subscribe, transfer_fixed_delegation, transfer_recurring_delegation,
+        transfer_subscription, transfer_up_to, update_plan,
     },
     state::common::PlanStatus,
     tests::{
@@ -89,6 +90,11 @@ pub fn set_clock(litesvm: &mut LiteSVM, unix_timestamp: i64) {
 pub fn get_ata_balance(litesvm: &LiteSVM, ata: &Pubkey) -> u64 {
     let account = fetch_account::<spl_token_2022_interface::state::Account>(litesvm, ata);
     account.amount
+}
+
+pub fn get_up_to_max_amount(litesvm: &LiteSVM, delegation_pda: &Pubkey) -> u64 {
+    let account = litesvm.get_account(delegation_pda).unwrap();
+    crate::UpToDelegation::load(&account.data).unwrap().max_amount
 }
 
 pub fn setup() -> (LiteSVM, Keypair) {
@@ -488,6 +494,22 @@ impl<'a> CreateDelegation<'a> {
         )
     }
 
+    pub fn up_to(self, max_amount: u64, recipient: Pubkey, expiry_ts: i64) -> (TransactionResult, Pubkey) {
+        let nonce_bytes = self.nonce.to_le_bytes().to_vec();
+        let expected_subscription_authority_init_id = self.resolved_expected_subscription_authority_init_id();
+        self.execute(
+            *create_up_to_delegation::DISCRIMINATOR,
+            [
+                nonce_bytes,
+                max_amount.to_le_bytes().to_vec(),
+                recipient.to_bytes().to_vec(),
+                expiry_ts.to_le_bytes().to_vec(),
+                expected_subscription_authority_init_id.to_le_bytes().to_vec(),
+            ]
+            .concat(),
+        )
+    }
+
     pub fn recurring(
         self,
         amount_per_period: u64,
@@ -601,6 +623,11 @@ impl<'a> TransferDelegation<'a> {
     #[allow(clippy::result_large_err)]
     pub fn recurring(self) -> TransactionResult {
         self.execute(*transfer_recurring_delegation::DISCRIMINATOR)
+    }
+
+    #[allow(clippy::result_large_err)]
+    pub fn up_to(self) -> TransactionResult {
+        self.execute(*transfer_up_to::DISCRIMINATOR)
     }
 
     #[allow(clippy::result_large_err)]

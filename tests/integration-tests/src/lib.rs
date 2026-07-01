@@ -21,6 +21,8 @@ mod test_create_plan;
 #[cfg(test)]
 mod test_create_recurring_delegation;
 #[cfg(test)]
+mod test_create_up_to_delegation;
+#[cfg(test)]
 mod test_delete_plan;
 #[cfg(test)]
 mod test_initialize_subscription_authority;
@@ -42,5 +44,7 @@ mod test_transfer_fixed_delegation;
 mod test_transfer_recurring_delegation;
 #[cfg(test)]
 mod test_transfer_subscription;
+#[cfg(test)]
+mod test_transfer_up_to;
 #[cfg(test)]
 mod test_update_plan;

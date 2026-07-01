@@ -3,6 +3,7 @@ use pinocchio::{error::ProgramError, AccountView, ProgramResult};
 use crate::{
     state::{
         common::AccountDiscriminator, fixed_delegation::FixedDelegation, recurring_delegation::RecurringDelegation,
+        up_to_delegation::UpToDelegation,
     },
     AccountCheck, AccountClose, Header, ProgramAccount, SignerAccount, SubscriptionAuthority, SubscriptionsError,
     WritableAccount, DISCRIMINATOR_OFFSET,
@@ -12,7 +13,7 @@ use crate::{
 pub struct RevokeAbandonedDelegationAccounts<'a> {
     /// The recorded payer reclaiming rent (signer + writable).
     pub payer: &'a AccountView,
-    /// The fixed or recurring delegation PDA to close.
+    /// The fixed, recurring, or up-to delegation PDA to close.
     pub delegation_account: &'a AccountView,
     /// The SubscriptionAuthority PDA recorded on the delegation; may be closed.
     pub subscription_authority: &'a AccountView,
@@ -38,9 +39,9 @@ impl<'a> TryFrom<&'a [AccountView]> for RevokeAbandonedDelegationAccounts<'a> {
 /// Instruction discriminator byte for `RevokeAbandonedDelegation`.
 pub const DISCRIMINATOR: &u8 = &15;
 
-/// Closes a fixed or recurring delegation back to its payer once the delegator
-/// has rendered it permanently unusable — its SubscriptionAuthority PDA is
-/// closed, or that PDA's `init_id` no longer matches the delegation header.
+/// Closes a fixed, recurring, or up-to delegation back to its payer once the
+/// delegator has rendered it permanently unusable — its SubscriptionAuthority
+/// PDA is closed, or that PDA's `init_id` no longer matches the delegation header.
 ///
 /// This is the payer's only recovery path for `expiry_ts == 0` delegations,
 /// which [`RevokeDelegation`](crate::SubscriptionsInstruction::RevokeDelegation)
@@ -63,6 +64,10 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
                 }
                 AccountDiscriminator::RecurringDelegation => {
                     let delegation = RecurringDelegation::load_for_revoke(&data)?;
+                    (delegation.subscription_authority, delegation.header.init_id, delegation.header.payer)
+                }
+                AccountDiscriminator::UpToDelegation => {
+                    let delegation = UpToDelegation::load_for_revoke(&data)?;
                     (delegation.subscription_authority, delegation.header.init_id, delegation.header.payer)
                 }
                 _ => return Err(SubscriptionsError::InvalidAccountDiscriminator.into()),

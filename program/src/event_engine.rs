@@ -113,6 +113,8 @@ pub enum EventDiscriminators {
     SubscriptionResumed = 5,
     /// A plan owner updated a plan's mutable fields.
     PlanUpdated = 6,
+    /// A single-use up-to delegation was drawn (and consumed).
+    UpToTransfer = 7,
 }
 
 impl TryFrom<u8> for EventDiscriminators {
@@ -127,6 +129,7 @@ impl TryFrom<u8> for EventDiscriminators {
             4 => Ok(Self::RecurringTransfer),
             5 => Ok(Self::SubscriptionResumed),
             6 => Ok(Self::PlanUpdated),
+            7 => Ok(Self::UpToTransfer),
             _ => Err(value),
         }
     }

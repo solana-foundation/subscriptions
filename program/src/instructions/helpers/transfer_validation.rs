@@ -1,6 +1,6 @@
 use pinocchio::ProgramResult;
 
-use crate::SubscriptionsError;
+use crate::{state::UpToDelegation, SubscriptionsError};
 
 /// Returns true when a finite-expiry delegation is past its `expiry_ts`.
 /// Shared lifecycle gate used by transfer paths and sponsor revocation so both
@@ -25,6 +25,34 @@ pub fn validate_fixed_transfer(transfer_amount: u64, remaining: u64, expiry_ts: 
         return Err(SubscriptionsError::DelegationExpired.into());
     }
     if transfer_amount > remaining {
+        return Err(SubscriptionsError::AmountExceedsLimit.into());
+    }
+    Ok(())
+}
+
+/// Validates a single-use up-to transfer against its ceiling and expiry.
+///
+/// Unlike [`validate_fixed_transfer`], a zero `transfer_amount` is valid (the
+/// spender settles no charge and the authorization is still consumed). A zeroed
+/// `max_amount` is the consumed sentinel and rejects any draw.
+///
+/// Returns an error if:
+/// - the delegation has already been consumed (`max_amount == 0`)
+/// - the delegation has expired (`expiry_ts != 0 && current_ts > expiry_ts`)
+/// - `transfer_amount` exceeds `max_amount`
+pub fn validate_up_to_transfer(
+    transfer_amount: u64,
+    max_amount: u64,
+    expiry_ts: i64,
+    current_ts: i64,
+) -> ProgramResult {
+    if max_amount == UpToDelegation::CONSUMED_SENTINEL {
+        return Err(SubscriptionsError::UpToDelegationConsumed.into());
+    }
+    if is_expired(expiry_ts, current_ts) {
+        return Err(SubscriptionsError::DelegationExpired.into());
+    }
+    if transfer_amount > max_amount {
         return Err(SubscriptionsError::AmountExceedsLimit.into());
     }
     Ok(())
@@ -176,5 +204,60 @@ mod tests {
         assert!(!is_expired(100, 100));
         assert!(is_expired(100, 101));
         assert!(!is_expired(0, i64::MAX));
+    }
+
+    fn up_to_err(res: ProgramResult) -> u32 {
+        match res.unwrap_err() {
+            pinocchio::error::ProgramError::Custom(c) => c,
+            other => panic!("expected custom error, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn up_to_partial_draw_ok() {
+        assert!(validate_up_to_transfer(40, 100, 0, 1_000).is_ok());
+    }
+
+    #[test]
+    fn up_to_full_draw_ok() {
+        assert!(validate_up_to_transfer(100, 100, 0, 1_000).is_ok());
+    }
+
+    #[test]
+    fn up_to_zero_draw_ok() {
+        assert!(validate_up_to_transfer(0, 100, 0, 1_000).is_ok());
+    }
+
+    #[test]
+    fn up_to_over_ceiling_rejected() {
+        assert_eq!(
+            up_to_err(validate_up_to_transfer(101, 100, 0, 1_000)),
+            SubscriptionsError::AmountExceedsLimit as u32
+        );
+    }
+
+    #[test]
+    fn up_to_consumed_sentinel_rejects_any_draw() {
+        assert_eq!(
+            up_to_err(validate_up_to_transfer(0, 0, 0, 1_000)),
+            SubscriptionsError::UpToDelegationConsumed as u32
+        );
+        assert_eq!(
+            up_to_err(validate_up_to_transfer(5, 0, 0, 1_000)),
+            SubscriptionsError::UpToDelegationConsumed as u32
+        );
+    }
+
+    #[test]
+    fn up_to_expired_rejected() {
+        assert_eq!(up_to_err(validate_up_to_transfer(10, 100, 50, 51)), SubscriptionsError::DelegationExpired as u32);
+    }
+
+    #[test]
+    fn up_to_consumed_checked_before_expiry() {
+        assert_eq!(
+            up_to_err(validate_up_to_transfer(10, 0, 50, 51)),
+            SubscriptionsError::UpToDelegationConsumed as u32
+        );
     }
 }

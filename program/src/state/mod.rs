@@ -11,6 +11,7 @@ pub mod plan;
 pub mod recurring_delegation;
 pub mod subscription_authority;
 pub mod subscription_delegation;
+pub mod up_to_delegation;
 pub mod versioning;
 
 pub use common::{
@@ -24,4 +25,5 @@ pub use plan::Plan;
 pub use recurring_delegation::RecurringDelegation;
 pub use subscription_authority::SubscriptionAuthority;
 pub use subscription_delegation::SubscriptionDelegation;
+pub use up_to_delegation::UpToDelegation;
 pub use versioning::{check_and_update_version, check_min_account_size, CURRENT_VERSION};

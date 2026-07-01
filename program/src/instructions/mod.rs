@@ -10,6 +10,8 @@ pub mod create_fixed_delegation;
 pub use create_fixed_delegation::CreateFixedDelegationData;
 pub mod create_plan;
 pub mod create_recurring_delegation;
+pub mod create_up_to_delegation;
+pub use create_up_to_delegation::CreateUpToDelegationData;
 pub mod delete_plan;
 pub mod subscribe;
 pub mod update_plan;
@@ -25,6 +27,7 @@ pub mod revoke_subscription_authority;
 pub mod transfer_fixed_delegation;
 pub mod transfer_recurring_delegation;
 pub mod transfer_subscription;
+pub mod transfer_up_to;
 
 pub use helpers::*;
 
@@ -342,7 +345,11 @@ pub enum SubscriptionsInstruction {
     RevokeSubscriptionAuthority = 14,
 
     #[codama(account(name = "payer", signer, writable, docs = "The recorded payer reclaiming rent"))]
-    #[codama(account(name = "delegation_account", writable, docs = "The fixed or recurring delegation PDA to close"))]
+    #[codama(account(
+        name = "delegation_account",
+        writable,
+        docs = "The fixed, recurring, or up-to delegation PDA to close"
+    ))]
     #[codama(account(
         name = "subscription_authority",
         docs = "The delegation's recorded SubscriptionAuthority PDA (may be closed)"
@@ -357,6 +364,44 @@ pub enum SubscriptionsInstruction {
     ))]
     #[codama(account(name = "plan_pda", docs = "The plan the subscription belongs to; provides the mint"))]
     RevokeAbandonedSubscription = 16,
+
+    #[codama(account(name = "delegator", signer, writable, docs = "The user creating the delegation"))]
+    #[codama(account(name = "subscription_authority", docs = "The subscription_authority PDA for this token"))]
+    #[codama(account(name = "delegation_account", writable, docs = "The up-to delegation PDA being created"))]
+    #[codama(account(name = "delegatee", docs = "The user receiving delegation rights"))]
+    #[codama(account(
+        name = "system_program",
+        docs = "The system program",
+        default_value = program("system")
+    ))]
+    #[codama(account(
+        name = "payer",
+        signer,
+        writable,
+        optional,
+        docs = "Optional sponsor that funds the account rent. Defaults to the delegator/signer when omitted."
+    ))]
+    #[codama(optional_account_strategy = omitted)]
+    CreateUpToDelegation(#[codama(name = "up_to_delegation")] CreateUpToDelegationData) = 17,
+
+    #[codama(account(name = "delegation_pda", writable, docs = "The up-to delegation PDA to transfer from"))]
+    #[codama(account(name = "subscription_authority", docs = "The subscription-authority PDA"))]
+    #[codama(account(name = "delegator_ata", writable, docs = "The delegator's ATA to transfer from"))]
+    #[codama(account(name = "receiver_ata", writable, docs = "The bound recipient's ATA to transfer to"))]
+    #[codama(account(name = "token_mint", docs = "The token mint"))]
+    #[codama(account(name = "token_program", docs = "Token program"))]
+    #[codama(account(name = "delegatee", signer, docs = "The delegatee signing the transfer"))]
+    #[codama(account(
+        name = "event_authority",
+        docs = "The event authority PDA",
+        default_value = pda("eventAuthority")
+    ))]
+    #[codama(account(
+        name = "self_program",
+        docs = "This program (for self-CPI)",
+        default_value = public_key("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44")
+    ))]
+    TransferUpTo(#[codama(name = "transfer_data")] TransferData) = 18,
 
     #[codama(skip)]
     #[codama(account(
@@ -416,6 +461,14 @@ impl SubscriptionsInstruction {
             revoke_subscription_authority::DISCRIMINATOR => Ok(Self::RevokeSubscriptionAuthority),
             revoke_abandoned_delegation::DISCRIMINATOR => Ok(Self::RevokeAbandonedDelegation),
             revoke_abandoned_subscription::DISCRIMINATOR => Ok(Self::RevokeAbandonedSubscription),
+            create_up_to_delegation::DISCRIMINATOR => {
+                let loaded = CreateUpToDelegationData::load(rest)?;
+                Ok(Self::CreateUpToDelegation(loaded.clone()))
+            }
+            transfer_up_to::DISCRIMINATOR => {
+                let loaded = TransferData::load(rest)?;
+                Ok(Self::TransferUpTo(loaded.clone()))
+            }
             &EMIT_EVENT_IX_DISC => Ok(Self::EmitEvent),
             _ => Err(SubscriptionsError::InvalidInstruction.into()),
         }
@@ -442,6 +495,8 @@ impl fmt::Display for SubscriptionsInstruction {
             Self::RevokeSubscriptionAuthority => write!(f, "revoke_subscription_authority"),
             Self::RevokeAbandonedDelegation => write!(f, "revoke_abandoned_delegation"),
             Self::RevokeAbandonedSubscription => write!(f, "revoke_abandoned_subscription"),
+            Self::CreateUpToDelegation(_) => write!(f, "create_up_to_delegation"),
+            Self::TransferUpTo(_) => write!(f, "transfer_up_to"),
             Self::EmitEvent => write!(f, "emit_event"),
         }
     }
