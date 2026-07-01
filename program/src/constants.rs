@@ -50,3 +50,8 @@ pub const MINT_IS_INITIALIZED_OFFSET: usize = 45;
 
 /// Number of seconds in one hour. Used to convert plan/subscription period (hours) to seconds.
 pub const SECS_PER_HOUR: u64 = 3600;
+
+/// Sentinel `expected_subscription_authority_init_id` that opts a `Subscribe` or
+/// delegation-creation instruction into same-transaction co-init detection.
+/// A real `init_id` is `Clock::slot` (always non-negative), so this never collides.
+pub const UNKNOWN_INIT_ID: i64 = i64::MIN;
