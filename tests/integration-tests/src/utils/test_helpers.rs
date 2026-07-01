@@ -46,8 +46,9 @@ use crate::{
         subscribe, transfer_fixed_delegation, transfer_recurring_delegation, transfer_subscription, update_plan,
     },
     state::common::PlanStatus,
+    state::{Plan, SubscriptionAuthority},
     tests::{
-        constants::{INSTRUCTIONS_SYSVAR_ID, PROGRAM_ID, SYSTEM_PROGRAM_ID},
+        constants::{INSTRUCTIONS_SYSVAR_ID, PROGRAM_ID, SYSTEM_PROGRAM_ID, TOKEN_PROGRAM_ID},
         cu_tracker::{is_tracking_enabled, record_cu},
         pda::{get_delegation_pda, get_plan_pda, get_subscription_authority_pda, get_subscription_pda},
     },
@@ -387,6 +388,23 @@ fn init_token_account_at(
     token_account
 }
 
+/// Builds an `InitSubscriptionAuthority` instruction (without sending) for composing
+/// multi-instruction transactions such as co-init + subscribe.
+pub fn init_authority_ix(user: &Pubkey, mint: Pubkey, user_ata: Pubkey, authority_pda: Pubkey) -> Instruction {
+    Instruction {
+        program_id: PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new(*user, true),
+            AccountMeta::new(authority_pda, false),
+            AccountMeta::new_readonly(mint, false),
+            AccountMeta::new(user_ata, false),
+            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+            AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
+        ],
+        data: vec![*initialize_subscription_authority::DISCRIMINATOR],
+    }
+}
+
 pub fn initialize_subscription_authority_action(
     litesvm: &mut LiteSVM,
     payer: &Keypair,
@@ -479,9 +497,7 @@ impl<'a> CreateDelegation<'a> {
             let (subscription_authority_pda, _) = get_subscription_authority_pda(&self.delegator.pubkey(), &self.mint);
             self.litesvm
                 .get_account(&subscription_authority_pda)
-                .and_then(|account| {
-                    crate::state::SubscriptionAuthority::load(&account.data).ok().map(|authority| authority.init_id)
-                })
+                .and_then(|account| SubscriptionAuthority::load(&account.data).ok().map(|authority| authority.init_id))
                 .unwrap_or_default()
         })
     }
@@ -1387,7 +1403,7 @@ impl<'a> Subscribe<'a> {
 
         // Snapshot live plan terms to bind subscriber consent.
         let plan_account = self.litesvm.get_account(&self.plan_pda).unwrap();
-        let plan = crate::state::Plan::load(&plan_account.data).unwrap();
+        let plan = Plan::load(&plan_account.data).unwrap();
         let expected_amount = plan.data.terms.amount;
         let expected_period_hours = plan.data.terms.period_hours;
         let expected_created_at = plan.data.terms.created_at;
@@ -1395,9 +1411,7 @@ impl<'a> Subscribe<'a> {
         let expected_subscription_authority_init_id = self.expected_init_id.unwrap_or_else(|| {
             self.litesvm
                 .get_account(&subscription_authority_pda)
-                .and_then(|account| {
-                    crate::state::SubscriptionAuthority::load(&account.data).ok().map(|authority| authority.init_id)
-                })
+                .and_then(|account| SubscriptionAuthority::load(&account.data).ok().map(|authority| authority.init_id))
                 .unwrap_or_default()
         });
 

@@ -1,6 +1,8 @@
 use pinocchio::{error::ProgramError, sysvars::instructions::Instructions, AccountView, Address};
 
-const INIT_AUTHORITY_DISCRIMINATOR: u8 = 0;
+use crate::instructions::initialize_subscription_authority;
+
+const INIT_AUTHORITY_DISCRIMINATOR: u8 = *initialize_subscription_authority::DISCRIMINATOR;
 const INIT_OWNER_ACCOUNT_INDEX: usize = 0;
 const INIT_AUTHORITY_ACCOUNT_INDEX: usize = 1;
 
@@ -14,6 +16,7 @@ pub fn subscription_authority_inited_in_tx(
     authority_pda: &Address,
     expected_owner: &Address,
 ) -> Result<bool, ProgramError> {
+    // `try_from` verifies the account is the instructions sysvar.
     let instructions = Instructions::try_from(instructions_sysvar)?;
     let current_index = instructions.load_current_index();
 

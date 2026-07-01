@@ -1,14 +1,13 @@
 use crate::{
-    instructions::{
-        create_fixed_delegation, create_recurring_delegation, initialize_subscription_authority, subscribe,
-    },
+    event_engine::event_authority_pda,
+    instructions::{create_fixed_delegation, create_recurring_delegation, subscribe},
     state::{FixedDelegation, Plan, RecurringDelegation, SubscriptionAuthority, SubscriptionDelegation},
     tests::{
         asserts::TransactionResultExt,
         constants::{INSTRUCTIONS_SYSVAR_ID, MINT_DECIMALS, PROGRAM_ID, SYSTEM_PROGRAM_ID, TOKEN_PROGRAM_ID},
         pda::{get_delegation_pda, get_plan_pda, get_subscription_authority_pda, get_subscription_pda},
         utils::{
-            build_and_send_transaction_multi, current_ts, days, init_ata, init_mint,
+            build_and_send_transaction_multi, current_ts, days, init_ata, init_authority_ix, init_mint, init_wallet,
             initialize_subscription_authority_action, setup, CreatePlan,
         },
     },
@@ -19,21 +18,6 @@ use solana_instruction::{AccountMeta, Instruction};
 use solana_keypair::Keypair;
 use solana_pubkey::Pubkey;
 use solana_signer::Signer;
-
-fn init_authority_ix(user: &Pubkey, mint: Pubkey, user_ata: Pubkey, authority_pda: Pubkey) -> Instruction {
-    Instruction {
-        program_id: PROGRAM_ID,
-        accounts: vec![
-            AccountMeta::new(*user, true),
-            AccountMeta::new(authority_pda, false),
-            AccountMeta::new_readonly(mint, false),
-            AccountMeta::new(user_ata, false),
-            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
-            AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
-        ],
-        data: vec![*initialize_subscription_authority::DISCRIMINATOR],
-    }
-}
 
 #[allow(clippy::too_many_arguments)]
 fn subscribe_ix(
@@ -47,7 +31,7 @@ fn subscribe_ix(
     plan: &Plan,
     init_id: i64,
 ) -> Instruction {
-    let event_authority = Pubkey::new_from_array(crate::event_engine::event_authority_pda::ID.to_bytes());
+    let event_authority = Pubkey::new_from_array(event_authority_pda::ID.to_bytes());
     let expected_mint = plan.data.mint;
     let expected_amount = plan.data.terms.amount;
     let expected_period_hours = plan.data.terms.period_hours;
@@ -286,4 +270,32 @@ fn co_init_for_different_mint_does_not_satisfy_subscribe() {
 
     build_and_send_transaction_multi(&mut litesvm, &[&alice], &alice.pubkey(), &[init_ix, sub_ix])
         .assert_err_at(1, SubscriptionsError::StaleSubscriptionAuthority);
+}
+
+#[test]
+fn co_init_by_different_user_rejected() {
+    let (mut litesvm, alice, merchant, mint, alice_ata, plan_pda, plan_bump) = setup_plan();
+    let bob = init_wallet(&mut litesvm, 10_000_000_000);
+
+    let (alice_authority_pda, _) = get_subscription_authority_pda(&alice.pubkey(), &mint);
+    let (bob_subscription_pda, _) = get_subscription_pda(&plan_pda, &bob.pubkey());
+
+    let plan_account = litesvm.get_account(&plan_pda).unwrap();
+    let plan = Plan::load(&plan_account.data).unwrap();
+
+    let init_ix = init_authority_ix(&alice.pubkey(), mint, alice_ata, alice_authority_pda);
+    let sub_ix = subscribe_ix(
+        &bob.pubkey(),
+        &merchant.pubkey(),
+        plan_pda,
+        bob_subscription_pda,
+        alice_authority_pda,
+        1,
+        plan_bump,
+        plan,
+        UNKNOWN_INIT_ID,
+    );
+
+    build_and_send_transaction_multi(&mut litesvm, &[&alice, &bob], &alice.pubkey(), &[init_ix, sub_ix])
+        .assert_err_at(1, SubscriptionsError::Unauthorized);
 }
