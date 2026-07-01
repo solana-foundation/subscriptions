@@ -95,6 +95,11 @@ impl TryFrom<u32> for SubscriptionsError {
             602 => Ok(Self::InvalidEventTag),
             603 => Ok(Self::InvalidEventDiscriminator),
             604 => Ok(Self::InvalidSelfProgram),
+            // Up-to delegation errors (700-799)
+            700 => Ok(Self::UpToDelegationAmountZero),
+            701 => Ok(Self::UpToDelegationExpiryInPast),
+            702 => Ok(Self::UpToDelegationConsumed),
+            703 => Ok(Self::UpToRecipientMismatch),
             _ => Err(code),
         }
     }
@@ -108,6 +113,7 @@ impl TryFrom<u32> for SubscriptionsError {
 /// - **400--499**: Recurring delegation errors.
 /// - **500--599**: Plan and subscription errors.
 /// - **600--699**: Event emission errors.
+/// - **700--799**: Up-to delegation errors.
 #[derive(Debug, Copy, Clone, Error, CodamaErrors)]
 pub enum SubscriptionsError {
     // --- Generic errors (100--199) ---
@@ -282,4 +288,14 @@ pub enum SubscriptionsError {
     InvalidEventDiscriminator,
     #[error("Self program account does not match this program")]
     InvalidSelfProgram,
+
+    // --- Up-to delegation errors (700--799) ---
+    #[error("zero max amount specified")]
+    UpToDelegationAmountZero = 700,
+    #[error("Expiry time specified is less than current time")]
+    UpToDelegationExpiryInPast,
+    #[error("Up-to delegation already consumed")]
+    UpToDelegationConsumed,
+    #[error("Receiver owner does not match the bound recipient")]
+    UpToRecipientMismatch,
 }

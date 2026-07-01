@@ -69,6 +69,8 @@ pub enum AccountDiscriminator {
     RecurringDelegation = 3,
     /// [`SubscriptionDelegation`](super::subscription_delegation::SubscriptionDelegation) account.
     SubscriptionDelegation = 4,
+    /// [`UpToDelegation`](super::up_to_delegation::UpToDelegation) account.
+    UpToDelegation = 5,
 }
 
 impl TryFrom<u8> for AccountDiscriminator {
@@ -80,6 +82,7 @@ impl TryFrom<u8> for AccountDiscriminator {
             2 => Ok(Self::FixedDelegation),
             3 => Ok(Self::RecurringDelegation),
             4 => Ok(Self::SubscriptionDelegation),
+            5 => Ok(Self::UpToDelegation),
             _ => Err(SubscriptionsError::InvalidAccountDiscriminator.into()),
         }
     }
@@ -93,6 +96,7 @@ impl From<AccountDiscriminator> for u8 {
             AccountDiscriminator::FixedDelegation => 2,
             AccountDiscriminator::RecurringDelegation => 3,
             AccountDiscriminator::SubscriptionDelegation => 4,
+            AccountDiscriminator::UpToDelegation => 5,
         }
     }
 }

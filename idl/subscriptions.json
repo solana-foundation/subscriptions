@@ -310,6 +310,66 @@
       },
       {
         "data": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "header",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "header"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "subscriptionAuthority",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "mint",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "recipient",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "maxAmount",
+              "type": {
+                "endian": "le",
+                "format": "u64",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "expiryTs",
+              "type": {
+                "endian": "le",
+                "format": "i64",
+                "kind": "numberTypeNode"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        },
+        "kind": "accountNode",
+        "name": "upToDelegation",
+        "pda": {
+          "kind": "pdaLinkNode",
+          "name": "upToDelegation"
+        }
+      },
+      {
+        "data": {
           "fields": [],
           "kind": "structTypeNode"
         },
@@ -550,6 +610,58 @@
       },
       {
         "kind": "definedTypeNode",
+        "name": "createUpToDelegationData",
+        "type": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "nonce",
+              "type": {
+                "endian": "le",
+                "format": "u64",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "maxAmount",
+              "type": {
+                "endian": "le",
+                "format": "u64",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "recipient",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "expiryTs",
+              "type": {
+                "endian": "le",
+                "format": "i64",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "expectedSubscriptionAuthorityInitId",
+              "type": {
+                "endian": "le",
+                "format": "i64",
+                "kind": "numberTypeNode"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        }
+      },
+      {
+        "kind": "definedTypeNode",
         "name": "subscribeData",
         "type": {
           "fields": [
@@ -738,6 +850,11 @@
               "discriminator": 4,
               "kind": "enumEmptyVariantTypeNode",
               "name": "subscriptionDelegation"
+            },
+            {
+              "discriminator": 5,
+              "kind": "enumEmptyVariantTypeNode",
+              "name": "upToDelegation"
             }
           ]
         }
@@ -1289,6 +1406,30 @@
         "kind": "errorNode",
         "message": "Self program account does not match this program",
         "name": "invalidSelfProgram"
+      },
+      {
+        "code": 700,
+        "kind": "errorNode",
+        "message": "zero max amount specified",
+        "name": "upToDelegationAmountZero"
+      },
+      {
+        "code": 701,
+        "kind": "errorNode",
+        "message": "Expiry time specified is less than current time",
+        "name": "upToDelegationExpiryInPast"
+      },
+      {
+        "code": 702,
+        "kind": "errorNode",
+        "message": "Up-to delegation already consumed",
+        "name": "upToDelegationConsumed"
+      },
+      {
+        "code": 703,
+        "kind": "errorNode",
+        "message": "Receiver owner does not match the bound recipient",
+        "name": "upToRecipientMismatch"
       }
     ],
     "events": [
@@ -1930,6 +2071,98 @@
         ],
         "kind": "eventNode",
         "name": "subscriptionTransferEvent"
+      },
+      {
+        "data": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "delegation",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "delegator",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "delegatee",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "mint",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "amount",
+              "type": {
+                "endian": "le",
+                "format": "u64",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "recipient",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "receiverTokenAccount",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        },
+        "discriminators": [
+          {
+            "constant": {
+              "kind": "constantValueNode",
+              "type": {
+                "kind": "bytesTypeNode"
+              },
+              "value": {
+                "data": "e445a52e51cb9a1d",
+                "encoding": "base16",
+                "kind": "bytesValueNode"
+              }
+            },
+            "kind": "constantDiscriminatorNode",
+            "offset": 0
+          },
+          {
+            "constant": {
+              "kind": "constantValueNode",
+              "type": {
+                "kind": "bytesTypeNode"
+              },
+              "value": {
+                "data": "07",
+                "encoding": "base16",
+                "kind": "bytesValueNode"
+              }
+            },
+            "kind": "constantDiscriminatorNode",
+            "offset": 8
+          }
+        ],
+        "kind": "eventNode",
+        "name": "upToTransferEvent"
       }
     ],
     "instructions": [
@@ -3491,7 +3724,7 @@
           },
           {
             "docs": [
-              "The fixed or recurring delegation PDA to close"
+              "The fixed, recurring, or up-to delegation PDA to close"
             ],
             "isSigner": false,
             "isWritable": true,
@@ -3598,6 +3831,233 @@
         ],
         "kind": "instructionNode",
         "name": "revokeAbandonedSubscription"
+      },
+      {
+        "accounts": [
+          {
+            "docs": [
+              "The user creating the delegation"
+            ],
+            "isSigner": true,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "delegator"
+          },
+          {
+            "docs": [
+              "The subscription_authority PDA for this token"
+            ],
+            "isSigner": false,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "subscriptionAuthority"
+          },
+          {
+            "docs": [
+              "The up-to delegation PDA being created"
+            ],
+            "isSigner": false,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "delegationAccount"
+          },
+          {
+            "docs": [
+              "The user receiving delegation rights"
+            ],
+            "isSigner": false,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "delegatee"
+          },
+          {
+            "defaultValue": {
+              "kind": "publicKeyValueNode",
+              "publicKey": "11111111111111111111111111111111"
+            },
+            "docs": [
+              "The system program"
+            ],
+            "isSigner": false,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "systemProgram"
+          },
+          {
+            "docs": [
+              "Optional sponsor that funds the account rent. Defaults to the delegator/signer when omitted."
+            ],
+            "isOptional": true,
+            "isSigner": true,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "payer"
+          }
+        ],
+        "arguments": [
+          {
+            "defaultValue": {
+              "kind": "numberValueNode",
+              "number": 17
+            },
+            "defaultValueStrategy": "omitted",
+            "kind": "instructionArgumentNode",
+            "name": "discriminator",
+            "type": {
+              "endian": "le",
+              "format": "u8",
+              "kind": "numberTypeNode"
+            }
+          },
+          {
+            "kind": "instructionArgumentNode",
+            "name": "upToDelegation",
+            "type": {
+              "kind": "definedTypeLinkNode",
+              "name": "createUpToDelegationData"
+            }
+          }
+        ],
+        "discriminators": [
+          {
+            "kind": "fieldDiscriminatorNode",
+            "name": "discriminator",
+            "offset": 0
+          }
+        ],
+        "kind": "instructionNode",
+        "name": "createUpToDelegation",
+        "optionalAccountStrategy": "omitted"
+      },
+      {
+        "accounts": [
+          {
+            "docs": [
+              "The up-to delegation PDA to transfer from"
+            ],
+            "isSigner": false,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "delegationPda"
+          },
+          {
+            "docs": [
+              "The subscription-authority PDA"
+            ],
+            "isSigner": false,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "subscriptionAuthority"
+          },
+          {
+            "docs": [
+              "The delegator's ATA to transfer from"
+            ],
+            "isSigner": false,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "delegatorAta"
+          },
+          {
+            "docs": [
+              "The bound recipient's ATA to transfer to"
+            ],
+            "isSigner": false,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "receiverAta"
+          },
+          {
+            "docs": [
+              "The token mint"
+            ],
+            "isSigner": false,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "tokenMint"
+          },
+          {
+            "docs": [
+              "Token program"
+            ],
+            "isSigner": false,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "tokenProgram"
+          },
+          {
+            "docs": [
+              "The delegatee signing the transfer"
+            ],
+            "isSigner": true,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "delegatee"
+          },
+          {
+            "defaultValue": {
+              "kind": "pdaValueNode",
+              "pda": {
+                "kind": "pdaLinkNode",
+                "name": "eventAuthority"
+              },
+              "seeds": []
+            },
+            "docs": [
+              "The event authority PDA"
+            ],
+            "isSigner": false,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "eventAuthority"
+          },
+          {
+            "defaultValue": {
+              "kind": "publicKeyValueNode",
+              "publicKey": "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44"
+            },
+            "docs": [
+              "This program (for self-CPI)"
+            ],
+            "isSigner": false,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "selfProgram"
+          }
+        ],
+        "arguments": [
+          {
+            "defaultValue": {
+              "kind": "numberValueNode",
+              "number": 18
+            },
+            "defaultValueStrategy": "omitted",
+            "kind": "instructionArgumentNode",
+            "name": "discriminator",
+            "type": {
+              "endian": "le",
+              "format": "u8",
+              "kind": "numberTypeNode"
+            }
+          },
+          {
+            "kind": "instructionArgumentNode",
+            "name": "transferData",
+            "type": {
+              "kind": "definedTypeLinkNode",
+              "name": "transferData"
+            }
+          }
+        ],
+        "discriminators": [
+          {
+            "kind": "fieldDiscriminatorNode",
+            "name": "discriminator",
+            "offset": 0
+          }
+        ],
+        "kind": "instructionNode",
+        "name": "transferUpTo"
       }
     ],
     "kind": "programNode",
@@ -3788,6 +4248,53 @@
             "name": "subscriber",
             "type": {
               "kind": "publicKeyTypeNode"
+            }
+          }
+        ]
+      },
+      {
+        "kind": "pdaNode",
+        "name": "upToDelegation",
+        "seeds": [
+          {
+            "kind": "constantPdaSeedNode",
+            "type": {
+              "encoding": "utf8",
+              "kind": "stringTypeNode"
+            },
+            "value": {
+              "kind": "stringValueNode",
+              "string": "delegation"
+            }
+          },
+          {
+            "kind": "variablePdaSeedNode",
+            "name": "subscriptionAuthority",
+            "type": {
+              "kind": "publicKeyTypeNode"
+            }
+          },
+          {
+            "kind": "variablePdaSeedNode",
+            "name": "delegator",
+            "type": {
+              "kind": "publicKeyTypeNode"
+            }
+          },
+          {
+            "kind": "variablePdaSeedNode",
+            "name": "delegatee",
+            "type": {
+              "kind": "publicKeyTypeNode"
+            }
+          },
+          {
+            "kind": "variablePdaSeedNode",
+            "name": "nonce",
+            "type": {
+              "endian": "le",
+              "format": "u64",
+              "kind": "numberTypeNode"
             }
           }
         ]

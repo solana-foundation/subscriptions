@@ -67,11 +67,13 @@ import {
     findPlanPda,
     findRecurringDelegationPda,
     findSubscriptionAuthorityPda,
+    findUpToDelegationPda,
     getCancelSubscriptionInstructionAsync,
     getCloseSubscriptionAuthorityInstruction,
     getCreateFixedDelegationInstruction,
     getCreatePlanInstruction,
     getCreateRecurringDelegationInstruction,
+    getCreateUpToDelegationInstruction,
     getDeletePlanInstruction,
     getInitSubscriptionAuthorityInstructionAsync,
     getResumeSubscriptionInstructionAsync,
@@ -81,6 +83,7 @@ import {
     getTransferFixedInstruction,
     getTransferRecurringInstruction,
     getTransferSubscriptionInstruction,
+    getTransferUpToInstruction,
     getUpdatePlanInstruction,
     type PlanStatus,
     SUBSCRIPTIONS_PROGRAM_ADDRESS,
@@ -184,6 +187,18 @@ export type CreateRecurringDelegationInput = WithProgramAddress & {
     /** Unix timestamp when the first period begins. Pass 0 to start when the
      * transaction lands on chain (requires a non-zero `expiryTs`). */
     startTs: bigint | number;
+    tokenMint: Address;
+};
+
+export type CreateUpToDelegationInput = WithProgramAddress & {
+    delegatee: Address;
+    delegator: TransactionSigner;
+    expectedSubscriptionAuthorityInitId?: bigint | number;
+    expiryTs: bigint | number;
+    maxAmount: bigint | number;
+    nonce: bigint | number;
+    payer?: TransactionSigner;
+    recipient: Address;
     tokenMint: Address;
 };
 
@@ -441,6 +456,49 @@ export async function getCreateRecurringDelegationOverlayInstructionAsync(
     );
 }
 
+export async function getCreateUpToDelegationOverlayInstructionAsync(
+    input: CreateUpToDelegationInput,
+): Promise<Instruction> {
+    assertPositive(input.maxAmount, 'maxAmount');
+    if (input.expectedSubscriptionAuthorityInitId === undefined) {
+        throw new Error(
+            'getCreateUpToDelegationOverlayInstructionAsync requires expectedSubscriptionAuthorityInitId. Use the plugin client `subscriptions.instructions.createUpToDelegation(...)` to auto-fetch from the live authority.',
+        );
+    }
+    const [subscriptionAuthority] = await findSubscriptionAuthorityPda(
+        { tokenMint: input.tokenMint, user: input.delegator.address },
+        pdaConfig(input.programAddress),
+    );
+    const [delegationPda] = await findUpToDelegationPda(
+        {
+            delegatee: input.delegatee,
+            delegator: input.delegator.address,
+            nonce: input.nonce,
+            subscriptionAuthority,
+        },
+        pdaConfig(input.programAddress),
+    );
+    return appendPayer(
+        getCreateUpToDelegationInstruction(
+            {
+                delegatee: input.delegatee,
+                delegationAccount: delegationPda,
+                delegator: input.delegator,
+                subscriptionAuthority,
+                upToDelegation: {
+                    expectedSubscriptionAuthorityInitId: input.expectedSubscriptionAuthorityInitId,
+                    expiryTs: input.expiryTs,
+                    maxAmount: input.maxAmount,
+                    nonce: input.nonce,
+                    recipient: input.recipient,
+                },
+            },
+            pdaConfig(input.programAddress),
+        ),
+        input.payer,
+    );
+}
+
 /** Revoke a fixed/recurring delegation. For subscription PDAs use {@link getRevokeSubscriptionOverlayInstruction}. */
 export function getRevokeDelegationOverlayInstruction(input: RevokeDelegationInput): Instruction {
     let ix: Instruction = getRevokeDelegationInstruction(
@@ -479,7 +537,10 @@ export function getRevokeSubscriptionOverlayInstruction(input: RevokeSubscriptio
 
 async function getTransferDelegationOverlayInstructionAsync(
     input: TransferDelegationInput,
-    getInstruction: typeof getTransferFixedInstruction | typeof getTransferRecurringInstruction,
+    getInstruction:
+        | typeof getTransferFixedInstruction
+        | typeof getTransferRecurringInstruction
+        | typeof getTransferUpToInstruction,
 ): Promise<Instruction> {
     assertPositive(input.amount, 'amount');
     const [subscriptionAuthority] = await findSubscriptionAuthorityPda(
@@ -515,6 +576,10 @@ export function getTransferFixedOverlayInstructionAsync(input: TransferDelegatio
 
 export function getTransferRecurringOverlayInstructionAsync(input: TransferDelegationInput): Promise<Instruction> {
     return getTransferDelegationOverlayInstructionAsync(input, getTransferRecurringInstruction);
+}
+
+export function getTransferUpToOverlayInstructionAsync(input: TransferDelegationInput): Promise<Instruction> {
+    return getTransferDelegationOverlayInstructionAsync(input, getTransferUpToInstruction);
 }
 
 export async function getTransferSubscriptionOverlayInstructionAsync(
@@ -717,6 +782,9 @@ export type SubscriptionsPluginInstructions = {
     createRecurringDelegation: (
         input: MakeOptional<CreateRecurringDelegationInput, 'delegator' | 'payer'>,
     ) => Self<Promise<Instruction>>;
+    createUpToDelegation: (
+        input: MakeOptional<CreateUpToDelegationInput, 'delegator' | 'payer'>,
+    ) => Self<Promise<Instruction>>;
     deletePlan: (input: MakeOptional<DeletePlanInput, 'owner'>) => Self<Instruction>;
     initSubscriptionAuthority: (
         input: MakeOptional<InitSubscriptionAuthorityInput, 'owner' | 'payer'>,
@@ -731,6 +799,7 @@ export type SubscriptionsPluginInstructions = {
     transferFixed: (input: MakeOptional<TransferDelegationInput, 'delegatee'>) => Self<Promise<Instruction>>;
     transferRecurring: (input: MakeOptional<TransferDelegationInput, 'delegatee'>) => Self<Promise<Instruction>>;
     transferSubscription: (input: MakeOptional<TransferSubscriptionInput, 'caller'>) => Self<Promise<Instruction>>;
+    transferUpTo: (input: MakeOptional<TransferDelegationInput, 'delegatee'>) => Self<Promise<Instruction>>;
     updatePlan: (input: MakeOptional<UpdatePlanInput, 'owner'>) => Self<Promise<Instruction>>;
 };
 
@@ -889,6 +958,26 @@ export function subscriptionsProgram() {
                             });
                         })(),
                     ),
+                createUpToDelegation: input =>
+                    addSelfPlanAndSendFunctions(
+                        client,
+                        (async () => {
+                            const delegator = input.delegator ?? client.identity;
+                            const expectedSubscriptionAuthorityInitId =
+                                await resolveExpectedSubscriptionAuthorityInitId(
+                                    input.tokenMint,
+                                    delegator.address,
+                                    input.programAddress,
+                                    input.expectedSubscriptionAuthorityInitId,
+                                );
+                            return await getCreateUpToDelegationOverlayInstructionAsync({
+                                ...input,
+                                delegator,
+                                expectedSubscriptionAuthorityInitId,
+                                payer: input.payer ?? (client.payer === client.identity ? undefined : client.payer),
+                            });
+                        })(),
+                    ),
                 deletePlan: input =>
                     addSelfPlanAndSendFunctions(
                         client,
@@ -1039,6 +1128,16 @@ export function subscriptionsProgram() {
                                 transferHookAccounts,
                             });
                         })(),
+                    ),
+                transferUpTo: input =>
+                    addSelfPlanAndSendFunctions(
+                        client,
+                        (async () =>
+                            await getTransferUpToOverlayInstructionAsync({
+                                ...input,
+                                delegatee: input.delegatee ?? client.identity,
+                                transferHookAccounts: await resolveDelegationHookAccounts(input),
+                            }))(),
                     ),
                 updatePlan: input =>
                     addSelfPlanAndSendFunctions(

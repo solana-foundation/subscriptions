@@ -9,6 +9,7 @@ use crate::{
     state::{
         common::AccountDiscriminator, fixed_delegation::FixedDelegation, plan::Plan,
         recurring_delegation::RecurringDelegation, subscription_delegation::SubscriptionDelegation,
+        up_to_delegation::UpToDelegation,
     },
     AccountCheck, AccountClose, Header, ProgramAccount, SignerAccount, SubscriptionsError, WritableAccount,
     DELEGATEE_OFFSET, DELEGATOR_OFFSET, DISCRIMINATOR_OFFSET, PAYER_OFFSET,
@@ -55,17 +56,17 @@ pub const DISCRIMINATOR: &u8 = &3;
 /// Trailing-account layout depends on the delegation kind read from the
 /// account data:
 ///
-/// * Fixed / Recurring: `[receiver?]` — `receiver` required when the original
-///   payer differs from the authority.
+/// * Fixed / Recurring / Up-to: `[receiver?]` — `receiver` required when the
+///   original payer differs from the authority.
 /// * Subscription: `[plan_pda, receiver?]` — `plan_pda` always required;
 ///   `receiver` required when the original payer differs from the authority.
 ///
 /// Authorization rules:
 ///
-/// * Fixed / Recurring: the delegator can close at any time. The sponsor
-///   (original payer) can close a Fixed delegation once it is expired
-///   (`expiry_ts` non-zero and in the past) or fully spent (remaining
-///   `amount == 0`); a Recurring delegation only once expired.
+/// * Fixed / Recurring / Up-to: the delegator can close at any time. The sponsor
+///   (original payer) can close a Fixed or Up-to delegation once it is expired
+///   (`expiry_ts` non-zero and in the past) or terminally spent (`amount` /
+///   `max_amount == 0`); a Recurring delegation only once expired.
 /// * Subscription: the subscriber (delegator) can close once `expires_at_ts`
 ///   has elapsed (set by `cancel_subscription`). The sponsor can close when
 ///   the plan ended naturally, the plan account was deleted, or the
@@ -128,18 +129,24 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
 
                 resolve_destination(&data, accounts.authority, receiver)?
             }
-            AccountDiscriminator::FixedDelegation | AccountDiscriminator::RecurringDelegation => {
+            AccountDiscriminator::FixedDelegation
+            | AccountDiscriminator::RecurringDelegation
+            | AccountDiscriminator::UpToDelegation => {
                 let is_sponsor = check_is_sponsor(&data, accounts.authority)?;
 
-                // Sponsor recovery: an expired delegation, or a fully-spent fixed
-                // delegation (remaining `amount` is zero, which is terminal since it
-                // only ever decreases).
+                // Sponsor recovery: an expired delegation, or a terminally-spent
+                // fixed/up-to delegation (remaining/`max_amount` is zero, which is
+                // terminal since it only ever decreases).
                 if is_sponsor {
                     let current_ts = Clock::get()?.unix_timestamp;
                     let recoverable = match kind {
                         AccountDiscriminator::FixedDelegation => {
                             let delegation = FixedDelegation::load_for_revoke(&data)?;
                             is_expired(delegation.expiry_ts, current_ts) || delegation.amount == 0
+                        }
+                        AccountDiscriminator::UpToDelegation => {
+                            let delegation = UpToDelegation::load_for_revoke(&data)?;
+                            is_expired(delegation.expiry_ts, current_ts) || delegation.max_amount == 0
                         }
                         _ => {
                             let delegation = RecurringDelegation::load_for_revoke(&data)?;

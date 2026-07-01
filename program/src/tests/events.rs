@@ -3,7 +3,7 @@ use pinocchio::error::ProgramError;
 use crate::event_engine::{EventDiscriminators, EventSerialize, EVENT_DISCRIMINATOR_LEN, EVENT_IX_TAG_LE};
 use crate::events::{
     Event, FixedTransferEvent, PlanUpdatedEvent, RecurringTransferEvent, SubscriptionCancelledEvent,
-    SubscriptionCreatedEvent, SubscriptionResumedEvent, SubscriptionTransferEvent,
+    SubscriptionCreatedEvent, SubscriptionResumedEvent, SubscriptionTransferEvent, UpToTransferEvent,
 };
 use crate::SubscriptionsError;
 
@@ -38,5 +38,6 @@ pub fn decode_event<'a>(data: &'a [u8]) -> Result<Event<'a>, ProgramError> {
             Ok(Event::SubscriptionResumed(SubscriptionResumedEvent::load(payload)?))
         }
         EventDiscriminators::PlanUpdated => Ok(Event::PlanUpdated(PlanUpdatedEvent::load(payload)?)),
+        EventDiscriminators::UpToTransfer => Ok(Event::UpToTransfer(UpToTransferEvent::load(payload)?)),
     }
 }

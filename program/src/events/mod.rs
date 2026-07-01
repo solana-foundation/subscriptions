@@ -12,6 +12,7 @@ pub mod subscription_cancelled;
 pub mod subscription_created;
 pub mod subscription_resumed;
 pub mod subscription_transfer;
+pub mod up_to_transfer;
 
 pub use fixed_transfer::*;
 pub use plan_updated::*;
@@ -20,6 +21,7 @@ pub use subscription_cancelled::*;
 pub use subscription_created::*;
 pub use subscription_resumed::*;
 pub use subscription_transfer::*;
+pub use up_to_transfer::*;
 
 /// Typed reference to one of the program's events, used for decoding.
 pub enum Event<'a> {
@@ -37,4 +39,6 @@ pub enum Event<'a> {
     SubscriptionResumed(&'a SubscriptionResumedEvent),
     /// See [`PlanUpdatedEvent`].
     PlanUpdated(&'a PlanUpdatedEvent),
+    /// See [`UpToTransferEvent`].
+    UpToTransfer(&'a UpToTransferEvent),
 }
