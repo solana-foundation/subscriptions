@@ -47,11 +47,11 @@
         "@solana/program-client-core": "^6.10.0"
     },
     "peerDependencies": {
-        "@solana/kit": "^6.4.0"
+        "@solana/kit": "^6.10.0"
     },
     "devDependencies": {
         "@solana-program/system": "^0.12.0",
-        "@solana/kit": "^6.9.0",
+        "@solana/kit": "^6.10.0",
         "@solana/kit-plugin-litesvm": "^0.12.1",
         "@solana/web3.js": "^1.98.4",
         "@sqds/multisig": "^2.1.4",
