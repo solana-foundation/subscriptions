@@ -8,8 +8,8 @@ use crate::{
     event_engine::{self, EventSerialize},
     events::UpToTransferEvent,
     helpers::{
-        check_token_account_mint, get_token_account_owner, transfer_with_delegate, validate_up_to_transfer, Delegation,
-        DelegationTransferAccounts, TransferAccounts, TransferData,
+        check_token_account_mint, get_token_account_owner, transfer_with_delegate, validate_up_to_transfer,
+        verify_associated_token_account, Delegation, DelegationTransferAccounts, TransferAccounts, TransferData,
     },
     state::common::AccountDiscriminator,
     state::UpToDelegation,
@@ -63,6 +63,13 @@ pub fn process(accounts: &mut [AccountView], transfer: &TransferData) -> Program
     if receiver_owner != recipient {
         return Err(SubscriptionsError::UpToRecipientMismatch.into());
     }
+
+    verify_associated_token_account(
+        accounts_struct.receiver_ata,
+        &recipient,
+        &transfer.mint,
+        accounts_struct.token_program,
+    )?;
 
     if transfer.amount > 0 {
         transfer_with_delegate(

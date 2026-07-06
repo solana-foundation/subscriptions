@@ -3,7 +3,7 @@ use crate::{
         asserts::TransactionResultExt,
         constants::{MINT_DECIMALS, TOKEN_PROGRAM_ID},
         utils::{
-            current_ts, days, get_ata_balance, get_up_to_max_amount, init_ata, init_mint,
+            current_ts, days, get_ata_balance, get_up_to_max_amount, init_ata, init_aux_token_account, init_mint,
             initialize_subscription_authority_action, move_clock_forward, setup, CreateDelegation, TransferDelegation,
         },
     },
@@ -167,6 +167,22 @@ fn test_up_to_zero_draw_wrong_mint_receiver_rejected() {
         .up_to()
         .assert_err(SubscriptionsError::MintMismatch);
 
+    assert_eq!(get_up_to_max_amount(&litesvm, &delegation_pda), max_amount);
+}
+
+#[test]
+fn test_up_to_non_canonical_recipient_ata_rejected() {
+    let max_amount: u64 = 50_000_000;
+    let expiry_ts: i64 = current_ts() + days(1) as i64;
+    let (mut litesvm, alice, bob, charlie, delegation_pda, mint, _alice_ata, _charlie_ata) =
+        setup_up_to(max_amount, expiry_ts, 8);
+
+    let charlie_aux = init_aux_token_account(&mut litesvm, mint, charlie.pubkey(), 0);
+    TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
+        .amount(10_000_000)
+        .to(charlie_aux)
+        .up_to()
+        .assert_err(SubscriptionsError::InvalidAssociatedTokenAccountDerivedAddress);
     assert_eq!(get_up_to_max_amount(&litesvm, &delegation_pda), max_amount);
 }
 

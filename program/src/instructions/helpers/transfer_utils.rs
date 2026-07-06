@@ -37,6 +37,25 @@ pub fn check_token_account_mint(data: &[u8], expected: &Address) -> Result<(), S
     Ok(())
 }
 
+/// Verifies that `ata` is the canonical associated token account for `owner`/`mint`
+/// under `token_program`, rejecting any non-canonical or aux token account.
+pub fn verify_associated_token_account(
+    ata: &AccountView,
+    owner: &Address,
+    mint: &Address,
+    token_program: &AccountView,
+) -> ProgramResult {
+    let expected = Address::find_program_address(
+        &[owner.as_ref(), token_program.address().as_ref(), mint.as_ref()],
+        &pinocchio_associated_token_account::ID,
+    )
+    .0;
+    if expected != *ata.address() {
+        return Err(SubscriptionsError::InvalidAssociatedTokenAccountDerivedAddress.into());
+    }
+    Ok(())
+}
+
 /// Reads the owner pubkey from raw SPL token account data.
 pub fn get_token_account_owner(data: &[u8]) -> Result<Address, SubscriptionsError> {
     if data.len() < TOKEN_ACCOUNT_OWNER_END {
@@ -154,14 +173,7 @@ pub fn transfer_with_delegate(
         check_token_account_owner(&ata_data, delegator)?;
         check_token_account_mint(&ata_data, mint)?;
     }
-    let expected_ata = Address::find_program_address(
-        &[delegator.as_ref(), accounts.token_program.address().as_ref(), mint.as_ref()],
-        &pinocchio_associated_token_account::ID,
-    )
-    .0;
-    if expected_ata != *accounts.delegator_ata.address() {
-        return Err(SubscriptionsError::InvalidAssociatedTokenAccountDerivedAddress.into());
-    }
+    verify_associated_token_account(accounts.delegator_ata, delegator, mint, accounts.token_program)?;
 
     {
         let to_data = accounts.to_ata.try_borrow()?;
