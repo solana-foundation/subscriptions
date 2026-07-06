@@ -174,11 +174,11 @@ export function useSubscriptionsMutations() {
                     ? [
                           await getRevokeSubscriptionAuthorityOverlayInstructionAsync({
                               programAddress: progId,
+                              receiver,
                               tokenMint: address(tokenMint),
                               tokenProgram,
                               user: signer,
                           }),
-                          closeInstruction,
                       ]
                     : [closeInstruction];
 
