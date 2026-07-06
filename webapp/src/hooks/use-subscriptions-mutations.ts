@@ -12,6 +12,7 @@ import {
     getInitSubscriptionAuthorityOverlayInstructionAsync,
     getResumeSubscriptionOverlayInstructionAsync,
     getRevokeAbandonedDelegationInstruction,
+    getRevokeAbandonedSubscriptionInstruction,
     getRevokeDelegationOverlayInstruction,
     getRevokeSubscriptionAuthorityOverlayInstructionAsync,
     getRevokeSubscriptionOverlayInstruction,
@@ -607,6 +608,69 @@ export function useSubscriptionsMutations() {
         },
     });
 
+    const resubscribeStaleSubscription = useMutation({
+        mutationFn: async ({
+            merchant,
+            planId,
+            planPda,
+            subscriptionPda,
+            tokenMint,
+            expectedAmount,
+            expectedPeriodHours,
+            expectedCreatedAt,
+            expectedSubscriptionAuthorityInitId,
+        }: {
+            expectedAmount: bigint;
+            expectedCreatedAt: bigint;
+            expectedPeriodHours: bigint;
+            expectedSubscriptionAuthorityInitId: bigint;
+            merchant: string;
+            planId: bigint;
+            planPda: string;
+            subscriptionPda: string;
+            tokenMint: string;
+        }) => {
+            if (!signer) throw new Error('Wallet not connected');
+            if (!progId) throw new Error('Program address not configured');
+
+            const [subscriptionAuthority] = await findSubscriptionAuthorityPda(
+                { tokenMint: address(tokenMint), user: signer.address },
+                { programAddress: progId },
+            );
+
+            const revokeInstruction = getRevokeAbandonedSubscriptionInstruction(
+                {
+                    payer: signer,
+                    planPda: address(planPda),
+                    subscriptionAccount: address(subscriptionPda),
+                    subscriptionAuthority,
+                },
+                { programAddress: progId },
+            );
+
+            const subscribeInstruction = await getSubscribeOverlayInstructionAsync({
+                expectedAmount,
+                expectedCreatedAt,
+                expectedPeriodHours,
+                expectedSubscriptionAuthorityInitId,
+                merchant: address(merchant),
+                planId,
+                programAddress: progId,
+                subscriber: signer,
+                tokenMint: address(tokenMint),
+            });
+
+            const signature = await signAndSend([revokeInstruction, subscribeInstruction], signer);
+            return { signature };
+        },
+        onError: error => toast.onError(error),
+        onSuccess: res => {
+            toast.onSuccess(res.signature);
+            queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+            queryClient.invalidateQueries({ queryKey: ['delegations'] });
+        },
+    });
+
     const revokeSubscription = useMutation({
         mutationFn: async ({
             subscriptionPda,
@@ -1027,6 +1091,7 @@ export function useSubscriptionsMutations() {
         createRecurringDelegation,
         deletePlan,
         initSubscriptionAuthority,
+        resubscribeStaleSubscription,
         resumeSubscription,
         revokeAbandonedDelegations,
         revokeDelegation,

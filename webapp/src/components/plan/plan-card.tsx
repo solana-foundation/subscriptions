@@ -699,8 +699,11 @@ export function PlanCard({
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [subscribeOpen, setSubscribeOpen] = useState(false);
-    const { resumeSubscription } = useSubscriptionsMutations();
+    const { resumeSubscription, resubscribeStaleSubscription } = useSubscriptionsMutations();
     const { data: mySubscriptions } = useMySubscriptions();
+    const { data: authorityStatus } = useSubscriptionAuthorityStatus(plan.data.mint);
+    const { account } = useWallet();
+    const authorityInitId = authorityStatus?.data?.initId;
     const matchingSub = useMemo(
         () => mySubscriptions?.find(s => s.subscription.header.delegatee === plan.address) ?? null,
         [mySubscriptions, plan.address],
@@ -713,8 +716,19 @@ export function PlanCard({
         (plan.data.terms.amount !== matchingSub.subscription.terms.amount ||
             plan.data.terms.periodHours !== matchingSub.subscription.terms.periodHours ||
             plan.data.terms.createdAt !== matchingSub.subscription.terms.createdAt);
+    const isStaleSub =
+        matchingSub != null && (authorityInitId == null || matchingSub.subscription.header.initId !== authorityInitId);
     const [subDaysLeft, setSubDaysLeft] = useState<number | null>(null);
-    const canResumeSubscription = isCancelledSub && !isGhostSubscription && subDaysLeft !== null && subDaysLeft > 0;
+    const canResumeSubscription =
+        isCancelledSub && !isGhostSubscription && !isStaleSub && subDaysLeft !== null && subDaysLeft > 0;
+    const canResubscribe =
+        isCancelledSub &&
+        isStaleSub &&
+        !isGhostSubscription &&
+        authorityInitId != null &&
+        matchingSub != null &&
+        account != null &&
+        matchingSub.subscription.header.payer === account;
 
     const meta = useMemo(() => parsePlanMeta(plan.data.metadataUri), [plan.data.metadataUri]);
     const { data: tokens } = useTokenConfig();
@@ -931,6 +945,35 @@ export function PlanCard({
                                 >
                                     Resume Subscription
                                 </SolanaButton>
+                            ) : canResubscribe && matchingSub ? (
+                                <SolanaButton
+                                    size="sm"
+                                    onClick={(e: React.MouseEvent) => {
+                                        e.stopPropagation();
+                                        if (authorityInitId == null) return;
+                                        resubscribeStaleSubscription.mutate({
+                                            merchant: plan.owner,
+                                            planId: plan.data.planId,
+                                            planPda: plan.address,
+                                            subscriptionPda: matchingSub.address,
+                                            tokenMint: plan.data.mint,
+                                            expectedAmount: plan.data.terms.amount,
+                                            expectedPeriodHours: plan.data.terms.periodHours,
+                                            expectedCreatedAt: plan.data.terms.createdAt,
+                                            expectedSubscriptionAuthorityInitId: authorityInitId,
+                                        });
+                                    }}
+                                    disabled={resubscribeStaleSubscription.isPending || isSunset || planExpired}
+                                    loading={resubscribeStaleSubscription.isPending}
+                                    iconLeft={<RotateCcw />}
+                                    style={{ width: '100%' }}
+                                >
+                                    Re-subscribe
+                                </SolanaButton>
+                            ) : isCancelledSub && isStaleSub ? (
+                                <Badge variant="danger" className="w-full justify-center" style={{ height: '2.25rem' }}>
+                                    Stale subscription \u2014 re-enable delegations for this token to re-subscribe
+                                </Badge>
                             ) : isCancelledSub ? (
                                 <Badge variant="danger" className="w-full justify-center" style={{ height: '2.25rem' }}>
                                     Cancelled{' '}
