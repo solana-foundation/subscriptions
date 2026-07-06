@@ -56,7 +56,7 @@
         "@solana/web3.js": "^1.98.4",
         "@sqds/multisig": "^2.1.4",
         "@swig-wallet/kit": "^2.1.0",
-        "@types/node": "^25.7.0",
+        "@types/node": "^26.0.1",
         "litesvm": "1.2.0",
         "tsup": "^8.3.0",
         "tweetnacl": "^1.0.3",

@@ -21,7 +21,7 @@
     "@solana/prettier-config-solana": "^0.0.6",
     "@types/eslint": "^9.6.1",
     "@types/eslint__js": "^9.14.0",
-    "@types/node": "^25.7.0",
+    "@types/node": "^26.0.1",
     "codama": "^1.8.0",
     "eslint": "^9.39.2",
     "eslint-plugin-jest": "^29.12.1",
