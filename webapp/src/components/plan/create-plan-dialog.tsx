@@ -9,7 +9,7 @@ import { useTokenConfig } from '@/hooks/use-token-config';
 import { cn, ellipsify } from '@/lib/utils';
 import { getBlockTimestamp } from '@/hooks/use-time-travel';
 import { useClusterConfig } from '@/hooks/use-cluster-config';
-import { PLAN_ICONS } from '@/lib/plan-constants';
+import { MIN_END_TS_MARGIN_SECS, PLAN_ICONS } from '@/lib/plan-constants';
 import { parseTokenAmount } from '@/lib/token-display';
 
 const PLAN_TEMPLATES = [
@@ -70,7 +70,7 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
     const [periodUnit, setPeriodUnit] = useState<'hours' | 'days' | 'weeks' | 'months'>('days');
     const [noEndDate, setNoEndDate] = useState(true);
     const [endDate, setEndDate] = useState('');
-    const [endHour, setEndHour] = useState('12');
+    const [endTime, setEndTime] = useState('12:00');
     const [destinations, setDestinations] = useState<string[]>([]);
     const [pullers, setPullers] = useState<string[]>([]);
     const [selectedMint, setSelectedMint] = useState('');
@@ -124,7 +124,7 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
         setPeriodUnit('days');
         setNoEndDate(true);
         setEndDate('');
-        setEndHour('12');
+        setEndTime('12:00');
         setDestinations([]);
         setPullers([]);
         setSelectedMint('');
@@ -159,11 +159,9 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
         setPeriodUnit(t.periodUnit);
     };
 
-    const endTsComputed = endDate
-        ? Math.floor(new Date(`${endDate}T${endHour.padStart(2, '0')}:00:00`).getTime() / 1000)
-        : 0;
+    const endTsComputed = endDate ? Math.floor(new Date(`${endDate}T${endTime}:00`).getTime() / 1000) : 0;
     const minEndTs = blockTs + periodHours * 3600;
-    const isEndDateValid = endTsComputed === 0 || endTsComputed > minEndTs;
+    const isEndDateValid = endTsComputed === 0 || endTsComputed >= minEndTs + MIN_END_TS_MARGIN_SECS;
 
     const isFormValid =
         planName.length > 0 &&
@@ -180,10 +178,7 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
 
         const planId = crypto.getRandomValues(new BigUint64Array(1))[0];
         const amountInSmallestUnits = parseTokenAmount(amount, selectedToken.decimals);
-        const endTsRaw = endDate
-            ? Math.floor(new Date(`${endDate}T${endHour.padStart(2, '0')}:00:00`).getTime() / 1000)
-            : 0;
-        const endTs = Number.isNaN(endTsRaw) ? 0 : endTsRaw;
+        const endTs = Number.isNaN(endTsComputed) ? 0 : endTsComputed;
 
         const filteredDestinations = destinations.filter(d => d.length > 0);
         const filteredPullers = pullers.filter(p => p.length > 0);
@@ -444,19 +439,14 @@ export function CreatePlanDialog({ open, onOpenChange }: CreatePlanDialogProps) 
                                             min={new Date(minEndTs * 1000).toLocaleDateString('en-CA')}
                                             className="flex-1"
                                         />
-                                        <Select
-                                            value={endHour}
-                                            onValueChange={value => {
-                                                if (value) setEndHour(value);
-                                            }}
+                                        <TextInput
+                                            type="time"
+                                            value={endTime}
+                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                                setEndTime(e.target.value)
+                                            }
                                             className="w-28 shrink-0"
-                                        >
-                                            {Array.from({ length: 24 }, (_, i) => (
-                                                <SelectItem key={i} value={i.toString()}>
-                                                    {i.toString().padStart(2, '0')}:00
-                                                </SelectItem>
-                                            ))}
-                                        </Select>
+                                        />
                                     </div>
                                     {endDate && !isEndDateValid && (
                                         <p className="text-xs text-destructive">

@@ -38,7 +38,7 @@ import { useTokenConfig } from '@/hooks/use-token-config';
 import { resolveTokenProgram } from '@/lib/token-program';
 import type { PlanItem } from '@/hooks/use-plans';
 import { useMySubscriptions, useSubscriberCount } from '@/hooks/use-subscriptions';
-import { PLAN_ICONS, ICON_MAP, parsePlanMeta, type PlanMeta } from '@/lib/plan-constants';
+import { MIN_END_TS_MARGIN_SECS, PLAN_ICONS, ICON_MAP, parsePlanMeta, type PlanMeta } from '@/lib/plan-constants';
 import { ExplorerLink } from '@/components/cluster/cluster-ui';
 import { formatPlanTokenAmount, resolvePlanTokenDisplay, type PlanTokenDisplay } from '@/lib/token-display';
 
@@ -84,12 +84,12 @@ function EditPlanDialog({
     const [endDate, setEndDate] = useState(() => {
         const ts = Number(plan.data.endTs);
         if (ts === 0) return '';
-        return new Date(ts * 1000).toISOString().slice(0, 10);
+        return new Date(ts * 1000).toLocaleDateString('en-CA');
     });
-    const [endHour, setEndHour] = useState(() => {
+    const [endTime, setEndTime] = useState(() => {
         const ts = Number(plan.data.endTs);
-        if (ts === 0) return '12';
-        return new Date(ts * 1000).getHours().toString();
+        if (ts === 0) return '12:00';
+        return new Date(ts * 1000).toTimeString().slice(0, 5);
     });
     const [sunsetMode, setSunsetMode] = useState(false);
     const [pullers, setPullers] = useState<string[]>(() => plan.data.pullers.filter(p => p !== ZERO_ADDRESS));
@@ -120,11 +120,9 @@ function EditPlanDialog({
 
     const metadataBytes = useMemo(() => new TextEncoder().encode(metadataJson).length, [metadataJson]);
 
-    const endTsComputed = endDate
-        ? Math.floor(new Date(`${endDate}T${endHour.padStart(2, '0')}:00:00`).getTime() / 1000)
-        : 0;
+    const endTsComputed = endDate ? Math.floor(new Date(`${endDate}T${endTime}:00`).getTime() / 1000) : 0;
     const minEndTs = (blockTime ?? 0) + Number(plan.data.terms.periodHours) * 3600;
-    const isEndDateValid = endTsComputed === 0 || endTsComputed > minEndTs;
+    const isEndDateValid = endTsComputed === 0 || endTsComputed >= minEndTs + MIN_END_TS_MARGIN_SECS;
 
     const handleUpdate = () => {
         const endTs = endTsComputed;
@@ -250,20 +248,13 @@ function EditPlanDialog({
                                     className="flex-1"
                                     disabled={isSunset}
                                 />
-                                <Select
-                                    value={endHour}
+                                <TextInput
+                                    type="time"
+                                    value={endTime}
                                     disabled={isSunset}
-                                    onValueChange={value => {
-                                        if (value) setEndHour(value);
-                                    }}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEndTime(e.target.value)}
                                     className="w-28 shrink-0"
-                                >
-                                    {Array.from({ length: 24 }, (_, i) => (
-                                        <SelectItem key={i} value={i.toString()}>
-                                            {i.toString().padStart(2, '0')}:00
-                                        </SelectItem>
-                                    ))}
-                                </Select>
+                                />
                             </div>
                             {endDate && !isEndDateValid && (
                                 <p className="text-xs text-destructive">
