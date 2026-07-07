@@ -161,7 +161,7 @@ Delegates discover their delegations via `getProgramAccounts` with `memcmp` filt
 ```typescript
 // Delegatee discovers Bob's delegations:
 getProgramAccounts(PROGRAM_ID, {
-    filters: [{ memcmp: { offset: DELEGATEE_OFFSET, bytes: bobPubkey } }],
+    filters: [{ memcmp: { offset: DELEGATEE_OFFSET, bytes: bobAddress } }],
 });
 ```
 
