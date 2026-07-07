@@ -86,6 +86,11 @@ pub enum SubscriptionsInstruction {
         default_value = program("system")
     ))]
     #[codama(account(
+        name = "instructions_sysvar",
+        docs = "Instructions sysvar for same-transaction co-init detection",
+        default_value = public_key("Sysvar1nstructions1111111111111111111111111")
+    ))]
+    #[codama(account(
         name = "payer",
         signer,
         writable,
@@ -103,6 +108,11 @@ pub enum SubscriptionsInstruction {
         name = "system_program",
         docs = "The system program",
         default_value = program("system")
+    ))]
+    #[codama(account(
+        name = "instructions_sysvar",
+        docs = "Instructions sysvar for same-transaction co-init detection",
+        default_value = public_key("Sysvar1nstructions1111111111111111111111111")
     ))]
     #[codama(account(
         name = "payer",
@@ -262,6 +272,11 @@ pub enum SubscriptionsInstruction {
         name = "self_program",
         docs = "This program (for self-CPI)",
         default_value = public_key("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44")
+    ))]
+    #[codama(account(
+        name = "instructions_sysvar",
+        docs = "Instructions sysvar for same-transaction co-init detection",
+        default_value = public_key("Sysvar1nstructions1111111111111111111111111")
     ))]
     #[codama(account(
         name = "payer",
