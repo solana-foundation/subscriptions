@@ -7,4 +7,6 @@ pub static ASSOCIATED_TOKEN_PROGRAM_ID: Pubkey =
     Pubkey::new_from_array(pinocchio_associated_token_account::ID.to_bytes());
 
 pub static PROGRAM_ID: Pubkey = Pubkey::new_from_array(crate::ID.to_bytes());
+pub static INSTRUCTIONS_SYSVAR_ID: Pubkey =
+    Pubkey::new_from_array(pinocchio::sysvars::instructions::INSTRUCTIONS_ID.to_bytes());
 pub const MINT_DECIMALS: u8 = 6;

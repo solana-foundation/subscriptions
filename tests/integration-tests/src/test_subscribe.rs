@@ -4,7 +4,7 @@ use crate::{
     state::{Plan, PlanStatus, SubscriptionAuthority, SubscriptionDelegation},
     tests::{
         asserts::TransactionResultExt,
-        constants::{MINT_DECIMALS, PROGRAM_ID, SYSTEM_PROGRAM_ID, TOKEN_PROGRAM_ID},
+        constants::{INSTRUCTIONS_SYSVAR_ID, MINT_DECIMALS, PROGRAM_ID, SYSTEM_PROGRAM_ID, TOKEN_PROGRAM_ID},
         pda::{get_plan_pda, get_subscription_authority_pda, get_subscription_pda},
         utils::{
             build_and_send_transaction, current_ts, days, init_ata, init_mint, init_wallet,
@@ -220,6 +220,7 @@ fn subscribe_rejects_stale_subscription_authority_generation() {
         AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
         AccountMeta::new_readonly(event_authority, false),
         AccountMeta::new_readonly(PROGRAM_ID, false),
+        AccountMeta::new_readonly(INSTRUCTIONS_SYSVAR_ID, false),
     ];
 
     let data = [
@@ -270,6 +271,7 @@ fn subscribe_rejects_stale_expected_terms() {
         AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
         AccountMeta::new_readonly(event_authority, false),
         AccountMeta::new_readonly(PROGRAM_ID, false),
+        AccountMeta::new_readonly(INSTRUCTIONS_SYSVAR_ID, false),
     ];
 
     let data = [

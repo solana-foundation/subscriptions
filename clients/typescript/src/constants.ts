@@ -50,3 +50,11 @@ export const METADATA_URI_LEN = 128;
 
 /** On-chain delegation variant identifier (matches the `kind` tag in the `Delegation` union). */
 export type DelegationKindId = 'fixed' | 'recurring' | 'subscription';
+
+/**
+ * Sentinel `expectedSubscriptionAuthorityInitId` that opts a subscribe or
+ * delegation-creation instruction into same-transaction co-init detection.
+ * Pass this when the SubscriptionAuthority is initialized in the same transaction
+ * (1-step signup); the program then verifies co-init instead of matching `initId`.
+ */
+export const UNKNOWN_INIT_ID = -9223372036854775808n;
