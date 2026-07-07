@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
+export const MIN_END_TS_MARGIN_SECS = 120;
+
 export const PLAN_ICONS = [
     { name: 'BarChart3', label: 'Finance', icon: BarChart3 },
     { name: 'Newspaper', label: 'News', icon: Newspaper },
