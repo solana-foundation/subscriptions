@@ -34,7 +34,7 @@ const EXTRA_ACCOUNT_METAS_SEED = 'extra-account-metas';
 const TLV_HEADER_LEN = 12; // u64 discriminator + u32 length
 const POD_SLICE_COUNT_LEN = 4;
 const EXTRA_ACCOUNT_META_LEN = 35;
-const PUBKEY_LEN = 32;
+const ADDRESS_LEN = 32;
 const PDA_PROGRAM_INDEX_OFFSET = 1 << 7;
 // sha256("spl-transfer-hook-interface:execute")[..8]
 const EXECUTE_DISCRIMINATOR = Uint8Array.from([0x69, 0x25, 0x65, 0xc5, 0x4b, 0xfb, 0x66, 0x1a]);
@@ -120,7 +120,7 @@ async function unpackSeeds(
     return seeds;
 }
 
-async function unpackPubkeyData(
+async function unpackAddressData(
     config: ReadonlyUint8Array,
     previous: TransferHookAccount[],
     instructionData: Uint8Array,
@@ -129,14 +129,14 @@ async function unpackPubkeyData(
     const rest = config.subarray(1);
     if (config[0] === 1) {
         const offset = rest[0];
-        return addressDecoder.decode(instructionData.subarray(offset, offset + PUBKEY_LEN));
+        return addressDecoder.decode(instructionData.subarray(offset, offset + ADDRESS_LEN));
     }
     if (config[0] === 2) {
         const [accountIndex, offset] = [rest[0], rest[1]];
         const data = await fetchData(rpc, previous[accountIndex].address);
-        return addressDecoder.decode(data.subarray(offset, offset + PUBKEY_LEN));
+        return addressDecoder.decode(data.subarray(offset, offset + ADDRESS_LEN));
     }
-    throw new Error('transfer hook: invalid pubkey data');
+    throw new Error('transfer hook: invalid address data');
 }
 
 async function resolveMeta(
@@ -151,7 +151,7 @@ async function resolveMeta(
         return { address: addressDecoder.decode(meta.addressConfig), role };
     }
     if (meta.discriminator === 2) {
-        return { address: await unpackPubkeyData(meta.addressConfig, previous, instructionData, rpc), role };
+        return { address: await unpackAddressData(meta.addressConfig, previous, instructionData, rpc), role };
     }
     const programId =
         meta.discriminator === 1 ? hookProgram : previous[meta.discriminator - PDA_PROGRAM_INDEX_OFFSET].address;

@@ -2,14 +2,14 @@ import { getAddressDecoder } from '@solana/kit';
 
 const PROGRAM_ACCOUNT_TAG = 2;
 const PROGRAM_DATA_OFFSET = 4;
-const PROGRAM_DATA_PUBKEY_LEN = 32;
-const PROGRAM_ACCOUNT_MIN_LEN = PROGRAM_DATA_OFFSET + PROGRAM_DATA_PUBKEY_LEN;
+const PROGRAM_DATA_ADDRESS_LEN = 32;
+const PROGRAM_ACCOUNT_MIN_LEN = PROGRAM_DATA_OFFSET + PROGRAM_DATA_ADDRESS_LEN;
 const SLOT_OFFSET = 4;
 const SLOT_SIZE = 8;
 const AUTHORITY_FLAG_OFFSET = 12;
-const AUTHORITY_PUBKEY_OFFSET = 13;
-const AUTHORITY_PUBKEY_LEN = 32;
-const HEADER_SIZE = AUTHORITY_PUBKEY_OFFSET + AUTHORITY_PUBKEY_LEN;
+const AUTHORITY_ADDRESS_OFFSET = 13;
+const AUTHORITY_ADDRESS_LEN = 32;
+const HEADER_SIZE = AUTHORITY_ADDRESS_OFFSET + AUTHORITY_ADDRESS_LEN;
 
 export interface ProgramStatus {
     deployed: boolean;
@@ -71,7 +71,7 @@ export async function checkProgramStatus(rpcUrl: string, programAddress: string)
     if (data.length < PROGRAM_ACCOUNT_MIN_LEN || data[0] !== PROGRAM_ACCOUNT_TAG) return notDeployed;
 
     const addressDecoder = getAddressDecoder();
-    const programDataBytes = data.slice(PROGRAM_DATA_OFFSET, PROGRAM_DATA_OFFSET + PROGRAM_DATA_PUBKEY_LEN);
+    const programDataBytes = data.slice(PROGRAM_DATA_OFFSET, PROGRAM_DATA_OFFSET + PROGRAM_DATA_ADDRESS_LEN);
     const programDataAddress = addressDecoder.decode(programDataBytes);
 
     const pdResult = (await rpcCall(rpcUrl, 'getAccountInfo', [
@@ -100,7 +100,7 @@ export async function checkProgramStatus(rpcUrl: string, programAddress: string)
     let upgradeAuthority: string | null = null;
     if (hasAuthority && pdData.length >= HEADER_SIZE) {
         upgradeAuthority = addressDecoder.decode(
-            pdData.slice(AUTHORITY_PUBKEY_OFFSET, AUTHORITY_PUBKEY_OFFSET + AUTHORITY_PUBKEY_LEN),
+            pdData.slice(AUTHORITY_ADDRESS_OFFSET, AUTHORITY_ADDRESS_OFFSET + AUTHORITY_ADDRESS_LEN),
         );
     }
 

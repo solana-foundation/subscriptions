@@ -134,10 +134,10 @@ export function buildCloseBufferIx(buffer: Address, recipient: Address, authorit
 }
 
 export async function deriveProgramDataAddress(programId: Address): Promise<Address> {
-    const pubkeyEncoder = getAddressEncoder();
+    const addressEncoder = getAddressEncoder();
     const [pda] = await getProgramDerivedAddress({
         programAddress: BPF_LOADER_UPGRADEABLE,
-        seeds: [pubkeyEncoder.encode(programId)],
+        seeds: [addressEncoder.encode(programId)],
     });
     return pda;
 }

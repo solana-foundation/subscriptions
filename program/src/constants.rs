@@ -19,26 +19,26 @@ pub const TOKEN_2022_MINT_DISCRIMINATOR: u8 = 0x01;
 /// Token-2022 discriminator value indicating a **token account**.
 pub const TOKEN_2022_TOKEN_ACCOUNT_DISCRIMINATOR: u8 = 0x02;
 
-/// Byte offset where the `mint` pubkey begins in an SPL token account's data.
+/// Byte offset where the `mint` address begins in an SPL token account's data.
 pub const TOKEN_ACCOUNT_MINT_OFFSET: usize = 0;
 
-/// Byte offset one past the end of the `mint` pubkey (i.e., `MINT_OFFSET + 32`).
+/// Byte offset one past the end of the `mint` address (i.e., `MINT_OFFSET + 32`).
 pub const TOKEN_ACCOUNT_MINT_END: usize = TOKEN_ACCOUNT_MINT_OFFSET + 32;
 
-/// Byte offset where the `owner` pubkey begins in an SPL token account's data.
+/// Byte offset where the `owner` address begins in an SPL token account's data.
 pub const TOKEN_ACCOUNT_OWNER_OFFSET: usize = 32;
 
-/// Byte offset one past the end of the `owner` pubkey (i.e., `OWNER_OFFSET + 32`).
+/// Byte offset one past the end of the `owner` address (i.e., `OWNER_OFFSET + 32`).
 pub const TOKEN_ACCOUNT_OWNER_END: usize = TOKEN_ACCOUNT_OWNER_OFFSET + 32;
 
 /// Byte offset of the `delegate` `COption` tag in an SPL token account's data.
-/// `0` means no delegate; `1` means the 32-byte pubkey at [`TOKEN_ACCOUNT_DELEGATE_OFFSET`] is set.
+/// `0` means no delegate; `1` means the 32-byte address at [`TOKEN_ACCOUNT_DELEGATE_OFFSET`] is set.
 pub const TOKEN_ACCOUNT_DELEGATE_TAG_OFFSET: usize = 72;
 
-/// Byte offset where the `delegate` pubkey begins (immediately after its 4-byte `COption` tag).
+/// Byte offset where the `delegate` address begins (immediately after its 4-byte `COption` tag).
 pub const TOKEN_ACCOUNT_DELEGATE_OFFSET: usize = TOKEN_ACCOUNT_DELEGATE_TAG_OFFSET + 4;
 
-/// Byte offset one past the end of the `delegate` pubkey (i.e., `DELEGATE_OFFSET + 32`).
+/// Byte offset one past the end of the `delegate` address (i.e., `DELEGATE_OFFSET + 32`).
 pub const TOKEN_ACCOUNT_DELEGATE_END: usize = TOKEN_ACCOUNT_DELEGATE_OFFSET + 32;
 
 /// Byte offset of the `decimals` field in an SPL Token / Token-2022 base mint.
