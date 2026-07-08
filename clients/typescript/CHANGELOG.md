@@ -6,14 +6,16 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-_Targets `0.4.0` (release candidate `0.4.0-rc.1` published to npm)._
+## [0.4.0] — 2026-07-13
+
+_Matches on-chain program `v0.4.0`._
 
 ### Added
 
 - `revokeSubscriptionAuthority` (overlay derives `subscriptionAuthority`, accepts an optional `receiver`; `user` writable) and `revokeAbandonedDelegation` instruction builders. ([#162], [#163])
 - `resolveTransferHookAccounts`, plus automatic Token-2022 transfer-hook account resolution in `transferFixed`, `transferRecurring`, and `transferSubscription` on the plugin client. ([#160])
 - `revokeAbandonedSubscription` instruction builder.
-- Generated builders now expose the optional sponsor `payer` (`initSubscriptionAuthority`, `createFixedDelegation`, `createRecurringDelegation`, `subscribe`) and optional `receiver` (`closeSubscriptionAuthority`) accounts (the program has accepted them on-chain since v1.0.0; only the IDL/client modeling is new). Omitting them preserves the prior self-funded layout.
+- Generated builders now expose the optional sponsor `payer` (`initSubscriptionAuthority`, `createFixedDelegation`, `createRecurringDelegation`, `subscribe`) and optional `receiver` (`closeSubscriptionAuthority`) accounts (the program has accepted them on-chain since v0.3.0; only the IDL/client modeling is new). Omitting them preserves the prior self-funded layout.
 - Decoders for all program events (now registered in the IDL): transfer events include `receiverTokenAccount`, `SubscriptionCreatedEvent` includes `payer`, `SubscriptionTransferEvent` includes `puller`, plus the new `PlanUpdatedEvent`.
 - Generated error constants `SUBSCRIPTIONS_ERROR__PLAN_END_TS_CANNOT_EXTEND` (520) and `SUBSCRIPTIONS_ERROR__INVALID_SELF_PROGRAM` (604).
 

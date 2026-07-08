@@ -6,14 +6,16 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-_Targets `0.4.0` (release candidate `0.4.0-rc.1` published to crates.io)._
+## [0.4.0] — 2026-07-13
+
+_Matches on-chain program `v0.4.0`._
 
 ### Added
 
 - Instruction builders for `RevokeSubscriptionAuthority` (requires `subscription_authority`, optional `receiver`, `user` writable) and `RevokeAbandonedDelegation`. ([#162], [#163])
 - Token-2022 transfer-hook account resolution for fixed, recurring, and subscription transfers. ([#160])
 - `revokeAbandonedSubscription` instruction builder.
-- Generated builders now expose the optional sponsor `payer` (`initSubscriptionAuthority`, `createFixedDelegation`, `createRecurringDelegation`, `subscribe`) and optional `receiver` (`closeSubscriptionAuthority`) accounts (the program has accepted them on-chain since v1.0.0; only the IDL/client modeling is new). Omitting them preserves the prior self-funded layout.
+- Generated builders now expose the optional sponsor `payer` (`initSubscriptionAuthority`, `createFixedDelegation`, `createRecurringDelegation`, `subscribe`) and optional `receiver` (`closeSubscriptionAuthority`) accounts (the program has accepted them on-chain since v0.3.0; only the IDL/client modeling is new). Omitting them preserves the prior self-funded layout.
 - Generated decoders for all program events (now registered in the IDL): transfer events include `receiverTokenAccount`, `SubscriptionCreatedEvent` includes `payer`, `SubscriptionTransferEvent` includes `puller`, plus the new `PlanUpdatedEvent`.
 - Generated error variants `PlanEndTsCannotExtend` (520) and `InvalidSelfProgram` (604).
 
