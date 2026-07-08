@@ -8,7 +8,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [0.4.0] — 2026-07-13
 
-_Matches on-chain program `v0.4.0`._
+_Matches on-chain program `program-v0.4.0`._
 
 ### Added
 

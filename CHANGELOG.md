@@ -1,6 +1,6 @@
 # Changelog — Subscriptions program
 
-On-chain program `De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44`, versioned by `vX.Y.Z` git tags.
+On-chain program `De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44`, versioned by `program-vX.Y.Z` git tags.
 SDK client changelogs are tracked separately: [`clients/typescript`](clients/typescript/CHANGELOG.md) and [`clients/rust`](clients/rust/CHANGELOG.md).
 
 Versioning follows [Semantic Versioning](https://semver.org/).
@@ -25,6 +25,7 @@ _Target mainnet deploy 2026-07-13. Reproducible via `solana-verify`. **Includes 
 
 - `CreateRecurringDelegation` accepts `start_ts = 0` as a sentinel: the first period starts at the on-chain clock time when the transaction lands. Requires a non-zero `expiry_ts`. ([#164])
 - Tightened account and state validation. ([#163])
+- The last Token-2022 extension guard is removed — v0.3.0 rejected mints with a configured `TransferHook` (`MintHasTransferHook`, 121); such mints are now accepted and their hooks executed via account forwarding. The program no longer rejects any mint by extension; extension-guard error codes 118–124 are retained so existing clients keep decoding them, but are never raised. ([#160], [#186])
 - **Breaking** — event wire format: transfer events gain `receiver_token_account`, `SubscriptionCreatedEvent` gains `payer`, and `SubscriptionTransferEvent` gains `puller` (appended; existing field offsets preserved, total event size changed).
 - **Breaking** — `UpdatePlan` now requires two additional accounts (`event_authority`, `self_program`) for self-CPI event emission.
 
@@ -52,12 +53,13 @@ _Target mainnet deploy 2026-07-13. Reproducible via `solana-verify`. **Includes 
 
 ## [0.3.0] — 2026-06-01
 
-Initial audited mainnet release (`v0.3.0`, commit `0221a37`).
+Initial audited mainnet release (`program-v0.3.0`, commit `0221a37`).
 
-[Unreleased]: https://github.com/solana-foundation/subscriptions/compare/v0.4.0...main
-[0.4.0]: https://github.com/solana-foundation/subscriptions/compare/v0.3.0...v0.4.0
+[Unreleased]: https://github.com/solana-foundation/subscriptions/compare/program-v0.4.0...main
+[0.4.0]: https://github.com/solana-foundation/subscriptions/compare/program-v0.3.0...program-v0.4.0
 [0.3.0]: https://github.com/solana-foundation/subscriptions/commit/0221a37
 [#160]: https://github.com/solana-foundation/subscriptions/pull/160
 [#162]: https://github.com/solana-foundation/subscriptions/pull/162
 [#163]: https://github.com/solana-foundation/subscriptions/pull/163
 [#164]: https://github.com/solana-foundation/subscriptions/pull/164
+[#186]: https://github.com/solana-foundation/subscriptions/pull/186

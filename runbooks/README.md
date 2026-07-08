@@ -83,7 +83,7 @@ Our [Surfpool 101 Series](https://www.youtube.com/playlist?list=PL0FMgRjJMRzO1Fd
 $ surfpool ls
 Name                                    Description
 deployment                              Deploy programs
-surfnet-setup                           Install subscriptions program at canonical address
+surfnet-setup                           Install program at canonical address on surfnet (no keypair required)
 ```
 
 ### Start a Surfnet, automatically executing the `deployment` runbook on program recompile:

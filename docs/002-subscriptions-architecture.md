@@ -116,7 +116,7 @@ ADR-001 provides the core delegation infrastructure. Plans add a subscription mo
 5. **Management Flexibility**
     - `update_plan` allows:
         - Set status to Sunset (stop accepting new subscribers; effectively terminal — status/end_ts/metadata can no longer change, though the owner may still remove existing pullers; requires non-zero end_ts)
-        - Set end_ts (graceful discontinuation, or 0 to remove expiry; cannot be 0 when sunsetting)
+        - Shorten a finite end_ts (graceful discontinuation; a finite end_ts can never be extended or cleared — `PlanEndTsCannotExtend`; 0 is valid only when the plan already has no expiry)
         - Update pullers array (change authorized callers)
         - Update metadata_uri (change plan description/branding)
     - Without modifying core terms (mint, terms, destinations)
@@ -161,7 +161,7 @@ When a subscriber subscribes, the plan's `PlanTerms` (amount, period_hours, crea
 
 **What SubscriptionDelegation Stores:**
 
-- `header` (delegator = subscriber, delegatee = plan_pda, payer = subscriber, `init_id` = the subscriber's SubscriptionAuthority incarnation at subscribe time) — `resume`/abandon paths compare this `init_id` against the live authority to detect a stale (closed-and-reinitialized) authority
+- `header` (delegator = subscriber, delegatee = plan_pda, payer = rent payer: the subscriber, or a sponsor when provided, `init_id` = the subscriber's SubscriptionAuthority incarnation at subscribe time) — `resume`/abandon paths compare this `init_id` against the live authority to detect a stale (closed-and-reinitialized) authority
 - `terms` - snapshot of plan's PlanTerms (amount, period_hours, created_at)
 - `amount_pulled_in_period` - tracking for the current billing period
 - `current_period_start_ts` - start of the current billing period
@@ -269,7 +269,7 @@ The `destinations` array controls where pulled funds can be sent. If the array i
 
 Per-subscriber billing state linked to a Plan:
 
-- `header`: 107 bytes - shared `Header` (delegator = subscriber, delegatee = plan_pda, payer = subscriber)
+- `header`: 107 bytes - shared `Header` (delegator = subscriber, delegatee = plan_pda, payer = subscriber or sponsor)
 - `terms`: 24 bytes (`PlanTerms`) - snapshot of the plan's billing terms at subscribe time
 - `amount_pulled_in_period`: 8 bytes (`u64`) - tokens transferred in the current billing period
 - `current_period_start_ts`: 8 bytes (`i64`) - start of the current billing period
@@ -385,7 +385,7 @@ Subscriber subscribes to a Plan, creating a lightweight `SubscriptionDelegation`
 
 | Account | Type             | Description                                                   |
 | ------- | ---------------- | ------------------------------------------------------------- |
-| 0       | signer, writable | Subscriber (pays rent)                                        |
+| 0       | signer, writable | Subscriber                                                    |
 | 1       |                  | Merchant (Plan owner)                                         |
 | 2       |                  | Plan PDA being subscribed to                                  |
 | 3       | writable         | SubscriptionDelegation PDA being created                      |
@@ -393,11 +393,14 @@ Subscriber subscribes to a Plan, creating a lightweight `SubscriptionDelegation`
 | 5       |                  | System program                                                |
 | 6       |                  | Event authority PDA                                           |
 | 7       |                  | This program (for self-CPI event emission)                    |
+| 8       | signer, writable | Payer (optional; sponsor funds rent, defaults to subscriber)  |
 
 **Parameters (SubscribeData):**
 
 - `plan_id: u64` - The plan's identifier (used with merchant to derive plan PDA)
 - `plan_bump: u8` - The plan PDA's bump seed (avoids on-chain `find_program_address`)
+- `expected_mint`, `expected_amount`, `expected_period_hours`, `expected_created_at` - the plan terms the subscriber consented to; mismatch with the live plan fails with `PlanTermsMismatch`
+- `expected_subscription_authority_init_id: i64` - the SA `init_id` the subscriber consented to; mismatch fails with `StaleSubscriptionAuthority`
 
 **Process:**
 
@@ -406,11 +409,12 @@ Subscriber subscribes to a Plan, creating a lightweight `SubscriptionDelegation`
 3. Validate subscriber's SubscriptionAuthority PDA exists and matches the plan's mint (else `MintMismatch`)
 4. Derive SubscriptionDelegation PDA from `["subscription", plan_pda, subscriber]`
 5. Check subscription doesn't already exist (else `AlreadySubscribed`)
-6. Create SubscriptionDelegation account with:
-    - `header.delegator = subscriber`, `header.delegatee = plan_pda`, `header.payer = subscriber`
+6. Verify the live plan terms match the `expected_*` consent fields (else `PlanTermsMismatch`) and the SA `init_id` matches `expected_subscription_authority_init_id` (else `StaleSubscriptionAuthority`)
+7. Create SubscriptionDelegation account with:
+    - `header.delegator = subscriber`, `header.delegatee = plan_pda`, `header.payer = rent payer (subscriber or sponsor)`
     - `terms = plan.data.terms` (snapshot of plan's billing terms)
     - `amount_pulled_in_period = 0`, `current_period_start_ts = current_ts`, `expires_at_ts = 0`
-7. Emit `SubscriptionCreatedEvent` via self-CPI
+8. Emit `SubscriptionCreatedEvent` via self-CPI
 
 ---
 
@@ -523,8 +527,8 @@ Subscriber resumes a cancelled subscription by clearing `expires_at_ts`. This do
 4. Verify the plan account is still program-owned (else `PlanClosed`)
 5. Verify the plan has not reached `end_ts` (else `PlanExpired`)
 6. Verify the live plan terms still match the subscription's snapshotted terms (else `PlanTermsMismatch`)
-7. Verify `expires_at_ts > current_ts` (else `SubscriptionCancelled`)
-8. Verify the SubscriptionAuthority is owned by the subscriber (else `Unauthorized`), its mint matches the plan (else `MintMismatch`), and its `init_id` equals the subscription's recorded `init_id` (else `StaleSubscriptionAuthority`) — prevents resuming against a closed-and-reinitialized authority.
+7. Verify the SubscriptionAuthority is owned by the subscriber (else `Unauthorized`), its mint matches the plan (else `MintMismatch`), and its `init_id` equals the subscription's recorded `init_id` (else `StaleSubscriptionAuthority`) — prevents resuming against a closed-and-reinitialized authority.
+8. Verify `expires_at_ts > current_ts` (else `SubscriptionCancelled`)
 
 **Process:**
 

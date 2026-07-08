@@ -40,7 +40,7 @@ setup-hooks:
     git config core.hooksPath .githooks
     @echo "✓ Git hooks configured"
 
-# Print program ID from keypair
+# Print program ID from declare_id! in program source
 program-id:
     @sed -n 's/.*declare_id!("\([^"]*\)").*/\1/p' "{{program_dir}}/src/lib.rs"
 
