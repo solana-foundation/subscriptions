@@ -2,9 +2,13 @@
 
 use codama::CodamaAccount;
 use core::mem::{size_of, transmute};
-use pinocchio::{error::ProgramError, Address};
+use pinocchio::{
+    error::ProgramError,
+    sysvars::{clock::Clock, Sysvar},
+    Address,
+};
 
-use crate::{state::common::AccountDiscriminator, SubscriptionsError};
+use crate::{state::common::AccountDiscriminator, SubscriptionsError, UNKNOWN_INIT_ID};
 
 /// Root PDA that acts as the SPL Token delegate for a user's associated token account.
 ///
@@ -99,6 +103,17 @@ impl SubscriptionAuthority {
     pub fn check_owner(&self, expected_user: &Address) -> Result<(), ProgramError> {
         if self.user != *expected_user {
             return Err(SubscriptionsError::Unauthorized.into());
+        }
+        Ok(())
+    }
+
+    /// Asserts the authority's generation matches what the caller consented to.
+    /// The [`UNKNOWN_INIT_ID`] sentinel accepts a same-slot creation (1-step
+    /// signup); any other value must equal the stored [`init_id`](Self::init_id).
+    pub fn check_init_id(&self, expected_init_id: i64) -> Result<(), ProgramError> {
+        let expected = if expected_init_id == UNKNOWN_INIT_ID { Clock::get()?.slot as i64 } else { expected_init_id };
+        if self.init_id != expected {
+            return Err(SubscriptionsError::StaleSubscriptionAuthority.into());
         }
         Ok(())
     }

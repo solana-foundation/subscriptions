@@ -21,7 +21,7 @@ use crate::{
         subscription_delegation::SubscriptionDelegation,
     },
     verify_plan_pda, AccountCheck, ProgramAccount, ProgramAccountInit, SignerAccount, SubscriptionAuthorityAccount,
-    SubscriptionsError, SystemAccount, WritableAccount, UNKNOWN_INIT_ID,
+    SubscriptionsError, SystemAccount, WritableAccount,
 };
 
 /// Instruction discriminator byte for `Subscribe`.
@@ -67,8 +67,7 @@ impl SubscribeData {
 /// [`SubscriptionCreatedEvent`].
 pub fn process(accounts: &mut [AccountView], data: &SubscribeData) -> ProgramResult {
     let accounts_struct = SubscribeAccounts::try_from(accounts)?;
-    let clock = Clock::get()?;
-    let current_ts = clock.unix_timestamp;
+    let current_ts = Clock::get()?.unix_timestamp;
 
     // Validate plan PDA derivation
     let expected_plan_pda = verify_plan_pda(accounts_struct.merchant.address(), data.plan_id, data.plan_bump)?;
@@ -117,14 +116,7 @@ pub fn process(accounts: &mut [AccountView], data: &SubscribeData) -> ProgramRes
         if subscription_authority.token_mint != plan_mint {
             return Err(SubscriptionsError::MintMismatch.into());
         }
-        let expected_init_id = if data.expected_subscription_authority_init_id == UNKNOWN_INIT_ID {
-            clock.slot as i64
-        } else {
-            data.expected_subscription_authority_init_id
-        };
-        if subscription_authority.init_id != expected_init_id {
-            return Err(SubscriptionsError::StaleSubscriptionAuthority.into());
-        }
+        subscription_authority.check_init_id(data.expected_subscription_authority_init_id)?;
         init_id = subscription_authority.init_id;
     }
 

@@ -1,14 +1,9 @@
-use pinocchio::{
-    cpi::Seed,
-    error::ProgramError,
-    sysvars::{clock::Clock, Sysvar},
-    AccountView, Address,
-};
+use pinocchio::{cpi::Seed, error::ProgramError, AccountView, Address};
 
 use crate::{
     helpers::system::resolve_optional_payer, state::common::find_delegation_pda, AccountCheck, Header, ProgramAccount,
     ProgramAccountInit, SignerAccount, SubscriptionAuthority, SubscriptionAuthorityAccount, SubscriptionsError,
-    SystemAccount, WritableAccount, DELEGATE_BASE_SEED, UNKNOWN_INIT_ID,
+    SystemAccount, WritableAccount, DELEGATE_BASE_SEED,
 };
 
 /// Validated accounts shared by `CreateFixedDelegation` and `CreateRecurringDelegation`.
@@ -68,15 +63,7 @@ pub fn create_delegation_account(
         let md_data = accounts.subscription_authority.try_borrow()?;
         let subscription_authority = SubscriptionAuthority::load(&md_data)?;
         subscription_authority.check_owner(accounts.delegator.address())?;
-
-        let expected_init_id = if expected_subscription_authority_init_id == UNKNOWN_INIT_ID {
-            Clock::get()?.slot as i64
-        } else {
-            expected_subscription_authority_init_id
-        };
-        if subscription_authority.init_id != expected_init_id {
-            return Err(SubscriptionsError::StaleSubscriptionAuthority.into());
-        }
+        subscription_authority.check_init_id(expected_subscription_authority_init_id)?;
 
         init_id = subscription_authority.init_id;
         mint = subscription_authority.token_mint;
