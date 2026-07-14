@@ -3,6 +3,9 @@ use pinocchio::{error::ProgramError, sysvars::instructions::Instructions, Accoun
 use crate::instructions::initialize_subscription_authority;
 
 const INIT_AUTHORITY_DISCRIMINATOR: u8 = *initialize_subscription_authority::DISCRIMINATOR;
+/// Wire positions of `user` and `subscription_authority` in the
+/// [`InitializeSubscriptionAuthorityAccounts`](initialize_subscription_authority::InitializeSubscriptionAuthorityAccounts)
+/// destructure; must stay in sync with that account order.
 const INIT_OWNER_ACCOUNT_INDEX: usize = 0;
 const INIT_AUTHORITY_ACCOUNT_INDEX: usize = 1;
 
