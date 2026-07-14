@@ -23,7 +23,7 @@ flowchart TD
 
 ### Tier 1 - Lazy update (transparent)
 
-Triggered automatically during normal instructions (transfer, cancel, revoke).
+Triggered automatically during normal instructions (transfer, cancel, resume).
 Transforms raw bytes in-place without realloc or extra accounts.
 
 - **When**: field value transforms, new fields fitting in existing padding

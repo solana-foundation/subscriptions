@@ -14,6 +14,8 @@ Supported delegation models:
 - **Recurring delegation**: authorize a delegatee to spend up to a per-period amount that resets each period, with configurable period length and overall expiry.
 - **Subscription plan**: a merchant publishes a plan with pricing terms; subscribers accept those terms and the merchant (or whitelisted pullers) can pull funds each billing period.
 
+Rent stays recoverable even after a user closes or re-initializes their Subscription Authority: the recorded payer can reclaim rent from the stranded delegation or subscription PDAs via the generated `RevokeAbandonedDelegation` / `RevokeAbandonedSubscription` instructions.
+
 The program emits on-chain events via self-CPI for indexer integration (subscription created/cancelled/resumed, plan updated, and fixed/recurring/subscription transfers). The events are registered in the Codama IDL, so indexers can decode them.
 
 Token-2022 mints are supported, including mints with a configured `TransferHook`. On delegated transfers the program forwards the caller-supplied hook accounts into the Token-2022 `TransferChecked` CPI, which resolves and runs the hook exactly as it would for a direct transfer; the program does not add or require extra hook-account guards of its own.
@@ -66,15 +68,16 @@ subscriptions/
 │   │   ├── event_engine.rs        # Self-CPI event emission
 │   │   ├── errors.rs              # Error codes
 │   │   ├── constants.rs           # Program constants
-│   │   └── tests/                 # Rust unit tests (LiteSVM)
+│   │   └── tests/                 # Rust unit tests
 ├── idl/                           # Generated IDL (subscriptions.json)
 ├── clients/
 │   ├── typescript/                # TypeScript SDK + integration tests
 │   └── rust/                      # Rust generated client
+├── tests/                         # LiteSVM integration tests + transfer-hook example program
 ├── webapp/                        # Demo UI (React) + local API server
 │   ├── src/                       # React app (routes, components, hooks)
 │   ├── api/                       # Node.js API server (faucet, deploy, config)
-│   └── scripts/                   # Environment init, mock USDC minting
+│   └── scripts/                   # Environment init, mock test-token minting
 ├── scripts/                       # Shell scripts (validator, webapp launcher)
 ├── docs/                          # Architecture Decision Records
 ├── runbooks/                      # Surfpool deployment runbooks
@@ -140,7 +143,7 @@ curl -sL https://run.surfpool.run/ | bash
 
 6. Node.js (required by `webapp/` scripts)
 
-## Program ID
+## Program ID Declaration
 
 The program ID is declared in `program/src/lib.rs`. Local Surfpool workflows install the program at that canonical address via `runbooks/surfnet-setup`, so a checked-in program keypair is not required for local tests.
 
@@ -197,7 +200,7 @@ The `justfile` is the main entrypoint for day-to-day development.
 
 Two local validator flows are available:
 
-- **`just test-client`** starts a [Surfpool](https://www.surfpool.run/) validator automatically via `ensure-surfpool`. The program is deployed from `target/deploy/` using Surfpool's built-in deployment.
+- **`just test-client`** starts fresh [Surfpool](https://www.surfpool.run/) validators (a mainnet-fork pass, then an offline pass). The program is deployed from `target/deploy/` using Surfpool's built-in deployment.
 - **`just webapp-run`** starts `solana-test-validator` via `scripts/start-webapp.sh`, then deploys the program and initializes the test environment.
 
 Both default to `http://localhost:8899`.
@@ -232,6 +235,16 @@ pnpm add @solana/subscriptions
 import { subscriptionsProgram } from '@solana/subscriptions';
 ```
 
+Rust client:
+
+```bash
+cargo add subscriptions
+```
+
+```rust
+use subscriptions::instructions::*;
+```
+
 ## Webapp Demo
 
 The demo app in `webapp/` provides a local UI and API for development flows.
@@ -251,17 +264,17 @@ Expected local endpoints:
 
 ### Features
 
-| Route            | Feature                                             |
-| ---------------- | --------------------------------------------------- |
-| `/setup`         | Setup wizard (validator, program deploy, mock USDC) |
-| `/`              | Dashboard overview                                  |
-| `/delegations`   | Create and manage fixed/recurring delegations       |
-| `/plans`         | Create and manage merchant subscription plans       |
-| `/plans/collect` | Collect subscription payments                       |
-| `/subscriptions` | View and manage active subscriptions                |
-| `/marketplace`   | Browse available plans                              |
-| `/faucet`        | SOL and USDC airdrops (localnet/devnet)             |
-| `/program`       | Program deploy/upgrade status                       |
+| Route            | Feature                                                   |
+| ---------------- | --------------------------------------------------------- |
+| `/setup`         | Setup wizard (validator, program deploy, mock test token) |
+| `/`              | Dashboard overview                                        |
+| `/delegations`   | Create and manage fixed/recurring delegations             |
+| `/plans`         | Create and manage merchant subscription plans             |
+| `/plans/collect` | Collect subscription payments                             |
+| `/subscriptions` | View and manage active subscriptions                      |
+| `/marketplace`   | Browse available plans                                    |
+| `/faucet`        | SOL and test-token airdrops (localnet/devnet)             |
+| `/program`       | Program deploy/upgrade status                             |
 
 Stop local processes:
 
@@ -306,6 +319,7 @@ GitHub Actions runs split workflows on PRs and pushes to `main`:
 | [ADR-001](docs/001-program-architecture.md)              | Core program architecture: SA, fixed/recurring delegations, PDA design            |
 | [ADR-002](docs/002-subscriptions-architecture.md)        | Subscription plans: merchant plans, subscriber flow, pull payments                |
 | [ADR-003](docs/003-versioning-migration-architecture.md) | Versioning and migration: three-tier fallback chain for on-chain account upgrades |
+| [ADR-004](docs/004-program-upgrade-mechanism.md)         | Program upgrades: Squads-governed upgrade authority and deployment flow           |
 
 ## Smart Wallet Support
 

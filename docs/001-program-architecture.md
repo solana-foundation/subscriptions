@@ -211,8 +211,9 @@ build the sponsored variants; the program reads them from the trailing remainder
 **delegation-type dependent** and cannot be expressed as a single static
 optional list, so it is documented here rather than in the IDL account list.
 
-- **Fixed / recurring:** optional `[receiver]` — the rent recipient when a
-  sponsor revokes (defaults to the recorded payer).
+- **Fixed / recurring:** optional `[receiver]` — required when the delegator
+  revokes a sponsor-funded delegation; must match the recorded payer. A revoking
+  sponsor is the payer and receives rent directly.
 - **Subscription:** required `[plan_pda]`, then optional `[receiver]` — the
   `plan_pda` is needed to evaluate plan-state revocation conditions.
 
@@ -397,6 +398,7 @@ Creates a one-time delegation with nonce-based PDA.
 - `nonce: u64` - Unique identifier to create distinct PDAs for same (delegator, delegatee) pair
 - `amount: u64` - Maximum amount transferable
 - `expiry_ts: i64` - Unix timestamp when delegation expires
+- `expected_subscription_authority_init_id: i64` - The SA `init_id` the delegator consented to; creation fails on mismatch
 
 **Process:**
 
@@ -422,15 +424,16 @@ Creates a recurring delegation with period tracking.
 - `nonce: u64` - Unique identifier
 - `amount_per_period: u64` - Maximum amount per period
 - `period_length_s: u64` - Seconds in each period
-- `start_ts: i64` - Timestamp when the first period starts
+- `start_ts: i64` - Timestamp when the first period starts, or `0` to start when the transaction lands (requires a non-zero `expiry_ts`)
 - `expiry_ts: i64` - Delegation expiry timestamp
+- `expected_subscription_authority_init_id: i64` - The SA `init_id` the delegator consented to; creation fails on mismatch
 
 **Process:**
 
 1. Validate SubscriptionAuthority exists and belongs to delegator
 2. Derive and validate Delegation PDA with nonce
 3. Create Delegation account with header and terms
-4. Initialize `current_period_start_ts` to `start_ts`
+4. Initialize `current_period_start_ts` to `start_ts` (or to the on-chain clock time when `start_ts == 0`)
 5. Initialize `amount_pulled_in_period` to 0
 
 ### `revoke_delegation` (Discriminator: 3)
@@ -450,18 +453,19 @@ Revokes a delegation by closing the delegation PDA and returning rent to the ori
 
 ### `close_subscription_authority` (Discriminator: 6)
 
-Closes a SubscriptionAuthority PDA and returns rent to the owner.
+Closes a SubscriptionAuthority PDA and returns rent to the recorded payer (the user by default).
 
-| Account | Type             | Description                                     |
-| ------- | ---------------- | ----------------------------------------------- |
-| 0       | signer, writable | The user who owns the SubscriptionAuthority PDA |
-| 1       | writable         | SubscriptionAuthority PDA to close              |
+| Account | Type             | Description                                                                                              |
+| ------- | ---------------- | -------------------------------------------------------------------------------------------------------- |
+| 0       | signer, writable | The user who owns the SubscriptionAuthority PDA                                                          |
+| 1       | writable         | SubscriptionAuthority PDA to close                                                                       |
+| 2       | writable         | Receiver (optional; required when the recorded payer differs from the user, must match the stored payer) |
 
 **Process:**
 
 1. Verify signer matches the SA's `user` field
 2. Verify PDA derivation from `["SubscriptionAuthority", user, token_mint]`
-3. Close account and transfer lamports to user
+3. Close account and transfer lamports to the recorded payer (via `receiver` when sponsor-funded)
 
 > **Authority close and rotation:** Closing does not revoke existing delegation PDAs, but they
 > become non-transferable while the SubscriptionAuthority account does not exist. If the user
@@ -488,10 +492,12 @@ Executes a transfer for a fixed delegation.
 | 1       |          | SubscriptionAuthority PDA                  |
 | 2       | writable | Delegator's ATA                            |
 | 3       | writable | Receiver's ATA                             |
-| 4       |          | Token Program                              |
-| 5       | signer   | Delegatee (beneficiary)                    |
-| 6       |          | Event authority PDA                        |
-| 7       |          | This program (for self-CPI event emission) |
+| 4       |          | Token mint                                 |
+| 5       |          | Token Program                              |
+| 6       | signer   | Delegatee (beneficiary)                    |
+| 7       |          | Event authority PDA                        |
+| 8       |          | This program (for self-CPI event emission) |
+| 9+      |          | Optional Token-2022 transfer-hook accounts |
 
 **Parameters (in instruction data):**
 
@@ -518,10 +524,12 @@ Executes a transfer for a recurring delegation.
 | 1       |          | SubscriptionAuthority PDA                  |
 | 2       | writable | Delegator's ATA                            |
 | 3       | writable | Receiver's ATA                             |
-| 4       |          | Token Program                              |
-| 5       | signer   | Delegatee (beneficiary)                    |
-| 6       |          | Event authority PDA                        |
-| 7       |          | This program (for self-CPI event emission) |
+| 4       |          | Token mint                                 |
+| 5       |          | Token Program                              |
+| 6       | signer   | Delegatee (beneficiary)                    |
+| 7       |          | Event authority PDA                        |
+| 8       |          | This program (for self-CPI event emission) |
+| 9+      |          | Optional Token-2022 transfer-hook accounts |
 
 **Parameters (in instruction data):**
 

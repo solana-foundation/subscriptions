@@ -819,13 +819,15 @@ fn test_recurring_transfer_token_2022_transfer_fee() {
 
     initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
 
+    let start_ts = current_ts();
     let (res, delegation_pda) = CreateDelegation::new(&mut litesvm, &alice, mint, bob.pubkey()).recurring(
         50_000_000,
         hours(1),
-        current_ts(),
-        current_ts() + days(1) as i64,
+        start_ts,
+        start_ts + days(1) as i64,
     );
     res.assert_ok();
+    set_clock(&mut litesvm, start_ts);
 
     TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
         .amount(10_000_000)
@@ -937,13 +939,15 @@ fn test_recurring_transfer_token_2022_active_transfer_hook() {
     let bob_ata = init_ata(&mut litesvm, mint, bob.pubkey(), 0);
 
     initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
+    let start_ts = current_ts();
     let (res, delegation_pda) = CreateDelegation::new(&mut litesvm, &alice, mint, bob.pubkey()).recurring(
         50_000_000,
         hours(1),
-        current_ts(),
-        current_ts() + days(1) as i64,
+        start_ts,
+        start_ts + days(1) as i64,
     );
     res.assert_ok();
+    set_clock(&mut litesvm, start_ts);
 
     let missing_accounts = TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
         .amount(10_000_000)
@@ -989,13 +993,15 @@ fn recurring_active_hook_transfer_without_hook_accounts_fails() {
     init_ata(&mut litesvm, mint, bob.pubkey(), 0);
 
     initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
+    let start_ts = current_ts();
     let (res, delegation_pda) = CreateDelegation::new(&mut litesvm, &alice, mint, bob.pubkey()).recurring(
         50_000_000,
         hours(1),
-        current_ts(),
-        current_ts() + days(1) as i64,
+        start_ts,
+        start_ts + days(1) as i64,
     );
     res.assert_ok();
+    set_clock(&mut litesvm, start_ts);
 
     let result = TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
         .amount(10_000_000)

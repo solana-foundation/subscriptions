@@ -28,7 +28,7 @@ const client = createClient()
 // 1. Initialize the SubscriptionAuthority for a user's token account (once per mint)
 await client.subscriptions.instructions
     .initSubscriptionAuthority({
-        tokenMint: address('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'),
+        tokenMint: address('TokenMintAddress...'),
         userAta: address('...'),
         tokenProgram: address('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
     })
@@ -37,7 +37,7 @@ await client.subscriptions.instructions
 // 2. Create a fixed delegation (e.g., allow spending 1,000,000 tokens)
 await client.subscriptions.instructions
     .createFixedDelegation({
-        tokenMint: address('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'),
+        tokenMint: address('TokenMintAddress...'),
         delegatee: address('DelegateeAddress...'),
         nonce: 0n,
         amount: 1_000_000n,
@@ -62,6 +62,8 @@ For custom wallet flows, use the exported `get*OverlayInstruction*` functions. T
 | `revokeSubscription` / `getRevokeSubscriptionOverlayInstruction`                        | Close a subscription delegation PDA (requires `planPda`) and reclaim rent                                                            |
 | `revokeSubscriptionAuthority` / `getRevokeSubscriptionAuthorityOverlayInstructionAsync` | Revoke the per-mint SPL delegate and close the SubscriptionAuthority PDA, reclaiming rent (pass `receiver` when a sponsor funded it) |
 
+Abandoned delegation and subscription PDAs (Subscription Authority closed or re-initialized) can be closed by the recorded payer via the generated `getRevokeAbandonedDelegationInstruction` / `getRevokeAbandonedSubscriptionInstruction` builders (no overlay wrapper).
+
 ### Transfers
 
 | Plugin instruction / builder                                              | Description                                |
@@ -69,6 +71,8 @@ For custom wallet flows, use the exported `get*OverlayInstruction*` functions. T
 | `transferFixed` / `getTransferFixedOverlayInstructionAsync`               | Pull tokens from a fixed delegation        |
 | `transferRecurring` / `getTransferRecurringOverlayInstructionAsync`       | Pull tokens from a recurring delegation    |
 | `transferSubscription` / `getTransferSubscriptionOverlayInstructionAsync` | Pull tokens from a subscription delegation |
+
+For Token-2022 mints with a configured transfer hook, the plugin resolves and appends the hook accounts automatically. For standalone overlay usage, call `resolveTransferHookAccounts` and pass the result as `transferHookAccounts`.
 
 ### Subscription Plans
 
@@ -107,7 +111,7 @@ seed is the constant `"event_authority"`).
 
 ## API Reference
 
-Full API documentation is generated from source with [TypeDoc](https://typedoc.org/). Run `npx typedoc` to generate locally, or browse `./docs/`.
+Full API documentation is generated from source with [TypeDoc](https://typedoc.org/). Run `npx typedoc` to generate the reference into `./docs/` locally.
 
 ## Development
 

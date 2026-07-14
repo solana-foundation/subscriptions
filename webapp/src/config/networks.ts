@@ -58,9 +58,9 @@ const SOAK_FEATURES: Features = {
 };
 
 const STABLE_FEATURES: Features = {
-    revokeAbandonedDelegation: false,
-    revokeSubscriptionAuthority: false,
-    startNowRecurringDelegation: false,
+    revokeAbandonedDelegation: true,
+    revokeSubscriptionAuthority: true,
+    startNowRecurringDelegation: true,
 };
 
 export const FEATURES: Record<Network, Features> = {

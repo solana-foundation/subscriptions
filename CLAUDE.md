@@ -15,8 +15,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 just build
 
 # Individual steps
-just generate-idl          # Generate IDL via Codama (cargo build with build.rs)
-just generate-client       # Generate TypeScript + Rust clients from IDL
+just generate-idl          # Generate IDL via Codama (GENERATE_IDL=1 cargo check, build.rs writes it)
+just generate-clients      # Generate TypeScript + Rust clients from IDL
 just build-program         # Build .so binary only (cargo build-sbf)
 just build-client          # Build TypeScript client (tsup)
 
@@ -48,7 +48,7 @@ Solana program using **Pinocchio** (lightweight `no_std` framework) with **Codam
 ### Code Flow
 
 ```
-program/src/lib.rs (declares ID, dispatches via SubscriptionsInstruction enum)
+program/src/lib.rs (declares ID) + entrypoint.rs (dispatches via SubscriptionsInstruction enum)
     ↓
 program/src/instructions/*.rs (instruction processors)
     ↓
@@ -80,14 +80,14 @@ clients/typescript/src/generated/  (auto-generated; wrapped by hand-written SDK 
 ### Key Modules
 
 - `program/src/instructions/` — 17 instruction handlers (discriminators 0–16) + an internal `emit_event` self-CPI handler + `helpers/` (validation, token ops, traits)
-- `program/src/state/` — Account structs (SubscriptionAuthority, FixedDelegation, RecurringDelegation, Plan, Subscription) + `versioning/`
+- `program/src/state/` — Account structs (SubscriptionAuthority, FixedDelegation, RecurringDelegation, Plan, SubscriptionDelegation) + `versioning/`
 - `program/src/events/` — Event structs and self-CPI emission
 - `program/src/errors.rs` — Error codes (ranges 100-699)
 - `program/src/event_engine.rs` — Self-CPI dispatcher for events
 
 ### Testing
 
-- Rust unit tests: located in `program/src/tests/`. Run via `just unit-test`.
+- Rust unit tests: inline `#[cfg(test)]` modules across `program/src/` plus `program/src/tests/`. Run via `just unit-test`.
 - Rust integration tests: LiteSVM-based workspace crate in `tests/integration-tests/`. Run via `just integration-test`.
 - TypeScript: Vitest against Surfpool, in `clients/typescript/test/`. Includes Squads + Swig smart-wallet integration tests and security-focused tests.
 - CU benchmarks: set `CU_REPORT=1` to write `cu_report.md` (posted as PR comment in CI).
@@ -109,7 +109,7 @@ Audited by Cantina. See [audits/AUDIT_STATUS.md](audits/AUDIT_STATUS.md) for the
 - `docs/` — Numbered ADRs
 - `audits/` — Audit report and AUDIT_STATUS.md
 - `runbooks/` — txtx Surfpool deployment runbooks
-- `scripts/` — Validator + webapp shell scripts
+- `scripts/` — Validator + webapp shell scripts, client codegen TS (`generate-clients.ts`)
 
 ## Conventions
 

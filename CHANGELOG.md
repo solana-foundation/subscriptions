@@ -7,7 +7,9 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-_Targets `program-v1.1.0` (target deploy 2026-06-26). Reproducible via `solana-verify`. **Includes breaking changes vs the deployed v1.0.0 — see Changed / Security.** Audit status: [`audits/AUDIT_STATUS.md`](audits/AUDIT_STATUS.md)._
+## [0.4.0] — 2026-07-13
+
+_Target mainnet deploy 2026-07-13. Reproducible via `solana-verify`. **Includes breaking changes vs the deployed v0.3.0 — see Changed / Security.** Audit status: [`audits/AUDIT_STATUS.md`](audits/AUDIT_STATUS.md)._
 
 ### Added
 
@@ -17,12 +19,13 @@ _Targets `program-v1.1.0` (target deploy 2026-06-26). Reproducible via `solana-v
 - `PlanUpdatedEvent` (discriminator 6) emitted by `update_plan`.
 - Token-2022 Transfer Hook support — hooked mints work end-to-end for fixed, recurring, and subscription transfers; hook accounts are forwarded transparently to Token-2022's `TransferChecked` (no `ExtraAccountMetaList` validation PDA required), up to the runtime CPI account ceiling (`MAX_CPI_ACCOUNTS`, 128). ([#160])
 - The published IDL registers all emitted events (discriminators + field schemas) so indexers can decode them.
-- The published IDL now models the optional sponsor `payer` (`initSubscriptionAuthority`, `createFixedDelegation`, `createRecurringDelegation`, `subscribe`) and optional `receiver` (`closeSubscriptionAuthority`) trailing accounts so generated clients name them. No on-chain change — the program has accepted these accounts since v1.0.0 (`resolve_optional_payer`); only the IDL/client modeling is new.
+- The published IDL now models the optional sponsor `payer` (`initSubscriptionAuthority`, `createFixedDelegation`, `createRecurringDelegation`, `subscribe`) and optional `receiver` (`closeSubscriptionAuthority`) trailing accounts so generated clients name them. No on-chain change — the program has accepted these accounts since v0.3.0 (`resolve_optional_payer`); only the IDL/client modeling is new.
 
 ### Changed
 
 - `CreateRecurringDelegation` accepts `start_ts = 0` as a sentinel: the first period starts at the on-chain clock time when the transaction lands. Requires a non-zero `expiry_ts`. ([#164])
 - Tightened account and state validation. ([#163])
+- The last Token-2022 extension guard is removed — v0.3.0 rejected mints with a configured `TransferHook` (`MintHasTransferHook`, 121); such mints are now accepted and their hooks executed via account forwarding. The program no longer rejects any mint by extension; extension-guard error codes 118–124 are retained so existing clients keep decoding them, but are never raised. ([#160], [#186])
 - **Breaking** — event wire format: transfer events gain `receiver_token_account`, `SubscriptionCreatedEvent` gains `payer`, and `SubscriptionTransferEvent` gains `puller` (appended; existing field offsets preserved, total event size changed).
 - **Breaking** — `UpdatePlan` now requires two additional accounts (`event_authority`, `self_program`) for self-CPI event emission.
 
@@ -48,13 +51,15 @@ _Targets `program-v1.1.0` (target deploy 2026-06-26). Reproducible via `solana-v
 - `RecurringTransferEvent.period_end_ts` is capped at the delegation's finite `expiry_ts` (matches `transfer_subscription`).
 - The published IDL models the `event_authority` default as the `eventAuthority` PDA instead of a hardcoded key, so builders resolve event accounts on cloned/local deployments.
 
-## [1.0.0] — 2026-06-01
+## [0.3.0] — 2026-06-01
 
-Initial audited mainnet release (`program-v1.0.0`, commit `0221a37`).
+Initial audited mainnet release (`program-v0.3.0`, commit `0221a37`).
 
-[Unreleased]: https://github.com/solana-foundation/subscriptions/compare/0221a37...main
-[1.0.0]: https://github.com/solana-foundation/subscriptions/commit/0221a37
+[Unreleased]: https://github.com/solana-foundation/subscriptions/compare/program-v0.4.0...main
+[0.4.0]: https://github.com/solana-foundation/subscriptions/compare/program-v0.3.0...program-v0.4.0
+[0.3.0]: https://github.com/solana-foundation/subscriptions/commit/0221a37
 [#160]: https://github.com/solana-foundation/subscriptions/pull/160
 [#162]: https://github.com/solana-foundation/subscriptions/pull/162
 [#163]: https://github.com/solana-foundation/subscriptions/pull/163
 [#164]: https://github.com/solana-foundation/subscriptions/pull/164
+[#186]: https://github.com/solana-foundation/subscriptions/pull/186
