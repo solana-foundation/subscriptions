@@ -4,11 +4,11 @@ use crate::{
     state::{FixedDelegation, Plan, RecurringDelegation, SubscriptionAuthority, SubscriptionDelegation},
     tests::{
         asserts::TransactionResultExt,
-        constants::{INSTRUCTIONS_SYSVAR_ID, MINT_DECIMALS, PROGRAM_ID, SYSTEM_PROGRAM_ID, TOKEN_PROGRAM_ID},
+        constants::{MINT_DECIMALS, PROGRAM_ID, SYSTEM_PROGRAM_ID, TOKEN_PROGRAM_ID},
         pda::{get_delegation_pda, get_plan_pda, get_subscription_authority_pda, get_subscription_pda},
         utils::{
-            build_and_send_transaction_multi, current_ts, days, init_ata, init_authority_ix, init_mint, init_wallet,
-            initialize_subscription_authority_action, setup, CreatePlan,
+            advance_slots, build_and_send_transaction_multi, current_ts, days, init_ata, init_authority_ix, init_mint,
+            init_wallet, initialize_subscription_authority_action, setup, CreatePlan,
         },
     },
     SubscriptionsError, UNKNOWN_INIT_ID,
@@ -46,7 +46,6 @@ fn subscribe_ix(
         AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
         AccountMeta::new_readonly(event_authority, false),
         AccountMeta::new_readonly(PROGRAM_ID, false),
-        AccountMeta::new_readonly(INSTRUCTIONS_SYSVAR_ID, false),
     ];
 
     let data = [
@@ -76,10 +75,11 @@ fn delegation_accounts(
         AccountMeta::new(delegation_pda, false),
         AccountMeta::new_readonly(delegatee, false),
         AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
-        AccountMeta::new_readonly(INSTRUCTIONS_SYSVAR_ID, false),
     ]
 }
 
+/// Sets up a plan and advances to a non-zero baseline slot so a stored `init_id`
+/// of `0` can never coincidentally satisfy the same-slot sentinel check.
 fn setup_plan() -> (LiteSVM, Keypair, Keypair, Pubkey, Pubkey, Pubkey, u8) {
     let (mut litesvm, alice) = setup();
     let merchant = Keypair::new();
@@ -97,6 +97,8 @@ fn setup_plan() -> (LiteSVM, Keypair, Keypair, Pubkey, Pubkey, Pubkey, u8) {
         .execute();
     res.assert_ok();
     let (_, plan_bump) = get_plan_pda(&merchant.pubkey(), 1);
+
+    advance_slots(&mut litesvm, 100);
 
     (litesvm, alice, merchant, mint, alice_ata, plan_pda, plan_bump)
 }
@@ -193,34 +195,10 @@ fn co_init_then_recurring_delegation_succeeds() {
 }
 
 #[test]
-fn idempotent_co_init_then_subscribe_succeeds() {
-    let (mut litesvm, alice, merchant, mint, alice_ata, plan_pda, plan_bump) = setup_plan();
-    initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
-    let (authority_pda, _) = get_subscription_authority_pda(&alice.pubkey(), &mint);
-    let (subscription_pda, _) = get_subscription_pda(&plan_pda, &alice.pubkey());
-
-    let plan_account = litesvm.get_account(&plan_pda).unwrap();
-    let plan = Plan::load(&plan_account.data).unwrap();
-    let init_ix = init_authority_ix(&alice.pubkey(), mint, alice_ata, authority_pda);
-    let sub_ix = subscribe_ix(
-        &alice.pubkey(),
-        &merchant.pubkey(),
-        plan_pda,
-        subscription_pda,
-        authority_pda,
-        1,
-        plan_bump,
-        plan,
-        UNKNOWN_INIT_ID,
-    );
-
-    build_and_send_transaction_multi(&mut litesvm, &[&alice], &alice.pubkey(), &[init_ix, sub_ix]).assert_ok();
-}
-
-#[test]
-fn sentinel_without_co_init_rejected() {
+fn sentinel_rejected_when_authority_from_prior_slot() {
     let (mut litesvm, alice, merchant, mint, _alice_ata, plan_pda, plan_bump) = setup_plan();
     initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
+    advance_slots(&mut litesvm, 1);
     let (authority_pda, _) = get_subscription_authority_pda(&alice.pubkey(), &mint);
     let (subscription_pda, _) = get_subscription_pda(&plan_pda, &alice.pubkey());
 
@@ -242,10 +220,42 @@ fn sentinel_without_co_init_rejected() {
         .assert_err(SubscriptionsError::StaleSubscriptionAuthority);
 }
 
+/// A returning user whose authority already exists from an earlier slot cannot
+/// use the sentinel: idempotent re-init does not refresh `init_id`, so the
+/// same-slot check still sees the stale value. Such callers must pass the real
+/// `init_id` instead.
+#[test]
+fn sentinel_rejected_for_preexisting_authority_reinit_in_bundle() {
+    let (mut litesvm, alice, merchant, mint, alice_ata, plan_pda, plan_bump) = setup_plan();
+    initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
+    advance_slots(&mut litesvm, 1);
+    let (authority_pda, _) = get_subscription_authority_pda(&alice.pubkey(), &mint);
+    let (subscription_pda, _) = get_subscription_pda(&plan_pda, &alice.pubkey());
+
+    let plan_account = litesvm.get_account(&plan_pda).unwrap();
+    let plan = Plan::load(&plan_account.data).unwrap();
+    let init_ix = init_authority_ix(&alice.pubkey(), mint, alice_ata, authority_pda);
+    let sub_ix = subscribe_ix(
+        &alice.pubkey(),
+        &merchant.pubkey(),
+        plan_pda,
+        subscription_pda,
+        authority_pda,
+        1,
+        plan_bump,
+        plan,
+        UNKNOWN_INIT_ID,
+    );
+
+    build_and_send_transaction_multi(&mut litesvm, &[&alice], &alice.pubkey(), &[init_ix, sub_ix])
+        .assert_err_at(1, SubscriptionsError::StaleSubscriptionAuthority);
+}
+
 #[test]
 fn init_after_subscribe_in_same_tx_rejected() {
     let (mut litesvm, alice, merchant, mint, alice_ata, plan_pda, plan_bump) = setup_plan();
     initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
+    advance_slots(&mut litesvm, 1);
     let (authority_pda, _) = get_subscription_authority_pda(&alice.pubkey(), &mint);
     let (subscription_pda, _) = get_subscription_pda(&plan_pda, &alice.pubkey());
 
@@ -272,6 +282,7 @@ fn init_after_subscribe_in_same_tx_rejected() {
 fn co_init_for_different_mint_does_not_satisfy_subscribe() {
     let (mut litesvm, alice, merchant, mint, _alice_ata, plan_pda, plan_bump) = setup_plan();
     initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
+    advance_slots(&mut litesvm, 1);
     let (authority_pda, _) = get_subscription_authority_pda(&alice.pubkey(), &mint);
     let (subscription_pda, _) = get_subscription_pda(&plan_pda, &alice.pubkey());
 

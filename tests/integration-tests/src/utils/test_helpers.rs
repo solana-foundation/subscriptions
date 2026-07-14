@@ -48,7 +48,7 @@ use crate::{
     state::common::PlanStatus,
     state::{Plan, SubscriptionAuthority},
     tests::{
-        constants::{INSTRUCTIONS_SYSVAR_ID, PROGRAM_ID, SYSTEM_PROGRAM_ID, TOKEN_PROGRAM_ID},
+        constants::{PROGRAM_ID, SYSTEM_PROGRAM_ID, TOKEN_PROGRAM_ID},
         cu_tracker::{is_tracking_enabled, record_cu},
         pda::{get_delegation_pda, get_plan_pda, get_subscription_authority_pda, get_subscription_pda},
     },
@@ -84,6 +84,12 @@ pub fn move_clock_forward(litesvm: &mut LiteSVM, seconds: u64) {
 pub fn set_clock(litesvm: &mut LiteSVM, unix_timestamp: i64) {
     let mut clock = litesvm.get_sysvar::<Clock>();
     clock.unix_timestamp = unix_timestamp;
+    litesvm.set_sysvar::<Clock>(&clock);
+}
+
+pub fn advance_slots(litesvm: &mut LiteSVM, slots: u64) {
+    let mut clock = litesvm.get_sysvar::<Clock>();
+    clock.slot += slots;
     litesvm.set_sysvar::<Clock>(&clock);
 }
 
@@ -552,7 +558,6 @@ impl<'a> CreateDelegation<'a> {
             AccountMeta::new(delegation_pda, false),
             AccountMeta::new_readonly(self.delegatee, false),
             AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
-            AccountMeta::new_readonly(INSTRUCTIONS_SYSVAR_ID, false),
         ];
 
         let mut signers = vec![self.delegator];
@@ -1404,7 +1409,6 @@ impl<'a> Subscribe<'a> {
             AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
             AccountMeta::new_readonly(event_authority, false),
             AccountMeta::new_readonly(PROGRAM_ID, false),
-            AccountMeta::new_readonly(INSTRUCTIONS_SYSVAR_ID, false),
         ];
 
         let mut signers: Vec<&Keypair> = vec![self.subscriber];

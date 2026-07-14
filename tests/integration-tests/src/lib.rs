@@ -15,7 +15,7 @@ mod test_cancel_subscription;
 #[cfg(test)]
 mod test_close_subscription_authority;
 #[cfg(test)]
-mod test_co_init_introspection;
+mod test_co_init_slot;
 #[cfg(test)]
 mod test_create_fixed_delegation;
 #[cfg(test)]

@@ -2,7 +2,6 @@
 
 pub mod authority;
 pub mod delegation;
-pub mod introspection;
 mod plan;
 pub mod program;
 pub mod system;
@@ -15,7 +14,6 @@ pub mod transfer_validation;
 
 pub use authority::*;
 pub use delegation::*;
-pub use introspection::*;
 pub use plan::{create_plan_account, CreatePlanAccounts};
 pub use program::*;
 pub use system::*;

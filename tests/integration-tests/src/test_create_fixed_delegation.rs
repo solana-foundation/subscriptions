@@ -322,7 +322,6 @@ fn writable_accounts_must_be_writable() {
             AccountMeta::new(delegation_pda, false),
             AccountMeta::new_readonly(delegatee, false),
             AccountMeta::new_readonly(crate::tests::constants::SYSTEM_PROGRAM_ID, false),
-            AccountMeta::new_readonly(crate::tests::constants::INSTRUCTIONS_SYSVAR_ID, false),
         ];
 
         // Flip writable account to readonly, preserving signer flag
@@ -386,7 +385,6 @@ fn signer_accounts_must_be_signers() {
             AccountMeta::new(delegation_pda, false),
             AccountMeta::new_readonly(delegatee, false),
             AccountMeta::new_readonly(crate::tests::constants::SYSTEM_PROGRAM_ID, false),
-            AccountMeta::new_readonly(crate::tests::constants::INSTRUCTIONS_SYSVAR_ID, false),
         ];
 
         // Flip signer to non-signer, preserving writable flag

@@ -20,8 +20,8 @@ use crate::{
         subscription_authority::SubscriptionAuthority,
         subscription_delegation::SubscriptionDelegation,
     },
-    subscription_authority_inited_in_tx, verify_plan_pda, AccountCheck, ProgramAccount, ProgramAccountInit,
-    SignerAccount, SubscriptionAuthorityAccount, SubscriptionsError, SystemAccount, WritableAccount, UNKNOWN_INIT_ID,
+    verify_plan_pda, AccountCheck, ProgramAccount, ProgramAccountInit, SignerAccount, SubscriptionAuthorityAccount,
+    SubscriptionsError, SystemAccount, WritableAccount, UNKNOWN_INIT_ID,
 };
 
 /// Instruction discriminator byte for `Subscribe`.
@@ -67,7 +67,8 @@ impl SubscribeData {
 /// [`SubscriptionCreatedEvent`].
 pub fn process(accounts: &mut [AccountView], data: &SubscribeData) -> ProgramResult {
     let accounts_struct = SubscribeAccounts::try_from(accounts)?;
-    let current_ts = Clock::get()?.unix_timestamp;
+    let clock = Clock::get()?;
+    let current_ts = clock.unix_timestamp;
 
     // Validate plan PDA derivation
     let expected_plan_pda = verify_plan_pda(accounts_struct.merchant.address(), data.plan_id, data.plan_bump)?;
@@ -116,15 +117,12 @@ pub fn process(accounts: &mut [AccountView], data: &SubscribeData) -> ProgramRes
         if subscription_authority.token_mint != plan_mint {
             return Err(SubscriptionsError::MintMismatch.into());
         }
-        if data.expected_subscription_authority_init_id == UNKNOWN_INIT_ID {
-            if !subscription_authority_inited_in_tx(
-                accounts_struct.instructions_sysvar,
-                accounts_struct.subscription_authority_pda.address(),
-                accounts_struct.subscriber.address(),
-            )? {
-                return Err(SubscriptionsError::StaleSubscriptionAuthority.into());
-            }
-        } else if subscription_authority.init_id != data.expected_subscription_authority_init_id {
+        let expected_init_id = if data.expected_subscription_authority_init_id == UNKNOWN_INIT_ID {
+            clock.slot as i64
+        } else {
+            data.expected_subscription_authority_init_id
+        };
+        if subscription_authority.init_id != expected_init_id {
             return Err(SubscriptionsError::StaleSubscriptionAuthority.into());
         }
         init_id = subscription_authority.init_id;
@@ -206,8 +204,6 @@ pub struct SubscribeAccounts<'a> {
     pub system_program: &'a AccountView,
     pub event_authority: &'a AccountView,
     pub self_program: &'a AccountView,
-    /// Instructions sysvar, used for same-transaction co-init detection.
-    pub instructions_sysvar: &'a AccountView,
     /// The account funding rent. Defaults to `subscriber` if no extra account is provided.
     pub payer: &'a AccountView,
 }
@@ -216,7 +212,7 @@ impl<'a> TryFrom<&'a mut [AccountView]> for SubscribeAccounts<'a> {
     type Error = ProgramError;
 
     fn try_from(accounts: &'a mut [AccountView]) -> Result<Self, Self::Error> {
-        let [subscriber, merchant, plan_pda, subscription_pda, subscription_authority_pda, system_program, event_authority, self_program, instructions_sysvar, rem @ ..] =
+        let [subscriber, merchant, plan_pda, subscription_pda, subscription_authority_pda, system_program, event_authority, self_program, rem @ ..] =
             accounts
         else {
             return Err(SubscriptionsError::NotEnoughAccountKeys.into());
@@ -240,7 +236,6 @@ impl<'a> TryFrom<&'a mut [AccountView]> for SubscribeAccounts<'a> {
             system_program,
             event_authority,
             self_program,
-            instructions_sysvar,
             payer,
         })
     }

@@ -1,10 +1,14 @@
-use pinocchio::{cpi::Seed, error::ProgramError, AccountView, Address};
+use pinocchio::{
+    cpi::Seed,
+    error::ProgramError,
+    sysvars::{clock::Clock, Sysvar},
+    AccountView, Address,
+};
 
 use crate::{
-    helpers::system::resolve_optional_payer, state::common::find_delegation_pda, subscription_authority_inited_in_tx,
-    AccountCheck, Header, ProgramAccount, ProgramAccountInit, SignerAccount, SubscriptionAuthority,
-    SubscriptionAuthorityAccount, SubscriptionsError, SystemAccount, WritableAccount, DELEGATE_BASE_SEED,
-    UNKNOWN_INIT_ID,
+    helpers::system::resolve_optional_payer, state::common::find_delegation_pda, AccountCheck, Header, ProgramAccount,
+    ProgramAccountInit, SignerAccount, SubscriptionAuthority, SubscriptionAuthorityAccount, SubscriptionsError,
+    SystemAccount, WritableAccount, DELEGATE_BASE_SEED, UNKNOWN_INIT_ID,
 };
 
 /// Validated accounts shared by `CreateFixedDelegation` and `CreateRecurringDelegation`.
@@ -19,8 +23,6 @@ pub struct CreateDelegationAccounts<'a> {
     pub delegatee: &'a AccountView,
     /// System program (for CPI account creation).
     pub system_program: &'a AccountView,
-    /// Instructions sysvar, used for same-transaction co-init detection.
-    pub instructions_sysvar: &'a AccountView,
     /// The account funding rent. Defaults to `delegator` if no extra account is provided.
     pub payer: &'a AccountView,
 }
@@ -29,8 +31,7 @@ impl<'a> TryFrom<&'a mut [AccountView]> for CreateDelegationAccounts<'a> {
     type Error = ProgramError;
 
     fn try_from(accounts: &'a mut [AccountView]) -> Result<Self, Self::Error> {
-        let [delegator, subscription_authority, delegation_account, delegatee, system_program, instructions_sysvar, rem @ ..] =
-            accounts
+        let [delegator, subscription_authority, delegation_account, delegatee, system_program, rem @ ..] = accounts
         else {
             return Err(SubscriptionsError::NotEnoughAccountKeys.into());
         };
@@ -43,15 +44,7 @@ impl<'a> TryFrom<&'a mut [AccountView]> for CreateDelegationAccounts<'a> {
 
         let payer = resolve_optional_payer(delegator, rem)?;
 
-        Ok(Self {
-            delegator,
-            subscription_authority,
-            delegation_account,
-            delegatee,
-            system_program,
-            instructions_sysvar,
-            payer,
-        })
+        Ok(Self { delegator, subscription_authority, delegation_account, delegatee, system_program, payer })
     }
 }
 
@@ -76,15 +69,12 @@ pub fn create_delegation_account(
         let subscription_authority = SubscriptionAuthority::load(&md_data)?;
         subscription_authority.check_owner(accounts.delegator.address())?;
 
-        if expected_subscription_authority_init_id == UNKNOWN_INIT_ID {
-            if !subscription_authority_inited_in_tx(
-                accounts.instructions_sysvar,
-                accounts.subscription_authority.address(),
-                accounts.delegator.address(),
-            )? {
-                return Err(SubscriptionsError::StaleSubscriptionAuthority.into());
-            }
-        } else if subscription_authority.init_id != expected_subscription_authority_init_id {
+        let expected_init_id = if expected_subscription_authority_init_id == UNKNOWN_INIT_ID {
+            Clock::get()?.slot as i64
+        } else {
+            expected_subscription_authority_init_id
+        };
+        if subscription_authority.init_id != expected_init_id {
             return Err(SubscriptionsError::StaleSubscriptionAuthority.into());
         }
 
