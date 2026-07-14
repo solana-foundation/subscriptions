@@ -52,9 +52,12 @@ export const METADATA_URI_LEN = 128;
 export type DelegationKindId = 'fixed' | 'recurring' | 'subscription';
 
 /**
- * Sentinel `expectedSubscriptionAuthorityInitId` that opts a subscribe or
- * delegation-creation instruction into same-transaction co-init detection.
- * Pass this when the SubscriptionAuthority is initialized in the same transaction
- * (1-step signup); the program then verifies co-init instead of matching `initId`.
+ * Sentinel `expectedSubscriptionAuthorityInitId` for 1-step signup.
+ *
+ * When passed to subscribe or delegation creation, the program accepts the
+ * SubscriptionAuthority only if its stored `initId` equals the current slot.
+ * This is intended for bundling `initSubscriptionAuthority` in the same
+ * transaction, but the check is slot-scoped, not transaction-scoped. Pass the
+ * real `initId` when it is known.
  */
 export const UNKNOWN_INIT_ID = -9223372036854775808n;
