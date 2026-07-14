@@ -243,6 +243,32 @@ fn sentinel_without_co_init_rejected() {
 }
 
 #[test]
+fn init_after_subscribe_in_same_tx_rejected() {
+    let (mut litesvm, alice, merchant, mint, alice_ata, plan_pda, plan_bump) = setup_plan();
+    initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
+    let (authority_pda, _) = get_subscription_authority_pda(&alice.pubkey(), &mint);
+    let (subscription_pda, _) = get_subscription_pda(&plan_pda, &alice.pubkey());
+
+    let plan_account = litesvm.get_account(&plan_pda).unwrap();
+    let plan = Plan::load(&plan_account.data).unwrap();
+    let init_ix = init_authority_ix(&alice.pubkey(), mint, alice_ata, authority_pda);
+    let sub_ix = subscribe_ix(
+        &alice.pubkey(),
+        &merchant.pubkey(),
+        plan_pda,
+        subscription_pda,
+        authority_pda,
+        1,
+        plan_bump,
+        plan,
+        UNKNOWN_INIT_ID,
+    );
+
+    build_and_send_transaction_multi(&mut litesvm, &[&alice], &alice.pubkey(), &[sub_ix, init_ix])
+        .assert_err(SubscriptionsError::StaleSubscriptionAuthority);
+}
+
+#[test]
 fn co_init_for_different_mint_does_not_satisfy_subscribe() {
     let (mut litesvm, alice, merchant, mint, _alice_ata, plan_pda, plan_bump) = setup_plan();
     initialize_subscription_authority_action(&mut litesvm, &alice, mint).0.assert_ok();
