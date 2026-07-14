@@ -907,6 +907,7 @@ pub struct CreatePlan<'a> {
     destinations_vec: Vec<Pubkey>,
     pullers_vec: Vec<Pubkey>,
     custom_pda: Option<Pubkey>,
+    sponsor: Option<&'a Keypair>,
 }
 
 impl<'a> CreatePlan<'a> {
@@ -927,7 +928,13 @@ impl<'a> CreatePlan<'a> {
             destinations_vec: vec![],
             pullers_vec: vec![],
             custom_pda: None,
+            sponsor: None,
         }
+    }
+
+    pub fn sponsor(mut self, sponsor: &'a Keypair) -> Self {
+        self.sponsor = Some(sponsor);
+        self
     }
 
     pub fn plan_id(mut self, plan_id: u64) -> Self {
@@ -1004,7 +1011,7 @@ impl<'a> CreatePlan<'a> {
             .map(|a| a.owner)
             .unwrap_or(crate::tests::constants::TOKEN_PROGRAM_ID);
 
-        let accounts = vec![
+        let mut accounts = vec![
             AccountMeta::new(self.owner.pubkey(), true),
             AccountMeta::new(plan_pda, false),
             AccountMeta::new_readonly(mint_pubkey, false),
@@ -1012,9 +1019,17 @@ impl<'a> CreatePlan<'a> {
             AccountMeta::new_readonly(token_program, false),
         ];
 
+        let mut signers = vec![self.owner];
+        let mut fee_payer = self.owner.pubkey();
+        if let Some(sponsor) = self.sponsor {
+            accounts.push(AccountMeta::new(sponsor.pubkey(), true));
+            signers.push(sponsor);
+            fee_payer = sponsor.pubkey();
+        }
+
         let ix = Instruction { program_id: PROGRAM_ID, accounts, data };
 
-        (build_and_send_transaction(self.litesvm, &[self.owner], &self.owner.pubkey(), &ix), plan_pda)
+        (build_and_send_transaction(self.litesvm, &signers, &fee_payer, &ix), plan_pda)
     }
 }
 

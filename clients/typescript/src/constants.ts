@@ -12,9 +12,9 @@ export const ZERO_ADDRESS =
 
 /** Byte offset of the account discriminator in the Header struct. */
 export const DISCRIMINATOR_OFFSET = 0;
-/** Byte offset of the delegator pubkey in the Header struct. */
+/** Byte offset of the delegator address in the Header struct. */
 export const DELEGATOR_OFFSET = 3;
-/** Byte offset of the delegatee pubkey in the Header struct. */
+/** Byte offset of the delegatee address in the Header struct. */
 export const DELEGATEE_OFFSET = 35;
 
 /** Byte size of a u64 value (used in nonce encoding). */
@@ -38,7 +38,7 @@ export const PLAN_SIZE = 491;
 /** On-chain SubscriptionDelegation account size in bytes: header(107) + terms(24) + pulled(8) + periodStart(8) + expiresAt(8). */
 export const SUBSCRIPTION_SIZE = 155;
 
-/** Byte offset of the owner pubkey in a Plan account. */
+/** Byte offset of the owner address in a Plan account. */
 export const PLAN_OWNER_OFFSET = 1;
 
 /** Maximum number of destination addresses in a Plan. */
