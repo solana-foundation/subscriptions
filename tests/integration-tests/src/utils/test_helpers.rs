@@ -508,19 +508,31 @@ impl<'a> CreateDelegation<'a> {
         })
     }
 
+    fn fixed_data(&self, amount: u64, expiry_ts: i64) -> Vec<u8> {
+        [
+            self.nonce.to_le_bytes().to_vec(),
+            amount.to_le_bytes().to_vec(),
+            expiry_ts.to_le_bytes().to_vec(),
+            self.resolved_expected_subscription_authority_init_id().to_le_bytes().to_vec(),
+        ]
+        .concat()
+    }
+
+    fn recurring_data(&self, amount_per_period: u64, period_length_s: u64, start_ts: i64, expiry_ts: i64) -> Vec<u8> {
+        [
+            self.nonce.to_le_bytes().to_vec(),
+            amount_per_period.to_le_bytes().to_vec(),
+            period_length_s.to_le_bytes().to_vec(),
+            start_ts.to_le_bytes().to_vec(),
+            expiry_ts.to_le_bytes().to_vec(),
+            self.resolved_expected_subscription_authority_init_id().to_le_bytes().to_vec(),
+        ]
+        .concat()
+    }
+
     pub fn fixed(self, amount: u64, expiry_ts: i64) -> (TransactionResult, Pubkey) {
-        let nonce_bytes = self.nonce.to_le_bytes().to_vec();
-        let expected_subscription_authority_init_id = self.resolved_expected_subscription_authority_init_id();
-        self.execute(
-            *create_fixed_delegation::DISCRIMINATOR,
-            [
-                nonce_bytes,
-                amount.to_le_bytes().to_vec(),
-                expiry_ts.to_le_bytes().to_vec(),
-                expected_subscription_authority_init_id.to_le_bytes().to_vec(),
-            ]
-            .concat(),
-        )
+        let data = self.fixed_data(amount, expiry_ts);
+        self.execute(*create_fixed_delegation::DISCRIMINATOR, data)
     }
 
     pub fn recurring(
@@ -530,23 +542,33 @@ impl<'a> CreateDelegation<'a> {
         start_ts: i64,
         expiry_ts: i64,
     ) -> (TransactionResult, Pubkey) {
-        let nonce_bytes = self.nonce.to_le_bytes().to_vec();
-        let expected_subscription_authority_init_id = self.resolved_expected_subscription_authority_init_id();
-        self.execute(
-            *create_recurring_delegation::DISCRIMINATOR,
-            [
-                nonce_bytes,
-                amount_per_period.to_le_bytes().to_vec(),
-                period_length_s.to_le_bytes().to_vec(),
-                start_ts.to_le_bytes().to_vec(),
-                expiry_ts.to_le_bytes().to_vec(),
-                expected_subscription_authority_init_id.to_le_bytes().to_vec(),
-            ]
-            .concat(),
-        )
+        let data = self.recurring_data(amount_per_period, period_length_s, start_ts, expiry_ts);
+        self.execute(*create_recurring_delegation::DISCRIMINATOR, data)
     }
 
-    fn execute(self, discriminator: u8, data: Vec<u8>) -> (TransactionResult, Pubkey) {
+    /// Builds a `CreateFixedDelegation` instruction without sending, for composing
+    /// into multi-instruction transactions (e.g. co-init + create-delegation).
+    pub fn fixed_instruction(&self, amount: u64, expiry_ts: i64) -> Instruction {
+        self.instruction(*create_fixed_delegation::DISCRIMINATOR, self.fixed_data(amount, expiry_ts)).0
+    }
+
+    /// Builds a `CreateRecurringDelegation` instruction without sending, for composing
+    /// into multi-instruction transactions (e.g. co-init + create-delegation).
+    pub fn recurring_instruction(
+        &self,
+        amount_per_period: u64,
+        period_length_s: u64,
+        start_ts: i64,
+        expiry_ts: i64,
+    ) -> Instruction {
+        self.instruction(
+            *create_recurring_delegation::DISCRIMINATOR,
+            self.recurring_data(amount_per_period, period_length_s, start_ts, expiry_ts),
+        )
+        .0
+    }
+
+    fn instruction(&self, discriminator: u8, data: Vec<u8>) -> (Instruction, Pubkey) {
         let (subscription_authority_pda, _) = get_subscription_authority_pda(&self.delegator.pubkey(), &self.mint);
         let (derived_pda, _) =
             get_delegation_pda(&subscription_authority_pda, &self.delegator.pubkey(), &self.delegatee, self.nonce);
@@ -560,16 +582,23 @@ impl<'a> CreateDelegation<'a> {
             AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
         ];
 
-        let mut signers = vec![self.delegator];
-        let mut fee_payer = self.delegator.pubkey();
-
         if let Some(p) = self.payer {
             accounts.push(AccountMeta::new(p.pubkey(), true));
-            signers.push(p);
-            fee_payer = p.pubkey();
         }
 
         let ix = Instruction { program_id: PROGRAM_ID, accounts, data: [vec![discriminator], data].concat() };
+        (ix, delegation_pda)
+    }
+
+    fn execute(self, discriminator: u8, data: Vec<u8>) -> (TransactionResult, Pubkey) {
+        let (ix, delegation_pda) = self.instruction(discriminator, data);
+
+        let mut signers = vec![self.delegator];
+        let mut fee_payer = self.delegator.pubkey();
+        if let Some(p) = self.payer {
+            signers.push(p);
+            fee_payer = p.pubkey();
+        }
 
         (build_and_send_transaction(self.litesvm, &signers, &fee_payer, &ix), delegation_pda)
     }
@@ -1393,8 +1422,9 @@ impl<'a> Subscribe<'a> {
         self
     }
 
-    #[allow(clippy::result_large_err)]
-    pub fn execute(self) -> TransactionResult {
+    /// Builds the `Subscribe` instruction without sending, for composing into
+    /// multi-instruction transactions (e.g. co-init + subscribe).
+    pub fn instruction(&self) -> Instruction {
         let (subscription_authority_pda, _) = get_subscription_authority_pda(&self.subscriber.pubkey(), &self.mint);
         let (subscription_pda, _) = get_subscription_pda(&self.plan_pda, &self.subscriber.pubkey());
 
@@ -1411,13 +1441,8 @@ impl<'a> Subscribe<'a> {
             AccountMeta::new_readonly(PROGRAM_ID, false),
         ];
 
-        let mut signers: Vec<&Keypair> = vec![self.subscriber];
-        let mut fee_payer = self.subscriber.pubkey();
-
         if let Some(p) = self.payer {
             accounts.push(AccountMeta::new(p.pubkey(), true));
-            signers.push(p);
-            fee_payer = p.pubkey();
         }
 
         // Snapshot live plan terms to bind subscriber consent.
@@ -1446,7 +1471,19 @@ impl<'a> Subscribe<'a> {
         ]
         .concat();
 
-        let ix = Instruction { program_id: PROGRAM_ID, accounts, data };
+        Instruction { program_id: PROGRAM_ID, accounts, data }
+    }
+
+    #[allow(clippy::result_large_err)]
+    pub fn execute(self) -> TransactionResult {
+        let ix = self.instruction();
+
+        let mut signers: Vec<&Keypair> = vec![self.subscriber];
+        let mut fee_payer = self.subscriber.pubkey();
+        if let Some(p) = self.payer {
+            signers.push(p);
+            fee_payer = p.pubkey();
+        }
 
         build_and_send_transaction(self.litesvm, &signers, &fee_payer, &ix)
     }
