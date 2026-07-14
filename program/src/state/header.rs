@@ -20,13 +20,13 @@ pub const VERSION_OFFSET: usize = 1;
 /// Byte offset of the PDA bump seed.
 pub const BUMP_OFFSET: usize = 2;
 
-/// Byte offset of the delegator pubkey.
+/// Byte offset of the delegator address.
 pub const DELEGATOR_OFFSET: usize = 3;
 
-/// Byte offset of the delegatee pubkey.
+/// Byte offset of the delegatee address.
 pub const DELEGATEE_OFFSET: usize = 35;
 
-/// Byte offset of the payer pubkey (who funded the account creation).
+/// Byte offset of the payer address (who funded the account creation).
 pub const PAYER_OFFSET: usize = 67;
 
 /// Byte offset of the init_id field.
