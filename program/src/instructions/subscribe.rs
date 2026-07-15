@@ -116,9 +116,7 @@ pub fn process(accounts: &mut [AccountView], data: &SubscribeData) -> ProgramRes
         if subscription_authority.token_mint != plan_mint {
             return Err(SubscriptionsError::MintMismatch.into());
         }
-        if subscription_authority.init_id != data.expected_subscription_authority_init_id {
-            return Err(SubscriptionsError::StaleSubscriptionAuthority.into());
-        }
+        subscription_authority.check_init_id(data.expected_subscription_authority_init_id)?;
         init_id = subscription_authority.init_id;
     }
 

@@ -63,9 +63,8 @@ pub fn create_delegation_account(
         let md_data = accounts.subscription_authority.try_borrow()?;
         let subscription_authority = SubscriptionAuthority::load(&md_data)?;
         subscription_authority.check_owner(accounts.delegator.address())?;
-        if subscription_authority.init_id != expected_subscription_authority_init_id {
-            return Err(SubscriptionsError::StaleSubscriptionAuthority.into());
-        }
+        subscription_authority.check_init_id(expected_subscription_authority_init_id)?;
+
         init_id = subscription_authority.init_id;
         mint = subscription_authority.token_mint;
     }

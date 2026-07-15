@@ -50,3 +50,14 @@ export const METADATA_URI_LEN = 128;
 
 /** On-chain delegation variant identifier (matches the `kind` tag in the `Delegation` union). */
 export type DelegationKindId = 'fixed' | 'recurring' | 'subscription';
+
+/**
+ * Sentinel `expectedSubscriptionAuthorityInitId` for 1-step signup.
+ *
+ * When passed to subscribe or delegation creation, the program accepts the
+ * SubscriptionAuthority only if its stored `initId` equals the current slot.
+ * This is intended for bundling `initSubscriptionAuthority` in the same
+ * transaction, but the check is slot-scoped, not transaction-scoped. Pass the
+ * real `initId` when it is known.
+ */
+export const UNKNOWN_INIT_ID = -9223372036854775808n;
