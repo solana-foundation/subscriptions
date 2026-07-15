@@ -3,3 +3,18 @@ packages:
   - 'webapp'
   - 'webapp/api'
   - 'webapp/scripts'
+
+allowBuilds:
+  bigint-buffer: false
+  bufferutil: false
+  esbuild: true
+  unrs-resolver: true
+  utf-8-validate: false
+
+overrides:
+  bn.js: 5.2.3
+  flatted: 3.4.2
+  minimatch: 9.0.9
+  picomatch: 4.0.4
+  rollup: 4.60.2
+  ws@^8.0.0: 8.20.1
