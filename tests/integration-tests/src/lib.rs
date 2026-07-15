@@ -13,6 +13,8 @@ pub mod tests {
 #[cfg(test)]
 mod test_cancel_subscription;
 #[cfg(test)]
+mod test_cancel_subscription_now;
+#[cfg(test)]
 mod test_close_subscription_authority;
 #[cfg(test)]
 mod test_co_init_slot;

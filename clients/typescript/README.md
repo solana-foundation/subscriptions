@@ -76,14 +76,15 @@ For Token-2022 mints with a configured transfer hook, the plugin resolves and ap
 
 ### Subscription Plans
 
-| Plugin instruction / builder                                          | Description                                                      |
-| --------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `createPlan` / `getCreatePlanOverlayInstructionAsync`                 | Publish a subscription plan with billing terms                   |
-| `updatePlan` / `getUpdatePlanOverlayInstruction`                      | Update plan status, end date, pullers, or metadata               |
-| `deletePlan` / `getDeletePlanOverlayInstruction`                      | Delete an expired plan and reclaim rent                          |
-| `subscribe` / `getSubscribeOverlayInstructionAsync`                   | Subscribe to a plan                                              |
-| `cancelSubscription` / `getCancelSubscriptionOverlayInstructionAsync` | Cancel a subscription (grace period until end of billing period) |
-| `resumeSubscription` / `getResumeSubscriptionOverlayInstructionAsync` | Resume a cancelled subscription before revocation                |
+| Plugin instruction / builder                                                | Description                                                      |
+| --------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `createPlan` / `getCreatePlanOverlayInstructionAsync`                       | Publish a subscription plan with billing terms                   |
+| `updatePlan` / `getUpdatePlanOverlayInstruction`                            | Update plan status, end date, pullers, or metadata               |
+| `deletePlan` / `getDeletePlanOverlayInstruction`                            | Delete an expired plan and reclaim rent                          |
+| `subscribe` / `getSubscribeOverlayInstructionAsync`                         | Subscribe to a plan                                              |
+| `cancelSubscription` / `getCancelSubscriptionOverlayInstructionAsync`       | Cancel a subscription (grace period until end of billing period) |
+| `cancelSubscriptionNow` / `getCancelSubscriptionNowOverlayInstructionAsync` | Cancel immediately with subscriber and plan-owner approval       |
+| `resumeSubscription` / `getResumeSubscriptionOverlayInstructionAsync`       | Resume a cancelled subscription before revocation                |
 
 ### Account Queries
 

@@ -5,6 +5,7 @@
 //! annotations on each variant describe the required accounts.
 
 pub mod cancel_subscription;
+pub mod cancel_subscription_now;
 pub mod close_subscription_authority;
 pub mod create_fixed_delegation;
 pub use create_fixed_delegation::CreateFixedDelegationData;
@@ -358,6 +359,31 @@ pub enum SubscriptionsInstruction {
     #[codama(account(name = "plan_pda", docs = "The plan the subscription belongs to; provides the mint"))]
     RevokeAbandonedSubscription = 16,
 
+    #[codama(account(name = "subscriber", signer, docs = "The subscriber cancelling the subscription"))]
+    #[codama(account(
+        name = "merchant",
+        signer,
+        docs = "The owner of the subscription plan approving immediate cancellation"
+    ))]
+    #[codama(account(name = "plan_pda", docs = "The plan PDA for the subscription"))]
+    #[codama(account(
+        name = "subscription_pda",
+        writable,
+        docs = "The subscription PDA being cancelled immediately",
+        default_value = pda("subscriptionDelegation", [seed("planPda", account("plan_pda")), seed("subscriber", account("subscriber"))])
+    ))]
+    #[codama(account(
+        name = "event_authority",
+        docs = "The event authority PDA",
+        default_value = pda("eventAuthority")
+    ))]
+    #[codama(account(
+        name = "self_program",
+        docs = "This program (for self-CPI)",
+        default_value = public_key("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44")
+    ))]
+    CancelSubscriptionNow = 17,
+
     #[codama(skip)]
     #[codama(account(
         name = "event_authority",
@@ -412,6 +438,7 @@ impl SubscriptionsInstruction {
                 Ok(Self::Subscribe(loaded.clone()))
             }
             cancel_subscription::DISCRIMINATOR => Ok(Self::CancelSubscription),
+            cancel_subscription_now::DISCRIMINATOR => Ok(Self::CancelSubscriptionNow),
             resume_subscription::DISCRIMINATOR => Ok(Self::ResumeSubscription),
             revoke_subscription_authority::DISCRIMINATOR => Ok(Self::RevokeSubscriptionAuthority),
             revoke_abandoned_delegation::DISCRIMINATOR => Ok(Self::RevokeAbandonedDelegation),
@@ -438,6 +465,7 @@ impl fmt::Display for SubscriptionsInstruction {
             Self::TransferSubscription(_) => write!(f, "transfer_subscription"),
             Self::Subscribe(_) => write!(f, "subscribe"),
             Self::CancelSubscription => write!(f, "cancel_subscription"),
+            Self::CancelSubscriptionNow => write!(f, "cancel_subscription_now"),
             Self::ResumeSubscription => write!(f, "resume_subscription"),
             Self::RevokeSubscriptionAuthority => write!(f, "revoke_subscription_authority"),
             Self::RevokeAbandonedDelegation => write!(f, "revoke_abandoned_delegation"),

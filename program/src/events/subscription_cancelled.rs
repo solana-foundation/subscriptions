@@ -6,7 +6,7 @@ use pinocchio::Address;
 
 use crate::event_engine::{EventDiscriminator, EventDiscriminators, EventSerialize};
 
-/// Emitted when a subscriber cancels their subscription.
+/// Emitted when a subscription is cancelled.
 #[repr(C, packed)]
 #[derive(CodamaEvent)]
 // EVENT_IX_TAG_LE @0, EventDiscriminators::SubscriptionCancelled @8
@@ -17,7 +17,7 @@ pub struct SubscriptionCancelledEvent {
     pub plan: Address,
     /// The subscriber's wallet address.
     pub subscriber: Address,
-    /// Unix timestamp when the subscription will expire (end of current billing period).
+    /// Unix timestamp when the subscription will expire.
     pub expires_at_ts: i64,
 }
 

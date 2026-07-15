@@ -3598,6 +3598,126 @@
         ],
         "kind": "instructionNode",
         "name": "revokeAbandonedSubscription"
+      },
+      {
+        "accounts": [
+          {
+            "docs": [
+              "The subscriber cancelling the subscription"
+            ],
+            "isSigner": true,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "subscriber"
+          },
+          {
+            "docs": [
+              "The owner of the subscription plan approving immediate cancellation"
+            ],
+            "isSigner": true,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "merchant"
+          },
+          {
+            "docs": [
+              "The plan PDA for the subscription"
+            ],
+            "isSigner": false,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "planPda"
+          },
+          {
+            "defaultValue": {
+              "kind": "pdaValueNode",
+              "pda": {
+                "kind": "pdaLinkNode",
+                "name": "subscriptionDelegation"
+              },
+              "seeds": [
+                {
+                  "kind": "pdaSeedValueNode",
+                  "name": "planPda",
+                  "value": {
+                    "kind": "accountValueNode",
+                    "name": "planPda"
+                  }
+                },
+                {
+                  "kind": "pdaSeedValueNode",
+                  "name": "subscriber",
+                  "value": {
+                    "kind": "accountValueNode",
+                    "name": "subscriber"
+                  }
+                }
+              ]
+            },
+            "docs": [
+              "The subscription PDA being cancelled immediately"
+            ],
+            "isSigner": false,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "subscriptionPda"
+          },
+          {
+            "defaultValue": {
+              "kind": "pdaValueNode",
+              "pda": {
+                "kind": "pdaLinkNode",
+                "name": "eventAuthority"
+              },
+              "seeds": []
+            },
+            "docs": [
+              "The event authority PDA"
+            ],
+            "isSigner": false,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "eventAuthority"
+          },
+          {
+            "defaultValue": {
+              "kind": "publicKeyValueNode",
+              "publicKey": "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44"
+            },
+            "docs": [
+              "This program (for self-CPI)"
+            ],
+            "isSigner": false,
+            "isWritable": false,
+            "kind": "instructionAccountNode",
+            "name": "selfProgram"
+          }
+        ],
+        "arguments": [
+          {
+            "defaultValue": {
+              "kind": "numberValueNode",
+              "number": 17
+            },
+            "defaultValueStrategy": "omitted",
+            "kind": "instructionArgumentNode",
+            "name": "discriminator",
+            "type": {
+              "endian": "le",
+              "format": "u8",
+              "kind": "numberTypeNode"
+            }
+          }
+        ],
+        "discriminators": [
+          {
+            "kind": "fieldDiscriminatorNode",
+            "name": "discriminator",
+            "offset": 0
+          }
+        ],
+        "kind": "instructionNode",
+        "name": "cancelSubscriptionNow"
       }
     ],
     "kind": "programNode",

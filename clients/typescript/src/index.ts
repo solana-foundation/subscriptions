@@ -11,12 +11,14 @@ export * from './generated/index.js';
 // `subscriptionsProgram()` plugin + overlay instruction builders
 export {
     type CancelSubscriptionInput,
+    type CancelSubscriptionNowInput,
     type CloseSubscriptionAuthorityInput,
     type CreateFixedDelegationInput,
     type CreatePlanInput,
     type CreateRecurringDelegationInput,
     type DeletePlanInput,
     getCancelSubscriptionOverlayInstructionAsync,
+    getCancelSubscriptionNowOverlayInstructionAsync,
     getCloseSubscriptionAuthorityOverlayInstructionAsync,
     getCreateFixedDelegationOverlayInstructionAsync,
     getCreatePlanOverlayInstructionAsync,

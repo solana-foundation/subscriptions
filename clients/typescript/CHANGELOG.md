@@ -6,6 +6,10 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `cancelSubscriptionNow` generated builder, overlay, and plugin instruction. The plugin defaults the subscriber to `client.identity` and the approving plan owner to `client.payer` for sponsored cancellation flows.
+
 ## [0.4.0] — 2026-07-13
 
 _Matches on-chain program `program-v0.4.0`._

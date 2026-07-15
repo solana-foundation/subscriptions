@@ -6,6 +6,10 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Generated `CancelSubscriptionNow` instruction and CPI builders for merchant-approved immediate cancellation.
+
 ## [0.4.0] — 2026-07-13
 
 _Matches on-chain program `program-v0.4.0`._

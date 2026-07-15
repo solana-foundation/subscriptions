@@ -7,6 +7,10 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `CancelSubscriptionNow` (discriminator 17) immediately expires a subscription when both the subscriber and current plan owner sign. It can shorten a pending cancellation, leaves the shared `SubscriptionAuthority` intact, and allows immediate subscription revocation without creating a unilateral skip-payment path.
+
 ## [0.4.0] — 2026-07-13
 
 _Target mainnet deploy 2026-07-13. Reproducible via `solana-verify`. **Includes breaking changes vs the deployed v0.3.0 — see Changed / Security.** Audit status: [`audits/AUDIT_STATUS.md`](audits/AUDIT_STATUS.md)._
