@@ -10,6 +10,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Added
 
 - `CancelSubscriptionNow` (discriminator 17) immediately expires a subscription when both the subscriber and current plan owner sign. It can shorten a pending cancellation, leaves the shared `SubscriptionAuthority` intact, and allows immediate subscription revocation without creating a unilateral skip-payment path.
+- `CreatePlan` accepts an optional trailing payer that funds plan rent while the merchant remains the owner, enabling sponsored plan creation. Deleting the plan still refunds the merchant, so sponsors must gate access to trusted merchants. ([#204])
+- `UNKNOWN_INIT_ID` (`i64::MIN`) enables one-transaction authority initialization with `Subscribe`, `CreateFixedDelegation`, or `CreateRecurringDelegation` when the new `SubscriptionAuthority.init_id` matches the current slot. The sentinel is slot-scoped and fails for authorities created in an earlier slot; callers should pass the real `init_id` when known. ([#206])
 
 ## [0.4.0] — 2026-07-13
 
@@ -67,3 +69,5 @@ Initial audited mainnet release (`program-v0.3.0`, commit `0221a37`).
 [#163]: https://github.com/solana-foundation/subscriptions/pull/163
 [#164]: https://github.com/solana-foundation/subscriptions/pull/164
 [#186]: https://github.com/solana-foundation/subscriptions/pull/186
+[#204]: https://github.com/solana-foundation/subscriptions/pull/204
+[#206]: https://github.com/solana-foundation/subscriptions/pull/206
