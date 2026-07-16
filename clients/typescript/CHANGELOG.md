@@ -6,6 +6,12 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `cancelSubscriptionNow` generated builder, overlay, and plugin instruction. The plugin defaults the subscriber to `client.identity` and the approving plan owner to `client.payer` for sponsored cancellation flows.
+- `createPlan` accepts an optional `payer`; the plugin defaults it to `client.payer` when that signer differs from `client.identity`, enabling sponsored plan creation. ([#204])
+- `UNKNOWN_INIT_ID` is exported for same-slot, one-transaction `SubscriptionAuthority` initialization with subscribe or delegation creation instructions. ([#206])
+
 ## [0.4.0] — 2026-07-13
 
 _Matches on-chain program `program-v0.4.0`._
@@ -35,3 +41,5 @@ _Releases before `0.4.0` predate this changelog; see the `ts-client-v*` tags and
 [#162]: https://github.com/solana-foundation/subscriptions/pull/162
 [#163]: https://github.com/solana-foundation/subscriptions/pull/163
 [#164]: https://github.com/solana-foundation/subscriptions/pull/164
+[#204]: https://github.com/solana-foundation/subscriptions/pull/204
+[#206]: https://github.com/solana-foundation/subscriptions/pull/206

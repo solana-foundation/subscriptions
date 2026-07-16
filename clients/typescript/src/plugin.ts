@@ -68,6 +68,7 @@ import {
     findRecurringDelegationPda,
     findSubscriptionAuthorityPda,
     getCancelSubscriptionInstructionAsync,
+    getCancelSubscriptionNowInstructionAsync,
     getCloseSubscriptionAuthorityInstruction,
     getCreateFixedDelegationInstruction,
     getCreatePlanInstruction,
@@ -276,6 +277,13 @@ export type SubscribeInput = WithProgramAddress & {
 };
 
 export type CancelSubscriptionInput = WithProgramAddress & {
+    planPda: Address;
+    subscriber: TransactionSigner;
+    subscriptionPda?: Address;
+};
+
+export type CancelSubscriptionNowInput = WithProgramAddress & {
+    merchant: TransactionSigner;
     planPda: Address;
     subscriber: TransactionSigner;
     subscriptionPda?: Address;
@@ -675,6 +683,21 @@ export async function getCancelSubscriptionOverlayInstructionAsync(
     );
 }
 
+export async function getCancelSubscriptionNowOverlayInstructionAsync(
+    input: CancelSubscriptionNowInput,
+): Promise<Instruction> {
+    return await getCancelSubscriptionNowInstructionAsync(
+        {
+            ...(await eventAccounts(input.programAddress)),
+            merchant: input.merchant,
+            planPda: input.planPda,
+            subscriber: input.subscriber,
+            subscriptionPda: input.subscriptionPda,
+        },
+        pdaConfig(input.programAddress),
+    );
+}
+
 export async function getResumeSubscriptionOverlayInstructionAsync(
     input: ResumeSubscriptionInput,
 ): Promise<Instruction> {
@@ -707,6 +730,9 @@ type Self<T> = SelfPlanAndSendFunctions & T;
 
 export type SubscriptionsPluginInstructions = {
     cancelSubscription: (input: MakeOptional<CancelSubscriptionInput, 'subscriber'>) => Self<Promise<Instruction>>;
+    cancelSubscriptionNow: (
+        input: MakeOptional<CancelSubscriptionNowInput, 'merchant' | 'subscriber'>,
+    ) => Self<Promise<Instruction>>;
     closeSubscriptionAuthority: (
         input: MakeOptional<CloseSubscriptionAuthorityInput, 'user'>,
     ) => Self<Promise<Instruction>>;
@@ -829,6 +855,15 @@ export function subscriptionsProgram() {
                         client,
                         getCancelSubscriptionOverlayInstructionAsync({
                             ...input,
+                            subscriber: input.subscriber ?? client.identity,
+                        }),
+                    ),
+                cancelSubscriptionNow: input =>
+                    addSelfPlanAndSendFunctions(
+                        client,
+                        getCancelSubscriptionNowOverlayInstructionAsync({
+                            ...input,
+                            merchant: input.merchant ?? client.payer,
                             subscriber: input.subscriber ?? client.identity,
                         }),
                     ),

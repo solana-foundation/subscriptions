@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import {
     SUBSCRIPTIONS_ERROR__INVALID_SUBSCRIPTION_AUTHORITY_PDA,
     SUBSCRIPTIONS_ERROR__PLAN_TERMS_MISMATCH,
+    SUBSCRIPTIONS_ERROR__SUBSCRIPTION_CANCELLED,
     SUBSCRIPTIONS_ERROR__SUBSCRIPTION_NOT_CANCELLED,
 } from '../src/generated/errors/subscriptions.ts';
 import {
@@ -213,6 +214,64 @@ describe('Subscription Lifecycle', () => {
 
         const balance = await t.rpc.getTokenAccountBalance(pullerAta).send();
         expect(balance.value.amount).toBe(pullAmount.toString());
+    });
+
+    test('merchant-approved immediate cancellation blocks pulls', async () => {
+        const t = await initTestSuite();
+        const [planPda] = await findPlanPda({ owner: t.payerKeypair.address, planId: 20n });
+        await t.client.subscriptions.instructions
+            .createPlan({
+                owner: t.payerKeypair,
+                planId: 20n,
+                mint: t.tokenMint,
+                amount: 500_000n,
+                periodHours: 1n,
+                endTs: 0n,
+                destinations: [],
+                pullers: [],
+                metadataUri: 'https://example.com/prepaid.json',
+            })
+            .sendTransaction();
+
+        const subscriber = await t.createFundedKeypair();
+        const subscriberAta = await t.createAtaWithBalance(t.tokenMint, subscriber.address, DEFAULT_TEST_BALANCE);
+        await t.client.subscriptions.instructions
+            .initSubscriptionAuthority({
+                owner: subscriber,
+                tokenMint: t.tokenMint,
+                userAta: subscriberAta,
+                tokenProgram: t.tokenProgram,
+            })
+            .sendTransaction();
+
+        const [subscriptionPda] = await findSubscriptionDelegationPda({ planPda, subscriber: subscriber.address });
+        await t.client.subscriptions.instructions
+            .subscribe({ subscriber, merchant: t.payerKeypair.address, planId: 20n, tokenMint: t.tokenMint })
+            .sendTransaction();
+
+        await t.client.subscriptions.instructions
+            .cancelSubscriptionNow({ subscriber, planPda, subscriptionPda })
+            .sendTransaction();
+
+        const cancelled = (await fetchSubscriptionDelegation(t.rpc, subscriptionPda)).data;
+        expect(cancelled.expiresAtTs).not.toBe(0n);
+
+        const merchantAta = await t.createAtaWithBalance(t.tokenMint, t.payerKeypair.address, 0n);
+        await expectProgramError(
+            t.client.subscriptions.instructions
+                .transferSubscription({
+                    caller: t.payerKeypair,
+                    delegator: subscriber.address,
+                    tokenMint: t.tokenMint,
+                    subscriptionPda,
+                    planPda,
+                    amount: 1n,
+                    receiverAta: merchantAta,
+                    tokenProgram: t.tokenProgram,
+                })
+                .sendTransaction(),
+            SUBSCRIPTIONS_ERROR__SUBSCRIPTION_CANCELLED,
+        );
     });
 
     test('ghost account attack is blocked and subscriber can recover', async () => {
