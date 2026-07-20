@@ -32,4 +32,4 @@ jobs:
 
       - name: Report compute units
         if: github.event.pull_request.head.repo.full_name == github.repository
-        uses: solana-foundation/github-actions/cu-benchmark@f0ddc2234ac4ac19c5c17f520b60bc2d7308744f
+        uses: solana-foundation/github-actions/cu-benchmark@4dcdecb13d956467088835b1c644b38e0ee1d5d9
