@@ -1525,6 +1525,7 @@ pub struct CancelSubscriptionNow<'a> {
     merchant: &'a Keypair,
     plan_pda: Pubkey,
     subscription_pda: Pubkey,
+    expected_current_period_start_ts: Option<i64>,
 }
 
 impl<'a> CancelSubscriptionNow<'a> {
@@ -1535,7 +1536,12 @@ impl<'a> CancelSubscriptionNow<'a> {
         plan_pda: Pubkey,
         subscription_pda: Pubkey,
     ) -> Self {
-        Self { litesvm, subscriber, merchant, plan_pda, subscription_pda }
+        Self { litesvm, subscriber, merchant, plan_pda, subscription_pda, expected_current_period_start_ts: None }
+    }
+
+    pub fn expected_current_period_start_ts(mut self, ts: i64) -> Self {
+        self.expected_current_period_start_ts = Some(ts);
+        self
     }
 
     #[allow(clippy::result_large_err)]
@@ -1549,7 +1555,15 @@ impl<'a> CancelSubscriptionNow<'a> {
             AccountMeta::new_readonly(event_authority, false),
             AccountMeta::new_readonly(PROGRAM_ID, false),
         ];
-        let ix = Instruction { program_id: PROGRAM_ID, accounts, data: vec![*cancel_subscription_now::DISCRIMINATOR] };
+
+        let expected_current_period_start_ts = self.expected_current_period_start_ts.unwrap_or_else(|| {
+            let account = self.litesvm.get_account(&self.subscription_pda).unwrap();
+            crate::SubscriptionDelegation::load(&account.data).unwrap().current_period_start_ts
+        });
+
+        let mut data = vec![*cancel_subscription_now::DISCRIMINATOR];
+        data.extend_from_slice(&expected_current_period_start_ts.to_le_bytes());
+        let ix = Instruction { program_id: PROGRAM_ID, accounts, data };
 
         build_and_send_transaction(self.litesvm, &[self.subscriber, self.merchant], &self.merchant.pubkey(), &ix)
     }
