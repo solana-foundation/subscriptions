@@ -32,7 +32,7 @@ describe('generated event-emitting builders resolve event accounts from the acti
         const planPda = (await generateKeyPairSigner()).address;
 
         const ix = await getCancelSubscriptionNowInstructionAsync(
-            { merchant, planPda, subscriber },
+            { merchant, planPda, subscriber, cancelSubscriptionNowData: { expectedCurrentPeriodStartTs: 0n } },
             { programAddress },
         );
 

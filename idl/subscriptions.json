@@ -324,6 +324,24 @@
     "definedTypes": [
       {
         "kind": "definedTypeNode",
+        "name": "cancelSubscriptionNowData",
+        "type": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "expectedCurrentPeriodStartTs",
+              "type": {
+                "endian": "le",
+                "format": "i64",
+                "kind": "numberTypeNode"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        }
+      },
+      {
+        "kind": "definedTypeNode",
         "name": "createFixedDelegationData",
         "type": {
           "fields": [
@@ -1277,6 +1295,12 @@
         "kind": "errorNode",
         "message": "A finite plan end timestamp can only be shortened, not removed or extended",
         "name": "planEndTsCannotExtend"
+      },
+      {
+        "code": 521,
+        "kind": "errorNode",
+        "message": "Subscription approval does not match the current subscription",
+        "name": "staleSubscriptionApproval"
       },
       {
         "code": 600,
@@ -3732,6 +3756,14 @@
               "endian": "le",
               "format": "u8",
               "kind": "numberTypeNode"
+            }
+          },
+          {
+            "kind": "instructionArgumentNode",
+            "name": "cancelSubscriptionNowData",
+            "type": {
+              "kind": "definedTypeLinkNode",
+              "name": "cancelSubscriptionNowData"
             }
           }
         ],

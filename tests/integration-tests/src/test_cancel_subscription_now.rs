@@ -7,8 +7,9 @@ use crate::{
         constants::PROGRAM_ID,
         pda::{get_plan_pda, get_subscription_authority_pda, get_subscription_pda},
         utils::{
-            build_and_send_transaction, current_ts, days, init_ata, init_wallet, setup_with_subscription,
-            CancelSubscription, CancelSubscriptionNow, CreatePlan, RevokeSubscription, Subscribe, TransferSubscription,
+            build_and_send_transaction, current_ts, days, hours, init_ata, init_wallet, move_clock_forward,
+            setup_with_subscription, CancelSubscription, CancelSubscriptionNow, CreatePlan, RevokeSubscription,
+            Subscribe, TransferSubscription,
         },
     },
     SubscriptionsError,
@@ -25,8 +26,11 @@ fn cancel_subscription_now_instruction(
     merchant_is_signer: bool,
     plan_pda: Pubkey,
     subscription_pda: Pubkey,
+    expected_current_period_start_ts: i64,
 ) -> Instruction {
     let event_authority = Pubkey::new_from_array(event_authority_pda::ID.to_bytes());
+    let mut data = vec![*cancel_subscription_now::DISCRIMINATOR];
+    data.extend_from_slice(&expected_current_period_start_ts.to_le_bytes());
     Instruction {
         program_id: PROGRAM_ID,
         accounts: vec![
@@ -37,7 +41,7 @@ fn cancel_subscription_now_instruction(
             AccountMeta::new_readonly(event_authority, false),
             AccountMeta::new_readonly(PROGRAM_ID, false),
         ],
-        data: vec![*cancel_subscription_now::DISCRIMINATOR],
+        data,
     }
 }
 
@@ -55,6 +59,10 @@ fn cancel_subscription_now_expires_at_current_clock() {
 #[test]
 fn cancel_subscription_now_requires_both_signatures() {
     let (mut litesvm, subscriber, merchant, _mint, plan_pda, _, subscription_pda) = setup_with_subscription();
+    let period_start = {
+        let account = litesvm.get_account(&subscription_pda).unwrap();
+        SubscriptionDelegation::load(&account.data).unwrap().current_period_start_ts
+    };
 
     let missing_subscriber = cancel_subscription_now_instruction(
         subscriber.pubkey(),
@@ -63,6 +71,7 @@ fn cancel_subscription_now_requires_both_signatures() {
         true,
         plan_pda,
         subscription_pda,
+        period_start,
     );
     build_and_send_transaction(&mut litesvm, &[&merchant], &merchant.pubkey(), &missing_subscriber)
         .assert_err(SubscriptionsError::NotSigner);
@@ -74,6 +83,7 @@ fn cancel_subscription_now_requires_both_signatures() {
         false,
         plan_pda,
         subscription_pda,
+        period_start,
     );
     build_and_send_transaction(&mut litesvm, &[&subscriber], &subscriber.pubkey(), &missing_merchant)
         .assert_err(SubscriptionsError::NotSigner);
@@ -173,6 +183,28 @@ fn cancel_subscription_now_preserves_other_subscriptions_on_shared_authority() {
     .to(second_merchant_ata)
     .execute()
     .assert_ok();
+}
+
+#[test]
+fn cancel_subscription_now_rejects_stale_approval_after_resubscribe() {
+    let (mut litesvm, subscriber, merchant, mint, plan_pda, plan_bump, subscription_pda) = setup_with_subscription();
+
+    let first_period_start = {
+        let account = litesvm.get_account(&subscription_pda).unwrap();
+        SubscriptionDelegation::load(&account.data).unwrap().current_period_start_ts
+    };
+
+    CancelSubscription::new(&mut litesvm, &subscriber, plan_pda, subscription_pda).execute().assert_ok();
+    move_clock_forward(&mut litesvm, hours(2));
+    RevokeSubscription::new(&mut litesvm, &subscriber, subscription_pda, plan_pda).execute().assert_ok();
+    Subscribe::new(&mut litesvm, &subscriber, merchant.pubkey(), plan_pda, 1, plan_bump, mint).execute().assert_ok();
+
+    // A dual-signed approval bound to the first incarnation must not cancel the
+    // re-subscribed account at the same PDA.
+    CancelSubscriptionNow::new(&mut litesvm, &subscriber, &merchant, plan_pda, subscription_pda)
+        .expected_current_period_start_ts(first_period_start)
+        .execute()
+        .assert_err(SubscriptionsError::StaleSubscriptionApproval);
 }
 
 #[test]
