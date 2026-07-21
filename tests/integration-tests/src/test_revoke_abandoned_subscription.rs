@@ -8,8 +8,9 @@ use crate::{
         constants::{MINT_DECIMALS, TOKEN_PROGRAM_ID},
         pda::{get_plan_pda, get_subscription_pda},
         utils::{
-            current_ts, days, init_ata, init_mint, init_wallet, initialize_subscription_authority_action,
-            move_clock_forward, setup, CloseSubscriptionAuthority, CreatePlan, RevokeAbandonedSubscription, Subscribe,
+            advance_slots, current_ts, days, init_ata, init_mint, init_wallet,
+            initialize_subscription_authority_action, move_clock_forward, setup, CloseSubscriptionAuthority,
+            CreatePlan, RevokeAbandonedSubscription, Subscribe,
         },
     },
     SubscriptionsError,
@@ -56,6 +57,42 @@ fn sponsor_recovers_subscription_after_authority_rotated() {
     CloseSubscriptionAuthority::new(&mut litesvm, &subscriber, mint).execute().assert_ok();
     move_clock_forward(&mut litesvm, 10);
     initialize_subscription_authority_action(&mut litesvm, &subscriber, mint).0.assert_ok();
+
+    let sponsor_before = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
+    let subscription_rent = litesvm.get_account(&subscription_pda).unwrap().lamports;
+
+    RevokeAbandonedSubscription::new(&mut litesvm, &sponsor, subscriber.pubkey(), mint, plan_pda).execute().assert_ok();
+
+    let after = litesvm.get_account(&subscription_pda);
+    assert!(after.is_none() || after.as_ref().map(|a| a.lamports).unwrap_or(0) == 0);
+
+    let sponsor_after = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
+    assert!(sponsor_after >= sponsor_before + subscription_rent - 10_000);
+}
+
+#[test]
+fn revoke_abandoned_subscription_rejects_same_slot_closure() {
+    let (mut litesvm, subscriber, sponsor, mint, plan_pda) = setup_sponsored_subscription();
+
+    // Authority closed in the same slot the subscription was created: a same-slot
+    // re-init recreates the matching init_id, so it is not terminally abandoned.
+    CloseSubscriptionAuthority::new(&mut litesvm, &subscriber, mint).execute().assert_ok();
+
+    RevokeAbandonedSubscription::new(&mut litesvm, &sponsor, subscriber.pubkey(), mint, plan_pda)
+        .execute()
+        .assert_err(SubscriptionsError::Unauthorized);
+}
+
+#[test]
+fn revoke_abandoned_subscription_recovers_after_authority_closed_slot_advanced() {
+    let (mut litesvm, subscriber, sponsor, mint, plan_pda) = setup_sponsored_subscription();
+    let (subscription_pda, _) = get_subscription_pda(&plan_pda, &subscriber.pubkey());
+
+    // Authority closed and the creation slot has passed: the subscription is now
+    // terminally abandoned (a same-slot re-init can no longer revive it), so the
+    // sponsor can reclaim its rent.
+    CloseSubscriptionAuthority::new(&mut litesvm, &subscriber, mint).execute().assert_ok();
+    advance_slots(&mut litesvm, 1);
 
     let sponsor_before = litesvm.get_account(&sponsor.pubkey()).unwrap().lamports;
     let subscription_rent = litesvm.get_account(&subscription_pda).unwrap().lamports;
