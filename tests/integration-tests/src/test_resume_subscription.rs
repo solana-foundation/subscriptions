@@ -213,6 +213,28 @@ fn resume_subscription_cancel_resume_cancel_across_period_boundary() {
 }
 
 #[test]
+fn resume_subscription_rejects_stale_expected_expiry() {
+    let (mut litesvm, alice, _merchant, mint, plan_pda, _plan_bump, subscription_pda) = setup_with_subscription();
+
+    CancelSubscription::new(&mut litesvm, &alice, plan_pda, subscription_pda).execute().assert_ok();
+    let first_expires_at = {
+        let account = litesvm.get_account(&subscription_pda).unwrap();
+        SubscriptionDelegation::load(&account.data).unwrap().expires_at_ts
+    };
+
+    ResumeSubscription::new(&mut litesvm, &alice, plan_pda, subscription_pda, mint).execute().assert_ok();
+    move_clock_forward(&mut litesvm, hours(2));
+    CancelSubscription::new(&mut litesvm, &alice, plan_pda, subscription_pda).execute().assert_ok();
+
+    // A resume signed against the first (now stale) expiry must not clear the
+    // newer cancellation boundary the subscriber never re-approved.
+    ResumeSubscription::new(&mut litesvm, &alice, plan_pda, subscription_pda, mint)
+        .expected_expires_at_ts(first_expires_at)
+        .execute()
+        .assert_err(SubscriptionsError::SubscriptionCancelled);
+}
+
+#[test]
 fn resume_subscription_rejects_reinitialized_authority() {
     let (mut litesvm, alice, _merchant, mint, plan_pda, _plan_bump, subscription_pda) = setup_with_subscription();
 
