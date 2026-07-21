@@ -933,6 +933,7 @@ export function PlanCard({
                                     onClick={(e: React.MouseEvent) => {
                                         e.stopPropagation();
                                         resumeSubscription.mutate({
+                                            expectedExpiresAtTs: matchingSub.subscription.expiresAtTs,
                                             planPda: plan.address,
                                             subscriptionPda: matchingSub.address,
                                             tokenMint: plan.data.mint,

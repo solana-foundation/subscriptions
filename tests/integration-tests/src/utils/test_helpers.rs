@@ -1562,6 +1562,7 @@ pub struct ResumeSubscription<'a> {
     subscription_pda: Pubkey,
     mint: Pubkey,
     subscription_authority: Option<Pubkey>,
+    expected_expires_at_ts: Option<i64>,
 }
 
 impl<'a> ResumeSubscription<'a> {
@@ -1572,11 +1573,24 @@ impl<'a> ResumeSubscription<'a> {
         subscription_pda: Pubkey,
         mint: Pubkey,
     ) -> Self {
-        Self { litesvm, subscriber, plan_pda, subscription_pda, mint, subscription_authority: None }
+        Self {
+            litesvm,
+            subscriber,
+            plan_pda,
+            subscription_pda,
+            mint,
+            subscription_authority: None,
+            expected_expires_at_ts: None,
+        }
     }
 
     pub fn subscription_authority(mut self, authority: Pubkey) -> Self {
         self.subscription_authority = Some(authority);
+        self
+    }
+
+    pub fn expected_expires_at_ts(mut self, ts: i64) -> Self {
+        self.expected_expires_at_ts = Some(ts);
         self
     }
 
@@ -1587,6 +1601,11 @@ impl<'a> ResumeSubscription<'a> {
             .subscription_authority
             .unwrap_or_else(|| get_subscription_authority_pda(&self.subscriber.pubkey(), &self.mint).0);
 
+        let expected_expires_at_ts = self.expected_expires_at_ts.unwrap_or_else(|| {
+            let account = self.litesvm.get_account(&self.subscription_pda).unwrap();
+            crate::SubscriptionDelegation::load(&account.data).unwrap().expires_at_ts
+        });
+
         let accounts = vec![
             AccountMeta::new_readonly(self.subscriber.pubkey(), true),
             AccountMeta::new_readonly(self.plan_pda, false),
@@ -1596,7 +1615,9 @@ impl<'a> ResumeSubscription<'a> {
             AccountMeta::new_readonly(PROGRAM_ID, false),
         ];
 
-        let ix = Instruction { program_id: PROGRAM_ID, accounts, data: vec![*resume_subscription::DISCRIMINATOR] };
+        let mut data = vec![*resume_subscription::DISCRIMINATOR];
+        data.extend_from_slice(&expected_expires_at_ts.to_le_bytes());
+        let ix = Instruction { program_id: PROGRAM_ID, accounts, data };
 
         build_and_send_transaction(self.litesvm, &[self.subscriber], &self.subscriber.pubkey(), &ix)
     }

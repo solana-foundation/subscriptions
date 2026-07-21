@@ -161,6 +161,7 @@ function ResumeSubscriptionDialog({
                         onClick={() =>
                             resumeSubscription.mutate(
                                 {
+                                    expectedExpiresAtTs: item.subscription.expiresAtTs,
                                     planPda: item.subscription.header.delegatee,
                                     subscriptionPda: item.address,
                                     tokenMint: item.mint ?? '',
