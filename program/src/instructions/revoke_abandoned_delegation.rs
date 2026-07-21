@@ -1,4 +1,8 @@
-use pinocchio::{error::ProgramError, AccountView, ProgramResult};
+use pinocchio::{
+    error::ProgramError,
+    sysvars::{clock::Clock, Sysvar},
+    AccountView, ProgramResult,
+};
 
 use crate::{
     state::{
@@ -76,8 +80,12 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
             return Err(SubscriptionsError::Unauthorized.into());
         }
 
+        // A closed authority is only terminal once its slot has passed. Within
+        // the same slot the delegator could re-init and recreate the matching
+        // slot-derived init_id, which keeps the delegation transferable.
+        let current_slot = Clock::get()?.slot as i64;
         let authority_is_dead = if !accounts.subscription_authority.owned_by(&crate::ID) {
-            true
+            current_slot > recorded_init_id
         } else {
             let authority_data = accounts.subscription_authority.try_borrow()?;
             match SubscriptionAuthority::load(&authority_data) {
