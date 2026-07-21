@@ -249,8 +249,14 @@ describe('Subscription Lifecycle', () => {
             .subscribe({ subscriber, merchant: t.payerKeypair.address, planId: 20n, tokenMint: t.tokenMint })
             .sendTransaction();
 
+        const beforeCancelNow = (await fetchSubscriptionDelegation(t.rpc, subscriptionPda)).data;
         await t.client.subscriptions.instructions
-            .cancelSubscriptionNow({ subscriber, planPda, subscriptionPda })
+            .cancelSubscriptionNow({
+                subscriber,
+                planPda,
+                subscriptionPda,
+                expectedCurrentPeriodStartTs: beforeCancelNow.currentPeriodStartTs,
+            })
             .sendTransaction();
 
         const cancelled = (await fetchSubscriptionDelegation(t.rpc, subscriptionPda)).data;

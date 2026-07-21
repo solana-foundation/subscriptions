@@ -1,3 +1,5 @@
+use codama::CodamaType;
+use core::mem::{size_of, transmute};
 use pinocchio::{
     error::ProgramError,
     sysvars::{clock::Clock, Sysvar},
@@ -15,13 +17,37 @@ use crate::{
 /// Instruction discriminator byte for `CancelSubscriptionNow`.
 pub const DISCRIMINATOR: &u8 = &17;
 
+/// Instruction data payload for immediate cancellation.
+#[repr(C, packed)]
+#[derive(CodamaType, Debug, Clone)]
+pub struct CancelSubscriptionNowData {
+    /// The `current_period_start_ts` both parties observed when signing. The
+    /// subscription PDA is reused across `(plan, subscriber)` incarnations, so
+    /// this binds the dual approval to the specific incarnation and rejects a
+    /// signed transaction replayed against a later re-subscription.
+    pub expected_current_period_start_ts: i64,
+}
+
+impl CancelSubscriptionNowData {
+    /// Serialized size in bytes.
+    pub const LEN: usize = size_of::<CancelSubscriptionNowData>();
+
+    /// Zero-copy deserialize from raw instruction bytes.
+    pub fn load(data: &[u8]) -> Result<&Self, ProgramError> {
+        if data.len() != Self::LEN {
+            return Err(SubscriptionsError::InvalidInstructionData.into());
+        }
+        Ok(unsafe { &*transmute::<*const u8, *const Self>(data.as_ptr()) })
+    }
+}
+
 /// Cancels a subscription immediately with approval from both the subscriber
 /// and the plan owner.
 ///
 /// The subscription can be closed via
 /// [`RevokeDelegation`](crate::instructions::revoke_delegation) as soon as this
 /// instruction succeeds. Emits a [`SubscriptionCancelledEvent`].
-pub fn process(accounts: &mut [AccountView]) -> ProgramResult {
+pub fn process(accounts: &mut [AccountView], data: &CancelSubscriptionNowData) -> ProgramResult {
     let accounts = CancelSubscriptionNowAccounts::try_from(accounts)?;
     let current_ts = Clock::get()?.unix_timestamp;
 
@@ -44,6 +70,10 @@ pub fn process(accounts: &mut [AccountView]) -> ProgramResult {
 
         if subscription.header.delegatee != *accounts.plan_pda.address() {
             return Err(SubscriptionsError::SubscriptionPlanMismatch.into());
+        }
+
+        if subscription.current_period_start_ts != data.expected_current_period_start_ts {
+            return Err(SubscriptionsError::StaleSubscriptionApproval.into());
         }
 
         if subscription.expires_at_ts != 0 && subscription.expires_at_ts <= current_ts {

@@ -283,6 +283,7 @@ export type CancelSubscriptionInput = WithProgramAddress & {
 };
 
 export type CancelSubscriptionNowInput = WithProgramAddress & {
+    expectedCurrentPeriodStartTs: bigint;
     merchant: TransactionSigner;
     planPda: Address;
     subscriber: TransactionSigner;
@@ -690,6 +691,7 @@ export async function getCancelSubscriptionNowOverlayInstructionAsync(
     return await getCancelSubscriptionNowInstructionAsync(
         {
             ...(await eventAccounts(input.programAddress)),
+            cancelSubscriptionNowData: { expectedCurrentPeriodStartTs: input.expectedCurrentPeriodStartTs },
             merchant: input.merchant,
             planPda: input.planPda,
             subscriber: input.subscriber,
