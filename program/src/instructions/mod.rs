@@ -36,6 +36,7 @@ use pinocchio::error::ProgramError;
 
 use crate::event_engine::EMIT_EVENT_IX_DISC;
 use crate::instructions::create_plan::PlanData;
+use crate::instructions::resume_subscription::ResumeData;
 use crate::instructions::subscribe::SubscribeData;
 use crate::instructions::update_plan::UpdatePlanData;
 use crate::SubscriptionsError;
@@ -316,7 +317,7 @@ pub enum SubscriptionsInstruction {
         docs = "This program (for self-CPI)",
         default_value = public_key("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44")
     ))]
-    ResumeSubscription = 13,
+    ResumeSubscription(#[codama(name = "resume_data")] ResumeData) = 13,
 
     #[codama(account(
         name = "user",
@@ -439,7 +440,10 @@ impl SubscriptionsInstruction {
             }
             cancel_subscription::DISCRIMINATOR => Ok(Self::CancelSubscription),
             cancel_subscription_now::DISCRIMINATOR => Ok(Self::CancelSubscriptionNow),
-            resume_subscription::DISCRIMINATOR => Ok(Self::ResumeSubscription),
+            resume_subscription::DISCRIMINATOR => {
+                let loaded = ResumeData::load(rest)?;
+                Ok(Self::ResumeSubscription(loaded.clone()))
+            }
             revoke_subscription_authority::DISCRIMINATOR => Ok(Self::RevokeSubscriptionAuthority),
             revoke_abandoned_delegation::DISCRIMINATOR => Ok(Self::RevokeAbandonedDelegation),
             revoke_abandoned_subscription::DISCRIMINATOR => Ok(Self::RevokeAbandonedSubscription),
@@ -466,7 +470,7 @@ impl fmt::Display for SubscriptionsInstruction {
             Self::Subscribe(_) => write!(f, "subscribe"),
             Self::CancelSubscription => write!(f, "cancel_subscription"),
             Self::CancelSubscriptionNow => write!(f, "cancel_subscription_now"),
-            Self::ResumeSubscription => write!(f, "resume_subscription"),
+            Self::ResumeSubscription(_) => write!(f, "resume_subscription"),
             Self::RevokeSubscriptionAuthority => write!(f, "revoke_subscription_authority"),
             Self::RevokeAbandonedDelegation => write!(f, "revoke_abandoned_delegation"),
             Self::RevokeAbandonedSubscription => write!(f, "revoke_abandoned_subscription"),

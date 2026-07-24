@@ -579,10 +579,12 @@ export function useSubscriptionsMutations() {
 
     const resumeSubscription = useMutation({
         mutationFn: async ({
+            expectedExpiresAtTs,
             planPda,
             subscriptionPda,
             tokenMint,
         }: {
+            expectedExpiresAtTs: bigint;
             planPda: string;
             subscriptionPda: string;
             tokenMint: string;
@@ -591,6 +593,7 @@ export function useSubscriptionsMutations() {
             if (!progId) throw new Error('Program address not configured');
 
             const instruction = await getResumeSubscriptionOverlayInstructionAsync({
+                expectedExpiresAtTs,
                 planPda: address(planPda),
                 programAddress: progId,
                 subscriber: signer,

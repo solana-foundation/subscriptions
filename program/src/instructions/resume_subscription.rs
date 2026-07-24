@@ -1,3 +1,5 @@
+use codama::CodamaType;
+use core::mem::{size_of, transmute};
 use pinocchio::{
     error::ProgramError,
     sysvars::{clock::Clock, Sysvar},
@@ -18,13 +20,36 @@ use crate::{
 /// Instruction discriminator byte for `ResumeSubscription`.
 pub const DISCRIMINATOR: &u8 = &13;
 
+/// Instruction data payload for resuming a cancelled subscription.
+#[repr(C, packed)]
+#[derive(CodamaType, Debug, Clone)]
+pub struct ResumeData {
+    /// The `expires_at_ts` the subscriber observed when signing. The program
+    /// rejects if the live value differs, so a stale signed resume cannot clear
+    /// a later cancellation the subscriber never approved.
+    pub expected_expires_at_ts: i64,
+}
+
+impl ResumeData {
+    /// Serialized size in bytes.
+    pub const LEN: usize = size_of::<ResumeData>();
+
+    /// Zero-copy deserialize from raw instruction bytes.
+    pub fn load(data: &[u8]) -> Result<&Self, ProgramError> {
+        if data.len() != Self::LEN {
+            return Err(SubscriptionsError::InvalidInstructionData.into());
+        }
+        Ok(unsafe { &*transmute::<*const u8, *const Self>(data.as_ptr()) })
+    }
+}
+
 /// Resumes a cancelled subscription by clearing its `expires_at_ts`.
 ///
 /// Rejects when the cancellation period has elapsed, the plan account is
 /// closed, expired, or no longer matches the subscription's snapshotted terms.
 /// Period accounting (`current_period_start_ts`, `amount_pulled_in_period`) is
 /// unchanged. Emits a [`SubscriptionResumedEvent`].
-pub fn process(accounts: &mut [AccountView]) -> ProgramResult {
+pub fn process(accounts: &mut [AccountView], data: &ResumeData) -> ProgramResult {
     let accounts_struct = ResumeSubscriptionAccounts::try_from(accounts)?;
     let current_ts = Clock::get()?.unix_timestamp;
 
@@ -44,6 +69,10 @@ pub fn process(accounts: &mut [AccountView]) -> ProgramResult {
 
         if subscription.expires_at_ts == 0 {
             return Err(SubscriptionsError::SubscriptionNotCancelled.into());
+        }
+
+        if subscription.expires_at_ts != data.expected_expires_at_ts {
+            return Err(SubscriptionsError::StaleSubscriptionApproval.into());
         }
 
         if !accounts_struct.plan_pda.owned_by(&crate::ID) {

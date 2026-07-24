@@ -34,7 +34,7 @@ pub fn process_instruction(
         SubscriptionsInstruction::Subscribe(data) => subscribe::process(accounts, &data),
         SubscriptionsInstruction::CancelSubscription => cancel_subscription::process(accounts),
         SubscriptionsInstruction::CancelSubscriptionNow => cancel_subscription_now::process(accounts),
-        SubscriptionsInstruction::ResumeSubscription => resume_subscription::process(accounts),
+        SubscriptionsInstruction::ResumeSubscription(data) => resume_subscription::process(accounts, &data),
         SubscriptionsInstruction::RevokeSubscriptionAuthority => revoke_subscription_authority::process(accounts),
         SubscriptionsInstruction::RevokeAbandonedDelegation => revoke_abandoned_delegation::process(accounts),
         SubscriptionsInstruction::RevokeAbandonedSubscription => revoke_abandoned_subscription::process(accounts),

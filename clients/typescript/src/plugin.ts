@@ -290,6 +290,7 @@ export type CancelSubscriptionNowInput = WithProgramAddress & {
 };
 
 export type ResumeSubscriptionInput = WithProgramAddress & {
+    expectedExpiresAtTs: bigint;
     planPda: Address;
     subscriber: TransactionSigner;
     subscriptionPda?: Address;
@@ -709,6 +710,7 @@ export async function getResumeSubscriptionOverlayInstructionAsync(
         {
             ...(await eventAccounts(input.programAddress)),
             planPda: input.planPda,
+            resumeData: { expectedExpiresAtTs: input.expectedExpiresAtTs },
             subscriber: input.subscriber,
             subscriptionAuthority,
             subscriptionPda: input.subscriptionPda,

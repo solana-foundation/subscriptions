@@ -705,6 +705,24 @@
       },
       {
         "kind": "definedTypeNode",
+        "name": "resumeData",
+        "type": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "expectedExpiresAtTs",
+              "type": {
+                "endian": "le",
+                "format": "i64",
+                "kind": "numberTypeNode"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        }
+      },
+      {
+        "kind": "definedTypeNode",
         "name": "accountDiscriminator",
         "type": {
           "kind": "enumTypeNode",
@@ -1259,6 +1277,12 @@
         "kind": "errorNode",
         "message": "A finite plan end timestamp can only be shortened, not removed or extended",
         "name": "planEndTsCannotExtend"
+      },
+      {
+        "code": 521,
+        "kind": "errorNode",
+        "message": "Subscription approval does not match the current subscription",
+        "name": "staleSubscriptionApproval"
       },
       {
         "code": 600,
@@ -3355,6 +3379,14 @@
               "endian": "le",
               "format": "u8",
               "kind": "numberTypeNode"
+            }
+          },
+          {
+            "kind": "instructionArgumentNode",
+            "name": "resumeData",
+            "type": {
+              "kind": "definedTypeLinkNode",
+              "name": "resumeData"
             }
           }
         ],
