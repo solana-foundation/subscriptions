@@ -6,6 +6,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-07-24
+
+_Matches on-chain program `program-v0.4.0`._
+
+### Fixed
+
+- Generated CPI builders honor the documented `(AccountInfo, is_writable, is_signer)` tuple order for remaining accounts in `invoke_*_with_remaining_accounts`; the two flags were previously swapped when building the `AccountMeta`s. Regenerated with `@codama/renderers-rust` 3.1.1.
+
 ## [0.4.0] — 2026-07-13
 
 _Matches on-chain program `program-v0.4.0`._
