@@ -5,6 +5,7 @@ use pinocchio::{
 };
 use pinocchio_token_2022::instructions::TransferChecked;
 
+use super::transfer_context::{self, TransferContextInput};
 use super::transfer_hook_util::{invoke_transfer_checked_with_hook, mint_transfer_hook_program_id};
 use crate::{
     constants::{
@@ -127,6 +128,7 @@ pub fn transfer_with_delegate(
     init_id: i64,
     accounts: &TransferAccounts,
     remaining: &[AccountView],
+    context_input: &TransferContextInput,
 ) -> ProgramResult {
     if accounts.token_mint.address() != mint {
         return Err(SubscriptionsError::MintMismatch.into());
@@ -183,7 +185,15 @@ pub fn transfer_with_delegate(
     let signer = [Signer::from(&seeds)];
 
     if hook_program_id.is_some() {
-        return invoke_transfer_checked_with_hook(
+        let context = transfer_context::open(
+            remaining,
+            accounts.subscription_authority_pda.address(),
+            mint,
+            amount,
+            context_input,
+        )?;
+
+        invoke_transfer_checked_with_hook(
             accounts.token_program.address(),
             accounts.delegator_ata,
             accounts.token_mint,
@@ -193,7 +203,13 @@ pub fn transfer_with_delegate(
             amount,
             decimals,
             &signer,
-        );
+        )?;
+
+        if let Some(context) = context {
+            transfer_context::close(context, context_input.initiator)?;
+        }
+
+        return Ok(());
     }
 
     TransferChecked {
