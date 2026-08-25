@@ -23,6 +23,8 @@ const INIT_DISCRIMINATOR: [u8; 8] = [43, 34, 13, 49, 167, 88, 235, 235];
 
 // Execute accounts: [source, mint, destination, authority, validation, counter]
 const COUNTER_ACCOUNT_INDEX: usize = 5;
+// Allowlist PDA resolved from the initiator in the subscriptions TransferContext.
+const ALLOWED_INITIATOR_ACCOUNT_INDEX: usize = 8;
 
 const EXTRA_ACCOUNT_METAS_SEED: &[u8] = b"extra-account-metas";
 const COUNTER_SEED: &[u8] = b"counter";
@@ -47,12 +49,18 @@ pub fn process_instruction(
         return initialize_extra_account_metas(program_id, accounts);
     }
     if instruction_data[..8] == EXECUTE_DISCRIMINATOR {
-        return execute(accounts);
+        return execute(program_id, accounts);
     }
     Err(ProgramError::InvalidInstructionData)
 }
 
-fn execute(accounts: &mut [AccountView]) -> ProgramResult {
+fn execute(program_id: &Address, accounts: &mut [AccountView]) -> ProgramResult {
+    if let Some(allowed) = accounts.get(ALLOWED_INITIATOR_ACCOUNT_INDEX) {
+        if !allowed.owned_by(program_id) {
+            return Err(ProgramError::InvalidAccountOwner);
+        }
+    }
+
     let counter = accounts.get_mut(COUNTER_ACCOUNT_INDEX).ok_or(ProgramError::NotEnoughAccountKeys)?;
     let mut data = counter.try_borrow_mut()?;
     let byte = data.first_mut().ok_or(ProgramError::AccountDataTooSmall)?;

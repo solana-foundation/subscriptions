@@ -17,6 +17,10 @@ import { fetchMint, TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-202
 
 export type TransferHookAccount = { address: Address; role: AccountRole };
 
+/** The `TransferContext` the program writes mid-instruction: its bytes stand in
+ * for a fetch during seed resolution. */
+export type PendingTransferContext = { address: Address; data: ReadonlyUint8Array };
+
 /** Identity of the four base `Execute` accounts and the transfer amount, needed
  * to resolve seed- and instruction-data-derived extra accounts. */
 export type ResolveTransferHookArgs = {
@@ -26,10 +30,12 @@ export type ResolveTransferHookArgs = {
     mint: Address;
     source: Address;
     tokenProgram: Address;
+    transferContext?: PendingTransferContext;
     transferHookAccounts?: TransferHookAccount[];
 };
 
 const DEFAULT_ADDRESS = '11111111111111111111111111111111' as Address;
+const SYSTEM_PROGRAM_ADDRESS = '11111111111111111111111111111111' as Address;
 const EXTRA_ACCOUNT_METAS_SEED = 'extra-account-metas';
 const TLV_HEADER_LEN = 12; // u64 discriminator + u32 length
 const POD_SLICE_COUNT_LEN = 4;
@@ -49,7 +55,12 @@ function roleFor(isSigner: boolean, isWritable: boolean): AccountRole {
     return AccountRole.READONLY;
 }
 
-async function fetchData(rpc: ResolveRpc, address: Address): Promise<ReadonlyUint8Array> {
+async function fetchData(
+    rpc: ResolveRpc,
+    address: Address,
+    pending?: PendingTransferContext,
+): Promise<ReadonlyUint8Array> {
+    if (pending && pending.address === address) return pending.data;
     const account = await fetchEncodedAccount(rpc, address);
     if (!account.exists) throw new Error('transfer hook: referenced account not found');
     return account.data;
@@ -90,6 +101,7 @@ async function unpackSeeds(
     previous: TransferHookAccount[],
     instructionData: Uint8Array,
     rpc: ResolveRpc,
+    pending?: PendingTransferContext,
 ): Promise<ReadonlyUint8Array[]> {
     const seeds: ReadonlyUint8Array[] = [];
     let i = 0;
@@ -110,7 +122,7 @@ async function unpackSeeds(
             i += 2;
         } else if (discriminator === 4) {
             const [accountIndex, dataIndex, length] = [rest[0], rest[1], rest[2]];
-            const data = await fetchData(rpc, previous[accountIndex].address);
+            const data = await fetchData(rpc, previous[accountIndex].address, pending);
             seeds.push(data.subarray(dataIndex, dataIndex + length));
             i += 4;
         } else {
@@ -125,6 +137,7 @@ async function unpackAddressData(
     previous: TransferHookAccount[],
     instructionData: Uint8Array,
     rpc: ResolveRpc,
+    pending?: PendingTransferContext,
 ): Promise<Address> {
     const rest = config.subarray(1);
     if (config[0] === 1) {
@@ -133,7 +146,7 @@ async function unpackAddressData(
     }
     if (config[0] === 2) {
         const [accountIndex, offset] = [rest[0], rest[1]];
-        const data = await fetchData(rpc, previous[accountIndex].address);
+        const data = await fetchData(rpc, previous[accountIndex].address, pending);
         return addressDecoder.decode(data.subarray(offset, offset + ADDRESS_LEN));
     }
     throw new Error('transfer hook: invalid address data');
@@ -145,17 +158,18 @@ async function resolveMeta(
     instructionData: Uint8Array,
     hookProgram: Address,
     rpc: ResolveRpc,
+    pending?: PendingTransferContext,
 ): Promise<TransferHookAccount> {
     const role = roleFor(meta.isSigner, meta.isWritable);
     if (meta.discriminator === 0) {
         return { address: addressDecoder.decode(meta.addressConfig), role };
     }
     if (meta.discriminator === 2) {
-        return { address: await unpackAddressData(meta.addressConfig, previous, instructionData, rpc), role };
+        return { address: await unpackAddressData(meta.addressConfig, previous, instructionData, rpc, pending), role };
     }
     const programId =
         meta.discriminator === 1 ? hookProgram : previous[meta.discriminator - PDA_PROGRAM_INDEX_OFFSET].address;
-    const seeds = await unpackSeeds(meta.addressConfig, previous, instructionData, rpc);
+    const seeds = await unpackSeeds(meta.addressConfig, previous, instructionData, rpc, pending);
     const [pda] = await getProgramDerivedAddress({ programAddress: programId, seeds });
     return { address: pda, role };
 }
@@ -199,10 +213,19 @@ export async function resolveTransferHookAccounts(
         { address: args.authority, role: AccountRole.READONLY },
         { address: validationPda, role: AccountRole.READONLY },
     ];
+    let resolvedTransferContext = false;
     for (const meta of readMetas(validationAccount.data)) {
-        const resolved = await resolveMeta(meta, previous, instructionData, hookProgram, rpc);
+        const resolved = await resolveMeta(meta, previous, instructionData, hookProgram, rpc, args.transferContext);
         previous.push(resolved);
+        if (args.transferContext && resolved.address === args.transferContext.address) {
+            resolvedTransferContext = true;
+            trailing.push({ address: resolved.address, role: AccountRole.WRITABLE });
+            continue;
+        }
         trailing.push(resolved);
+    }
+    if (resolvedTransferContext) {
+        trailing.push({ address: SYSTEM_PROGRAM_ADDRESS, role: AccountRole.READONLY });
     }
     return trailing;
 }

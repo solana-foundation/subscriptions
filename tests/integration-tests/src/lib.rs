@@ -43,6 +43,8 @@ mod test_revoke_subscription_authority;
 #[cfg(test)]
 mod test_subscribe;
 #[cfg(test)]
+mod test_transfer_context;
+#[cfg(test)]
 mod test_transfer_fixed_delegation;
 #[cfg(test)]
 mod test_transfer_recurring_delegation;
