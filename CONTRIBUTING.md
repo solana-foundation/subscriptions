@@ -44,7 +44,7 @@ Compute-unit cost is part of the contract for an onchain program. CI posts a CU 
 
 ## Pull requests
 
-Write a clear title and description that explain the problem, the approach, and how you tested it. Link related issues and call out behavior changes, compatibility concerns, or follow-up work. See the [AI use](#ai-use) section for how to disclose AI use in your PRs. Use [Conventional Commits](https://www.conventionalcommits.org/) for your commit naming, and name branches `<type>/<short-description>` (for example `fix/plan-period-overflow`).
+Fill in every section of the pull request template: the problem, the approach, how you tested it, and the [AI disclosure](#disclosure). Link related issues and call out behavior changes, compatibility concerns, or follow-up work. CI fails the PR until the disclosure is declared. Use [Conventional Commits](https://www.conventionalcommits.org/) for your commit naming, and name branches `<type>/<short-description>` (for example `fix/plan-period-overflow`).
 
 By default, [Greptile](https://www.greptile.com) is enabled on all Solana Foundation repositories. Before maintainers review, all Greptile comments must be resolved with either a code fix or an explanation of why no change is needed.
 
@@ -58,7 +58,7 @@ Reviewers are assigned from [CODEOWNERS](.github/CODEOWNERS). Changes to the pro
 
 You may use AI-assisted tools, but you should review the generated code, understand its behavior, and run the same checks expected of any other contribution.
 
-If you are building with AI on Solana, check out the [Solana Dev Skill](https://github.com/solana-foundation/solana-dev-skill) or the [Solana MCP](https://mcp.solana.com/) to aid in your work. This repository ships a [CLAUDE.md](./CLAUDE.md) with the repo-specific gotchas an agent needs — the non-Anchor wire format, the IDL build-script behavior, the two-pass TypeScript test setup — read it before letting an agent loose here.
+If you are building with AI on Solana, check out the [Solana Dev Skill](https://github.com/solana-foundation/solana-dev-skill) or the [Solana MCP](https://mcp.solana.com/) to aid in your work. This repository ships a [CLAUDE.md](./CLAUDE.md) and [AGENTS.md](./AGENTS.md) with the repo-specific gotchas an agent needs — the non-Anchor wire format, the IDL build-script behavior, the two-pass TypeScript test setup — read it before letting an agent loose here.
 
 Ensure that the generated code adheres to the project's coding standards and best practices. Maintainers can close PRs if they appear to be low-effort AI slop. In particular, audit your changes for the following AI code smells that increase maintenance burden:
 
@@ -68,9 +68,13 @@ Ensure that the generated code adheres to the project's coding standards and bes
 
 Two more that matter here: never hand-edit files under `idl/` or `clients/*/src/generated/` — regenerate them — and do not let an agent add defensive checks or allocations to instruction handlers without checking the CU report.
 
+You must be able to explain every line of your diff without an LLM. Reviewers may ask you a pointed question about any part of the change; if the answer is pasted from a model or does not come, the PR is closed.
+
+Tool attribution left in a PR (a `Generated with Claude Code` footer, a `Co-Authored-By: Claude` trailer, a `cursor/` or `codex/` branch, and the like) tells us the submission was opened without being read. CI labels these `ai-unreviewed`, fails the check, and explains what to fix. PRs left in that state are closed.
+
 ### Disclosure
 
-It can be helpful to note the extent to which AI was used in the change. For example, adding
+Disclosure is required. The pull request template has two boxes; check exactly one. If AI tooling was used, name the tool and the extent, for example:
 
 > I wrote all of the code for this feature, and had Claude update the documentation and create tests accordingly
 
@@ -78,7 +82,7 @@ or
 
 > I architected the change and handed all implementation over to Codex
 
-to the pull request description can be helpful context for reviewers.
+Editor autocomplete of single keywords or short phrases does not count as AI tooling.
 
 ### Communication
 

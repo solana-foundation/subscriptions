@@ -1,0 +1,14 @@
+## What and why
+
+<!-- The problem, the approach, and any behavior or compatibility changes. Link related issues. -->
+
+## Testing
+
+<!-- What you ran (`just check`, `just test`, `just test-and-benchmark`) and any manual verification. -->
+
+## AI disclosure
+
+Check exactly one. See [CONTRIBUTING.md](https://github.com/solana-foundation/subscriptions/blob/main/CONTRIBUTING.md#ai-use).
+
+- [ ] No AI tooling was used beyond editor autocomplete.
+- [ ] AI tooling was used. Tool and extent: <!-- e.g. Claude Code wrote the tests, I wrote and reviewed everything else -->
