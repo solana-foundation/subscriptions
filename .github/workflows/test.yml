@@ -29,8 +29,7 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           install-solana: 'false'
-          rust-cache-key: 'unit-test'
-          save-rust-cache: 'true'
+          rust-cache-key: 'rust-dev'
 
       - name: Run unit tests
         run: just unit-test
@@ -45,7 +44,8 @@ jobs:
 
       - uses: ./.github/actions/setup
         with:
-          rust-cache-key: 'rust-integration-test'
+          rust-cache-key: 'rust-dev'
+          save-rust-cache: 'true'
           solana-version: ${{ env.SOLANA_VERSION }}
 
       - name: Run Rust integration tests
@@ -61,9 +61,8 @@ jobs:
 
       - uses: ./.github/actions/setup
         with:
-          enable-rust-cache: 'false'
           install-surfpool: 'true'
-          rust-cache-key: 'typescript-integration-test'
+          rust-cache-key: 'rust-dev'
           solana-version: ${{ env.SOLANA_VERSION }}
           surfpool-version: ${{ env.SURFPOOL_VERSION }}
 

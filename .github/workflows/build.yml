@@ -26,8 +26,7 @@ jobs:
 
       - uses: ./.github/actions/setup
         with:
-          rust-cache-key: 'build'
-          save-rust-cache: 'true'
+          rust-cache-key: 'rust-dev'
           solana-version: ${{ env.SOLANA_VERSION }}
 
       - name: Build program and clients

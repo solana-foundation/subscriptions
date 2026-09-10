@@ -38,7 +38,8 @@ jobs:
 
       - uses: ./.github/actions/setup
         with:
-          rust-cache-key: 'release-${{ inputs.network }}'
+          rust-cache-key: 'release'
+          save-rust-cache: 'true'
           solana-version: 'v4.0.0'
 
       - name: Install solana-verify
