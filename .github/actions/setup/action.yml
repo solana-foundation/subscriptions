@@ -19,13 +19,13 @@ inputs:
     required: false
     default: 'true'
   save-rust-cache:
-    description: 'Save the Rust cache after this job (only enable for the build job)'
+    description: 'Save the Rust cache after this job. Enable on exactly one producer job per cache key; saves only happen on main.'
     required: false
     default: 'false'
   rust-cache-key:
-    description: 'Key for the Rust cache'
+    description: 'Shared Rust cache key. One key per distinct build config: rust-dev, fuzz, miri, release.'
     required: false
-    default: 'build'
+    default: 'rust-dev'
   install-surfpool:
     description: 'Install surfpool (only needed for integration tests)'
     required: false
@@ -71,7 +71,7 @@ runs:
       with:
         workspaces: '. -> target'
         shared-key: ${{ inputs.rust-cache-key }}
-        save-if: ${{ inputs.save-rust-cache }}
+        save-if: ${{ inputs.save-rust-cache == 'true' && github.ref == 'refs/heads/main' }}
         cache-on-failure: true
 
     - name: Resolve Solana release

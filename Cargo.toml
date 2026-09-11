@@ -39,6 +39,9 @@ solana-security-txt = "1.1.3"
 spl-token-interface = "3.0.0"
 thiserror = { version = "2", default-features = false }
 
+[profile.dev]
+debug = "line-tables-only"
+
 [profile.release]
 overflow-checks = true
 opt-level = 3

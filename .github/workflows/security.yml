@@ -24,7 +24,7 @@ jobs:
           install-solana: 'false'
           install-just: 'false'
           install-pnpm: 'false'
-          rust-cache-key: 'cargo-audit'
+          enable-rust-cache: 'false'
       - uses: taiki-e/install-action@b8cecb83565409bcc297b2df6e77f030b2a468d5 # v2.82.0
         with:
           tool: cargo-audit
@@ -55,6 +55,7 @@ jobs:
           install-just: 'false'
           install-pnpm: 'false'
           rust-cache-key: 'miri'
+          save-rust-cache: 'true'
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |

@@ -43,6 +43,7 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           rust-cache-key: 'fuzz'
+          save-rust-cache: ${{ matrix.test == 'invariant_subscriptions' }}
           solana-version: ${{ env.SOLANA_VERSION }}
 
       - name: Cache crucible CLI

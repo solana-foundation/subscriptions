@@ -24,7 +24,7 @@ jobs:
 
       - uses: ./.github/actions/setup
         with:
-          rust-cache-key: 'benchmark'
+          rust-cache-key: 'rust-dev'
           solana-version: ${{ env.SOLANA_VERSION }}
 
       - name: Run benchmark
