@@ -28,6 +28,9 @@ spl-token-2022-interface = "2.1"
 spl-tlv-account-resolution = "0.11.1"
 spl-transfer-hook-interface = "2.1.0"
 
+[package.metadata.cargo-machete]
+ignored = ["arbitrary", "crucible-test-context", "ctrlc", "libafl", "libafl_bolts"]
+
 [[bin]]
 name = "invariant_test"
 path = "src/main.rs"
