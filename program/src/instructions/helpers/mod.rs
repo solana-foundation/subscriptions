@@ -4,6 +4,7 @@ pub mod authority;
 pub mod delegation;
 mod plan;
 pub mod program;
+pub mod rent;
 pub mod system;
 pub mod token;
 pub mod traits;

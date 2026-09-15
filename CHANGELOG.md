@@ -7,6 +7,10 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Accounts created by the program are funded with the cluster's full rent-exempt minimum, including `exemption_threshold`. Previously they were underfunded on clusters where the threshold is not 1.0.
+
 ## [0.5.0] — 2026-08-10
 
 _Target mainnet deploy 2026-08-10. Reproducible via `solana-verify`. **Includes breaking changes vs the deployed v0.4.0 — see Security.** Audit status: [`audits/AUDIT_STATUS.md`](audits/AUDIT_STATUS.md). The deployed binary and on-chain IDL report `0.5.0-beta.1`: they were built at the release commit `364a419`, which predates this version bump._
