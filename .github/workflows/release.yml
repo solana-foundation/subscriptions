@@ -75,14 +75,14 @@ jobs:
         run: just generate-idl
 
       - name: Build verified program
-        uses: solana-foundation/github-actions/build-verified@4dcdecb13d956467088835b1c644b38e0ee1d5d9
+        uses: solana-foundation/github-actions/build-verified@e6ed2eb93c55eca911dbc711fb08683b42926a28
         with:
           program: ${{ env.PROGRAM }}
 
       - id: write-buffer
         if: inputs.network == 'devnet'
         name: Write program buffer
-        uses: solana-foundation/github-actions/write-program-buffer@4dcdecb13d956467088835b1c644b38e0ee1d5d9
+        uses: solana-foundation/github-actions/write-program-buffer@e6ed2eb93c55eca911dbc711fb08683b42926a28
         with:
           program: ${{ env.PROGRAM }}
           program-id: ${{ env.PROGRAM_ID }}
@@ -96,7 +96,7 @@ jobs:
       # ============================================
       - if: inputs.network == 'devnet'
         name: Upgrade program (devnet)
-        uses: solana-foundation/github-actions/program-upgrade@4dcdecb13d956467088835b1c644b38e0ee1d5d9
+        uses: solana-foundation/github-actions/program-upgrade@e6ed2eb93c55eca911dbc711fb08683b42926a28
         with:
           program: ${{ env.PROGRAM }}
           program-id: ${{ env.PROGRAM_ID }}
@@ -106,7 +106,7 @@ jobs:
 
       - if: inputs.network == 'devnet'
         name: Upload IDL via program-metadata (devnet)
-        uses: solana-foundation/github-actions/metadata-upload@4dcdecb13d956467088835b1c644b38e0ee1d5d9
+        uses: solana-foundation/github-actions/metadata-upload@e6ed2eb93c55eca911dbc711fb08683b42926a28
         with:
           program-id: ${{ env.PROGRAM_ID }}
           rpc-url: ${{ env.RPC_URL }}
@@ -126,7 +126,7 @@ jobs:
       - if: inputs.network == 'mainnet'
         id: prepare-squads-release
         name: Prepare Squads release buffers (mainnet)
-        uses: solana-foundation/github-actions/prepare-squads-release@4dcdecb13d956467088835b1c644b38e0ee1d5d9
+        uses: solana-foundation/github-actions/prepare-squads-release@e6ed2eb93c55eca911dbc711fb08683b42926a28
         with:
           program: ${{ env.PROGRAM }}
           program-id: ${{ env.PROGRAM_ID }}
@@ -139,7 +139,7 @@ jobs:
       - if: inputs.network == 'mainnet'
         id: export-verify-tx
         name: Export verify PDA transaction (mainnet)
-        uses: solana-foundation/github-actions/verify-build@4dcdecb13d956467088835b1c644b38e0ee1d5d9
+        uses: solana-foundation/github-actions/verify-build@e6ed2eb93c55eca911dbc711fb08683b42926a28
         with:
           program: ${{ env.PROGRAM }}
           program-id: ${{ env.PROGRAM_ID }}
@@ -154,7 +154,7 @@ jobs:
       - if: inputs.network == 'mainnet'
         id: export-squads-tx
         name: Export combined Squads transaction (mainnet)
-        uses: solana-foundation/squads-program-action@bf638f8d1c99f6951f467041dc56eb1128d03143 # v0.5.0
+        uses: solana-foundation/squads-program-action@572754d0b2e582bfc6bf2339f15d6dd2b9588246 # v0.5.1
         with:
           rpc: ${{ env.RPC_URL }}
           program: ${{ env.PROGRAM_ID }}

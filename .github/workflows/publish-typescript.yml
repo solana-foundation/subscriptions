@@ -65,7 +65,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@739bfe42ca9233c5e6aca07c1a25a9d34aca49b0 # v6.0.7
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           run_install: false
 
@@ -95,7 +95,7 @@ jobs:
 
       - name: Publish TypeScript client
         id: npm_publish
-        uses: solana-foundation/github-actions/npm-publish@4dcdecb13d956467088835b1c644b38e0ee1d5d9
+        uses: solana-foundation/github-actions/npm-publish@e6ed2eb93c55eca911dbc711fb08683b42926a28
         with:
           package: '@solana/subscriptions'
           package-directory: clients/typescript
