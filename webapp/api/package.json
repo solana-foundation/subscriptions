@@ -11,6 +11,6 @@
     "@solana/kit": "^7.0.0"
   },
   "devDependencies": {
-    "tsx": "^4.22.0"
+    "tsx": "^4.22.5"
   }
 }
