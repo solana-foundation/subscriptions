@@ -7,6 +7,10 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `ReclaimExcessRent` (discriminator 18) returns lamports above the rent-exempt minimum to the address recorded on a PDA, without closing it. Permissionless: the receiver must match the recorded `payer`, or the `owner` for `Plan`. An account at the floor is rejected with `NoExcessLamports` (138).
+
 ## [0.5.0] — 2026-08-10
 
 _Target mainnet deploy 2026-08-10. Reproducible via `solana-verify`. **Includes breaking changes vs the deployed v0.4.0 — see Security.** Audit status: [`audits/AUDIT_STATUS.md`](audits/AUDIT_STATUS.md). The deployed binary and on-chain IDL report `0.5.0-beta.1`: they were built at the release commit `364a419`, which predates this version bump._

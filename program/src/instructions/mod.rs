@@ -18,6 +18,7 @@ pub use create_recurring_delegation::CreateRecurringDelegationData;
 pub mod emit_event;
 pub mod helpers;
 pub mod initialize_subscription_authority;
+pub mod reclaim_excess_rent;
 pub mod resume_subscription;
 pub mod revoke_abandoned_delegation;
 pub mod revoke_abandoned_subscription;
@@ -394,6 +395,18 @@ pub enum SubscriptionsInstruction {
     ))]
     CancelSubscriptionNow(#[codama(name = "cancel_subscription_now_data")] CancelSubscriptionNowData) = 17,
 
+    #[codama(account(
+        name = "target_account",
+        writable,
+        docs = "The program-owned PDA holding lamports above the rent-exempt minimum"
+    ))]
+    #[codama(account(
+        name = "receiver",
+        writable,
+        docs = "The account receiving the excess lamports. Must match the payer recorded on the target account, or its owner for a plan."
+    ))]
+    ReclaimExcessRent = 18,
+
     #[codama(skip)]
     #[codama(account(
         name = "event_authority",
@@ -459,6 +472,7 @@ impl SubscriptionsInstruction {
             revoke_subscription_authority::DISCRIMINATOR => Ok(Self::RevokeSubscriptionAuthority),
             revoke_abandoned_delegation::DISCRIMINATOR => Ok(Self::RevokeAbandonedDelegation),
             revoke_abandoned_subscription::DISCRIMINATOR => Ok(Self::RevokeAbandonedSubscription),
+            reclaim_excess_rent::DISCRIMINATOR => Ok(Self::ReclaimExcessRent),
             &EMIT_EVENT_IX_DISC => Ok(Self::EmitEvent),
             _ => Err(SubscriptionsError::InvalidInstruction.into()),
         }
@@ -486,6 +500,7 @@ impl fmt::Display for SubscriptionsInstruction {
             Self::RevokeSubscriptionAuthority => write!(f, "revoke_subscription_authority"),
             Self::RevokeAbandonedDelegation => write!(f, "revoke_abandoned_delegation"),
             Self::RevokeAbandonedSubscription => write!(f, "revoke_abandoned_subscription"),
+            Self::ReclaimExcessRent => write!(f, "reclaim_excess_rent"),
             Self::EmitEvent => write!(f, "emit_event"),
         }
     }

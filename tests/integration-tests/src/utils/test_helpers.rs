@@ -41,9 +41,10 @@ use crate::{
     instructions::update_plan::UpdatePlanData,
     instructions::{
         cancel_subscription, cancel_subscription_now, close_subscription_authority, create_fixed_delegation,
-        create_plan, create_recurring_delegation, delete_plan, initialize_subscription_authority, resume_subscription,
-        revoke_abandoned_delegation, revoke_abandoned_subscription, revoke_delegation, revoke_subscription_authority,
-        subscribe, transfer_fixed_delegation, transfer_recurring_delegation, transfer_subscription, update_plan,
+        create_plan, create_recurring_delegation, delete_plan, initialize_subscription_authority, reclaim_excess_rent,
+        resume_subscription, revoke_abandoned_delegation, revoke_abandoned_subscription, revoke_delegation,
+        revoke_subscription_authority, subscribe, transfer_fixed_delegation, transfer_recurring_delegation,
+        transfer_subscription, update_plan,
     },
     state::common::PlanStatus,
     state::{Plan, SubscriptionAuthority},
@@ -1244,6 +1245,34 @@ impl<'a> DeletePlan<'a> {
         let ix = Instruction { program_id: PROGRAM_ID, accounts, data: vec![*delete_plan::DISCRIMINATOR] };
 
         build_and_send_transaction(self.litesvm, &[self.owner], &self.owner.pubkey(), &ix)
+    }
+}
+
+pub fn overfund_account(litesvm: &mut LiteSVM, address: Pubkey, extra: u64) {
+    let mut account = litesvm.get_account(&address).unwrap();
+    account.lamports += extra;
+    litesvm.set_account(address, account).unwrap();
+}
+
+pub struct ReclaimExcessRent<'a> {
+    litesvm: &'a mut LiteSVM,
+    fee_payer: &'a Keypair,
+    target_account: Pubkey,
+    receiver: Pubkey,
+}
+
+impl<'a> ReclaimExcessRent<'a> {
+    pub fn new(litesvm: &'a mut LiteSVM, fee_payer: &'a Keypair, target_account: Pubkey, receiver: Pubkey) -> Self {
+        Self { litesvm, fee_payer, target_account, receiver }
+    }
+
+    #[allow(clippy::result_large_err)]
+    pub fn execute(self) -> TransactionResult {
+        let accounts = vec![AccountMeta::new(self.target_account, false), AccountMeta::new(self.receiver, false)];
+
+        let ix = Instruction { program_id: PROGRAM_ID, accounts, data: vec![*reclaim_excess_rent::DISCRIMINATOR] };
+
+        build_and_send_transaction(self.litesvm, &[self.fee_payer], &self.fee_payer.pubkey(), &ix)
     }
 }
 

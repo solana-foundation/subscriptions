@@ -52,6 +52,28 @@ impl ProgramAccountInit for ProgramAccount {
     }
 }
 
+/// Moves lamports above the [`Rent`] minimum from `account` to `destination`,
+/// leaving the account open. Returns the amount moved.
+///
+/// Performs no authorization: the caller must prove `destination` is entitled.
+pub fn reclaim_excess(account: &AccountView, destination: &AccountView) -> Result<u64, ProgramError> {
+    let floor = Rent::get()?.try_minimum_balance(account.data_len())?;
+    let excess = account.lamports().saturating_sub(floor);
+
+    if excess == 0 {
+        return Err(crate::SubscriptionsError::NoExcessLamports.into());
+    }
+
+    let mut account = *account;
+    let mut destination = *destination;
+    let credited = destination.lamports().checked_add(excess).ok_or(crate::SubscriptionsError::ArithmeticOverflow)?;
+
+    account.set_lamports(floor);
+    destination.set_lamports(credited);
+
+    Ok(excess)
+}
+
 impl AccountClose for ProgramAccount {
     fn close(account: &AccountView, destination: &AccountView) -> ProgramResult {
         let mut account = *account;
