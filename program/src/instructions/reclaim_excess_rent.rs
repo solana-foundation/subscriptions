@@ -46,7 +46,7 @@ pub const DISCRIMINATOR: &u8 = &18;
 pub fn process(accounts: &mut [AccountView]) -> ProgramResult {
     let accounts = ReclaimExcessRentAccounts::try_from(accounts)?;
 
-    let recorded = {
+    let original_funder = {
         let mut data = accounts.target_account.try_borrow_mut()?;
 
         if data.is_empty() {
@@ -73,7 +73,7 @@ pub fn process(accounts: &mut [AccountView]) -> ProgramResult {
         }
     };
 
-    if *accounts.receiver.address() != recorded {
+    if *accounts.receiver.address() != original_funder {
         return Err(SubscriptionsError::Unauthorized.into());
     }
 
