@@ -7,6 +7,10 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `ReclaimExcessRent` (discriminator 18) returns lamports held above the current rent-exempt minimum to the account that funded a PDA, without closing it or touching its data. Accounts created before the SIMD-0437 rent reduction hold more lamports than the minimum now requires; the floor is recomputed from the rent sysvar on every call, so the same instruction covers each future reduction step. The instruction is permissionless — the receiver is forced to the address recorded on the target account (the original `payer` for `SubscriptionAuthority` and the three delegation kinds, the `owner` for `Plan`, matching where rent goes on close), so a caller can only route funds back to whoever is owed them. An account already at the floor is rejected with `NoExcessLamports` (138).
+
 ## [0.5.0] — 2026-08-10
 
 _Target mainnet deploy 2026-08-10. Reproducible via `solana-verify`. **Includes breaking changes vs the deployed v0.4.0 — see Security.** Audit status: [`audits/AUDIT_STATUS.md`](audits/AUDIT_STATUS.md). The deployed binary and on-chain IDL report `0.5.0-beta.1`: they were built at the release commit `364a419`, which predates this version bump._

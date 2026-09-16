@@ -29,6 +29,8 @@ mod test_delete_plan;
 #[cfg(test)]
 mod test_initialize_subscription_authority;
 #[cfg(test)]
+mod test_reclaim_excess_rent;
+#[cfg(test)]
 mod test_resume_subscription;
 #[cfg(test)]
 mod test_revoke_abandoned_delegation;

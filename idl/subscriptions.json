@@ -1144,6 +1144,12 @@
         "name": "transferHookTooManyAccounts"
       },
       {
+        "code": 138,
+        "kind": "errorNode",
+        "message": "Account holds no lamports above the rent-exempt minimum",
+        "name": "noExcessLamports"
+      },
+      {
         "code": 300,
         "kind": "errorNode",
         "message": "Transfer amount exceeds delegation limit",
@@ -3838,6 +3844,53 @@
         ],
         "kind": "instructionNode",
         "name": "cancelSubscriptionNow"
+      },
+      {
+        "accounts": [
+          {
+            "docs": [
+              "The program-owned PDA holding lamports above the rent-exempt minimum"
+            ],
+            "isSigner": false,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "targetAccount"
+          },
+          {
+            "docs": [
+              "The account receiving the excess lamports. Must match the payer recorded on the target account, or its owner for a plan."
+            ],
+            "isSigner": false,
+            "isWritable": true,
+            "kind": "instructionAccountNode",
+            "name": "receiver"
+          }
+        ],
+        "arguments": [
+          {
+            "defaultValue": {
+              "kind": "numberValueNode",
+              "number": 18
+            },
+            "defaultValueStrategy": "omitted",
+            "kind": "instructionArgumentNode",
+            "name": "discriminator",
+            "type": {
+              "endian": "le",
+              "format": "u8",
+              "kind": "numberTypeNode"
+            }
+          }
+        ],
+        "discriminators": [
+          {
+            "kind": "fieldDiscriminatorNode",
+            "name": "discriminator",
+            "offset": 0
+          }
+        ],
+        "kind": "instructionNode",
+        "name": "reclaimExcessRent"
       }
     ],
     "kind": "programNode",
