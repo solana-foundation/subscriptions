@@ -6,10 +6,12 @@
 //! all begin with a [`Header`] that contains common metadata.
 
 use codama::CodamaType;
+use pinocchio::error::ProgramError;
 use pinocchio::Address;
 
 use super::common::AccountDiscriminator;
 use super::versioning::CURRENT_VERSION;
+use crate::SubscriptionsError;
 
 /// Byte offset of the discriminator within the header (and the account data).
 pub const DISCRIMINATOR_OFFSET: usize = 0;
@@ -60,6 +62,18 @@ pub struct Header {
 impl Header {
     /// Total serialized size in bytes.
     pub const LEN: usize = core::mem::size_of::<Header>();
+
+    /// Reads the header prefix of any delegation account.
+    ///
+    /// Does not validate the discriminator: callers that need a specific kind
+    /// use that kind's own loader.
+    pub fn load(bytes: &[u8]) -> Result<Self, ProgramError> {
+        if bytes.len() < Self::LEN {
+            return Err(SubscriptionsError::InvalidHeaderData.into());
+        }
+
+        Ok(unsafe { core::ptr::read_unaligned(bytes.as_ptr() as *const Self) })
+    }
 
     pub fn init(
         &mut self,

@@ -11,7 +11,7 @@ use crate::{
         recurring_delegation::RecurringDelegation, subscription_delegation::SubscriptionDelegation,
     },
     AccountCheck, AccountClose, Header, ProgramAccount, SignerAccount, SubscriptionsError, WritableAccount,
-    DELEGATEE_OFFSET, DELEGATOR_OFFSET, DISCRIMINATOR_OFFSET, PAYER_OFFSET,
+    DISCRIMINATOR_OFFSET,
 };
 
 /// Validated accounts for the [`RevokeDelegation`](crate::SubscriptionsInstruction::RevokeDelegation) instruction.
@@ -76,10 +76,7 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
     let destination = {
         let data = accounts.delegation_account.try_borrow()?;
 
-        if data.len() < Header::LEN {
-            return Err(SubscriptionsError::InvalidHeaderData.into());
-        }
-
+        let header = Header::load(&data)?;
         let kind = AccountDiscriminator::try_from(data[DISCRIMINATOR_OFFSET])?;
 
         match kind {
@@ -96,7 +93,7 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
                     return Err(SubscriptionsError::SubscriptionPlanMismatch.into());
                 }
 
-                let is_sponsor = check_is_sponsor(&data, accounts.authority)?;
+                let is_sponsor = check_is_sponsor(&header, accounts.authority)?;
 
                 if is_sponsor {
                     // Sponsor can revoke when subscription is cancelled+expired,
@@ -126,10 +123,10 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
                     }
                 }
 
-                resolve_destination(&data, accounts.authority, receiver)?
+                resolve_destination(&header, accounts.authority, receiver)?
             }
             AccountDiscriminator::FixedDelegation | AccountDiscriminator::RecurringDelegation => {
-                let is_sponsor = check_is_sponsor(&data, accounts.authority)?;
+                let is_sponsor = check_is_sponsor(&header, accounts.authority)?;
 
                 // Sponsor recovery: an expired delegation, or a fully-spent fixed
                 // delegation (remaining `amount` is zero, which is terminal since it
@@ -151,7 +148,7 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
                     }
                 }
 
-                resolve_destination(&data, accounts.authority, accounts.rem.first())?
+                resolve_destination(&header, accounts.authority, accounts.rem.first())?
             }
             _ => return Err(SubscriptionsError::InvalidAccountDiscriminator.into()),
         }
@@ -162,18 +159,12 @@ pub fn process(accounts: &[AccountView]) -> ProgramResult {
 
 /// Checks whether the caller is the sponsor (payer) rather than the delegator.
 /// Returns `Unauthorized` if the caller is neither.
-fn check_is_sponsor(data: &[u8], authority: &AccountView) -> Result<bool, ProgramError> {
-    let delegator_bytes: &[u8; 32] =
-        data[DELEGATOR_OFFSET..DELEGATEE_OFFSET].try_into().map_err(|_| SubscriptionsError::InvalidHeaderData)?;
-
-    if delegator_bytes == authority.address().as_ref() {
+fn check_is_sponsor(header: &Header, authority: &AccountView) -> Result<bool, ProgramError> {
+    if header.delegator == *authority.address() {
         return Ok(false);
     }
 
-    let payer_bytes: &[u8; 32] =
-        data[PAYER_OFFSET..PAYER_OFFSET + 32].try_into().map_err(|_| SubscriptionsError::InvalidPayerData)?;
-
-    if payer_bytes == authority.address().as_ref() {
+    if header.payer == *authority.address() {
         return Ok(true);
     }
 
@@ -184,19 +175,16 @@ fn check_is_sponsor(data: &[u8], authority: &AccountView) -> Result<bool, Progra
 /// Rent always goes back to the original payer: if payer == authority, return
 /// authority directly; otherwise require a receiver account matching payer.
 fn resolve_destination<'a>(
-    data: &[u8],
+    header: &Header,
     authority: &'a AccountView,
     receiver: Option<&'a AccountView>,
 ) -> Result<&'a AccountView, ProgramError> {
-    let payer_bytes: &[u8; 32] =
-        data[PAYER_OFFSET..PAYER_OFFSET + 32].try_into().map_err(|_| SubscriptionsError::InvalidPayerData)?;
-
-    if payer_bytes == authority.address().as_ref() {
+    if header.payer == *authority.address() {
         Ok(authority)
     } else {
         let receiver = receiver.ok_or(SubscriptionsError::NotEnoughAccountKeys)?;
         WritableAccount::check(receiver)?;
-        if receiver.address().as_ref() != payer_bytes {
+        if header.payer != *receiver.address() {
             return Err(SubscriptionsError::Unauthorized.into());
         }
         Ok(receiver)
