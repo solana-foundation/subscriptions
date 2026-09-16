@@ -9,7 +9,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- `ReclaimExcessRent` (discriminator 18) returns lamports held above the current rent-exempt minimum to the account that funded a PDA, without closing it or touching its data. Accounts created before the SIMD-0437 rent reduction hold more lamports than the minimum now requires; the floor is recomputed from the rent sysvar on every call, so the same instruction covers each future reduction step. The instruction is permissionless — the receiver is forced to the address recorded on the target account (the original `payer` for `SubscriptionAuthority` and the three delegation kinds, the `owner` for `Plan`, matching where rent goes on close), so a caller can only route funds back to whoever is owed them. An account already at the floor is rejected with `NoExcessLamports` (138).
+- `ReclaimExcessRent` (discriminator 18) returns lamports held above the current rent-exempt minimum to the address recorded on a PDA, without closing it. The floor is read from the rent sysvar on each call. Permissionless: the receiver must match the recorded `payer` (the `owner` for `Plan`), so a caller cannot redirect the funds. An account already at the floor is rejected with `NoExcessLamports` (138).
 
 ## [0.5.0] — 2026-08-10
 
