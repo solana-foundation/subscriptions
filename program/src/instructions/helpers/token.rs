@@ -5,11 +5,8 @@
 //! ([`MintInterface`], [`TokenAccountInterface`], [`TokenProgramInterface`])
 //! that dispatch to the correct variant based on account ownership.
 
-use pinocchio::{
-    error::ProgramError,
-    sysvars::{rent::Rent, Sysvar},
-    AccountView, Address, ProgramResult,
-};
+use super::rent::minimum_balance;
+use pinocchio::{error::ProgramError, AccountView, Address, ProgramResult};
 use pinocchio_associated_token_account::instructions::Create;
 use pinocchio_system::instructions::CreateAccount;
 use pinocchio_token::{
@@ -52,7 +49,7 @@ fn init_mint_helper(
     freeze_authority: Option<&Address>,
     owner_program_id: &Address,
 ) -> ProgramResult {
-    let lamports = Rent::get()?.try_minimum_balance(Mint::LEN)?;
+    let lamports = minimum_balance(Mint::LEN)?;
 
     CreateAccount { from: payer, to: account, lamports, space: Mint::LEN as u64, owner: owner_program_id }.invoke()?;
 
@@ -66,7 +63,7 @@ fn init_token_helper(
     owner: &Address,
     owner_program_id: &Address,
 ) -> ProgramResult {
-    let lamports = Rent::get()?.try_minimum_balance(TokenAccountState::LEN)?;
+    let lamports = minimum_balance(TokenAccountState::LEN)?;
 
     CreateAccount { from: payer, to: account, lamports, space: TokenAccountState::LEN as u64, owner: owner_program_id }
         .invoke()?;

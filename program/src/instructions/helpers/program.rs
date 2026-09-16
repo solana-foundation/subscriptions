@@ -1,8 +1,8 @@
+use super::rent::minimum_balance;
 use super::traits::{AccountCheck, AccountClose, ProgramAccountInit};
 use pinocchio::{
     cpi::{Seed, Signer},
     error::ProgramError,
-    sysvars::{rent::Rent, Sysvar},
     AccountView, ProgramResult,
 };
 use pinocchio_system::instructions::{Allocate, Assign, CreateAccount, Transfer};
@@ -30,7 +30,7 @@ impl ProgramAccountInit for ProgramAccount {
         seeds: &[Seed<'a>],
         space: usize,
     ) -> ProgramResult {
-        let lamports = Rent::get()?.try_minimum_balance(space)?;
+        let lamports = minimum_balance(space)?;
         let signer = [Signer::from(seeds)];
 
         if account.lamports() == 0 {
