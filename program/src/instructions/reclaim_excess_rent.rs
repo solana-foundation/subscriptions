@@ -1,12 +1,13 @@
-use pinocchio::{error::ProgramError, AccountView, Address, ProgramResult};
+use pinocchio::{error::ProgramError, AccountView, ProgramResult};
 
 use crate::{
     reclaim_excess,
     state::{
-        common::AccountDiscriminator, plan::Plan, subscription_authority::SubscriptionAuthority,
-        versioning::check_and_update_version,
+        common::AccountDiscriminator, fixed_delegation::FixedDelegation, plan::Plan,
+        recurring_delegation::RecurringDelegation, subscription_authority::SubscriptionAuthority,
+        subscription_delegation::SubscriptionDelegation, versioning::check_and_update_version,
     },
-    AccountCheck, ProgramAccount, SubscriptionsError, WritableAccount, DISCRIMINATOR_OFFSET, PAYER_OFFSET,
+    AccountCheck, ProgramAccount, SubscriptionsError, WritableAccount, DISCRIMINATOR_OFFSET,
 };
 
 /// Validated accounts for the [`ReclaimExcessRent`](crate::SubscriptionsInstruction::ReclaimExcessRent) instruction.
@@ -55,11 +56,17 @@ pub fn process(accounts: &mut [AccountView]) -> ProgramResult {
         let kind = AccountDiscriminator::try_from(data[DISCRIMINATOR_OFFSET])?;
 
         match kind {
-            AccountDiscriminator::FixedDelegation
-            | AccountDiscriminator::RecurringDelegation
-            | AccountDiscriminator::SubscriptionDelegation => {
+            AccountDiscriminator::FixedDelegation => {
                 check_and_update_version(&mut data, kind)?;
-                read_address(&data, PAYER_OFFSET)?
+                FixedDelegation::load_for_revoke(&data)?.header.payer
+            }
+            AccountDiscriminator::RecurringDelegation => {
+                check_and_update_version(&mut data, kind)?;
+                RecurringDelegation::load_for_revoke(&data)?.header.payer
+            }
+            AccountDiscriminator::SubscriptionDelegation => {
+                check_and_update_version(&mut data, kind)?;
+                SubscriptionDelegation::load_for_revoke(&data)?.header.payer
             }
             AccountDiscriminator::SubscriptionAuthority => SubscriptionAuthority::load(&data)?.payer,
             AccountDiscriminator::Plan => Plan::load(&data)?.owner,
@@ -73,13 +80,4 @@ pub fn process(accounts: &mut [AccountView]) -> ProgramResult {
     reclaim_excess(accounts.target_account, accounts.receiver)?;
 
     Ok(())
-}
-
-fn read_address(data: &[u8], offset: usize) -> Result<Address, ProgramError> {
-    let bytes: [u8; 32] = data
-        .get(offset..offset + 32)
-        .and_then(|slice| slice.try_into().ok())
-        .ok_or(SubscriptionsError::InvalidPayerData)?;
-
-    Ok(Address::from(bytes))
 }
