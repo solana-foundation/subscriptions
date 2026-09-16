@@ -52,15 +52,10 @@ impl ProgramAccountInit for ProgramAccount {
     }
 }
 
-/// Moves any lamports above the current rent-exempt minimum from a
-/// program-owned `account` to `destination`, leaving the account open.
+/// Moves lamports above the [`Rent`] minimum from `account` to `destination`,
+/// leaving the account open. Returns the amount moved.
 ///
-/// The floor is read from the [`Rent`] sysvar on every call, so the same
-/// instruction keeps working as the network lowers the rate. Returns the
-/// number of lamports moved.
-///
-/// Callers are responsible for proving that `destination` is entitled to the
-/// funds; this function performs no authorization.
+/// Performs no authorization: the caller must prove `destination` is entitled.
 pub fn reclaim_excess(account: &AccountView, destination: &AccountView) -> Result<u64, ProgramError> {
     let floor = Rent::get()?.try_minimum_balance(account.data_len())?;
     let excess = account.lamports().saturating_sub(floor);

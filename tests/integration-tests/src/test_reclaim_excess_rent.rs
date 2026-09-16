@@ -25,7 +25,6 @@ fn fund(litesvm: &mut LiteSVM) -> Keypair {
     sponsor
 }
 
-/// Creates a fixed delegation funded by `sponsor` and returns its PDA.
 fn overfunded_delegation(litesvm: &mut LiteSVM, user: &Keypair, sponsor: &Keypair) -> Pubkey {
     let delegatee = Pubkey::new_unique();
     let mint = init_mint(litesvm, TOKEN_PROGRAM_ID, MINT_DECIMALS, 1_000_000_000, Some(user.pubkey()), &[]);
@@ -77,8 +76,6 @@ fn rejects_receiver_that_is_not_the_recorded_payer() {
     assert_eq!(litesvm.get_account(&delegation_pda).unwrap().lamports, pda_before);
 }
 
-/// The instruction is permissionless: a third party may crank it, but the
-/// lamports still land on the recorded payer.
 #[test]
 fn any_caller_may_crank_for_the_recorded_payer() {
     let (litesvm, user) = &mut setup();
@@ -113,8 +110,7 @@ fn rejects_account_at_the_rent_floor() {
         .assert_err(SubscriptionsError::NoExcessLamports);
 }
 
-/// A plan records no payer, so its excess goes to the owner, matching where
-/// `delete_plan` sends the rent.
+/// A plan records no payer; the owner receives rent, as in `delete_plan`.
 #[test]
 fn reclaims_plan_excess_to_owner() {
     let (litesvm, owner) = &mut setup();

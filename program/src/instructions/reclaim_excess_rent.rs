@@ -11,9 +11,8 @@ use crate::{
 
 /// Validated accounts for the [`ReclaimExcessRent`](crate::SubscriptionsInstruction::ReclaimExcessRent) instruction.
 pub struct ReclaimExcessRentAccounts<'a> {
-    /// The program-owned PDA holding lamports above the rent-exempt minimum.
     pub target_account: &'a mut AccountView,
-    /// The account receiving the excess. Must match the address recorded on `target_account`.
+    /// Must match the address recorded on `target_account`.
     pub receiver: &'a AccountView,
 }
 
@@ -36,19 +35,13 @@ impl<'a> TryFrom<&'a mut [AccountView]> for ReclaimExcessRentAccounts<'a> {
 /// Instruction discriminator byte for `ReclaimExcessRent`.
 pub const DISCRIMINATOR: &u8 = &18;
 
-/// Returns lamports held above the current rent-exempt minimum to the account
-/// that funded the PDA, without closing it or touching its data.
+/// Returns lamports above the rent-exempt minimum to the address recorded on
+/// the PDA, without closing it or touching its data. The floor is read from the
+/// rent sysvar on every call.
 ///
-/// Accounts created before a network-wide rent reduction hold more lamports
-/// than the current minimum requires. The floor is recomputed from the rent
-/// sysvar on every call, so one instruction covers every future reduction step.
-///
-/// Permissionless: the receiver is forced to the address recorded on the target
-/// account, so the caller can only route funds back to whoever is owed them.
-///
-/// The recorded address is the original `payer` for
-/// [`SubscriptionAuthority`] and the three delegation kinds, and the `owner`
-/// for [`Plan`], matching where each account's rent goes on close.
+/// Permissionless: the receiver is forced to the recorded address, the `payer`
+/// for [`SubscriptionAuthority`] and the three delegation kinds and the `owner`
+/// for [`Plan`], matching where rent goes on close.
 pub fn process(accounts: &mut [AccountView]) -> ProgramResult {
     let accounts = ReclaimExcessRentAccounts::try_from(accounts)?;
 

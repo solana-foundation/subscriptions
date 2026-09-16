@@ -1248,8 +1248,6 @@ impl<'a> DeletePlan<'a> {
     }
 }
 
-/// Adds `extra` lamports to an existing account, simulating a PDA that was
-/// funded at a higher rent rate than the one currently in effect.
 pub fn overfund_account(litesvm: &mut LiteSVM, address: Pubkey, extra: u64) {
     let mut account = litesvm.get_account(&address).unwrap();
     account.lamports += extra;

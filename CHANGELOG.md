@@ -9,7 +9,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- `ReclaimExcessRent` (discriminator 18) returns lamports held above the current rent-exempt minimum to the address recorded on a PDA, without closing it. The floor is read from the rent sysvar on each call. Permissionless: the receiver must match the recorded `payer` (the `owner` for `Plan`), so a caller cannot redirect the funds. An account already at the floor is rejected with `NoExcessLamports` (138).
+- `ReclaimExcessRent` (discriminator 18) returns lamports above the rent-exempt minimum to the address recorded on a PDA, without closing it. Permissionless: the receiver must match the recorded `payer`, or the `owner` for `Plan`. An account at the floor is rejected with `NoExcessLamports` (138).
 
 ## [0.5.0] — 2026-08-10
 
