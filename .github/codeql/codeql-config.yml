@@ -1,0 +1,10 @@
+name: subscriptions-codeql
+
+paths-ignore:
+  - tests
+  - fuzz
+  - program/src/tests
+  - webapp/test
+  - clients/typescript/test
+  - "**/node_modules"
+  - "**/target"
