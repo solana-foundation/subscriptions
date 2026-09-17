@@ -70,6 +70,9 @@ pub fn process(accounts: &mut [AccountView]) -> ProgramResult {
             }
             AccountDiscriminator::SubscriptionAuthority => SubscriptionAuthority::load(&data)?.payer,
             AccountDiscriminator::Plan => Plan::load(&data)?.owner,
+            AccountDiscriminator::TransferContext => {
+                return Err(SubscriptionsError::InvalidAccountDiscriminator.into())
+            }
         }
     };
 
