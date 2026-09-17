@@ -6,5 +6,5 @@ paths-ignore:
   - program/src/tests
   - webapp/test
   - clients/typescript/test
-  - "**/node_modules"
-  - "**/target"
+  - '**/node_modules'
+  - '**/target'
