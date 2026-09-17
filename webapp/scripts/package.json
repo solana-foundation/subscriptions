@@ -7,10 +7,10 @@
     "mint-usdc": "tsx mint-usdc.ts"
   },
   "dependencies": {
-    "@solana-program/system": "latest",
-    "@solana-program/token": "latest",
-    "@solana-program/token-2022": "latest",
-    "@solana/kit": "latest"
+    "@solana-program/system": "^0.14.1",
+    "@solana-program/token": "^0.16.1",
+    "@solana-program/token-2022": "^0.16.1",
+    "@solana/kit": "^8.2.0"
   },
   "devDependencies": {
     "tsx": "^4.22.5"
