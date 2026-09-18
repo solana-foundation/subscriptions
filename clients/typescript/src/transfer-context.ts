@@ -49,7 +49,7 @@ export type PendingTransferContextInput = {
  * cannot be resolved client-side. */
 export async function buildPendingTransferContext(
     input: PendingTransferContextInput,
-): Promise<{ address: Address; data: ReadonlyUint8Array }> {
+): Promise<{ address: Address; data: ReadonlyUint8Array; initiator: Address }> {
     const programAddress = input.programAddress ?? SUBSCRIPTIONS_PROGRAM_ADDRESS;
     const [address, bump] = await getProgramDerivedAddress({
         programAddress,
@@ -71,5 +71,5 @@ export async function buildPendingTransferContext(
         version: TRANSFER_CONTEXT_VERSION,
     });
 
-    return { address, data };
+    return { address, data, initiator: input.initiator };
 }
