@@ -18,8 +18,8 @@ import { fetchMint, TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-202
 export type TransferHookAccount = { address: Address; role: AccountRole };
 
 /** The `TransferContext` the program writes mid-instruction: its bytes stand in
- * for a fetch during seed resolution. */
-export type PendingTransferContext = { address: Address; data: ReadonlyUint8Array };
+ * for a fetch during seed resolution, and its `initiator` funds it. */
+export type PendingTransferContext = { address: Address; data: ReadonlyUint8Array; initiator: Address };
 
 /** Identity of the four base `Execute` accounts and the transfer amount, needed
  * to resolve seed- and instruction-data-derived extra accounts. */
@@ -213,19 +213,20 @@ export async function resolveTransferHookAccounts(
         { address: args.authority, role: AccountRole.READONLY },
         { address: validationPda, role: AccountRole.READONLY },
     ];
-    let resolvedTransferContext = false;
+    let contextInitiator: Address | undefined;
     for (const meta of readMetas(validationAccount.data)) {
         const resolved = await resolveMeta(meta, previous, instructionData, hookProgram, rpc, args.transferContext);
         previous.push(resolved);
         if (args.transferContext && resolved.address === args.transferContext.address) {
-            resolvedTransferContext = true;
+            contextInitiator = args.transferContext.initiator;
             trailing.push({ address: resolved.address, role: AccountRole.WRITABLE });
             continue;
         }
         trailing.push(resolved);
     }
-    if (resolvedTransferContext) {
+    if (contextInitiator) {
         trailing.push({ address: SYSTEM_PROGRAM_ADDRESS, role: AccountRole.READONLY });
+        trailing.push({ address: contextInitiator, role: AccountRole.WRITABLE });
     }
     return trailing;
 }
