@@ -4,7 +4,7 @@ use crate::{
     events::RecurringTransferEvent,
     helpers::{
         get_token_account_owner, transfer_with_delegate, validate_recurring_transfer, Delegation,
-        DelegationTransferAccounts, TransferAccounts, TransferData,
+        DelegationTransferAccounts, TransferAccounts, TransferContextInput, TransferData,
     },
     state::common::AccountDiscriminator,
     state::RecurringDelegation,
@@ -87,6 +87,11 @@ pub fn process(accounts: &mut [AccountView], transfer_data: &TransferData) -> Pr
             token_program: accounts_struct.token_program,
         },
         accounts_struct.remaining,
+        &TransferContextInput {
+            initiator: accounts_struct.delegatee,
+            delegation: accounts_struct.delegation_pda.address(),
+            delegation_kind: AccountDiscriminator::RecurringDelegation,
+        },
     )?;
 
     let period_end_ts = {
