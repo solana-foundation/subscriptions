@@ -49,7 +49,7 @@ export {
     type TransferSubscriptionInput,
     type UpdatePlanInput,
 } from './plugin.js';
-export { buildPendingTransferContext, DelegationKind, type PendingTransferContextInput } from './transfer-context.js';
+export { buildPendingTransferContext, type PendingTransferContextInput } from './transfer-context.js';
 export {
     type PendingTransferContext,
     resolveTransferHookAccounts,

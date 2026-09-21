@@ -38,7 +38,7 @@ Offsets are a wire contract. New fields are appended at the tail behind a
 
 | Offset | Size | Field                                                        |
 | ------ | ---- | ------------------------------------------------------------ |
-| 0      | 1    | discriminator (`6`)                                          |
+| 0      | 1    | discriminator (`5`)                                          |
 | 1      | 1    | version                                                      |
 | 2      | 32   | initiator                                                    |
 | 34     | 32   | delegation                                                   |

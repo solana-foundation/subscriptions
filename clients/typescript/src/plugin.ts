@@ -60,6 +60,7 @@ import { findAssociatedTokenPda } from '@solana-program/token';
 import { fetchDelegationsByDelegatee, fetchDelegationsByDelegator } from './accounts/delegations.js';
 import { fetchPlansForOwner } from './accounts/plans.js';
 import {
+    AccountDiscriminator,
     fetchMaybeSubscriptionAuthority,
     fetchPlan,
     findEventAuthorityPda,
@@ -89,7 +90,7 @@ import {
     type SubscriptionsPluginRequirements as GeneratedSubscriptionsPluginRequirements,
     subscriptionsProgram as generatedSubscriptionsProgram,
 } from './generated/index.js';
-import { buildPendingTransferContext, DelegationKind } from './transfer-context.js';
+import { buildPendingTransferContext } from './transfer-context.js';
 import { resolveTransferHookAccounts, type TransferHookAccount } from './transfer-hook.js';
 import type { Delegation } from './types/delegation.js';
 import type { PlanWithAddress } from './types/plan.js';
@@ -864,7 +865,7 @@ export function subscriptionsProgram() {
             const resolveDelegationHookAccounts = async (
                 input: Omit<TransferDelegationInput, 'delegatee'>,
                 initiator: Address,
-                delegationKind: DelegationKind,
+                delegationKind: AccountDiscriminator,
             ) => {
                 const [subscriptionAuthority] = await findSubscriptionAuthorityPda(
                     { tokenMint: input.tokenMint, user: input.delegator },
@@ -1076,7 +1077,7 @@ export function subscriptionsProgram() {
                                 transferHookAccounts: await resolveDelegationHookAccounts(
                                     input,
                                     delegatee.address,
-                                    DelegationKind.FixedDelegation,
+                                    AccountDiscriminator.FixedDelegation,
                                 ),
                             });
                         })(),
@@ -1092,7 +1093,7 @@ export function subscriptionsProgram() {
                                 transferHookAccounts: await resolveDelegationHookAccounts(
                                     input,
                                     delegatee.address,
-                                    DelegationKind.RecurringDelegation,
+                                    AccountDiscriminator.RecurringDelegation,
                                 ),
                             });
                         })(),
@@ -1120,7 +1121,7 @@ export function subscriptionsProgram() {
                                 tokenProgram: input.tokenProgram,
                                 transferContext: await buildPendingTransferContext({
                                     delegation: input.subscriptionPda,
-                                    delegationKind: DelegationKind.SubscriptionDelegation,
+                                    delegationKind: AccountDiscriminator.SubscriptionDelegation,
                                     initiator: caller.address,
                                     programAddress: input.programAddress,
                                     subscriptionAuthority,

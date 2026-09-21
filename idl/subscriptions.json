@@ -875,7 +875,7 @@
               "name": "subscriptionDelegation"
             },
             {
-              "discriminator": 6,
+              "discriminator": 5,
               "kind": "enumEmptyVariantTypeNode",
               "name": "transferContext"
             }

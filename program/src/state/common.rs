@@ -70,8 +70,7 @@ pub enum AccountDiscriminator {
     /// [`SubscriptionDelegation`](super::subscription_delegation::SubscriptionDelegation) account.
     SubscriptionDelegation = 4,
     /// [`TransferContext`](super::transfer_context::TransferContext) account.
-    /// Value 5 is left free for a planned delegation kind.
-    TransferContext = 6,
+    TransferContext = 5,
 }
 
 impl TryFrom<u8> for AccountDiscriminator {
@@ -83,7 +82,7 @@ impl TryFrom<u8> for AccountDiscriminator {
             2 => Ok(Self::FixedDelegation),
             3 => Ok(Self::RecurringDelegation),
             4 => Ok(Self::SubscriptionDelegation),
-            6 => Ok(Self::TransferContext),
+            5 => Ok(Self::TransferContext),
             _ => Err(SubscriptionsError::InvalidAccountDiscriminator.into()),
         }
     }
@@ -97,7 +96,7 @@ impl From<AccountDiscriminator> for u8 {
             AccountDiscriminator::FixedDelegation => 2,
             AccountDiscriminator::RecurringDelegation => 3,
             AccountDiscriminator::SubscriptionDelegation => 4,
-            AccountDiscriminator::TransferContext => 6,
+            AccountDiscriminator::TransferContext => 5,
         }
     }
 }

@@ -13,24 +13,14 @@ import {
     type ReadonlyUint8Array,
 } from '@solana/kit';
 
-import { getTransferContextEncoder, SUBSCRIPTIONS_PROGRAM_ADDRESS } from './generated/index.js';
+import { AccountDiscriminator, getTransferContextEncoder, SUBSCRIPTIONS_PROGRAM_ADDRESS } from './generated/index.js';
 
 const TRANSFER_CONTEXT_SEED = 'TransferContext';
-const TRANSFER_CONTEXT_DISCRIMINATOR = 6;
 const TRANSFER_CONTEXT_VERSION = 1;
-
-/** Account-type discriminator of the delegation authorizing a pull. */
-export const DelegationKind = {
-    FixedDelegation: 2,
-    RecurringDelegation: 3,
-    SubscriptionDelegation: 4,
-} as const;
-
-export type DelegationKind = (typeof DelegationKind)[keyof typeof DelegationKind];
 
 export type PendingTransferContextInput = {
     delegation: Address;
-    delegationKind: DelegationKind;
+    delegationKind: AccountDiscriminator;
     initiator: Address;
     programAddress?: Address;
     subscriptionAuthority: Address;
@@ -52,7 +42,7 @@ export async function buildPendingTransferContext(
     const data = getTransferContextEncoder().encode({
         delegation: input.delegation,
         delegationKind: input.delegationKind,
-        discriminator: TRANSFER_CONTEXT_DISCRIMINATOR,
+        discriminator: AccountDiscriminator.TransferContext,
         initiator: input.initiator,
         version: TRANSFER_CONTEXT_VERSION,
     });

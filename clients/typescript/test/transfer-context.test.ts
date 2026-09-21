@@ -1,8 +1,8 @@
 import { getAddressEncoder, getProgramDerivedAddress, getUtf8Encoder } from '@solana/kit';
 import { generateKeyPairSigner } from '@solana/kit';
 import { describe, expect, test } from 'vitest';
-import { SUBSCRIPTIONS_PROGRAM_ADDRESS } from '../src/generated/index.ts';
-import { buildPendingTransferContext, DelegationKind } from '../src/transfer-context.ts';
+import { AccountDiscriminator, SUBSCRIPTIONS_PROGRAM_ADDRESS } from '../src/generated/index.ts';
+import { buildPendingTransferContext } from '../src/transfer-context.ts';
 
 const INITIATOR_OFFSET = 2;
 const ADDRESS_LEN = 32;
@@ -17,7 +17,7 @@ describe('pending transfer context', () => {
 
         const context = await buildPendingTransferContext({
             delegation: delegation.address,
-            delegationKind: DelegationKind.FixedDelegation,
+            delegationKind: AccountDiscriminator.FixedDelegation,
             initiator: initiator.address,
             subscriptionAuthority: authority.address,
         });
@@ -38,13 +38,13 @@ describe('pending transfer context', () => {
 
         const context = await buildPendingTransferContext({
             delegation: delegation.address,
-            delegationKind: DelegationKind.RecurringDelegation,
+            delegationKind: AccountDiscriminator.RecurringDelegation,
             initiator: initiator.address,
             subscriptionAuthority: authority.address,
         });
 
         const initiatorBytes = context.data.subarray(INITIATOR_OFFSET, INITIATOR_OFFSET + ADDRESS_LEN);
         expect(Array.from(initiatorBytes)).toEqual(Array.from(getAddressEncoder().encode(initiator.address)));
-        expect(context.data[0]).toBe(6);
+        expect(context.data[0]).toBe(5);
     });
 });
