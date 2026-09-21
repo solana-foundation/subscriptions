@@ -2,10 +2,10 @@
 //! `TransferContext` account.
 //!
 //! The hook resolves the context as an external PDA of the subscriptions program
-//! (`[Literal("TransferContext"), AccountKey(3)]`), then resolves its own allowlist
-//! PDA from the initiator bytes inside that context. An initiator without an
-//! allowlist entry cannot pull, even though the token program only ever sees the
-//! subscription authority as the transfer authority.
+//! (`[Literal("TransferContext"), AccountKey(3)]`), then seeds its own allowlist
+//! PDA from the initiator bytes inside it, or dereferences the `delegation`
+//! pubkey it records. The token program itself only ever sees the subscription
+//! authority as the transfer authority.
 
 use crate::{
     state::{plan::Plan, TransferContext},
@@ -26,7 +26,9 @@ use solana_instruction::AccountMeta;
 use solana_keypair::Keypair;
 use solana_pubkey::Pubkey;
 use solana_signer::Signer;
-use spl_tlv_account_resolution::{account::ExtraAccountMeta, seeds::Seed, state::ExtraAccountMetaList};
+use spl_tlv_account_resolution::{
+    account::ExtraAccountMeta, pubkey_data::PubkeyData, seeds::Seed, state::ExtraAccountMetaList,
+};
 use spl_token_2022_interface::extension::ExtensionType;
 use spl_transfer_hook_interface::instruction::ExecuteInstruction;
 
@@ -36,7 +38,11 @@ const EXECUTE_AUTHORITY_INDEX: u8 = 3;
 const EXECUTE_SUBSCRIPTIONS_PROGRAM_INDEX: u8 = 6;
 const EXECUTE_TRANSFER_CONTEXT_INDEX: u8 = 7;
 
+const EXECUTE_DELEGATION_INDEX: u8 = 9;
+
 const TRANSFER_CONTEXT_INITIATOR_OFFSET: u8 = 2;
+const TRANSFER_CONTEXT_DELEGATION_OFFSET: u8 = 34;
+const DELEGATION_DELEGATOR_OFFSET: u8 = 3;
 const ADDRESS_LEN: u8 = 32;
 
 fn transfer_context_pda(subscription_authority: &Pubkey) -> Pubkey {
@@ -108,6 +114,75 @@ fn install_initiator_screening_metas(litesvm: &mut LiteSVM, mint: Pubkey) -> (Pu
         .unwrap();
 
     (validation_pda, counter)
+}
+
+/// Replaces the fixture's validation list with one that dereferences the
+/// `delegation` pubkey out of the context, then seeds an allowlist PDA from the
+/// delegator recorded inside that delegation account.
+fn install_delegation_deref_metas(litesvm: &mut LiteSVM, mint: Pubkey, counter: Pubkey) {
+    let program_id = TRANSFER_HOOK_EXAMPLE_PROGRAM_ID;
+    let (validation_pda, _) = Pubkey::find_program_address(&[b"extra-account-metas", mint.as_ref()], &program_id);
+
+    let metas = [
+        ExtraAccountMeta::new_with_pubkey(&counter, false, true).unwrap(),
+        ExtraAccountMeta::new_with_pubkey(&PROGRAM_ID, false, false).unwrap(),
+        ExtraAccountMeta::new_external_pda_with_seeds(
+            EXECUTE_SUBSCRIPTIONS_PROGRAM_INDEX,
+            &[
+                Seed::Literal { bytes: TransferContext::SEED.to_vec() },
+                Seed::AccountKey { index: EXECUTE_AUTHORITY_INDEX },
+            ],
+            false,
+            false,
+        )
+        .unwrap(),
+        ExtraAccountMeta::new_with_seeds(
+            &[
+                Seed::Literal { bytes: ALLOWED_INITIATOR_SEED.to_vec() },
+                Seed::AccountData {
+                    account_index: EXECUTE_TRANSFER_CONTEXT_INDEX,
+                    data_index: TRANSFER_CONTEXT_INITIATOR_OFFSET,
+                    length: ADDRESS_LEN,
+                },
+            ],
+            false,
+            false,
+        )
+        .unwrap(),
+        ExtraAccountMeta::new_with_pubkey_data(
+            &PubkeyData::AccountData {
+                account_index: EXECUTE_TRANSFER_CONTEXT_INDEX,
+                data_index: TRANSFER_CONTEXT_DELEGATION_OFFSET,
+            },
+            false,
+            false,
+        )
+        .unwrap(),
+        ExtraAccountMeta::new_with_seeds(
+            &[
+                Seed::Literal { bytes: ALLOWED_INITIATOR_SEED.to_vec() },
+                Seed::AccountData {
+                    account_index: EXECUTE_DELEGATION_INDEX,
+                    data_index: DELEGATION_DELEGATOR_OFFSET,
+                    length: ADDRESS_LEN,
+                },
+            ],
+            false,
+            false,
+        )
+        .unwrap(),
+    ];
+
+    let mut validation_data = vec![0u8; ExtraAccountMetaList::size_of(metas.len()).unwrap()];
+    ExtraAccountMetaList::init::<ExecuteInstruction>(&mut validation_data, &metas).unwrap();
+
+    let lamports = litesvm.minimum_balance_for_rent_exemption(validation_data.len());
+    litesvm
+        .set_account(
+            validation_pda,
+            Account { lamports, data: validation_data, owner: program_id, executable: false, rent_epoch: 0 },
+        )
+        .unwrap();
 }
 
 fn allow_initiator(litesvm: &mut LiteSVM, initiator: &Pubkey) {
@@ -348,4 +423,49 @@ fn subscription_pull_is_screened_on_the_calling_merchant() {
         .execute()
         .assert_ok();
     assert_eq!(get_ata_balance(&f.litesvm, &merchant_ata), 10_000_000);
+}
+
+#[test]
+fn hook_reads_the_delegation_the_context_points_at() {
+    let mut f = fixture();
+    install_delegation_deref_metas(&mut f.litesvm, f.mint, f.counter);
+    allow_initiator(&mut f.litesvm, &f.bob.pubkey());
+    allow_initiator(&mut f.litesvm, &f.alice.pubkey());
+
+    let mut remaining = hook_accounts(&f, &f.bob.pubkey());
+    remaining.push(AccountMeta::new_readonly(f.delegation_pda, false));
+    remaining.push(AccountMeta::new_readonly(allowed_initiator_pda(&f.alice.pubkey()), false));
+
+    TransferDelegation::new(&mut f.litesvm, &f.bob, f.alice.pubkey(), f.mint, f.delegation_pda)
+        .amount(10_000_000)
+        .remaining(remaining)
+        .fixed()
+        .assert_ok();
+
+    assert_eq!(get_ata_balance(&f.litesvm, &f.bob_ata), 10_000_000);
+    assert_eq!(f.litesvm.get_account(&f.counter).unwrap().data[0], 1, "hook should have run once");
+}
+
+#[test]
+fn delegation_deref_rejects_a_substituted_delegation_account() {
+    let mut f = fixture();
+    install_delegation_deref_metas(&mut f.litesvm, f.mint, f.counter);
+    allow_initiator(&mut f.litesvm, &f.bob.pubkey());
+    allow_initiator(&mut f.litesvm, &f.alice.pubkey());
+
+    let (res, decoy_pda) = CreateDelegation::new(&mut f.litesvm, &f.alice, f.mint, Pubkey::new_unique())
+        .fixed(1, current_ts() + days(1) as i64);
+    res.assert_ok();
+
+    let mut remaining = hook_accounts(&f, &f.bob.pubkey());
+    remaining.push(AccountMeta::new_readonly(decoy_pda, false));
+    remaining.push(AccountMeta::new_readonly(allowed_initiator_pda(&f.alice.pubkey()), false));
+
+    let res = TransferDelegation::new(&mut f.litesvm, &f.bob, f.alice.pubkey(), f.mint, f.delegation_pda)
+        .amount(10_000_000)
+        .remaining(remaining)
+        .fixed();
+
+    assert!(res.is_err(), "resolution must not accept a delegation account the context does not point at");
+    assert_eq!(get_ata_balance(&f.litesvm, &f.bob_ata), 0);
 }

@@ -101,9 +101,8 @@ function extraAccountMetaListData(): Uint8Array {
     return data;
 }
 
-// Validation list for a context-screening hook: [counter PDA literal,
-// subscriptions program literal, TransferContext external PDA]. Mirrors the
-// Rust integration fixture, minus the allowlist meta.
+// Validation list: [counter PDA literal, subscriptions program literal,
+// TransferContext external PDA].
 function contextAwareMetaListData(counterAddress: Address): Uint8Array {
     const META_COUNT = 3;
     const data = new Uint8Array(8 + 4 + 4 + META_COUNT * 35);

@@ -80,8 +80,21 @@ ExtraAccountMeta::new_with_seeds(
 )?
 ```
 
+The recorded pubkeys are handles, not dead ends. A meta built with
+`PubkeyData::AccountData` takes its address from the context's bytes, so a hook
+can have the delegation account itself forwarded into `Execute` and read its
+terms:
+
+```rust
+ExtraAccountMeta::new_with_pubkey_data(
+    &PubkeyData::AccountData { account_index: 7, data_index: 34 },
+    false,
+    false,
+)?
+```
+
 `tests/transfer-hook-example` and
-`tests/integration-tests/src/test_transfer_context.rs` implement this.
+`tests/integration-tests/src/test_transfer_context.rs` implement both patterns.
 
 ## Client
 

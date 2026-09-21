@@ -70,6 +70,7 @@ pub enum AccountDiscriminator {
     /// [`SubscriptionDelegation`](super::subscription_delegation::SubscriptionDelegation) account.
     SubscriptionDelegation = 4,
     /// [`TransferContext`](super::transfer_context::TransferContext) account.
+    /// Value 5 is left free for a planned delegation kind.
     TransferContext = 6,
 }
 

@@ -8,15 +8,12 @@ use crate::{state::common::AccountDiscriminator, state::versioning::CURRENT_VERS
 
 /// Details of the in-flight pull, readable by a mint's transfer hook.
 ///
-/// Token-2022 hands a hook the [`SubscriptionAuthority`](super::subscription_authority::SubscriptionAuthority)
-/// PDA as the transfer authority and nothing about the delegate that initiated the
-/// pull. A hook resolves this account through its `ExtraAccountMetaList` as an
-/// external PDA with seeds `[Literal("TransferContext"), AccountKey(3)]` and reads
-/// the initiator from it.
+/// Token-2022 names the [`SubscriptionAuthority`](super::subscription_authority::SubscriptionAuthority)
+/// PDA as the transfer authority, so nothing in `Execute` identifies the delegate
+/// that pulled. A hook resolves this account as an external PDA with seeds
+/// `[Literal("TransferContext"), AccountKey(3)]`.
 ///
-/// The account exists only for the duration of the transfer instruction that
-/// creates it, so a hook that finds it can treat its contents as describing the
-/// transfer currently executing.
+/// It exists only for the duration of the transfer instruction that creates it.
 ///
 /// Field offsets are a wire contract with hook programs: append new fields at the
 /// tail behind a [`version`](Self::version) bump, never reorder.
@@ -46,7 +43,7 @@ impl TransferContext {
     /// PDA seed prefix.
     pub const SEED: &'static [u8] = b"TransferContext";
 
-    /// Initializes a freshly created account, setting all fields.
+    /// Initializes a freshly created account.
     #[inline(always)]
     pub fn init(
         bytes: &mut [u8],

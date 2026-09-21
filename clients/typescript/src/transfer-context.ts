@@ -1,12 +1,8 @@
 /**
  * Client-side construction of the ephemeral `TransferContext` a transfer hook
- * resolves during a pull.
- *
- * The program creates this account inside the transfer instruction and closes it
- * again before the instruction returns, so it never exists for an RPC to read.
- * Hook validation lists that seed on its contents (typically the initiator) can
- * still be resolved by handing the resolver the bytes the program is about to
- * write.
+ * resolves during a pull. The program creates and closes it inside the transfer
+ * instruction, so no RPC can ever read it: hook seeds over its contents resolve
+ * against the bytes the program is about to write.
  */
 
 import {
@@ -40,8 +36,7 @@ export type PendingTransferContextInput = {
     subscriptionAuthority: Address;
 };
 
-/** The transfer context the program will publish for this pull: its address and
- * the bytes it will hold while the hook runs. */
+/** The context address and the bytes it will hold while the hook runs. */
 export async function buildPendingTransferContext(
     input: PendingTransferContextInput,
 ): Promise<{ address: Address; data: ReadonlyUint8Array; initiator: Address }> {
