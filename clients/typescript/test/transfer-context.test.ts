@@ -4,24 +4,21 @@ import { describe, expect, test } from 'vitest';
 import { SUBSCRIPTIONS_PROGRAM_ADDRESS } from '../src/generated/index.ts';
 import { buildPendingTransferContext, DelegationKind } from '../src/transfer-context.ts';
 
-const INITIATOR_OFFSET = 3;
+const INITIATOR_OFFSET = 2;
 const ADDRESS_LEN = 32;
 
 describe('pending transfer context', () => {
     test('addresses the PDA the program creates during the transfer', async () => {
-        const [authority, initiator, delegation, mint] = await Promise.all([
-            generateKeyPairSigner(),
+        const [authority, initiator, delegation] = await Promise.all([
             generateKeyPairSigner(),
             generateKeyPairSigner(),
             generateKeyPairSigner(),
         ]);
 
         const context = await buildPendingTransferContext({
-            amount: 1_000n,
             delegation: delegation.address,
             delegationKind: DelegationKind.FixedDelegation,
             initiator: initiator.address,
-            mint: mint.address,
             subscriptionAuthority: authority.address,
         });
 
@@ -33,19 +30,16 @@ describe('pending transfer context', () => {
     });
 
     test('places the initiator where hook seeds expect it', async () => {
-        const [authority, initiator, delegation, mint] = await Promise.all([
-            generateKeyPairSigner(),
+        const [authority, initiator, delegation] = await Promise.all([
             generateKeyPairSigner(),
             generateKeyPairSigner(),
             generateKeyPairSigner(),
         ]);
 
         const context = await buildPendingTransferContext({
-            amount: 1_000n,
             delegation: delegation.address,
             delegationKind: DelegationKind.RecurringDelegation,
             initiator: initiator.address,
-            mint: mint.address,
             subscriptionAuthority: authority.address,
         });
 

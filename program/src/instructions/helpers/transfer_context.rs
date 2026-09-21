@@ -1,11 +1,6 @@
 //! Creation and teardown of the ephemeral [`TransferContext`] account.
 
-use pinocchio::{
-    cpi::Seed,
-    error::ProgramError,
-    sysvars::{clock::Clock, Sysvar},
-    AccountView, Address, ProgramResult,
-};
+use pinocchio::{cpi::Seed, error::ProgramError, AccountView, Address, ProgramResult};
 
 use super::traits::{AccountCheck, AccountClose, ProgramAccountInit};
 use crate::{
@@ -29,8 +24,6 @@ pub struct TransferContextInput<'a> {
 pub fn open<'a>(
     remaining: &'a [AccountView],
     subscription_authority: &Address,
-    mint: &Address,
-    amount: u64,
     input: &TransferContextInput,
 ) -> Result<Option<&'a AccountView>, ProgramError> {
     let (expected, bump) =
@@ -51,19 +44,9 @@ pub fn open<'a>(
         [Seed::from(TransferContext::SEED), Seed::from(subscription_authority.as_ref()), Seed::from(&bump_bytes)];
     ProgramAccount::init::<TransferContext>(input.initiator, context, &seeds, TransferContext::LEN)?;
 
-    let slot = Clock::get()?.slot;
     let mut writable = *context;
     let mut data = writable.try_borrow_mut()?;
-    TransferContext::init(
-        &mut data,
-        bump,
-        input.initiator.address(),
-        input.delegation,
-        input.delegation_kind,
-        mint,
-        amount,
-        slot,
-    )?;
+    TransferContext::init(&mut data, input.initiator.address(), input.delegation, input.delegation_kind)?;
 
     Ok(Some(context))
 }

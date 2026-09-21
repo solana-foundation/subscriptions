@@ -36,7 +36,7 @@ const EXECUTE_AUTHORITY_INDEX: u8 = 3;
 const EXECUTE_SUBSCRIPTIONS_PROGRAM_INDEX: u8 = 6;
 const EXECUTE_TRANSFER_CONTEXT_INDEX: u8 = 7;
 
-const TRANSFER_CONTEXT_INITIATOR_OFFSET: u8 = 3;
+const TRANSFER_CONTEXT_INITIATOR_OFFSET: u8 = 2;
 const ADDRESS_LEN: u8 = 32;
 
 fn transfer_context_pda(subscription_authority: &Pubkey) -> Pubkey {

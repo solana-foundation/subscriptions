@@ -185,13 +185,7 @@ pub fn transfer_with_delegate(
     let signer = [Signer::from(&seeds)];
 
     if hook_program_id.is_some() {
-        let context = transfer_context::open(
-            remaining,
-            accounts.subscription_authority_pda.address(),
-            mint,
-            amount,
-            context_input,
-        )?;
+        let context = transfer_context::open(remaining, accounts.subscription_authority_pda.address(), context_input)?;
 
         invoke_transfer_checked_with_hook(
             accounts.token_program.address(),

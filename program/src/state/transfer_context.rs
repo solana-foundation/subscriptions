@@ -31,20 +31,12 @@ pub struct TransferContext {
     pub discriminator: u8,
     /// Schema version, currently always [`CURRENT_VERSION`].
     pub version: u8,
-    /// PDA bump seed.
-    pub bump: u8,
     /// The delegate that initiated the pull.
     pub initiator: Address,
     /// The delegation account authorizing the pull.
     pub delegation: Address,
     /// Discriminator of the account type at [`delegation`](Self::delegation).
     pub delegation_kind: u8,
-    /// The token mint being transferred.
-    pub mint: Address,
-    /// Token amount of the transfer this context describes.
-    pub amount: u64,
-    /// Slot the context was written in.
-    pub slot: u64,
 }
 
 impl TransferContext {
@@ -55,17 +47,12 @@ impl TransferContext {
     pub const SEED: &'static [u8] = b"TransferContext";
 
     /// Initializes a freshly created account, setting all fields.
-    #[allow(clippy::too_many_arguments)]
     #[inline(always)]
     pub fn init(
         bytes: &mut [u8],
-        bump: u8,
         initiator: &Address,
         delegation: &Address,
         delegation_kind: AccountDiscriminator,
-        mint: &Address,
-        amount: u64,
-        slot: u64,
     ) -> Result<(), ProgramError> {
         if bytes.len() != Self::LEN {
             return Err(SubscriptionsError::InvalidAccountData.into());
@@ -73,13 +60,9 @@ impl TransferContext {
         let account = unsafe { &mut *transmute::<*mut u8, *mut Self>(bytes.as_mut_ptr()) };
         account.discriminator = AccountDiscriminator::TransferContext as u8;
         account.version = CURRENT_VERSION;
-        account.bump = bump;
         account.initiator = *initiator;
         account.delegation = *delegation;
         account.delegation_kind = delegation_kind as u8;
-        account.mint = *mint;
-        account.amount = amount;
-        account.slot = slot;
         Ok(())
     }
 

@@ -878,11 +878,9 @@ export function subscriptionsProgram() {
                     source: input.delegatorAta,
                     tokenProgram: input.tokenProgram,
                     transferContext: await buildPendingTransferContext({
-                        amount: input.amount,
                         delegation: input.delegationPda,
                         delegationKind,
                         initiator,
-                        mint: input.tokenMint,
                         programAddress: input.programAddress,
                         subscriptionAuthority,
                     }),
@@ -1121,11 +1119,9 @@ export function subscriptionsProgram() {
                                 source: delegatorAta,
                                 tokenProgram: input.tokenProgram,
                                 transferContext: await buildPendingTransferContext({
-                                    amount: input.amount,
                                     delegation: input.subscriptionPda,
                                     delegationKind: DelegationKind.SubscriptionDelegation,
                                     initiator: caller.address,
-                                    mint: input.tokenMint,
                                     programAddress: input.programAddress,
                                     subscriptionAuthority,
                                 }),

@@ -40,13 +40,14 @@ Offsets are a wire contract. New fields are appended at the tail behind a
 | ------ | ---- | ------------------------------------------------------------ |
 | 0      | 1    | discriminator (`6`)                                          |
 | 1      | 1    | version                                                      |
-| 2      | 1    | bump                                                         |
-| 3      | 32   | initiator                                                    |
-| 35     | 32   | delegation                                                   |
-| 67     | 1    | delegation kind (`2` fixed, `3` recurring, `4` subscription) |
-| 68     | 32   | mint                                                         |
-| 100    | 8    | amount (u64 LE)                                              |
-| 108    | 8    | slot (u64 LE)                                                |
+| 2      | 32   | initiator                                                    |
+| 34     | 32   | delegation                                                   |
+| 66     | 1    | delegation kind (`2` fixed, `3` recurring, `4` subscription) |
+
+The context carries only what a hook cannot get from `Execute` itself. The mint
+arrives as `Execute` account index 1 and the amount as its instruction data,
+both from token-2022, so duplicating them here would only add a copy a hook has
+less reason to trust.
 
 ## Lifetime
 
@@ -72,7 +73,7 @@ work:
 ExtraAccountMeta::new_with_seeds(
     &[
         Seed::Literal { bytes: b"allow".to_vec() },
-        Seed::AccountData { account_index: 7, data_index: 3, length: 32 },
+        Seed::AccountData { account_index: 7, data_index: 2, length: 32 },
     ],
     false,
     false,
@@ -90,7 +91,7 @@ it can fund the rent, and include the system program among the hook accounts.
 
 Because the account cannot be fetched before it exists, the SDK hands the
 resolver the bytes the program is about to write
-(`buildPendingTransferContext`). `slot` is not known client-side and is encoded
-as zero, so hook seeds over `slot` cannot be resolved off-chain.
+(`buildPendingTransferContext`). Every field is known client-side, so any hook
+seed over the context resolves off-chain.
 
 Mints without a transfer hook are unaffected.

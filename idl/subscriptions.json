@@ -331,15 +331,6 @@
             },
             {
               "kind": "structFieldTypeNode",
-              "name": "bump",
-              "type": {
-                "endian": "le",
-                "format": "u8",
-                "kind": "numberTypeNode"
-              }
-            },
-            {
-              "kind": "structFieldTypeNode",
               "name": "initiator",
               "type": {
                 "kind": "publicKeyTypeNode"
@@ -358,31 +349,6 @@
               "type": {
                 "endian": "le",
                 "format": "u8",
-                "kind": "numberTypeNode"
-              }
-            },
-            {
-              "kind": "structFieldTypeNode",
-              "name": "mint",
-              "type": {
-                "kind": "publicKeyTypeNode"
-              }
-            },
-            {
-              "kind": "structFieldTypeNode",
-              "name": "amount",
-              "type": {
-                "endian": "le",
-                "format": "u64",
-                "kind": "numberTypeNode"
-              }
-            },
-            {
-              "kind": "structFieldTypeNode",
-              "name": "slot",
-              "type": {
-                "endian": "le",
-                "format": "u64",
                 "kind": "numberTypeNode"
               }
             }
