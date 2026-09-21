@@ -10,10 +10,6 @@ export const CURRENT_PROGRAM_VERSION = 1;
 export const ZERO_ADDRESS =
     '11111111111111111111111111111111' as import('@solana/kit').Address<'11111111111111111111111111111111'>;
 
-/** System program, required among the hook accounts when a transfer publishes a context. */
-export const SYSTEM_PROGRAM_ADDRESS =
-    '11111111111111111111111111111111' as import('@solana/kit').Address<'11111111111111111111111111111111'>;
-
 /** Byte offset of the account discriminator in the Header struct. */
 export const DISCRIMINATOR_OFFSET = 0;
 /** Byte offset of the delegator address in the Header struct. */

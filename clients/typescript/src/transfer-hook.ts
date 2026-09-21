@@ -13,9 +13,8 @@ import {
     getProgramDerivedAddress,
     type ReadonlyUint8Array,
 } from '@solana/kit';
+import { SYSTEM_PROGRAM_ADDRESS } from '@solana-program/system';
 import { fetchMint, TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
-
-import { SYSTEM_PROGRAM_ADDRESS } from './constants.js';
 
 export type TransferHookAccount = { address: Address; role: AccountRole };
 
