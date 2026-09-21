@@ -29,15 +29,28 @@ pub fn open<'a>(
     let (expected, bump) =
         Address::find_program_address(&[TransferContext::SEED, subscription_authority.as_ref()], &crate::ID);
 
-    let Some(context) = remaining.iter().find(|account| *account.address() == expected) else {
+    let mut found = None;
+    let mut has_system_program = false;
+    for account in remaining {
+        if *account.address() == expected {
+            found = Some(account);
+        } else if *account.address() == pinocchio_system::ID {
+            has_system_program = true;
+        }
+        if found.is_some() && has_system_program {
+            break;
+        }
+    }
+
+    let Some(context) = found else {
         return Ok(None);
     };
+    if !has_system_program {
+        return Err(SubscriptionsError::NotSystemProgram.into());
+    }
 
     WritableAccount::check(context)?;
     WritableAccount::check(input.initiator)?;
-    if !remaining.iter().any(|account| *account.address() == pinocchio_system::ID) {
-        return Err(SubscriptionsError::NotSystemProgram.into());
-    }
 
     let bump_bytes = [bump];
     let seeds =
