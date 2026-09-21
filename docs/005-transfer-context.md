@@ -1,40 +1,16 @@
 # Transfer Context for Token-2022 Transfer Hooks
 
-A transfer hook only sees the accounts token-2022 resolves for it, and those
-carry no record of who asked for the transfer or under what authorization. A
-hook that wants to screen on that has nothing to read.
+A transfer hook only sees the accounts token-2022 resolves for it, and none of
+them record who asked for the transfer or under what authorization.
 
-`TransferContext` is that record. On a pull against a mint with an active
-transfer hook, the program creates a PDA describing the in-flight transfer
-before the `TransferChecked` CPI and closes it after the CPI returns. A hook
-resolves it by seeds and reads what it needs.
-
-## Address
-
-```
-["TransferContext", subscription_authority]        program: De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44
-```
-
-In an `ExtraAccountMetaList` this is an external PDA whose owning program
-appears earlier in the list:
-
-```rust
-ExtraAccountMeta::new_with_pubkey(&SUBSCRIPTIONS_PROGRAM_ID, false, false)?,
-ExtraAccountMeta::new_external_pda_with_seeds(
-    6,
-    &[
-        Seed::Literal { bytes: b"TransferContext".to_vec() },
-        Seed::AccountKey { index: 3 },
-    ],
-    false,
-    false,
-)?,
-```
+`TransferContext` is that record: on a pull against a hooked mint, the program
+creates a PDA before the `TransferChecked` CPI and closes it after.
 
 ## Layout
 
-Offsets are a wire contract. New fields are appended at the tail behind a
-`version` bump; existing fields never move.
+PDA seeds `["TransferContext", subscription_authority]`, program
+`De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44`. Offsets are a wire contract:
+append new fields behind a `version` bump, never move existing ones.
 
 | Offset | Size | Field                                                        |
 | ------ | ---- | ------------------------------------------------------------ |
@@ -44,67 +20,49 @@ Offsets are a wire contract. New fields are appended at the tail behind a
 | 34     | 32   | delegation                                                   |
 | 66     | 1    | delegation kind (`2` fixed, `3` recurring, `4` subscription) |
 
-The context carries only what a hook cannot get from `Execute` itself. The mint
-arrives as `Execute` account index 1 and the amount as its instruction data,
-both from token-2022, so duplicating them here would only add a copy a hook has
-less reason to trust.
+Nothing else: the mint is `Execute` account 1 and the amount is its
+instruction data, both straight from token-2022.
 
-## Lifetime
+The account lives only for the instruction that creates it. The initiator funds
+the rent and gets it back on close. A hook should check the owner.
 
-The account exists only for the duration of the transfer instruction that
-creates it, so a hook that sees it can treat its contents as describing the
-transfer currently executing. The initiator funds the rent and gets it back on
-close.
+## Hook usage
 
-A hook should still check that the account is owned by the subscriptions
-program.
-
-## Enforcement
-
-Screening is the hook's job, not the program's. A hook that requires the
-context makes it non-optional: when the caller omits it, resolution fails and
-the transfer aborts before the hook runs.
-
-Per-initiator policy needs no code in the hook's `Execute` beyond an ownership
-check. Derive the policy account from the context and let resolution do the
-work:
+Resolve it as an external PDA of the subscriptions program, which must appear
+earlier in the validation list (here at `Execute` index 6):
 
 ```rust
-ExtraAccountMeta::new_with_seeds(
+ExtraAccountMeta::new_external_pda_with_seeds(
+    6,
     &[
-        Seed::Literal { bytes: b"allow".to_vec() },
-        Seed::AccountData { account_index: 7, data_index: 2, length: 32 },
+        Seed::Literal { bytes: b"TransferContext".to_vec() },
+        Seed::AccountKey { index: 3 },
     ],
     false,
     false,
 )?
 ```
 
-The recorded pubkeys are handles, not dead ends. A meta built with
-`PubkeyData::AccountData` takes its address from the context's bytes, so a hook
-can have the delegation account itself forwarded into `Execute` and read its
-terms:
+Screening is the hook's job. Requiring the context makes it non-optional:
+omitting it fails resolution before the hook runs. Per-initiator policy then
+needs no `Execute` code beyond an owner check, since resolution does the work:
 
 ```rust
-ExtraAccountMeta::new_with_pubkey_data(
-    &PubkeyData::AccountData { account_index: 7, data_index: 34 },
-    false,
-    false,
-)?
+// allowlist PDA seeded from context.initiator
+Seed::AccountData { account_index: 7, data_index: 2, length: 32 }
+
+// the delegation account itself, forwarded so the hook can read its terms
+PubkeyData::AccountData { account_index: 7, data_index: 34 }
 ```
 
 `tests/transfer-hook-example` and
-`tests/integration-tests/src/test_transfer_context.rs` implement both patterns.
+`tests/integration-tests/src/test_transfer_context.rs` implement both.
 
 ## Client
 
-Callers must pass the context account writable, mark the initiator writable so
-it can fund the rent, and include the system program among the hook accounts.
-`@solana/subscriptions` does this automatically in the transfer instructions.
+Callers pass the context writable, the initiator writable (it funds the rent),
+and the system program. `@solana/subscriptions` does this automatically.
 
-Because the account cannot be fetched before it exists, the SDK hands the
-resolver the bytes the program is about to write
-(`buildPendingTransferContext`). Every field is known client-side, so any hook
-seed over the context resolves off-chain.
-
-Mints without a transfer hook are unaffected.
+The account never exists for an RPC to read, so the SDK hands the resolver the
+bytes the program is about to write (`buildPendingTransferContext`). Every
+field is known client-side, so any hook seed over it resolves off-chain.
