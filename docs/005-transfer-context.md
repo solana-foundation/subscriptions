@@ -1,14 +1,21 @@
 # Transfer Context for Token-2022 Transfer Hooks
 
-On a pull against a hooked mint, the program creates a `TransferContext` PDA
-before the `TransferChecked` CPI and closes it after. It tells the hook who
-initiated the pull and under which authorization.
+During a pull against a mint with an active transfer hook, the program publishes
+an ephemeral `TransferContext` PDA: who initiated the pull and which delegation
+authorizes it, the two facts `Execute` does not already carry. It is created
+before the `TransferChecked` CPI and closed after it returns.
+
+## Address
+
+`["TransferContext", subscription_authority]`, program
+`De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44`. A hook resolves it as an external
+PDA of the subscriptions program, which must appear earlier in its
+`ExtraAccountMetaList`.
 
 ## Layout
 
-PDA seeds `["TransferContext", subscription_authority]`, program
-`De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44`. Offsets are a wire contract:
-append new fields behind a `version` bump, never move existing ones.
+Offsets are a wire contract. New fields are appended at the tail behind a
+`version` bump; existing fields never move.
 
 | Offset | Size | Field                                                        |
 | ------ | ---- | ------------------------------------------------------------ |
@@ -18,49 +25,26 @@ append new fields behind a `version` bump, never move existing ones.
 | 34     | 32   | delegation                                                   |
 | 66     | 1    | delegation kind (`2` fixed, `3` recurring, `4` subscription) |
 
-The mint is `Execute` account 1 and the amount is its instruction data, so
-neither is repeated here.
+The mint arrives as `Execute` account index 1 and the amount as its instruction
+data, so neither is duplicated here.
 
-The account lives only for the instruction that creates it. The initiator funds
-the rent and gets it back on close. A hook should check the owner.
+## Use
 
-## Hook usage
+Screening is the hook's job. A hook that requires the context makes it
+non-optional: when the caller omits it, resolution fails and the transfer aborts
+before the hook runs. It should also check the account is owned by the
+subscriptions program.
 
-Resolve it as an external PDA of the subscriptions program, which must appear
-earlier in the validation list (here at `Execute` index 6):
-
-```rust
-ExtraAccountMeta::new_external_pda_with_seeds(
-    6,
-    &[
-        Seed::Literal { bytes: b"TransferContext".to_vec() },
-        Seed::AccountKey { index: 3 },
-    ],
-    false,
-    false,
-)?
-```
-
-Requiring the context makes it non-optional: omitting it fails resolution
-before the hook runs. Per-initiator policy needs no `Execute` code beyond an
-owner check, since resolution does the work:
-
-```rust
-// allowlist PDA seeded from context.initiator
-Seed::AccountData { account_index: 7, data_index: 2, length: 32 }
-
-// the delegation account itself, forwarded so the hook can read its terms
-PubkeyData::AccountData { account_index: 7, data_index: 34 }
-```
-
-`tests/transfer-hook-example` and
-`tests/integration-tests/src/test_transfer_context.rs` implement both.
+Both pubkeys are usable without code in the hook's `Execute`. A
+`Seed::AccountData` meta over the initiator bytes resolves a per-initiator
+policy PDA; a `PubkeyData::AccountData` meta over the delegation bytes has the
+delegation account itself forwarded, terms readable.
+`tests/integration-tests/src/test_transfer_context.rs` implements both.
 
 ## Client
 
-Callers pass the context writable, the initiator writable (it funds the rent),
-and the system program. `@solana/subscriptions` does this automatically.
-
-The account never exists for an RPC to read, so the SDK hands the resolver the
-bytes the program is about to write (`buildPendingTransferContext`). Every
-field is known client-side, so any hook seed over it resolves off-chain.
+Callers pass the context writable, the initiator writable to fund the rent, and
+the system program among the hook accounts. `@solana/subscriptions` does this
+automatically. The account cannot be fetched before it exists, so the SDK hands
+the resolver the bytes the program is about to write
+(`buildPendingTransferContext`). Mints without a transfer hook are unaffected.
