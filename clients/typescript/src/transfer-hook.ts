@@ -15,6 +15,8 @@ import {
 } from '@solana/kit';
 import { fetchMint, TOKEN_2022_PROGRAM_ADDRESS } from '@solana-program/token-2022';
 
+import { SYSTEM_PROGRAM_ADDRESS } from './constants.js';
+
 export type TransferHookAccount = { address: Address; role: AccountRole };
 
 /** The `TransferContext` the program writes mid-instruction: its bytes stand in
@@ -35,7 +37,6 @@ export type ResolveTransferHookArgs = {
 };
 
 const DEFAULT_ADDRESS = '11111111111111111111111111111111' as Address;
-const SYSTEM_PROGRAM_ADDRESS = '11111111111111111111111111111111' as Address;
 const EXTRA_ACCOUNT_METAS_SEED = 'extra-account-metas';
 const TLV_HEADER_LEN = 12; // u64 discriminator + u32 length
 const POD_SLICE_COUNT_LEN = 4;
