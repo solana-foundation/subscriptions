@@ -15,6 +15,10 @@ pub trait TransactionResultExt {
 
     /// Assert transaction failed with the expected error at the given instruction index.
     fn assert_err_at(self, ix_index: u8, expected: SubscriptionsError);
+
+    /// Assert transaction failed with an error raised outside this program, such as by a
+    /// transfer hook or by token-2022 account resolution.
+    fn assert_err_instruction(self, expected: InstructionError);
 }
 
 impl TransactionResultExt for TransactionResult {
@@ -65,6 +69,23 @@ impl TransactionResultExt for TransactionResult {
                         expected,
                         ix_index,
                         actual_msg,
+                        failed_tx.meta.logs.join("\n")
+                    );
+                }
+            }
+        }
+    }
+
+    fn assert_err_instruction(self, expected: InstructionError) {
+        match self {
+            Ok(_) => panic!("Expected transaction to fail with {:?}", expected),
+            Err(failed_tx) => {
+                let expected_err = TransactionError::InstructionError(0, expected.clone());
+                if failed_tx.err != expected_err {
+                    panic!(
+                        "Expected: {:?} \nGot: {}\n\nLogs:\n{}",
+                        expected,
+                        format_error(&failed_tx),
                         failed_tx.meta.logs.join("\n")
                     );
                 }
