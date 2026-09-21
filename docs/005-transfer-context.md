@@ -1,10 +1,8 @@
 # Transfer Context for Token-2022 Transfer Hooks
 
-A transfer hook only sees the accounts token-2022 resolves for it, and none of
-them record who asked for the transfer or under what authorization.
-
-`TransferContext` is that record: on a pull against a hooked mint, the program
-creates a PDA before the `TransferChecked` CPI and closes it after.
+On a pull against a hooked mint, the program creates a `TransferContext` PDA
+before the `TransferChecked` CPI and closes it after. It tells the hook who
+initiated the pull and under which authorization.
 
 ## Layout
 
@@ -20,8 +18,8 @@ append new fields behind a `version` bump, never move existing ones.
 | 34     | 32   | delegation                                                   |
 | 66     | 1    | delegation kind (`2` fixed, `3` recurring, `4` subscription) |
 
-Nothing else: the mint is `Execute` account 1 and the amount is its
-instruction data, both straight from token-2022.
+The mint is `Execute` account 1 and the amount is its instruction data, so
+neither is repeated here.
 
 The account lives only for the instruction that creates it. The initiator funds
 the rent and gets it back on close. A hook should check the owner.
@@ -43,9 +41,9 @@ ExtraAccountMeta::new_external_pda_with_seeds(
 )?
 ```
 
-Screening is the hook's job. Requiring the context makes it non-optional:
-omitting it fails resolution before the hook runs. Per-initiator policy then
-needs no `Execute` code beyond an owner check, since resolution does the work:
+Requiring the context makes it non-optional: omitting it fails resolution
+before the hook runs. Per-initiator policy needs no `Execute` code beyond an
+owner check, since resolution does the work:
 
 ```rust
 // allowlist PDA seeded from context.initiator
