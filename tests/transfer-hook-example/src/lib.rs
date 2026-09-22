@@ -1,5 +1,8 @@
 //! Minimal Token-2022 transfer-hook program for tests and devnet fixtures.
-//! - `Execute`: increments a per-mint counter account (CPI target proof).
+//! - `Execute`: increments a per-mint counter account (CPI target proof), and
+//!   screens the initiator against a policy account when a subscriptions
+//!   transfer context is populated. Every account it needs resolves from fixed
+//!   seeds, so ordinary transfers of the mint keep working.
 //! - `InitializeExtraAccountMetaList`: creates the validation PDA (one
 //!   seed-derived counter meta) and the counter PDA so a hooked
 //!   `TransferChecked` resolves and runs on-chain.
@@ -23,8 +26,14 @@ const INIT_DISCRIMINATOR: [u8; 8] = [43, 34, 13, 49, 167, 88, 235, 235];
 
 // Execute accounts: [source, mint, destination, authority, validation, counter]
 const COUNTER_ACCOUNT_INDEX: usize = 5;
-// Allowlist PDA resolved from the initiator in the subscriptions TransferContext.
-const ALLOWED_INITIATOR_ACCOUNT_INDEX: usize = 8;
+const SUBSCRIPTIONS_PROGRAM_ACCOUNT_INDEX: usize = 6;
+const TRANSFER_CONTEXT_ACCOUNT_INDEX: usize = 7;
+const SCREENING_ACCOUNT_INDEX: usize = 8;
+
+const TRANSFER_CONTEXT_LEN: usize = 67;
+const TRANSFER_CONTEXT_DISCRIMINATOR: u8 = 5;
+const TRANSFER_CONTEXT_INITIATOR_OFFSET: usize = 2;
+const ADDRESS_LEN: usize = 32;
 
 const EXTRA_ACCOUNT_METAS_SEED: &[u8] = b"extra-account-metas";
 const COUNTER_SEED: &[u8] = b"counter";
@@ -55,8 +64,14 @@ pub fn process_instruction(
 }
 
 fn execute(program_id: &Address, accounts: &mut [AccountView]) -> ProgramResult {
-    if let Some(allowed) = accounts.get(ALLOWED_INITIATOR_ACCOUNT_INDEX) {
-        if !allowed.owned_by(program_id) {
+    // A validation list without a screening meta is a hook that does not screen.
+    // Callers cannot drop the meta: the token program resolves it for them.
+    if let (Some(initiator), Some(screening)) = (pull_initiator(accounts)?, accounts.get(SCREENING_ACCOUNT_INDEX)) {
+        if !screening.owned_by(program_id) {
+            return Err(ProgramError::InvalidAccountOwner);
+        }
+        let policy = screening.try_borrow()?;
+        if policy.len() != ADDRESS_LEN || policy[..] != initiator[..] {
             return Err(ProgramError::InvalidAccountOwner);
         }
     }
@@ -66,6 +81,30 @@ fn execute(program_id: &Address, accounts: &mut [AccountView]) -> ProgramResult 
     let byte = data.first_mut().ok_or(ProgramError::AccountDataTooSmall)?;
     *byte = byte.wrapping_add(1);
     Ok(())
+}
+
+// `Some(initiator)` only while a subscriptions pull is in flight. Outside one the
+// context address still resolves but the account is empty and system-owned, so
+// ordinary transfers of this mint fall through unscreened.
+fn pull_initiator(accounts: &[AccountView]) -> Result<Option<[u8; ADDRESS_LEN]>, ProgramError> {
+    let (Some(subscriptions), Some(context)) =
+        (accounts.get(SUBSCRIPTIONS_PROGRAM_ACCOUNT_INDEX), accounts.get(TRANSFER_CONTEXT_ACCOUNT_INDEX))
+    else {
+        return Ok(None);
+    };
+    if !context.owned_by(subscriptions.address()) {
+        return Ok(None);
+    }
+
+    let data = context.try_borrow()?;
+    if data.len() != TRANSFER_CONTEXT_LEN || data[0] != TRANSFER_CONTEXT_DISCRIMINATOR {
+        return Ok(None);
+    }
+
+    let mut initiator = [0u8; ADDRESS_LEN];
+    initiator
+        .copy_from_slice(&data[TRANSFER_CONTEXT_INITIATOR_OFFSET..TRANSFER_CONTEXT_INITIATOR_OFFSET + ADDRESS_LEN]);
+    Ok(Some(initiator))
 }
 
 // Accounts: [payer, validation PDA, counter PDA, mint, system program]

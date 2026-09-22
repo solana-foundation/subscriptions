@@ -30,16 +30,21 @@ data, so neither is duplicated here.
 
 ## Use
 
-Screening is the hook's job. A hook that requires the context makes it
-non-optional: when the caller omits it, resolution fails and the transfer aborts
-before the hook runs. It should also check the account is owned by the
-subscriptions program.
+The account only exists during a pull. A hook derives it from the `Execute`
+authority, and ordinary wallets have none, so on any other transfer of the mint
+the address still resolves but the account is empty and system-owned.
 
-Both pubkeys are usable without code in the hook's `Execute`. A
-`Seed::AccountData` meta over the initiator bytes resolves a per-initiator
-policy PDA; a `PubkeyData::AccountData` meta over the delegation bytes has the
-delegation account itself forwarded, terms readable.
-`tests/integration-tests/src/test_transfer_context.rs` implements both.
+Resolve every account the hook needs from fixed seeds, then decide in
+`Execute`: a context owned by the subscriptions program carrying discriminator
+`5` is a pull, anything else is a normal transfer that the hook lets through.
+Check the owner, not just the contents; the address is derivable by anyone.
+
+Do not seed a meta from the context's data (`Seed::AccountData`,
+`PubkeyData::AccountData`). Resolution reads bytes that are absent outside a
+pull, so the mint stops accepting any transfer that is not a subscriptions one.
+
+`tests/transfer-hook-example` implements the branch and
+`tests/integration-tests/src/test_transfer_context.rs` covers it.
 
 ## Client
 

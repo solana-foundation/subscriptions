@@ -2,10 +2,11 @@
 //! `TransferContext` account.
 //!
 //! The hook resolves the context as an external PDA of the subscriptions program
-//! (`[Literal("TransferContext"), AccountKey(3)]`), then seeds its own allowlist
-//! PDA from the initiator bytes inside it, or dereferences the `delegation`
-//! pubkey it records. The token program itself only ever sees the subscription
-//! authority as the transfer authority.
+//! (`[Literal("TransferContext"), AccountKey(3)]`) and compares the initiator it
+//! records against its own policy account. Both resolve from fixed seeds, so
+//! transfers of the mint that are not subscriptions pulls still resolve and run.
+//! The token program itself only ever sees the subscription authority as the
+//! transfer authority.
 
 use crate::{
     state::{plan::Plan, TransferContext},
@@ -14,39 +15,30 @@ use crate::{
         constants::{MINT_DECIMALS, PROGRAM_ID, SYSTEM_PROGRAM_ID, TOKEN_2022_PROGRAM_ID},
         pda::get_subscription_authority_pda,
         utils::{
-            current_ts, days, get_ata_balance, hours, init_ata, init_mint, initialize_subscription_authority_action,
-            load_transfer_hook_example, set_transfer_hook_config, setup, CreateDelegation, CreatePlan,
-            CreateSubscription, TransferDelegation, TransferSubscription, TRANSFER_HOOK_EXAMPLE_PROGRAM_ID,
+            build_and_send_transaction, current_ts, days, get_ata_balance, hours, init_ata, init_mint,
+            initialize_subscription_authority_action, load_transfer_hook_example, set_transfer_hook_config, setup,
+            CreateDelegation, CreatePlan, CreateSubscription, TransferDelegation, TransferSubscription,
+            TRANSFER_HOOK_EXAMPLE_PROGRAM_ID,
         },
     },
 };
-use litesvm::LiteSVM;
+use litesvm::{types::TransactionResult, LiteSVM};
 use solana_account::Account;
 use solana_instruction::{error::InstructionError, AccountMeta};
 use solana_keypair::Keypair;
 use solana_pubkey::Pubkey;
 use solana_signer::Signer;
-use spl_tlv_account_resolution::{
-    account::ExtraAccountMeta, pubkey_data::PubkeyData, seeds::Seed, state::ExtraAccountMetaList,
-};
-use spl_token_2022_interface::extension::ExtensionType;
+use spl_tlv_account_resolution::{account::ExtraAccountMeta, seeds::Seed, state::ExtraAccountMetaList};
+use spl_token_2022_interface::{extension::ExtensionType, instruction::transfer_checked};
 use spl_transfer_hook_interface::instruction::ExecuteInstruction;
 
-const ALLOWED_INITIATOR_SEED: &[u8] = b"allow";
+const INITIATOR_POLICY_SEED: &[u8] = b"policy";
 
 /// `spl_tlv_account_resolution::error::AccountResolutionError::IncorrectAccount`.
 const RESOLUTION_INCORRECT_ACCOUNT: InstructionError = InstructionError::Custom(2_724_315_840);
-
+const EXECUTE_MINT_INDEX: u8 = 1;
 const EXECUTE_AUTHORITY_INDEX: u8 = 3;
 const EXECUTE_SUBSCRIPTIONS_PROGRAM_INDEX: u8 = 6;
-const EXECUTE_TRANSFER_CONTEXT_INDEX: u8 = 7;
-
-const EXECUTE_DELEGATION_INDEX: u8 = 9;
-
-const TRANSFER_CONTEXT_INITIATOR_OFFSET: u8 = 2;
-const TRANSFER_CONTEXT_DELEGATION_OFFSET: u8 = 34;
-const DELEGATION_DELEGATOR_OFFSET: u8 = 3;
-const ADDRESS_LEN: u8 = 32;
 
 fn transfer_context_pda(subscription_authority: &Pubkey) -> Pubkey {
     Pubkey::find_program_address(&[TransferContext::SEED, subscription_authority.as_ref()], &PROGRAM_ID).0
@@ -56,13 +48,14 @@ fn validation_pda(mint: Pubkey) -> Pubkey {
     Pubkey::find_program_address(&[b"extra-account-metas", mint.as_ref()], &TRANSFER_HOOK_EXAMPLE_PROGRAM_ID).0
 }
 
-fn allowed_initiator_pda(initiator: &Pubkey) -> Pubkey {
-    Pubkey::find_program_address(&[ALLOWED_INITIATOR_SEED, initiator.as_ref()], &TRANSFER_HOOK_EXAMPLE_PROGRAM_ID).0
+fn initiator_policy_pda(mint: Pubkey) -> Pubkey {
+    Pubkey::find_program_address(&[INITIATOR_POLICY_SEED, mint.as_ref()], &TRANSFER_HOOK_EXAMPLE_PROGRAM_ID).0
 }
 
-/// Installs a validation list whose last meta is the hook's allowlist PDA, seeded
-/// from the initiator recorded in the subscriptions transfer context.
-fn install_initiator_screening_metas(litesvm: &mut LiteSVM, mint: Pubkey) -> Pubkey {
+/// Installs a validation list whose metas are all derived from fixed seeds, so
+/// every transfer of the mint resolves even when no context exists. The hook
+/// compares the recorded initiator against the policy account in `Execute`.
+fn install_screening_metas(litesvm: &mut LiteSVM, mint: Pubkey) -> Pubkey {
     let program_id = TRANSFER_HOOK_EXAMPLE_PROGRAM_ID;
     let counter = Pubkey::new_unique();
 
@@ -80,14 +73,7 @@ fn install_initiator_screening_metas(litesvm: &mut LiteSVM, mint: Pubkey) -> Pub
         )
         .unwrap(),
         ExtraAccountMeta::new_with_seeds(
-            &[
-                Seed::Literal { bytes: ALLOWED_INITIATOR_SEED.to_vec() },
-                Seed::AccountData {
-                    account_index: EXECUTE_TRANSFER_CONTEXT_INDEX,
-                    data_index: TRANSFER_CONTEXT_INITIATOR_OFFSET,
-                    length: ADDRESS_LEN,
-                },
-            ],
+            &[Seed::Literal { bytes: INITIATOR_POLICY_SEED.to_vec() }, Seed::AccountKey { index: EXECUTE_MINT_INDEX }],
             false,
             false,
         )
@@ -122,82 +108,54 @@ fn install_initiator_screening_metas(litesvm: &mut LiteSVM, mint: Pubkey) -> Pub
     counter
 }
 
-/// Replaces the fixture's validation list with one that dereferences the
-/// `delegation` pubkey out of the context, then seeds an allowlist PDA from the
-/// delegator recorded inside that delegation account.
-fn install_delegation_deref_metas(litesvm: &mut LiteSVM, mint: Pubkey, counter: Pubkey) {
-    let program_id = TRANSFER_HOOK_EXAMPLE_PROGRAM_ID;
-
-    let metas = [
-        ExtraAccountMeta::new_with_pubkey(&counter, false, true).unwrap(),
-        ExtraAccountMeta::new_with_pubkey(&PROGRAM_ID, false, false).unwrap(),
-        ExtraAccountMeta::new_external_pda_with_seeds(
-            EXECUTE_SUBSCRIPTIONS_PROGRAM_INDEX,
-            &[
-                Seed::Literal { bytes: TransferContext::SEED.to_vec() },
-                Seed::AccountKey { index: EXECUTE_AUTHORITY_INDEX },
-            ],
-            false,
-            false,
-        )
-        .unwrap(),
-        ExtraAccountMeta::new_with_seeds(
-            &[
-                Seed::Literal { bytes: ALLOWED_INITIATOR_SEED.to_vec() },
-                Seed::AccountData {
-                    account_index: EXECUTE_TRANSFER_CONTEXT_INDEX,
-                    data_index: TRANSFER_CONTEXT_INITIATOR_OFFSET,
-                    length: ADDRESS_LEN,
-                },
-            ],
-            false,
-            false,
-        )
-        .unwrap(),
-        ExtraAccountMeta::new_with_pubkey_data(
-            &PubkeyData::AccountData {
-                account_index: EXECUTE_TRANSFER_CONTEXT_INDEX,
-                data_index: TRANSFER_CONTEXT_DELEGATION_OFFSET,
-            },
-            false,
-            false,
-        )
-        .unwrap(),
-        ExtraAccountMeta::new_with_seeds(
-            &[
-                Seed::Literal { bytes: ALLOWED_INITIATOR_SEED.to_vec() },
-                Seed::AccountData {
-                    account_index: EXECUTE_DELEGATION_INDEX,
-                    data_index: DELEGATION_DELEGATOR_OFFSET,
-                    length: ADDRESS_LEN,
-                },
-            ],
-            false,
-            false,
-        )
-        .unwrap(),
-    ];
-
-    let mut validation_data = vec![0u8; ExtraAccountMetaList::size_of(metas.len()).unwrap()];
-    ExtraAccountMetaList::init::<ExecuteInstruction>(&mut validation_data, &metas).unwrap();
-
-    let lamports = litesvm.minimum_balance_for_rent_exemption(validation_data.len());
-    litesvm
-        .set_account(
-            validation_pda(mint),
-            Account { lamports, data: validation_data, owner: program_id, executable: false, rent_epoch: 0 },
-        )
-        .unwrap();
+fn hook_accounts(mint: Pubkey, counter: Pubkey, context_pda: Pubkey) -> Vec<AccountMeta> {
+    vec![
+        AccountMeta::new_readonly(TRANSFER_HOOK_EXAMPLE_PROGRAM_ID, false),
+        AccountMeta::new_readonly(validation_pda(mint), false),
+        AccountMeta::new(counter, false),
+        AccountMeta::new_readonly(PROGRAM_ID, false),
+        AccountMeta::new(context_pda, false),
+        AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+        AccountMeta::new_readonly(initiator_policy_pda(mint), false),
+    ]
 }
 
-fn allow_initiator(litesvm: &mut LiteSVM, initiator: &Pubkey) {
-    let lamports = litesvm.minimum_balance_for_rent_exemption(1);
+/// A plain wallet-to-wallet `TransferChecked`, with the hook accounts the mint's
+/// validation list resolves to. No subscriptions instruction is involved.
+#[allow(clippy::result_large_err)]
+fn wallet_transfer(
+    litesvm: &mut LiteSVM,
+    owner: &Keypair,
+    mint: Pubkey,
+    source: Pubkey,
+    destination: Pubkey,
+    amount: u64,
+    hook_metas: Vec<AccountMeta>,
+) -> TransactionResult {
+    let mut ix = transfer_checked(
+        &TOKEN_2022_PROGRAM_ID,
+        &source,
+        &mint,
+        &destination,
+        &owner.pubkey(),
+        &[],
+        amount,
+        MINT_DECIMALS,
+    )
+    .unwrap();
+    ix.accounts.extend(hook_metas);
+    build_and_send_transaction(litesvm, &[owner], &owner.pubkey(), &ix)
+}
+
+/// Names the one initiator the hook will let pull this mint.
+fn set_policy(litesvm: &mut LiteSVM, mint: Pubkey, allowed: &Pubkey) {
+    let lamports = litesvm.minimum_balance_for_rent_exemption(32);
     litesvm
         .set_account(
-            allowed_initiator_pda(initiator),
+            initiator_policy_pda(mint),
             Account {
                 lamports,
-                data: vec![1u8],
+                data: allowed.to_bytes().to_vec(),
                 owner: TRANSFER_HOOK_EXAMPLE_PROGRAM_ID,
                 executable: false,
                 rent_epoch: 0,
@@ -222,7 +180,7 @@ fn setup_screened_delegation() -> (LiteSVM, Keypair, Keypair, Pubkey, Pubkey, Pu
         &[ExtensionType::TransferHook],
     );
     set_transfer_hook_config(&mut litesvm, mint, Some(alice.pubkey()), Some(TRANSFER_HOOK_EXAMPLE_PROGRAM_ID));
-    let counter = install_initiator_screening_metas(&mut litesvm, mint);
+    let counter = install_screening_metas(&mut litesvm, mint);
 
     let alice_ata = init_ata(&mut litesvm, mint, alice.pubkey(), 100_000_000);
     let bob_ata = init_ata(&mut litesvm, mint, bob.pubkey(), 0);
@@ -237,24 +195,12 @@ fn setup_screened_delegation() -> (LiteSVM, Keypair, Keypair, Pubkey, Pubkey, Pu
     (litesvm, alice, bob, mint, alice_ata, bob_ata, delegation_pda, counter, context_pda)
 }
 
-fn hook_accounts(mint: Pubkey, counter: Pubkey, context_pda: Pubkey, initiator: &Pubkey) -> Vec<AccountMeta> {
-    vec![
-        AccountMeta::new_readonly(TRANSFER_HOOK_EXAMPLE_PROGRAM_ID, false),
-        AccountMeta::new_readonly(validation_pda(mint), false),
-        AccountMeta::new(counter, false),
-        AccountMeta::new_readonly(PROGRAM_ID, false),
-        AccountMeta::new(context_pda, false),
-        AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
-        AccountMeta::new_readonly(allowed_initiator_pda(initiator), false),
-    ]
-}
-
 #[test]
-fn allowlisted_initiator_can_pull() {
+fn allowed_initiator_can_pull() {
     let (mut litesvm, alice, bob, mint, alice_ata, bob_ata, delegation_pda, counter, context_pda) =
         setup_screened_delegation();
-    allow_initiator(&mut litesvm, &bob.pubkey());
-    let remaining = hook_accounts(mint, counter, context_pda, &bob.pubkey());
+    set_policy(&mut litesvm, mint, &bob.pubkey());
+    let remaining = hook_accounts(mint, counter, context_pda);
 
     TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
         .amount(10_000_000)
@@ -268,9 +214,23 @@ fn allowlisted_initiator_can_pull() {
 }
 
 #[test]
-fn initiator_without_allowlist_entry_cannot_pull() {
+fn pull_without_a_policy_account_is_rejected() {
     let (mut litesvm, alice, bob, mint, _, bob_ata, delegation_pda, counter, context_pda) = setup_screened_delegation();
-    let remaining = hook_accounts(mint, counter, context_pda, &bob.pubkey());
+    let remaining = hook_accounts(mint, counter, context_pda);
+
+    TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
+        .amount(10_000_000)
+        .remaining(remaining)
+        .fixed()
+        .assert_err_instruction(InstructionError::InvalidAccountOwner);
+    assert_eq!(get_ata_balance(&litesvm, &bob_ata), 0);
+}
+
+#[test]
+fn initiator_outside_the_policy_cannot_pull() {
+    let (mut litesvm, alice, bob, mint, _, bob_ata, delegation_pda, counter, context_pda) = setup_screened_delegation();
+    set_policy(&mut litesvm, mint, &Pubkey::new_unique());
+    let remaining = hook_accounts(mint, counter, context_pda);
 
     TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
         .amount(10_000_000)
@@ -283,8 +243,8 @@ fn initiator_without_allowlist_entry_cannot_pull() {
 #[test]
 fn transfer_context_does_not_survive_the_transfer() {
     let (mut litesvm, alice, bob, mint, _, _, delegation_pda, counter, context_pda) = setup_screened_delegation();
-    allow_initiator(&mut litesvm, &bob.pubkey());
-    let remaining = hook_accounts(mint, counter, context_pda, &bob.pubkey());
+    set_policy(&mut litesvm, mint, &bob.pubkey());
+    let remaining = hook_accounts(mint, counter, context_pda);
     let rent_before = litesvm.get_balance(&bob.pubkey()).unwrap();
 
     TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
@@ -304,8 +264,8 @@ fn transfer_context_does_not_survive_the_transfer() {
 #[test]
 fn transfer_without_the_context_account_fails_closed() {
     let (mut litesvm, alice, bob, mint, _, bob_ata, delegation_pda, counter, context_pda) = setup_screened_delegation();
-    allow_initiator(&mut litesvm, &bob.pubkey());
-    let mut remaining = hook_accounts(mint, counter, context_pda, &bob.pubkey());
+    set_policy(&mut litesvm, mint, &bob.pubkey());
+    let mut remaining = hook_accounts(mint, counter, context_pda);
     remaining.retain(|meta| meta.pubkey != context_pda);
 
     TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
@@ -319,14 +279,14 @@ fn transfer_without_the_context_account_fails_closed() {
 #[test]
 fn prefunded_context_address_does_not_block_a_pull() {
     let (mut litesvm, alice, bob, mint, _, bob_ata, delegation_pda, counter, context_pda) = setup_screened_delegation();
-    allow_initiator(&mut litesvm, &bob.pubkey());
+    set_policy(&mut litesvm, mint, &bob.pubkey());
     litesvm
         .set_account(
             context_pda,
             Account { lamports: 1, data: vec![], owner: SYSTEM_PROGRAM_ID, executable: false, rent_epoch: 0 },
         )
         .unwrap();
-    let remaining = hook_accounts(mint, counter, context_pda, &bob.pubkey());
+    let remaining = hook_accounts(mint, counter, context_pda);
 
     TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
         .amount(10_000_000)
@@ -340,7 +300,7 @@ fn prefunded_context_address_does_not_block_a_pull() {
 #[test]
 fn recurring_pull_records_the_delegatee_as_initiator() {
     let (mut litesvm, alice, bob, mint, _, bob_ata, _, counter, context_pda) = setup_screened_delegation();
-    allow_initiator(&mut litesvm, &bob.pubkey());
+    set_policy(&mut litesvm, mint, &bob.pubkey());
     let (res, recurring_pda) = CreateDelegation::new(&mut litesvm, &alice, mint, bob.pubkey()).nonce(1).recurring(
         20_000_000,
         hours(1),
@@ -348,7 +308,7 @@ fn recurring_pull_records_the_delegatee_as_initiator() {
         current_ts() + days(1) as i64,
     );
     res.assert_ok();
-    let remaining = hook_accounts(mint, counter, context_pda, &bob.pubkey());
+    let remaining = hook_accounts(mint, counter, context_pda);
 
     TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, recurring_pda)
         .amount(10_000_000)
@@ -369,7 +329,7 @@ fn recurring_pull_by_a_blocked_delegatee_is_rejected() {
         current_ts() + days(1) as i64,
     );
     res.assert_ok();
-    let remaining = hook_accounts(mint, counter, context_pda, &bob.pubkey());
+    let remaining = hook_accounts(mint, counter, context_pda);
 
     TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, recurring_pda)
         .amount(10_000_000)
@@ -402,7 +362,7 @@ fn subscription_pull_is_screened_on_the_calling_merchant() {
     let subscription_pda =
         CreateSubscription::new(&mut litesvm, plan_pda, alice.pubkey(), mint, svm_ts).terms(plan_terms).execute();
 
-    let merchant_hook_accounts = hook_accounts(mint, counter, context_pda, &merchant.pubkey());
+    let merchant_hook_accounts = hook_accounts(mint, counter, context_pda);
     TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
         .amount(10_000_000)
         .to(merchant_ata)
@@ -411,7 +371,7 @@ fn subscription_pull_is_screened_on_the_calling_merchant() {
         .assert_err_instruction(InstructionError::InvalidAccountOwner);
     assert_eq!(get_ata_balance(&litesvm, &merchant_ata), 0);
 
-    allow_initiator(&mut litesvm, &merchant.pubkey());
+    set_policy(&mut litesvm, mint, &merchant.pubkey());
     TransferSubscription::new(&mut litesvm, &merchant, alice.pubkey(), mint, subscription_pda, plan_pda)
         .amount(10_000_000)
         .to(merchant_ata)
@@ -421,46 +381,56 @@ fn subscription_pull_is_screened_on_the_calling_merchant() {
     assert_eq!(get_ata_balance(&litesvm, &merchant_ata), 10_000_000);
 }
 
+/// A context-shaped account at the right address but owned by someone else must
+/// not be read as a pull: the policy names a different initiator, so honouring it
+/// would reject this transfer.
 #[test]
-fn hook_reads_the_delegation_the_context_points_at() {
-    let (mut litesvm, alice, bob, mint, _, bob_ata, delegation_pda, counter, context_pda) = setup_screened_delegation();
-    install_delegation_deref_metas(&mut litesvm, mint, counter);
-    allow_initiator(&mut litesvm, &bob.pubkey());
-    allow_initiator(&mut litesvm, &alice.pubkey());
+fn a_context_the_subscriptions_program_does_not_own_is_ignored() {
+    let (mut litesvm, alice, _, mint, alice_ata, bob_ata, _, counter, _) = setup_screened_delegation();
+    set_policy(&mut litesvm, mint, &Pubkey::new_unique());
+    let wallet_context = transfer_context_pda(&alice.pubkey());
 
-    let mut remaining = hook_accounts(mint, counter, context_pda, &bob.pubkey());
-    remaining.push(AccountMeta::new_readonly(delegation_pda, false));
-    remaining.push(AccountMeta::new_readonly(allowed_initiator_pda(&alice.pubkey()), false));
+    let mut forged = vec![0u8; 67];
+    forged[0] = 5;
+    forged[2..34].copy_from_slice(&alice.pubkey().to_bytes());
+    let lamports = litesvm.minimum_balance_for_rent_exemption(forged.len());
+    litesvm
+        .set_account(
+            wallet_context,
+            Account { lamports, data: forged, owner: Pubkey::new_unique(), executable: false, rent_epoch: 0 },
+        )
+        .unwrap();
 
-    TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
-        .amount(10_000_000)
-        .remaining(remaining)
-        .fixed()
-        .assert_ok();
-
-    assert_eq!(get_ata_balance(&litesvm, &bob_ata), 10_000_000);
-    assert_eq!(litesvm.get_account(&counter).unwrap().data[0], 1, "hook should have run once");
+    wallet_transfer(
+        &mut litesvm,
+        &alice,
+        mint,
+        alice_ata,
+        bob_ata,
+        1_000_000,
+        hook_accounts(mint, counter, wallet_context),
+    )
+    .assert_ok();
+    assert_eq!(get_ata_balance(&litesvm, &bob_ata), 1_000_000);
 }
 
 #[test]
-fn delegation_deref_rejects_a_substituted_delegation_account() {
-    let (mut litesvm, alice, bob, mint, _, bob_ata, delegation_pda, counter, context_pda) = setup_screened_delegation();
-    install_delegation_deref_metas(&mut litesvm, mint, counter);
-    allow_initiator(&mut litesvm, &bob.pubkey());
-    allow_initiator(&mut litesvm, &alice.pubkey());
+fn wallet_transfers_of_the_mint_still_work() {
+    let (mut litesvm, alice, _, mint, alice_ata, bob_ata, _, counter, _) = setup_screened_delegation();
+    let wallet_context = transfer_context_pda(&alice.pubkey());
 
-    let (res, decoy_pda) =
-        CreateDelegation::new(&mut litesvm, &alice, mint, Pubkey::new_unique()).fixed(1, current_ts() + days(1) as i64);
-    res.assert_ok();
+    wallet_transfer(
+        &mut litesvm,
+        &alice,
+        mint,
+        alice_ata,
+        bob_ata,
+        1_000_000,
+        hook_accounts(mint, counter, wallet_context),
+    )
+    .assert_ok();
 
-    let mut remaining = hook_accounts(mint, counter, context_pda, &bob.pubkey());
-    remaining.push(AccountMeta::new_readonly(decoy_pda, false));
-    remaining.push(AccountMeta::new_readonly(allowed_initiator_pda(&alice.pubkey()), false));
-
-    TransferDelegation::new(&mut litesvm, &bob, alice.pubkey(), mint, delegation_pda)
-        .amount(10_000_000)
-        .remaining(remaining)
-        .fixed()
-        .assert_err_instruction(RESOLUTION_INCORRECT_ACCOUNT);
-    assert_eq!(get_ata_balance(&litesvm, &bob_ata), 0);
+    assert_eq!(get_ata_balance(&litesvm, &bob_ata), 1_000_000);
+    assert_eq!(litesvm.get_account(&counter).unwrap().data[0], 1, "hook should have run and fallen through");
+    assert!(litesvm.get_account(&wallet_context).map(|account| account.data.is_empty()).unwrap_or(true));
 }
