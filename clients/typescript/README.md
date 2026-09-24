@@ -78,6 +78,8 @@ Abandoned delegation and subscription PDAs (Subscription Authority closed or re-
 
 For Token-2022 mints with a configured transfer hook, the plugin resolves and appends the hook accounts automatically. For standalone overlay usage, call `resolveTransferHookAccounts` and pass the result as `transferHookAccounts`.
 
+Hooks that screen on the pulling delegate read the program's ephemeral `TransferContext` account. The plugin handles this; standalone callers must pass `buildPendingTransferContext(...)` as the `transferContext` argument, since the account is created and closed inside the transfer and can never be fetched. See [docs/005-transfer-context.md](../../docs/005-transfer-context.md).
+
 ### Subscription Plans
 
 | Plugin instruction / builder                                                | Description                                                      |
