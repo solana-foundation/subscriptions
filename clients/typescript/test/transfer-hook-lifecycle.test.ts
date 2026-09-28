@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 
 import {
     type Address,
+    AccountRole,
     appendTransactionMessageInstruction,
     type ClientWithRpc,
     createClient,
@@ -58,6 +59,7 @@ const SUBSCRIPTIONS_SO = resolve(process.cwd(), '../../target/deploy/subscriptio
 const HOOK_SO = resolve(process.cwd(), '../../tests/transfer-hook-example/target/deploy/transfer_hook_example.so');
 
 const EXECUTE_DISCRIMINATOR = [0x69, 0x25, 0x65, 0xc5, 0x4b, 0xfb, 0x66, 0x1a];
+const TRANSFER_CONTEXT_SEED = 'TransferContext';
 
 function encodedAccount(svm: LiteSVM, address: Address, data: Uint8Array, owner: Address): EncodedAccount {
     return {
@@ -96,6 +98,33 @@ function extraAccountMetaListData(): Uint8Array {
     seedConfig[10] = 1; // index 1 = mint
     data[49] = 0; // is_signer
     data[50] = 1; // is_writable
+    return data;
+}
+
+// Validation list: [counter PDA literal, subscriptions program literal,
+// TransferContext external PDA].
+function contextAwareMetaListData(counterAddress: Address): Uint8Array {
+    const META_COUNT = 3;
+    const data = new Uint8Array(8 + 4 + 4 + META_COUNT * 35);
+    const view = new DataView(data.buffer);
+    data.set(EXECUTE_DISCRIMINATOR, 0);
+    view.setUint32(8, 4 + META_COUNT * 35, true);
+    view.setUint32(12, META_COUNT, true);
+
+    data[16] = 0; // literal address
+    data.set(getAddressEncoder().encode(counterAddress), 17);
+    data[50] = 1; // is_writable
+
+    data[51] = 0; // literal address
+    data.set(getAddressEncoder().encode(SUBSCRIPTIONS_PROGRAM_ID), 52);
+
+    data[86] = 128 + 6; // external PDA of the account at Execute index 6
+    const seedConfig = data.subarray(87, 119);
+    seedConfig[0] = 1; // Literal seed
+    seedConfig[1] = TRANSFER_CONTEXT_SEED.length;
+    seedConfig.set(new TextEncoder().encode(TRANSFER_CONTEXT_SEED), 2);
+    seedConfig[2 + TRANSFER_CONTEXT_SEED.length] = 3; // AccountKey seed
+    seedConfig[3 + TRANSFER_CONTEXT_SEED.length] = 3; // index 3 = authority
     return data;
 }
 
@@ -345,5 +374,132 @@ describe('Token-2022 transfer hook (LiteSVM)', () => {
         ).getBigUint64(64, true);
         expect(receiverAmount).toBe(10_000_000n);
         expect(svm.getAccount(counter)!.data[0]).toBe(counterBefore + 1);
+    });
+    // The program funds the TransferContext from the initiator, so the delegatee
+    // must reach the runtime writable even when someone else pays the fee.
+    it('makes the initiator writable when the hook resolves the transfer context', async () => {
+        const delegatee = await generateKeyPairSigner();
+        svm.airdrop(delegatee.address, lamports(1_000_000_000n));
+
+        const screenedMint = (await generateKeyPairSigner()).address;
+        svm.setAccount(
+            encodedAccount(
+                svm,
+                screenedMint,
+                new Uint8Array(
+                    getMintEncoder().encode({
+                        decimals: 6,
+                        extensions: [
+                            extension('TransferHook', { authority: payer.address, programId: HOOK_PROGRAM_ID }),
+                        ],
+                        freezeAuthority: null,
+                        isInitialized: true,
+                        mintAuthority: payer.address,
+                        supply: 0n,
+                    }),
+                ),
+                TOKEN_2022_PROGRAM_ADDRESS,
+            ),
+        );
+
+        const screenedCounter = (await generateKeyPairSigner()).address;
+        svm.setAccount(encodedAccount(svm, screenedCounter, new Uint8Array(1), HOOK_PROGRAM_ID));
+        const [screenedValidationPda] = await getProgramDerivedAddress({
+            programAddress: HOOK_PROGRAM_ID,
+            seeds: ['extra-account-metas', getAddressEncoder().encode(screenedMint)],
+        });
+        svm.setAccount(
+            encodedAccount(svm, screenedValidationPda, contextAwareMetaListData(screenedCounter), HOOK_PROGRAM_ID),
+        );
+
+        const [delegatorAta] = await findAssociatedTokenPda({
+            mint: screenedMint,
+            owner: payer.address,
+            tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+        });
+        const [receiverAta] = await findAssociatedTokenPda({
+            mint: screenedMint,
+            owner: delegatee.address,
+            tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+        });
+        svm.setAccount(
+            encodedAccount(
+                svm,
+                delegatorAta,
+                hookedTokenAccount(screenedMint, payer.address, 100_000_000n),
+                TOKEN_2022_PROGRAM_ADDRESS,
+            ),
+        );
+        svm.setAccount(
+            encodedAccount(
+                svm,
+                receiverAta,
+                hookedTokenAccount(screenedMint, delegatee.address, 0n),
+                TOKEN_2022_PROGRAM_ADDRESS,
+            ),
+        );
+
+        await send(
+            svm,
+            payer,
+            await getInitSubscriptionAuthorityOverlayInstructionAsync({
+                owner: payer,
+                tokenMint: screenedMint,
+                tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+                userAta: delegatorAta,
+            }),
+        );
+
+        const [subscriptionAuthority] = await findSubscriptionAuthorityPda({
+            tokenMint: screenedMint,
+            user: payer.address,
+        });
+        const { initId } = getSubscriptionAuthorityDecoder().decode(svm.getAccount(subscriptionAuthority)!.data);
+
+        await send(
+            svm,
+            payer,
+            await getCreateFixedDelegationOverlayInstructionAsync({
+                amount: 50_000_000n,
+                delegatee: delegatee.address,
+                delegator: payer,
+                expectedSubscriptionAuthorityInitId: initId,
+                expiryTs: BigInt(Math.floor(Date.now() / 1000) + 86_400),
+                nonce: 0n,
+                tokenMint: screenedMint,
+            }),
+        );
+
+        const [delegationPda] = await findFixedDelegationPda({
+            delegatee: delegatee.address,
+            delegator: payer.address,
+            nonce: 0n,
+            subscriptionAuthority,
+        });
+
+        const client = createClient().use(signer(delegatee)).use(liteSvmRpcPlugin(svm)).use(subscriptionsProgram());
+        const instruction = await client.subscriptions.instructions.transferFixed({
+            amount: 10_000_000n,
+            delegationPda,
+            delegator: payer.address,
+            delegatorAta,
+            receiverAta,
+            tokenMint: screenedMint,
+            tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+        });
+
+        const initiatorAccounts = instruction.accounts!.filter(account => account.address === delegatee.address);
+        expect(initiatorAccounts.some(account => account.role === AccountRole.WRITABLE)).toBe(true);
+
+        await send(svm, payer, instruction);
+
+        const receiverData = svm.getAccount(receiverAta)!.data;
+        const receiverAmount = new DataView(
+            receiverData.buffer,
+            receiverData.byteOffset,
+            receiverData.byteLength,
+        ).getBigUint64(64, true);
+        expect(receiverAmount).toBe(10_000_000n);
+        expect(svm.getAccount(screenedCounter)!.data[0]).toBe(1);
     });
 });

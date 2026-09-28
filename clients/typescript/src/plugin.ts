@@ -60,6 +60,7 @@ import { findAssociatedTokenPda } from '@solana-program/token';
 import { fetchDelegationsByDelegatee, fetchDelegationsByDelegator } from './accounts/delegations.js';
 import { fetchPlansForOwner } from './accounts/plans.js';
 import {
+    AccountDiscriminator,
     fetchMaybeSubscriptionAuthority,
     fetchPlan,
     findEventAuthorityPda,
@@ -89,6 +90,7 @@ import {
     type SubscriptionsPluginRequirements as GeneratedSubscriptionsPluginRequirements,
     subscriptionsProgram as generatedSubscriptionsProgram,
 } from './generated/index.js';
+import { buildPendingTransferContext } from './transfer-context.js';
 import { resolveTransferHookAccounts, type TransferHookAccount } from './transfer-hook.js';
 import type { Delegation } from './types/delegation.js';
 import type { PlanWithAddress } from './types/plan.js';
@@ -860,7 +862,11 @@ export function subscriptionsProgram() {
                 return subscriptionAuthority.data.initId;
             };
 
-            const resolveDelegationHookAccounts = async (input: Omit<TransferDelegationInput, 'delegatee'>) => {
+            const resolveDelegationHookAccounts = async (
+                input: Omit<TransferDelegationInput, 'delegatee'>,
+                initiator: Address,
+                delegationKind: AccountDiscriminator,
+            ) => {
                 const [subscriptionAuthority] = await findSubscriptionAuthorityPda(
                     { tokenMint: input.tokenMint, user: input.delegator },
                     pdaConfig(input.programAddress),
@@ -872,6 +878,13 @@ export function subscriptionsProgram() {
                     mint: input.tokenMint,
                     source: input.delegatorAta,
                     tokenProgram: input.tokenProgram,
+                    transferContext: await buildPendingTransferContext({
+                        delegation: input.delegationPda,
+                        delegationKind,
+                        initiator,
+                        programAddress: input.programAddress,
+                        subscriptionAuthority,
+                    }),
                     transferHookAccounts: input.transferHookAccounts,
                 });
             };
@@ -1056,22 +1069,34 @@ export function subscriptionsProgram() {
                 transferFixed: input =>
                     addSelfPlanAndSendFunctions(
                         client,
-                        (async () =>
-                            await getTransferFixedOverlayInstructionAsync({
+                        (async () => {
+                            const delegatee = input.delegatee ?? client.identity;
+                            return await getTransferFixedOverlayInstructionAsync({
                                 ...input,
-                                delegatee: input.delegatee ?? client.identity,
-                                transferHookAccounts: await resolveDelegationHookAccounts(input),
-                            }))(),
+                                delegatee,
+                                transferHookAccounts: await resolveDelegationHookAccounts(
+                                    input,
+                                    delegatee.address,
+                                    AccountDiscriminator.FixedDelegation,
+                                ),
+                            });
+                        })(),
                     ),
                 transferRecurring: input =>
                     addSelfPlanAndSendFunctions(
                         client,
-                        (async () =>
-                            await getTransferRecurringOverlayInstructionAsync({
+                        (async () => {
+                            const delegatee = input.delegatee ?? client.identity;
+                            return await getTransferRecurringOverlayInstructionAsync({
                                 ...input,
-                                delegatee: input.delegatee ?? client.identity,
-                                transferHookAccounts: await resolveDelegationHookAccounts(input),
-                            }))(),
+                                delegatee,
+                                transferHookAccounts: await resolveDelegationHookAccounts(
+                                    input,
+                                    delegatee.address,
+                                    AccountDiscriminator.RecurringDelegation,
+                                ),
+                            });
+                        })(),
                     ),
                 transferSubscription: input =>
                     addSelfPlanAndSendFunctions(
@@ -1086,6 +1111,7 @@ export function subscriptionsProgram() {
                                 owner: input.delegator,
                                 tokenProgram: input.tokenProgram,
                             });
+                            const caller = input.caller ?? client.identity;
                             const transferHookAccounts = await resolveTransferHookAccounts(c.rpc, {
                                 amount: input.amount,
                                 authority: subscriptionAuthority,
@@ -1093,11 +1119,18 @@ export function subscriptionsProgram() {
                                 mint: input.tokenMint,
                                 source: delegatorAta,
                                 tokenProgram: input.tokenProgram,
+                                transferContext: await buildPendingTransferContext({
+                                    delegation: input.subscriptionPda,
+                                    delegationKind: AccountDiscriminator.SubscriptionDelegation,
+                                    initiator: caller.address,
+                                    programAddress: input.programAddress,
+                                    subscriptionAuthority,
+                                }),
                                 transferHookAccounts: input.transferHookAccounts,
                             });
                             return await getTransferSubscriptionOverlayInstructionAsync({
                                 ...input,
-                                caller: input.caller ?? client.identity,
+                                caller,
                                 transferHookAccounts,
                             });
                         })(),

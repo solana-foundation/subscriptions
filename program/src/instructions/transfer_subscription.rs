@@ -8,7 +8,9 @@ use crate::{
     check_and_update_version,
     event_engine::{self, EventSerialize},
     events::SubscriptionTransferEvent,
-    helpers::{transfer_with_delegate, validate_recurring_transfer, TransferAccounts, TransferData},
+    helpers::{
+        transfer_with_delegate, validate_recurring_transfer, TransferAccounts, TransferContextInput, TransferData,
+    },
     state::{common::AccountDiscriminator, plan::Plan, subscription_delegation::SubscriptionDelegation},
     AccountCheck, MintInterface, ProgramAccount, SignerAccount, SubscriptionAuthorityAccount, SubscriptionsError,
     TokenAccountInterface, TokenProgramInterface, WritableAccount,
@@ -119,6 +121,11 @@ pub fn process(accounts: &mut [AccountView], transfer_data: &TransferData) -> Pr
             token_program: accounts_struct.token_program,
         },
         accounts_struct.remaining,
+        &TransferContextInput {
+            initiator: accounts_struct.caller,
+            delegation: accounts_struct.subscription_pda.address(),
+            delegation_kind: AccountDiscriminator::SubscriptionDelegation,
+        },
     )?;
 
     let period_end_ts = {

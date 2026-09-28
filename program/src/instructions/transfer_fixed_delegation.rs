@@ -9,7 +9,7 @@ use crate::{
     events::FixedTransferEvent,
     helpers::{
         get_token_account_owner, transfer_with_delegate, validate_fixed_transfer, Delegation,
-        DelegationTransferAccounts, TransferAccounts, TransferData,
+        DelegationTransferAccounts, TransferAccounts, TransferContextInput, TransferData,
     },
     state::common::AccountDiscriminator,
     state::FixedDelegation,
@@ -73,6 +73,11 @@ pub fn process(accounts: &mut [AccountView], transfer: &TransferData) -> Program
             token_program: accounts_struct.token_program,
         },
         accounts_struct.remaining,
+        &TransferContextInput {
+            initiator: accounts_struct.delegatee,
+            delegation: accounts_struct.delegation_pda.address(),
+            delegation_kind: AccountDiscriminator::FixedDelegation,
+        },
     )?;
 
     let event = FixedTransferEvent::new(
