@@ -168,6 +168,11 @@ mod tests {
     }
 
     #[test]
+    fn test_min_size_larger_ok() {
+        assert!(check_min_account_size(120, 100).is_ok());
+    }
+
+    #[test]
     fn test_min_size_smaller_err() {
         let err = check_min_account_size(80, 100).unwrap_err();
         assert_custom_error(err, SubscriptionsError::InvalidAccountData);
