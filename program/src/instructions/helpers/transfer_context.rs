@@ -55,7 +55,7 @@ pub fn open<'a>(
     let bump_bytes = [bump];
     let seeds =
         [Seed::from(TransferContext::SEED), Seed::from(subscription_authority.as_ref()), Seed::from(&bump_bytes)];
-    ProgramAccount::init::<TransferContext>(input.initiator, context, &seeds, TransferContext::LEN)?;
+    ProgramAccount::init(input.initiator, context, &seeds, TransferContext::LEN)?;
 
     let mut writable = *context;
     let mut data = writable.try_borrow_mut()?;

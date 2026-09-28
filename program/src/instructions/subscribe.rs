@@ -142,12 +142,7 @@ pub fn process(accounts: &mut [AccountView], data: &SubscribeData) -> ProgramRes
         Seed::from(&bump_bytes[..]),
     ];
 
-    ProgramAccount::init::<()>(
-        accounts_struct.payer,
-        accounts_struct.subscription_pda,
-        &seeds,
-        SubscriptionDelegation::LEN,
-    )?;
+    ProgramAccount::init(accounts_struct.payer, accounts_struct.subscription_pda, &seeds, SubscriptionDelegation::LEN)?;
 
     // Initialize subscription state
     {

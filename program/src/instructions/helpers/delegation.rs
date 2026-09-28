@@ -92,7 +92,7 @@ pub fn create_delegation_account(
         Seed::from(&bump_bytes),
     ];
 
-    ProgramAccount::init::<()>(accounts.payer, accounts.delegation_account, &seeds, space)?;
+    ProgramAccount::init(accounts.payer, accounts.delegation_account, &seeds, space)?;
 
     Ok((bump, init_id, mint))
 }

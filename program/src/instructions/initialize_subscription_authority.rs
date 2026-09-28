@@ -85,12 +85,7 @@ pub fn process(accounts: &mut [AccountView]) -> ProgramResult {
     // stored payer. The original sponsor recorded at first creation remains
     // the rent recipient on close.
     if accounts.subscription_authority.data_len() == 0 {
-        ProgramAccount::init::<SubscriptionAuthority>(
-            accounts.payer,
-            accounts.subscription_authority,
-            &seeds,
-            SubscriptionAuthority::LEN,
-        )?;
+        ProgramAccount::init(accounts.payer, accounts.subscription_authority, &seeds, SubscriptionAuthority::LEN)?;
 
         let init_id = Clock::get()?.slot as i64;
         let mut data = accounts.subscription_authority.try_borrow_mut()?;

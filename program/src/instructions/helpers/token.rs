@@ -1,24 +1,17 @@
-//! Token account validation, initialization, and interface helpers.
+//! Token account validation and interface helpers.
 //!
-//! Provides [`AccountCheck`] and init implementations for both SPL Token and
+//! Provides [`AccountCheck`] implementations for both SPL Token and
 //! Token-2022 mints and token accounts, along with unified interface types
 //! ([`MintInterface`], [`TokenAccountInterface`], [`TokenProgramInterface`])
 //! that dispatch to the correct variant based on account ownership.
 
-use pinocchio::{
-    error::ProgramError,
-    sysvars::{rent::Rent, Sysvar},
-    AccountView, Address, ProgramResult,
-};
-use pinocchio_associated_token_account::instructions::Create;
-use pinocchio_system::instructions::CreateAccount;
+use pinocchio::{error::ProgramError, AccountView, Address};
 use pinocchio_token::{
-    instructions::{InitializeAccount3, InitializeMint2},
     state::{Account as TokenAccountState, Mint},
     ID as SPL_TOKEN_PROGRAM_ID,
 };
 
-use super::traits::{AccountCheck, AssociatedTokenAccountCheck, AssociatedTokenAccountInit, MintInit, TokenInit};
+use super::traits::{AccountCheck, AssociatedTokenAccountCheck};
 use crate::{
     constants::{
         MINT_IS_INITIALIZED_OFFSET, TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET, TOKEN_2022_MINT_DISCRIMINATOR,
@@ -40,38 +33,6 @@ pub fn get_token_account_delegate(data: &[u8]) -> Result<Option<Address>, Subscr
     let mut delegate = [0u8; 32];
     delegate.copy_from_slice(&data[TOKEN_ACCOUNT_DELEGATE_OFFSET..TOKEN_ACCOUNT_DELEGATE_END]);
     Ok(Some(Address::from(delegate)))
-}
-
-// Private helpers to consolidate initialization logic
-
-fn init_mint_helper(
-    account: &AccountView,
-    payer: &AccountView,
-    decimals: u8,
-    mint_authority: &Address,
-    freeze_authority: Option<&Address>,
-    owner_program_id: &Address,
-) -> ProgramResult {
-    let lamports = Rent::get()?.try_minimum_balance(Mint::LEN)?;
-
-    CreateAccount { from: payer, to: account, lamports, space: Mint::LEN as u64, owner: owner_program_id }.invoke()?;
-
-    InitializeMint2 { mint: account, decimals, mint_authority, freeze_authority }.invoke()
-}
-
-fn init_token_helper(
-    account: &AccountView,
-    mint: &AccountView,
-    payer: &AccountView,
-    owner: &Address,
-    owner_program_id: &Address,
-) -> ProgramResult {
-    let lamports = Rent::get()?.try_minimum_balance(TokenAccountState::LEN)?;
-
-    CreateAccount { from: payer, to: account, lamports, space: TokenAccountState::LEN as u64, owner: owner_program_id }
-        .invoke()?;
-
-    InitializeAccount3 { account, mint, owner }.invoke()
 }
 
 // MintAccount (SPL Token)
@@ -98,31 +59,6 @@ impl AccountCheck for MintAccount {
     }
 }
 
-impl MintInit for MintAccount {
-    fn init(
-        account: &AccountView,
-        payer: &AccountView,
-        decimals: u8,
-        mint_authority: &Address,
-        freeze_authority: Option<&Address>,
-    ) -> ProgramResult {
-        init_mint_helper(account, payer, decimals, mint_authority, freeze_authority, &pinocchio_token::ID)
-    }
-
-    fn init_if_needed(
-        account: &AccountView,
-        payer: &AccountView,
-        decimals: u8,
-        mint_authority: &Address,
-        freeze_authority: Option<&Address>,
-    ) -> ProgramResult {
-        match Self::check(account) {
-            Ok(_) => Ok(()),
-            Err(_) => Self::init(account, payer, decimals, mint_authority, freeze_authority),
-        }
-    }
-}
-
 // TokenAccount (SPL Token)
 
 /// Validation for SPL Token token accounts.
@@ -139,24 +75,6 @@ impl AccountCheck for TokenAccount {
         }
 
         Ok(())
-    }
-}
-
-impl TokenInit for TokenAccount {
-    fn init(account: &AccountView, mint: &AccountView, payer: &AccountView, owner: &Address) -> ProgramResult {
-        init_token_helper(account, mint, payer, owner, &pinocchio_token::ID)
-    }
-
-    fn init_if_needed(
-        account: &AccountView,
-        mint: &AccountView,
-        payer: &AccountView,
-        owner: &Address,
-    ) -> ProgramResult {
-        match Self::check(account) {
-            Ok(_) => Ok(()),
-            Err(_) => Self::init(account, mint, payer, owner),
-        }
     }
 }
 
@@ -191,38 +109,6 @@ impl AccountCheck for Mint2022Account {
     }
 }
 
-impl MintInit for Mint2022Account {
-    fn init(
-        account: &AccountView,
-        payer: &AccountView,
-        decimals: u8,
-        mint_authority: &Address,
-        freeze_authority: Option<&Address>,
-    ) -> ProgramResult {
-        init_mint_helper(
-            account,
-            payer,
-            decimals,
-            mint_authority,
-            freeze_authority,
-            &crate::constants::TOKEN_2022_PROGRAM_ID,
-        )
-    }
-
-    fn init_if_needed(
-        account: &AccountView,
-        payer: &AccountView,
-        decimals: u8,
-        mint_authority: &Address,
-        freeze_authority: Option<&Address>,
-    ) -> ProgramResult {
-        match Self::check(account) {
-            Ok(_) => Ok(()),
-            Err(_) => Self::init(account, payer, decimals, mint_authority, freeze_authority),
-        }
-    }
-}
-
 // TokenAccount2022Account
 
 /// Validation for Token-2022 token accounts.
@@ -250,24 +136,6 @@ impl AccountCheck for TokenAccount2022Account {
     }
 }
 
-impl TokenInit for TokenAccount2022Account {
-    fn init(account: &AccountView, mint: &AccountView, payer: &AccountView, owner: &Address) -> ProgramResult {
-        init_token_helper(account, mint, payer, owner, &crate::constants::TOKEN_2022_PROGRAM_ID)
-    }
-
-    fn init_if_needed(
-        account: &AccountView,
-        mint: &AccountView,
-        payer: &AccountView,
-        owner: &Address,
-    ) -> ProgramResult {
-        match Self::check(account) {
-            Ok(_) => Ok(()),
-            Err(_) => Self::init(account, mint, payer, owner),
-        }
-    }
-}
-
 /// Unified validator that accepts either SPL Token or Token-2022 program accounts.
 pub struct TokenProgramInterface;
 
@@ -280,7 +148,7 @@ impl TokenProgramInterface {
     }
 }
 
-/// Unified validator/initializer for mint accounts across both SPL Token and Token-2022.
+/// Unified validator for mint accounts across both SPL Token and Token-2022.
 pub struct MintInterface;
 
 impl AccountCheck for MintInterface {
@@ -305,7 +173,7 @@ impl MintInterface {
     }
 }
 
-/// Unified validator/initializer for token accounts across both SPL Token and Token-2022.
+/// Unified validator for token accounts across both SPL Token and Token-2022.
 pub struct TokenAccountInterface;
 
 impl AccountCheck for TokenAccountInterface {
@@ -334,44 +202,14 @@ impl TokenAccountInterface {
         accounts: &[&AccountView],
     ) -> Result<(), ProgramError> {
         for account in accounts {
-            Self::check(account)?;
-
-            if !account.owned_by(token_program.address()) {
-                return Err(SubscriptionsError::InvalidTokenProgram.into());
-            }
+            Self::check_with_program(account, token_program)?;
         }
         Ok(())
     }
 }
 
-/// Unified ATA check and creation for both SPL Token and Token-2022.
+/// Unified ATA check for both SPL Token and Token-2022.
 pub struct AssociatedTokenAccount;
-
-impl AssociatedTokenAccount {
-    /// Verifies that the given account is a valid ATA using the provided bump.
-    /// This is cheaper than the trait method as it doesn't derive the bump.
-    pub fn check_with_bump(
-        account: &AccountView,
-        authority: &AccountView,
-        mint: &AccountView,
-        token_program: &AccountView,
-        bump: u8,
-    ) -> Result<(), ProgramError> {
-        TokenAccountInterface::check(account)?;
-
-        let expected_pda = Address::create_program_address(
-            &[authority.address().as_ref(), token_program.address().as_ref(), mint.address().as_ref(), &[bump]],
-            &pinocchio_associated_token_account::ID,
-        )
-        .map_err(|_| SubscriptionsError::InvalidAssociatedTokenAccountDerivedAddress)?;
-
-        if expected_pda.ne(account.address()) {
-            return Err(SubscriptionsError::InvalidAssociatedTokenAccountDerivedAddress.into());
-        }
-
-        Ok(())
-    }
-}
 
 impl AssociatedTokenAccountCheck for AssociatedTokenAccount {
     fn check(
@@ -393,32 +231,5 @@ impl AssociatedTokenAccountCheck for AssociatedTokenAccount {
         }
 
         Ok(())
-    }
-}
-
-impl AssociatedTokenAccountInit for AssociatedTokenAccount {
-    fn init(
-        account: &AccountView,
-        mint: &AccountView,
-        payer: &AccountView,
-        owner: &AccountView,
-        system_program: &AccountView,
-        token_program: &AccountView,
-    ) -> ProgramResult {
-        Create { funding_account: payer, account, wallet: owner, mint, system_program, token_program }.invoke()
-    }
-
-    fn init_if_needed(
-        account: &AccountView,
-        mint: &AccountView,
-        payer: &AccountView,
-        owner: &AccountView,
-        system_program: &AccountView,
-        token_program: &AccountView,
-    ) -> ProgramResult {
-        match Self::check(account, owner, mint, token_program) {
-            Ok(_) => Ok(()),
-            Err(_) => Self::init(account, mint, payer, owner, system_program, token_program),
-        }
     }
 }

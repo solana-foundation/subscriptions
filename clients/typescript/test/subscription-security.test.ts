@@ -207,14 +207,13 @@ describe('Subscription Security', () => {
 
         await t.timeTravel(Number(subAfterCancel.expiresAtTs) + 60);
 
-        const signature = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .revokeSubscription({
                 authority: subscriber,
                 subscriptionPda,
                 planPda,
             })
             .sendTransaction();
-        expect(signature).toBeDefined();
     });
 
     test('unauthorized puller is rejected', async () => {
@@ -288,7 +287,7 @@ describe('Subscription Security', () => {
         );
 
         const pullerAta = await t.createAtaWithBalance(t.tokenMint, authorizedPuller.address, 0n);
-        const pullerSig = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .transferSubscription({
                 caller: authorizedPuller,
                 delegator: subscriber.address,
@@ -300,10 +299,9 @@ describe('Subscription Security', () => {
                 tokenProgram: t.tokenProgram,
             })
             .sendTransaction();
-        expect(pullerSig).toBeDefined();
 
         const merchantAta = await t.createAtaWithBalance(t.tokenMint, t.payerKeypair.address, 0n);
-        const merchantSig = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .transferSubscription({
                 caller: t.payerKeypair,
                 delegator: subscriber.address,
@@ -315,7 +313,6 @@ describe('Subscription Security', () => {
                 tokenProgram: t.tokenProgram,
             })
             .sendTransaction();
-        expect(merchantSig).toBeDefined();
     });
 
     test('destination whitelist is enforced', async () => {
@@ -390,7 +387,7 @@ describe('Subscription Security', () => {
             SUBSCRIPTIONS_ERROR__UNAUTHORIZED_DESTINATION,
         );
 
-        const signature = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .transferSubscription({
                 caller: t.payerKeypair,
                 delegator: subscriber.address,
@@ -402,7 +399,6 @@ describe('Subscription Security', () => {
                 tokenProgram: t.tokenProgram,
             })
             .sendTransaction();
-        expect(signature).toBeDefined();
     });
 
     test('double subscription is blocked', async () => {
@@ -586,7 +582,7 @@ describe('Subscription Security', () => {
             })
             .sendTransaction();
 
-        const graceSig = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .transferSubscription({
                 caller: t.payerKeypair,
                 delegator: subscriber.address,
@@ -598,7 +594,6 @@ describe('Subscription Security', () => {
                 tokenProgram: t.tokenProgram,
             })
             .sendTransaction();
-        expect(graceSig).toBeDefined();
 
         const subData = (await fetchSubscriptionDelegation(t.rpc, subscriptionPda)).data;
         await t.timeTravel(Number(subData.expiresAtTs) + 60);
@@ -725,13 +720,12 @@ describe('Subscription Security', () => {
 
         await t.timeTravel(Number(endTs) + 60);
 
-        const signature = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .deletePlan({
                 owner: t.payerKeypair,
                 planPda,
             })
             .sendTransaction();
-        expect(signature).toBeDefined();
 
         const planAfter = await fetchMaybePlan(t.rpc, planPda);
         expect(planAfter.exists).toBe(false);
@@ -1050,14 +1044,13 @@ describe('Subscription Security', () => {
         const subAfterCancel = (await fetchSubscriptionDelegation(t.rpc, subscriptionPda)).data;
         expect(subAfterCancel.expiresAtTs).not.toBe(0n);
 
-        const signature = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .revokeSubscription({
                 authority: subscriber,
                 subscriptionPda,
                 planPda,
             })
             .sendTransaction();
-        expect(signature).toBeDefined();
 
         const subAfterRevoke = await fetchMaybeSubscriptionDelegation(t.rpc, subscriptionPda);
         expect(subAfterRevoke.exists).toBe(false);
@@ -1287,7 +1280,7 @@ describe('Subscription Security', () => {
 
         const pullerAAta = await t.createAtaWithBalance(t.tokenMint, pullerA.address, 0n);
 
-        const firstPull = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .transferSubscription({
                 caller: pullerA,
                 delegator: subscriber.address,
@@ -1299,7 +1292,6 @@ describe('Subscription Security', () => {
                 tokenProgram: t.tokenProgram,
             })
             .sendTransaction();
-        expect(firstPull).toBeDefined();
 
         await t.client.subscriptions.instructions
             .updatePlan({
@@ -1329,7 +1321,7 @@ describe('Subscription Security', () => {
         );
 
         const pullerBAta = await t.createAtaWithBalance(t.tokenMint, pullerB.address, 0n);
-        const newPull = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .transferSubscription({
                 caller: pullerB,
                 delegator: subscriber.address,
@@ -1341,7 +1333,6 @@ describe('Subscription Security', () => {
                 tokenProgram: t.tokenProgram,
             })
             .sendTransaction();
-        expect(newPull).toBeDefined();
     });
 
     test('cancel with wrong plan account fails', async () => {
@@ -1424,14 +1415,13 @@ describe('Subscription Security', () => {
             SUBSCRIPTIONS_ERROR__SUBSCRIPTION_PLAN_MISMATCH,
         );
 
-        const signature = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .cancelSubscription({
                 subscriber,
                 planPda: planA,
                 subscriptionPda,
             })
             .sendTransaction();
-        expect(signature).toBeDefined();
     });
 
     test('plan end_ts expiry blocks subscription transfer', async () => {
@@ -1488,7 +1478,7 @@ describe('Subscription Security', () => {
 
         const merchantAta = await t.createAtaWithBalance(t.tokenMint, t.payerKeypair.address, 0n);
 
-        const signature = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .transferSubscription({
                 caller: t.payerKeypair,
                 delegator: subscriber.address,
@@ -1500,7 +1490,6 @@ describe('Subscription Security', () => {
                 tokenProgram: t.tokenProgram,
             })
             .sendTransaction();
-        expect(signature).toBeDefined();
 
         await t.timeTravel(Number(endTs) + 60);
 
@@ -1586,14 +1575,13 @@ describe('Subscription Security', () => {
         const subData = (await fetchSubscriptionDelegation(t.rpc, subscriptionPda)).data;
         expect(subData.expiresAtTs).toBe(endTs + 1n);
 
-        const signature = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .revokeSubscription({
                 authority: subscriber,
                 subscriptionPda,
                 planPda,
             })
             .sendTransaction();
-        expect(signature).toBeDefined();
 
         const subAfterRevoke = await fetchMaybeSubscriptionDelegation(t.rpc, subscriptionPda);
         expect(subAfterRevoke.exists).toBe(false);

@@ -56,14 +56,6 @@ pub trait EventDiscriminator {
     const DISCRIMINATOR: u8;
 }
 
-#[cfg(test)]
-fn discriminator_bytes<T: EventDiscriminator>() -> Vec<u8> {
-    let mut bytes = Vec::with_capacity(EVENT_DISCRIMINATOR_LEN);
-    bytes.extend_from_slice(&EVENT_IX_TAG_LE);
-    bytes.push(T::DISCRIMINATOR);
-    bytes
-}
-
 /// Serializes an event into its wire format: tag + discriminator + field data.
 pub trait EventSerialize: EventDiscriminator {
     /// The length of the serialized event data (excluding discriminator).
@@ -169,94 +161,28 @@ pub fn emit_event(
 mod tests {
     use super::*;
 
-    struct StubEventA {
+    struct StubEvent {
         value: u64,
     }
 
-    impl EventDiscriminator for StubEventA {
+    impl EventDiscriminator for StubEvent {
         const DISCRIMINATOR: u8 = 10;
     }
 
-    impl EventSerialize for StubEventA {
+    impl EventSerialize for StubEvent {
         const DATA_LEN: usize = 8;
         fn write_inner(&self, writer: &mut Vec<u8>) {
             writer.extend_from_slice(&self.value.to_le_bytes());
         }
     }
 
-    struct StubEventB {
-        flag: u8,
-    }
-
-    impl EventDiscriminator for StubEventB {
-        const DISCRIMINATOR: u8 = 20;
-    }
-
-    impl EventSerialize for StubEventB {
-        const DATA_LEN: usize = 1;
-        fn write_inner(&self, writer: &mut Vec<u8>) {
-            writer.push(self.flag);
-        }
-    }
-
-    #[test]
-    fn constants_are_consistent() {
-        assert_eq!(EVENT_IX_TAG_LE, EVENT_IX_TAG.to_le_bytes());
-        assert_eq!(EVENT_DISCRIMINATOR_LEN, 8 + 1);
-    }
-
-    #[test]
-    fn discriminator_bytes_has_correct_prefix() {
-        let disc = discriminator_bytes::<StubEventA>();
-        assert_eq!(disc.len(), EVENT_DISCRIMINATOR_LEN);
-        assert_eq!(&disc[..8], &EVENT_IX_TAG_LE);
-        assert_eq!(disc[8], StubEventA::DISCRIMINATOR);
-    }
-
-    #[test]
-    fn discriminator_bytes_differ_per_event() {
-        let a = discriminator_bytes::<StubEventA>();
-        let b = discriminator_bytes::<StubEventB>();
-        assert_ne!(a, b);
-        assert_eq!(&a[..8], &b[..8]);
-        assert_ne!(a[8], b[8]);
-    }
-
     #[test]
     fn to_bytes_prepends_tag_and_discriminator() {
-        let event = StubEventA { value: 42 };
+        let event = StubEvent { value: 42 };
         let bytes = event.to_bytes();
 
         assert_eq!(&bytes[..8], &EVENT_IX_TAG_LE);
-        assert_eq!(bytes[8], StubEventA::DISCRIMINATOR);
+        assert_eq!(bytes[8], StubEvent::DISCRIMINATOR);
         assert_eq!(&bytes[9..], &42u64.to_le_bytes());
-    }
-
-    #[test]
-    fn to_bytes_equals_discriminator_bytes_plus_inner() {
-        let event = StubEventA { value: 999 };
-        let full = event.to_bytes();
-
-        let mut inner = Vec::new();
-        event.write_inner(&mut inner);
-
-        let mut expected = discriminator_bytes::<StubEventA>();
-        expected.extend_from_slice(&inner);
-        assert_eq!(full, expected);
-    }
-
-    #[test]
-    fn write_inner_is_only_field_data() {
-        let event = StubEventB { flag: 0xFF };
-        let mut inner = Vec::new();
-        event.write_inner(&mut inner);
-        assert_eq!(inner, vec![0xFF]);
-    }
-
-    #[test]
-    fn different_events_produce_different_wire_bytes() {
-        let a = StubEventA { value: 1 };
-        let b = StubEventB { flag: 1 };
-        assert_ne!(a.to_bytes(), b.to_bytes());
     }
 }

@@ -62,7 +62,7 @@ pub fn create_plan_account(accounts: &CreatePlanAccounts, plan_id: u64) -> Resul
         Seed::from(&bump_bytes[..]),
     ];
 
-    ProgramAccount::init::<()>(accounts.payer, accounts.plan_pda, &seeds, Plan::LEN)?;
+    ProgramAccount::init(accounts.payer, accounts.plan_pda, &seeds, Plan::LEN)?;
 
     Ok(bump)
 }

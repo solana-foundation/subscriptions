@@ -85,7 +85,7 @@ impl Header {
         init_id: i64,
     ) {
         self.version = CURRENT_VERSION;
-        self.discriminator = discriminator.into();
+        self.discriminator = discriminator as u8;
         self.bump = bump;
         self.delegator = *delegator;
         self.delegatee = *delegatee;
@@ -94,9 +94,11 @@ impl Header {
     }
 }
 
-pub const HEADER_LEN_V1: usize = 107;
-const _: () = assert!(Header::LEN == HEADER_LEN_V1);
-const _: () = assert!(INIT_ID_OFFSET == 99);
-const _: () = assert!(DELEGATOR_OFFSET == 3);
-const _: () = assert!(DELEGATEE_OFFSET == 35);
-const _: () = assert!(PAYER_OFFSET == 67);
+const _: () = assert!(Header::LEN == 107);
+const _: () = assert!(core::mem::offset_of!(Header, discriminator) == DISCRIMINATOR_OFFSET);
+const _: () = assert!(core::mem::offset_of!(Header, version) == VERSION_OFFSET);
+const _: () = assert!(core::mem::offset_of!(Header, bump) == BUMP_OFFSET);
+const _: () = assert!(core::mem::offset_of!(Header, delegator) == DELEGATOR_OFFSET);
+const _: () = assert!(core::mem::offset_of!(Header, delegatee) == DELEGATEE_OFFSET);
+const _: () = assert!(core::mem::offset_of!(Header, payer) == PAYER_OFFSET);
+const _: () = assert!(core::mem::offset_of!(Header, init_id) == INIT_ID_OFFSET);

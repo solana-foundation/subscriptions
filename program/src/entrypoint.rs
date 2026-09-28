@@ -11,7 +11,7 @@ use crate::instructions::{
 entrypoint!(process_instruction);
 
 pub fn process_instruction(
-    program_id: &Address,
+    _program_id: &Address,
     accounts: &mut [AccountView],
     instruction_data: &[u8],
 ) -> ProgramResult {
@@ -39,6 +39,6 @@ pub fn process_instruction(
         SubscriptionsInstruction::RevokeAbandonedDelegation => revoke_abandoned_delegation::process(accounts),
         SubscriptionsInstruction::RevokeAbandonedSubscription => revoke_abandoned_subscription::process(accounts),
         SubscriptionsInstruction::ReclaimExcessRent => reclaim_excess_rent::process(accounts),
-        SubscriptionsInstruction::EmitEvent => emit_event::process(program_id, accounts),
+        SubscriptionsInstruction::EmitEvent => emit_event::process(accounts),
     }
 }
