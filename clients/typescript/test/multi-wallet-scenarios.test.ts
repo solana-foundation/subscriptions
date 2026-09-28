@@ -128,7 +128,7 @@ describe('Multi-Wallet Scenarios', () => {
             SUBSCRIPTIONS_ERROR__SUBSCRIPTION_CANCELLED,
         );
 
-        const sigA = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .transferSubscription({
                 caller: t.payerKeypair,
                 delegator: subscribers[0].address,
@@ -140,9 +140,8 @@ describe('Multi-Wallet Scenarios', () => {
                 tokenProgram: t.tokenProgram,
             })
             .sendTransaction();
-        expect(sigA).toBeDefined();
 
-        const sigB = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .transferSubscription({
                 caller: t.payerKeypair,
                 delegator: subscribers[1].address,
@@ -154,7 +153,6 @@ describe('Multi-Wallet Scenarios', () => {
                 tokenProgram: t.tokenProgram,
             })
             .sendTransaction();
-        expect(sigB).toBeDefined();
 
         // Time travel moved past C's grace period (~2 hours), advancing A and B
         // into a new billing period. amountPulledInPeriod resets, so only the
@@ -218,7 +216,7 @@ describe('Multi-Wallet Scenarios', () => {
 
         const merchantAta = await t.createAtaWithBalance(t.tokenMint, t.payerKeypair.address, 0n);
 
-        const chargeSig = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .transferSubscription({
                 caller: t.payerKeypair,
                 delegator: subscriber.address,
@@ -230,7 +228,6 @@ describe('Multi-Wallet Scenarios', () => {
                 tokenProgram: t.tokenProgram,
             })
             .sendTransaction();
-        expect(chargeSig).toBeDefined();
 
         await t.client.subscriptions.instructions
             .closeSubscriptionAuthority({
@@ -290,7 +287,7 @@ describe('Multi-Wallet Scenarios', () => {
             nonce: 0n,
         });
 
-        const newTransferSig = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .transferFixed({
                 delegatee: trustedDelegatee,
                 delegator: subscriber.address,
@@ -302,7 +299,6 @@ describe('Multi-Wallet Scenarios', () => {
                 tokenProgram: t.tokenProgram,
             })
             .sendTransaction();
-        expect(newTransferSig).toBeDefined();
     });
 
     test('multi-mint kill-switch isolation', async () => {
@@ -402,7 +398,7 @@ describe('Multi-Wallet Scenarios', () => {
             SUBSCRIPTIONS_ERROR__INVALID_SUBSCRIPTION_AUTHORITY_PDA,
         );
 
-        const signature = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .transferFixed({
                 delegatee,
                 delegator: t.payerKeypair.address,
@@ -414,6 +410,5 @@ describe('Multi-Wallet Scenarios', () => {
                 tokenProgram: t.tokenProgram,
             })
             .sendTransaction();
-        expect(signature).toBeDefined();
     });
 });

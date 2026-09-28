@@ -1,20 +1,10 @@
-import {
-    address,
-    getAddressEncoder,
-    getProgramDerivedAddress,
-    type Address,
-    type Instruction,
-    type TransactionSigner,
-} from '@solana/kit';
+import { address, type Address, type Instruction, type TransactionSigner } from '@solana/kit';
 import { findAssociatedTokenPda } from '@solana-program/token';
+import { findSubscriptionAuthorityPda } from '@solana/subscriptions';
 import { packInstructionBatches } from './tx-packer';
 
-const SUBSCRIPTION_AUTHORITY_SEED = 'SubscriptionAuthority';
 const FAILURE_CACHE_STORAGE_KEY = 'collect-payments-subscriber-failures';
 const SIMULATION_FAILURE_PREFIX = 'Transaction simulation failed:';
-
-const addressEncoder = getAddressEncoder();
-const textEncoder = new TextEncoder();
 
 export interface EligibleSubscriber {
     subscriptionAddress: string;
@@ -280,7 +270,10 @@ async function checkSubscriberTokenReadiness<TSubscriber extends CollectableSubs
         owner: delegator,
         tokenProgram,
     });
-    const [subscriptionAuthority] = await getSubscriptionAuthorityPda(delegator, mint, programAddress);
+    const [subscriptionAuthority] = await findSubscriptionAuthorityPda(
+        { tokenMint: mint, user: delegator },
+        { programAddress },
+    );
     const account = await rpc.getAccountInfo(delegatorAta, { encoding: 'jsonParsed', commitment: 'confirmed' }).send();
 
     if (!account.value) {
@@ -358,21 +351,6 @@ async function checkSubscriberTokenReadiness<TSubscriber extends CollectableSubs
 
     clearCachedFailure(subscriber);
     return { subscriber, failure: null };
-}
-
-async function getSubscriptionAuthorityPda(
-    user: Address,
-    tokenMint: Address,
-    programAddress: Address,
-): Promise<readonly [Address, number]> {
-    return getProgramDerivedAddress({
-        programAddress,
-        seeds: [
-            textEncoder.encode(SUBSCRIPTION_AUTHORITY_SEED),
-            addressEncoder.encode(user),
-            addressEncoder.encode(tokenMint),
-        ],
-    });
 }
 
 function failReadiness<TSubscriber extends CollectableSubscriber>(

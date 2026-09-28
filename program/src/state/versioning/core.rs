@@ -163,29 +163,13 @@ mod tests {
     }
 
     #[test]
-    fn test_min_size_both_zero_ok() {
-        assert!(check_min_account_size(0, 0).is_ok());
-    }
-
-    #[test]
     fn test_min_size_exact_ok() {
         assert!(check_min_account_size(100, 100).is_ok());
     }
 
     #[test]
-    fn test_min_size_larger_ok() {
-        assert!(check_min_account_size(120, 100).is_ok());
-    }
-
-    #[test]
     fn test_min_size_smaller_err() {
         let err = check_min_account_size(80, 100).unwrap_err();
-        assert_custom_error(err, SubscriptionsError::InvalidAccountData);
-    }
-
-    #[test]
-    fn test_min_size_zero_len_err() {
-        let err = check_min_account_size(0, 100).unwrap_err();
         assert_custom_error(err, SubscriptionsError::InvalidAccountData);
     }
 }

@@ -128,13 +128,12 @@ describe('Subscription Lifecycle', () => {
         // 6. Time-travel past endTs, then delete the plan
         await t.timeTravel(Number(endTs) + 60);
 
-        const deleteSig = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .deletePlan({
                 owner: t.payerKeypair,
                 planPda,
             })
             .sendTransaction();
-        expect(deleteSig).toBeDefined();
 
         const planAfterDelete = await fetchMaybePlan(t.rpc, planPda);
         expect(planAfterDelete.exists).toBe(false);
@@ -197,7 +196,7 @@ describe('Subscription Lifecycle', () => {
         const pullerAta = await t.createAtaWithBalance(t.tokenMint, puller.address, 0n);
 
         const pullAmount = 100_000n;
-        const signature = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .transferSubscription({
                 caller: puller,
                 delegator: subscriber.address,
@@ -209,8 +208,6 @@ describe('Subscription Lifecycle', () => {
                 tokenProgram: t.tokenProgram,
             })
             .sendTransaction();
-
-        expect(signature).toBeDefined();
 
         const balance = await t.rpc.getTokenAccountBalance(pullerAta).send();
         expect(balance.value.amount).toBe(pullAmount.toString());
@@ -408,14 +405,13 @@ describe('Subscription Lifecycle', () => {
         expect(subAfterCancel.expiresAtTs).not.toBe(0n);
 
         // 7. Subscriber revokes delegation, getting rent back
-        const revokeSig = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .revokeSubscription({
                 authority: subscriber,
                 subscriptionPda,
                 planPda,
             })
             .sendTransaction();
-        expect(revokeSig).toBeDefined();
 
         // Subscription account should be closed
         const subAfterRevoke = await fetchMaybeSubscriptionDelegation(t.rpc, subscriptionPda);

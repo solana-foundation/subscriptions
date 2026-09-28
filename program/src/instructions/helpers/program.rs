@@ -24,12 +24,7 @@ impl AccountCheck for ProgramAccount {
 /// Creates a PDA account idempotently, handling the case where an attacker
 /// has pre-funded the PDA address with lamports to block creation.
 impl ProgramAccountInit for ProgramAccount {
-    fn init<'a, T: Sized>(
-        payer: &AccountView,
-        account: &AccountView,
-        seeds: &[Seed<'a>],
-        space: usize,
-    ) -> ProgramResult {
+    fn init(payer: &AccountView, account: &AccountView, seeds: &[Seed], space: usize) -> ProgramResult {
         let lamports = Rent::get()?.try_minimum_balance(space)?;
         let signer = [Signer::from(seeds)];
 

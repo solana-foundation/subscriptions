@@ -127,7 +127,7 @@ describe('Delegation Security', () => {
             nonce: 1n,
         });
 
-        const signature = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .transferFixed({
                 delegatee,
                 delegator: t.payerKeypair.address,
@@ -139,7 +139,6 @@ describe('Delegation Security', () => {
                 tokenProgram: t.tokenProgram,
             })
             .sendTransaction();
-        expect(signature).toBeDefined();
     });
 
     test('close SubscriptionAuthority kills all transfers', async () => {
@@ -313,7 +312,7 @@ describe('Delegation Security', () => {
             nonce: 0n,
         });
 
-        const signature = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .transferFixed({
                 delegatee,
                 delegator: t.payerKeypair.address,
@@ -325,7 +324,6 @@ describe('Delegation Security', () => {
                 tokenProgram: t.tokenProgram,
             })
             .sendTransaction();
-        expect(signature).toBeDefined();
 
         await t.timeTravel(Number(expiryTs) + 200);
 
@@ -390,7 +388,7 @@ describe('Delegation Security', () => {
             nonce: 0n,
         });
 
-        const signature = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .transferRecurring({
                 delegatee,
                 delegator: t.payerKeypair.address,
@@ -402,7 +400,6 @@ describe('Delegation Security', () => {
                 tokenProgram: t.tokenProgram,
             })
             .sendTransaction();
-        expect(signature).toBeDefined();
 
         await t.timeTravel(Number(expiryTs) + 200);
 
@@ -482,7 +479,7 @@ describe('Delegation Security', () => {
         );
 
         const legitimateAta = await t.createAtaWithBalance(t.tokenMint, legitimateDelegatee.address, 0n);
-        const signature = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .transferFixed({
                 delegatee: legitimateDelegatee,
                 delegator: t.payerKeypair.address,
@@ -494,7 +491,6 @@ describe('Delegation Security', () => {
                 tokenProgram: t.tokenProgram,
             })
             .sendTransaction();
-        expect(signature).toBeDefined();
     });
 
     test('wrong signer rejected on recurring delegation', async () => {
@@ -558,7 +554,7 @@ describe('Delegation Security', () => {
         );
 
         const legitimateAta = await t.createAtaWithBalance(t.tokenMint, legitimateDelegatee.address, 0n);
-        const signature = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .transferRecurring({
                 delegatee: legitimateDelegatee,
                 delegator: t.payerKeypair.address,
@@ -570,7 +566,6 @@ describe('Delegation Security', () => {
                 tokenProgram: t.tokenProgram,
             })
             .sendTransaction();
-        expect(signature).toBeDefined();
     });
 
     test('skipped periods do not accumulate allowance', async () => {
@@ -636,7 +631,7 @@ describe('Delegation Security', () => {
             SUBSCRIPTIONS_ERROR__AMOUNT_EXCEEDS_PERIOD_LIMIT,
         );
 
-        const signature = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .transferRecurring({
                 delegatee,
                 delegator: t.payerKeypair.address,
@@ -648,7 +643,6 @@ describe('Delegation Security', () => {
                 tokenProgram: t.tokenProgram,
             })
             .sendTransaction();
-        expect(signature).toBeDefined();
     });
 
     test('exceed per-period limit is blocked', async () => {
@@ -724,7 +718,7 @@ describe('Delegation Security', () => {
             SUBSCRIPTIONS_ERROR__AMOUNT_EXCEEDS_PERIOD_LIMIT,
         );
 
-        const signature = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .transferRecurring({
                 delegatee,
                 delegator: t.payerKeypair.address,
@@ -736,7 +730,6 @@ describe('Delegation Security', () => {
                 tokenProgram: t.tokenProgram,
             })
             .sendTransaction();
-        expect(signature).toBeDefined();
     });
 
     test('transfer before recurring start time is blocked', async () => {
@@ -801,7 +794,7 @@ describe('Delegation Security', () => {
 
         await t.timeTravel(Number(startTs) + 60);
 
-        const signature = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .transferRecurring({
                 delegatee,
                 delegator: t.payerKeypair.address,
@@ -813,7 +806,6 @@ describe('Delegation Security', () => {
                 tokenProgram: t.tokenProgram,
             })
             .sendTransaction();
-        expect(signature).toBeDefined();
     });
 
     test('cross-type nonce collision: fixed then recurring same nonce', async () => {
@@ -938,7 +930,7 @@ describe('Delegation Security', () => {
             }),
         );
 
-        const signature = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .transferFixed({
                 delegatee,
                 delegator: subscriber.address,
@@ -950,7 +942,6 @@ describe('Delegation Security', () => {
                 tokenProgram: t.tokenProgram,
             })
             .sendTransaction();
-        expect(signature).toBeDefined();
     });
 
     test('nonce collision is blocked', async () => {
@@ -995,7 +986,7 @@ describe('Delegation Security', () => {
             SUBSCRIPTIONS_ERROR__DELEGATION_ALREADY_EXISTS,
         );
 
-        const signature = await t.client.subscriptions.instructions
+        await t.client.subscriptions.instructions
             .createFixedDelegation({
                 delegator: t.payerKeypair,
                 tokenMint: t.tokenMint,
@@ -1005,7 +996,6 @@ describe('Delegation Security', () => {
                 expiryTs: currentTs + BigInt(ONE_HOUR_IN_SECONDS),
             })
             .sendTransaction();
-        expect(signature).toBeDefined();
     });
 });
 

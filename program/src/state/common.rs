@@ -88,19 +88,6 @@ impl TryFrom<u8> for AccountDiscriminator {
     }
 }
 
-impl From<AccountDiscriminator> for u8 {
-    fn from(val: AccountDiscriminator) -> Self {
-        match val {
-            AccountDiscriminator::SubscriptionAuthority => 0,
-            AccountDiscriminator::Plan => 1,
-            AccountDiscriminator::FixedDelegation => 2,
-            AccountDiscriminator::RecurringDelegation => 3,
-            AccountDiscriminator::SubscriptionDelegation => 4,
-            AccountDiscriminator::TransferContext => 5,
-        }
-    }
-}
-
 /// Lifecycle status of a subscription [`Plan`](super::plan::Plan).
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Debug, CodamaType)]

@@ -1,4 +1,4 @@
-use pinocchio::{error::ProgramError, AccountView, Address, ProgramResult};
+use pinocchio::{error::ProgramError, AccountView, ProgramResult};
 
 use crate::event_engine::verify_event_authority;
 
@@ -7,7 +7,7 @@ use crate::event_engine::verify_event_authority;
 /// This instruction only verifies that the caller is the event authority PDA.
 /// It exists so that indexers can detect event data in the inner instruction
 /// log. It is never invoked directly by external callers.
-pub fn process(_program_id: &Address, accounts: &[AccountView]) -> ProgramResult {
+pub fn process(accounts: &[AccountView]) -> ProgramResult {
     let [event_authority] = accounts else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
