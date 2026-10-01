@@ -15,7 +15,7 @@ permissions:
 
 env:
   SOLANA_VERSION: '4.0.0'
-  SURFPOOL_VERSION: '1.6.0'
+  SURFPOOL_VERSION: '1.5.0'
 
 jobs:
   unit-test:
