@@ -14,7 +14,6 @@ on:
         default: '100000'
 
 permissions:
-  id-token: write
   contents: read
 
 concurrency:
@@ -31,6 +30,10 @@ jobs:
     name: Release ${{ inputs.network }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    environment: ${{ inputs.network }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -91,9 +94,6 @@ jobs:
           buffer-authority-address: ${{ steps.deployer.outputs.pubkey }}
           priority-fee: ${{ inputs.priority-fee }}
 
-      # ============================================
-      # devnet: direct upgrade by deployer
-      # ============================================
       - if: inputs.network == 'devnet'
         name: Upgrade program (devnet)
         uses: solana-foundation/github-actions/program-upgrade@e6ed2eb93c55eca911dbc711fb08683b42926a28
@@ -114,9 +114,6 @@ jobs:
           idl-path: idl/subscriptions.json
           priority-fees: ${{ inputs.priority-fee }}
 
-      # ============================================
-      # mainnet: prepare Squads-owned buffers
-      # ============================================
       - if: inputs.network == 'mainnet'
         name: Validate Squads config
         run: |
@@ -170,21 +167,26 @@ jobs:
         run: rm -f /tmp/deployer.json
 
       - name: Summary
+        env:
+          NETWORK: ${{ inputs.network }}
+          BUFFER: ${{ inputs.network == 'mainnet' && steps.prepare-squads-release.outputs.buffer || steps.write-buffer.outputs.buffer }}
+          METADATA_BUFFER: ${{ steps.prepare-squads-release.outputs.metadata-buffer }}
+          SQUADS_TX: ${{ steps.export-squads-tx.outputs.tx }}
         run: |
-          echo "## Release: ${{ inputs.network }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- Program: \`${{ env.PROGRAM_ID }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ inputs.network }}" = "mainnet" ]; then
-            echo "- Buffer: \`${{ steps['prepare-squads-release'].outputs.buffer }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- IDL buffer: \`${{ steps['prepare-squads-release'].outputs['metadata-buffer'] }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- Buffer authority: \`${{ env.SQUADS_VAULT }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- Combined transaction (base58, verify PDA + IDL metadata write + program upgrade in one):" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "${{ steps['export-squads-tx'].outputs.tx }}" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "- **Action required**: import the combined transaction into the Squads transaction builder, then approve and execute" >> $GITHUB_STEP_SUMMARY
-            echo "- CI keypair role: fee payer and buffer writer only; it does not need Squads membership" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "- Buffer: \`${{ steps.write-buffer.outputs.buffer }}\`" >> $GITHUB_STEP_SUMMARY
-          fi
+          {
+            echo "## Release: $NETWORK"
+            echo ""
+            echo "- Program: \`$PROGRAM_ID\`"
+            echo "- Commit: \`$GITHUB_SHA\`"
+            echo "- Buffer: \`$BUFFER\`"
+            if [ "$NETWORK" = "mainnet" ]; then
+              echo "- IDL buffer: \`$METADATA_BUFFER\`"
+              echo "- Buffer authority: \`$SQUADS_VAULT\`"
+              echo "- Combined transaction (base58, verify PDA + IDL metadata write + program upgrade in one):"
+              echo '```'
+              echo "$SQUADS_TX"
+              echo '```'
+              echo "- **Action required**: import the combined transaction into the Squads transaction builder, then approve and execute"
+              echo "- CI keypair role: fee payer and buffer writer only; it does not need Squads membership"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
