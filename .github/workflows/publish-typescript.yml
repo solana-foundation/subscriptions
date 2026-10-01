@@ -27,9 +27,9 @@ jobs:
           REF: ${{ github.ref }}
         run: |
           case "$REF" in
-            refs/heads/main|refs/heads/release/*) ;;
+            refs/heads/main) ;;
             *)
-              echo "::error::Publish TypeScript Client must be run from main or a release/* branch. Current ref: $REF"
+              echo "::error::Publish TypeScript Client must be run from main. Current ref: $REF"
               exit 1
               ;;
           esac
