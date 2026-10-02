@@ -3,20 +3,14 @@ name: Publish Rust Client
 on:
   workflow_dispatch:
     inputs:
-      publish-to-crates:
-        description: 'Publish to crates.io'
-        required: true
-        default: true
-        type: boolean
-      create-github-release:
-        description: 'Create GitHub release'
+      dry-run:
+        description: 'Dry run (unchecked will publish to crates.io, push git tag, and create GitHub release)'
         required: true
         default: true
         type: boolean
 
 permissions:
-  contents: write
-  id-token: write
+  contents: read
 
 concurrency:
   group: rust-client-publish
@@ -26,13 +20,16 @@ jobs:
   guard-allowed-branch:
     name: Guard allowed source branch for release publish
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Guard allowed source branch for release publish
+        env:
+          REF: ${{ github.ref }}
         run: |
-          case "${{ github.ref }}" in
-            refs/heads/main|refs/heads/release/*) ;;
+          case "$REF" in
+            refs/heads/main) ;;
             *)
-              echo "::error::Publish Rust Client must be run from main or a release/* branch. Current ref: ${{ github.ref }}"
+              echo "::error::Publish Rust Client must be run from main. Current ref: $REF"
               exit 1
               ;;
           esac
@@ -41,15 +38,16 @@ jobs:
     name: Run release tests
     needs: guard-allowed-branch
     uses: ./.github/workflows/test.yml
-    secrets: inherit
 
   publish:
     name: Publish subscriptions crate
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     needs: [guard-allowed-branch, test]
-    defaults:
-      run:
-        working-directory: clients/rust
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -57,79 +55,77 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Git user
-        working-directory: .
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
+      - uses: ./.github/actions/setup
         with:
-          components: rustfmt, clippy
-
-      - name: Setup Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
-        with:
-          node-version-file: '.nvmrc'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-
-      - name: Install dependencies
-        working-directory: .
-        run: pnpm install --frozen-lockfile
+          install-solana: 'false'
+          rust-cache-key: 'rust-dev'
 
       - name: Generate IDL and clients
-        working-directory: .
-        run: |
-          cd program && cargo build
-          cd .. && pnpm run generate-clients
-
-      - name: Build Rust client crate
-        run: cargo build
+        run: just generate-clients
 
       - name: Publish Rust client crate
         id: cargo_publish
-        uses: solana-foundation/github-actions/cargo-publish@e6ed2eb93c55eca911dbc711fb08683b42926a28
+        uses: solana-foundation/github-actions/cargo-publish@e6ed2eb93c55eca911dbc711fb08683b42926a28 # v0.2.15
         with:
           package: subscriptions
           working-directory: clients/rust
           allow-dirty: 'true'
-          check-version-available: ${{ inputs.publish-to-crates }}
-          dry-run: ${{ !inputs.publish-to-crates }}
+          check-version-available: ${{ !inputs.dry-run }}
+          dry-run: ${{ inputs.dry-run }}
           skip-existing: 'true'
 
       - name: Check if prerelease
         id: prerelease
+        env:
+          VERSION: ${{ steps.cargo_publish.outputs.version }}
         run: |
-          if [[ "${{ steps.cargo_publish.outputs.version }}" == *"-"* ]]; then
+          if [[ "$VERSION" == *"-"* ]]; then
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
           else
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Create and push tag
-        if: ${{ inputs.publish-to-crates || inputs.create-github-release }}
-        working-directory: .
+        if: ${{ !inputs.dry-run && steps.cargo_publish.outputs.published == 'true' }}
+        env:
+          TAG: rust-client-v${{ steps.cargo_publish.outputs.version }}
         run: |
-          TAG="rust-client-v${{ steps.cargo_publish.outputs.version }}"
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists, skipping"
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            if [ "$(git rev-parse "$TAG^{commit}")" != "$(git rev-parse HEAD)" ]; then
+              echo "::error::$TAG already exists on a commit other than the one just published"
+              exit 1
+            fi
           else
             git tag "$TAG"
             echo "Created tag $TAG"
           fi
-          git push origin "$TAG" 2>/dev/null || echo "Tag already pushed"
+          git push origin "refs/tags/$TAG"
+
+      - name: Require tag for already published version
+        if: ${{ !inputs.dry-run && steps.cargo_publish.outputs.already-published == 'true' }}
+        env:
+          TAG: rust-client-v${{ steps.cargo_publish.outputs.version }}
+        run: |
+          if ! git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            echo "::error::Version is already published but $TAG does not exist. Push $TAG from the published commit, then rerun."
+            exit 1
+          fi
 
       - name: Create GitHub Release
-        if: ${{ inputs.create-github-release }}
+        if: ${{ !inputs.dry-run && (steps.cargo_publish.outputs.published == 'true' || steps.cargo_publish.outputs.already-published == 'true') }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          VERSION: ${{ steps.cargo_publish.outputs.version }}
+          IS_PRERELEASE: ${{ steps.prerelease.outputs.is_prerelease }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const tagName = `rust-client-v${{ steps.cargo_publish.outputs.version }}`;
-            const releaseName = `Rust Client v${{ steps.cargo_publish.outputs.version }}`;
-            const isPrerelease = '${{ steps.prerelease.outputs.is_prerelease }}' === 'true';
+            const version = process.env.VERSION;
+            const tagName = `rust-client-v${version}`;
 
             try {
               await github.rest.repos.getReleaseByTag({
@@ -147,23 +143,28 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               tag_name: tagName,
-              name: releaseName,
-              body: `Release of subscriptions v${{ steps.cargo_publish.outputs.version }}\n\n**crates.io:** https://crates.io/crates/subscriptions/${{ steps.cargo_publish.outputs.version }}`,
+              target_commitish: context.sha,
+              name: `Rust Client v${version}`,
+              body: `Release of subscriptions v${version}\n\n**crates.io:** https://crates.io/crates/subscriptions/${version}`,
               draft: false,
-              prerelease: isPrerelease,
+              prerelease: process.env.IS_PRERELEASE === 'true',
             });
 
       - name: Publish summary
+        env:
+          VERSION: ${{ steps.cargo_publish.outputs.version }}
+          PUBLISHED: ${{ steps.cargo_publish.outputs.published }}
+          ALREADY_PUBLISHED: ${{ steps.cargo_publish.outputs.already-published }}
         run: |
-          echo "## subscriptions Published" >> $GITHUB_STEP_SUMMARY
+          echo "## subscriptions" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Version**: \`${{ steps.cargo_publish.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Tag**: \`rust-client-v${{ steps.cargo_publish.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Version**: \`${VERSION}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag**: \`rust-client-v${VERSION}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.cargo_publish.outputs.published }}" == "true" ]; then
-            echo "Published to crates.io: https://crates.io/crates/subscriptions/${{ steps.cargo_publish.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          elif [ "${{ steps.cargo_publish.outputs.already-published }}" == "true" ]; then
-            echo "Skipped crates.io publish; version already exists: https://crates.io/crates/subscriptions/${{ steps.cargo_publish.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          if [ "$PUBLISHED" == "true" ]; then
+            echo "Published to crates.io: https://crates.io/crates/subscriptions/${VERSION}" >> $GITHUB_STEP_SUMMARY
+          elif [ "$ALREADY_PUBLISHED" == "true" ]; then
+            echo "Skipped crates.io publish; version already exists" >> $GITHUB_STEP_SUMMARY
           else
             echo "Skipped crates.io publish" >> $GITHUB_STEP_SUMMARY
           fi
