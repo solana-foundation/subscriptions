@@ -91,10 +91,6 @@ impl SubscriptionsFixture {
         ctx.add_program(&SUBSCRIPTIONS_ID, "../../target/deploy/subscriptions_program.so")
             .expect("load subscriptions program");
         set_clock(&mut ctx, GENESIS_TS);
-        // litesvm 0.9 (pinned by crucible) serves feature-gated rent (exemption_threshold 1.0)
-        // through the Rent::get() syscall but validates rent exemption against this sysvar
-        // account, which defaults to 2.0. Align the sysvar so program-funded PDAs pass.
-        ctx.set_sysvar(&solana_rent::Rent { exemption_threshold: 1.0, ..Default::default() });
 
         let mint_authority = Keypair::new();
         let mint = Pubkey::new_unique();

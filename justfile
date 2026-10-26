@@ -8,7 +8,7 @@ set shell := ["bash", "-uc"]
 program_dir := "program"
 ts_client_dir := "clients/typescript"
 webapp_dir := "webapp"
-crucible_rev := "812cd55434c297c422dc165a43d731c592762ca9"
+crucible_rev := "26c23914548035d51b86e885e86f5e3ebafb88ee"
 idl_file := "idl/subscriptions.json"
 generated_paths := "idl clients/typescript/src/generated clients/rust/src/generated"
 
