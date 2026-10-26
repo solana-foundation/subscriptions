@@ -64,9 +64,9 @@ jobs:
       - name: Check for crashes
         run: |
           crashes="fuzz/subscriptions/crashes/${{ matrix.test }}"
-          if [ -d "$crashes" ] && [ -n "$(ls -A "$crashes" 2>/dev/null)" ]; then
+          if [ -n "$(find "$crashes" -type f 2>/dev/null)" ]; then
             echo "::error::Fuzzer found crashes"
-            ls -la "$crashes"
+            find "$crashes" -type f
             exit 1
           fi
           echo "No crashes found"
@@ -137,9 +137,9 @@ jobs:
       - name: Fail on crashes
         run: |
           crashes="fuzz/subscriptions/crashes/${{ matrix.test }}"
-          if [ -d "$crashes" ] && [ -n "$(ls -A "$crashes" 2>/dev/null)" ]; then
+          if [ -n "$(find "$crashes" -type f 2>/dev/null)" ]; then
             echo "::error::Fuzzer found crashes"
-            ls -la "$crashes"
+            find "$crashes" -type f
             exit 1
           fi
           echo "No crashes found"
