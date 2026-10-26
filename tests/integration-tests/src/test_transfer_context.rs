@@ -24,6 +24,7 @@ use crate::{
 };
 use litesvm::{types::TransactionResult, LiteSVM};
 use solana_account::Account;
+use solana_clock::Clock;
 use solana_instruction::{error::InstructionError, AccountMeta};
 use solana_keypair::Keypair;
 use solana_pubkey::Pubkey;
@@ -301,11 +302,12 @@ fn prefunded_context_address_does_not_block_a_pull() {
 fn recurring_pull_records_the_delegatee_as_initiator() {
     let (mut litesvm, alice, bob, mint, _, bob_ata, _, counter, context_pda) = setup_screened_delegation();
     set_policy(&mut litesvm, mint, &bob.pubkey());
+    let now = litesvm.get_sysvar::<Clock>().unix_timestamp;
     let (res, recurring_pda) = CreateDelegation::new(&mut litesvm, &alice, mint, bob.pubkey()).nonce(1).recurring(
         20_000_000,
         hours(1),
-        current_ts(),
-        current_ts() + days(1) as i64,
+        now,
+        now + days(1) as i64,
     );
     res.assert_ok();
     let remaining = hook_accounts(mint, counter, context_pda);
@@ -322,11 +324,12 @@ fn recurring_pull_records_the_delegatee_as_initiator() {
 #[test]
 fn recurring_pull_by_a_blocked_delegatee_is_rejected() {
     let (mut litesvm, alice, bob, mint, _, bob_ata, _, counter, context_pda) = setup_screened_delegation();
+    let now = litesvm.get_sysvar::<Clock>().unix_timestamp;
     let (res, recurring_pda) = CreateDelegation::new(&mut litesvm, &alice, mint, bob.pubkey()).nonce(1).recurring(
         20_000_000,
         hours(1),
-        current_ts(),
-        current_ts() + days(1) as i64,
+        now,
+        now + days(1) as i64,
     );
     res.assert_ok();
     let remaining = hook_accounts(mint, counter, context_pda);
