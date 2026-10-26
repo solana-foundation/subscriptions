@@ -22,7 +22,7 @@ permissions:
 
 env:
   SOLANA_VERSION: '4.0.0'
-  CRUCIBLE_REV: '812cd55434c297c422dc165a43d731c592762ca9'
+  CRUCIBLE_REV: '26c23914548035d51b86e885e86f5e3ebafb88ee'
 
 jobs:
   # Fast smoke test on every PR: keeps the harness compiling and the happy path alive.

@@ -43,7 +43,7 @@ jobs:
           install-solana: 'false'
           install-just: 'false'
           install-pnpm-dependencies: 'false'
-      - run: pnpm audit --ignore-unfixable
+      - run: pnpm audit
 
   miri:
     runs-on: ubuntu-latest
