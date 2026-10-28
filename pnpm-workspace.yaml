@@ -6,11 +6,9 @@ packages:
 
 auditConfig:
   ignoreGhsas:
-    - GHSA-3gc7-fjrx-p6mg
     - GHSA-gcqx-w48m-w2h4
 
 allowBuilds:
-  bigint-buffer: false
   bufferutil: false
   esbuild: true
   unrs-resolver: true
