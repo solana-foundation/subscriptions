@@ -17,6 +17,7 @@ import {
 
 export interface Wallet {
     readonly address: Address;
+    readonly signer: TransactionSigner;
     sendInstructions(instructions: Instruction[]): Promise<string>;
 }
 
@@ -26,7 +27,7 @@ export class KeyPairWallet implements Wallet {
     readonly address: Address;
 
     constructor(
-        private readonly signer: TransactionSigner,
+        readonly signer: TransactionSigner,
         private readonly client: RpcClient,
     ) {
         this.address = signer.address;
@@ -53,8 +54,4 @@ export class KeyPairWallet implements Wallet {
             .send({ abortSignal: AbortSignal.timeout(30_000) });
         return signature;
     }
-}
-
-export function addressAsSigner(address: Address): TransactionSigner {
-    return { address } as unknown as TransactionSigner;
 }

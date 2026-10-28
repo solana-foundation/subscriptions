@@ -7,7 +7,6 @@ import {
     findSubscriptionAuthorityPda,
 } from '../src/generated/index.ts';
 import { DEFAULT_TEST_BALANCE, getWalletProviders, initTestSuite, ONE_DAY_IN_SECONDS } from './setup.ts';
-import { addressAsSigner } from './utils/wallet.ts';
 
 describe.each(getWalletProviders())('Recurring Delegation Lifecycle ($name)', ({ createWallet }) => {
     test('init → create → transfer → revoke → close', async () => {
@@ -18,7 +17,7 @@ describe.each(getWalletProviders())('Recurring Delegation Lifecycle ($name)', ({
 
         // 1. Init subscription-authority
         const initIx = await t.client.subscriptions.instructions.initSubscriptionAuthority({
-            owner: addressAsSigner(wallet.address),
+            owner: wallet.signer,
             tokenMint: t.tokenMint,
             userAta,
             tokenProgram: t.tokenProgram,
@@ -43,7 +42,7 @@ describe.each(getWalletProviders())('Recurring Delegation Lifecycle ($name)', ({
         const expiryS = currentTs + BigInt(ONE_DAY_IN_SECONDS * 30);
 
         const createIx = await t.client.subscriptions.instructions.createRecurringDelegation({
-            delegator: addressAsSigner(wallet.address),
+            delegator: wallet.signer,
             tokenMint: t.tokenMint,
             delegatee: delegatee.address,
             nonce,
@@ -93,7 +92,7 @@ describe.each(getWalletProviders())('Recurring Delegation Lifecycle ($name)', ({
 
         // 4. Revoke delegation
         const revokeIx = t.client.subscriptions.instructions.revokeDelegation({
-            authority: addressAsSigner(wallet.address),
+            authority: wallet.signer,
             delegationAccount: delegationPda,
         });
         await wallet.sendInstructions([revokeIx]);
@@ -101,7 +100,7 @@ describe.each(getWalletProviders())('Recurring Delegation Lifecycle ($name)', ({
 
         // 5. Close subscription-authority
         const closeIx = await t.client.subscriptions.instructions.closeSubscriptionAuthority({
-            user: addressAsSigner(wallet.address),
+            user: wallet.signer,
             tokenMint: t.tokenMint,
         });
         await wallet.sendInstructions([closeIx]);
