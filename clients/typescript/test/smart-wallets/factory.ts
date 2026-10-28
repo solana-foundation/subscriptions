@@ -1,32 +1,27 @@
-import type { Address } from '@solana/kit';
-import { Connection, Keypair } from '@solana/web3.js';
+import { type Address, generateKeyPairSigner } from '@solana/kit';
 import type { SmartWallet } from './SmartWallet.ts';
 import { createSquadsWallet } from './squadsWallet.ts';
 import { createSwigWallet } from './swigWallet.ts';
+import type { SmartWalletClient } from './utils.ts';
 
 export type SmartWalletChoice = 'swig' | 'squads' | 'all' | 'none';
 
 type CreateSmartWalletsConfig = {
-    rpcUrl: string;
+    client: SmartWalletClient;
     choice: SmartWalletChoice;
     airdrop: (address: Address, lamportsAmount: bigint) => Promise<void>;
 };
 
-/**
- * Adapter-layer helper that isolates web3.js-only wallet SDK requirements.
- * Callers can remain on kit abstractions and plain Address values.
- */
 export async function createSmartWallets(config: CreateSmartWalletsConfig): Promise<SmartWallet[]> {
-    const connection = new Connection(config.rpcUrl, 'confirmed');
     const wallets: SmartWallet[] = [];
 
     if (config.choice === 'swig' || config.choice === 'all') {
-        const swigFeePayer = Keypair.generate();
-        const swigAuthority = Keypair.generate();
-        await config.airdrop(swigFeePayer.publicKey.toBase58() as Address, 2_000_000_000n);
-        await config.airdrop(swigAuthority.publicKey.toBase58() as Address, 2_000_000_000n);
+        const swigFeePayer = await generateKeyPairSigner();
+        const swigAuthority = await generateKeyPairSigner();
+        await config.airdrop(swigFeePayer.address, 2_000_000_000n);
+        await config.airdrop(swigAuthority.address, 2_000_000_000n);
         const swigWallet = await createSwigWallet({
-            connection,
+            client: config.client,
             feePayer: swigFeePayer,
             authority: swigAuthority,
         });
@@ -35,14 +30,18 @@ export async function createSmartWallets(config: CreateSmartWalletsConfig): Prom
     }
 
     if (config.choice === 'squads' || config.choice === 'all') {
-        const squadsMembers = [Keypair.generate(), Keypair.generate(), Keypair.generate()];
+        const squadsMembers = await Promise.all([
+            generateKeyPairSigner(),
+            generateKeyPairSigner(),
+            generateKeyPairSigner(),
+        ]);
         const squadsFeePayer = squadsMembers[0];
-        await config.airdrop(squadsFeePayer.publicKey.toBase58() as Address, 2_000_000_000n);
+        await config.airdrop(squadsFeePayer.address, 2_000_000_000n);
         for (const member of squadsMembers.slice(1)) {
-            await config.airdrop(member.publicKey.toBase58() as Address, 1_000_000_000n);
+            await config.airdrop(member.address, 1_000_000_000n);
         }
         const squadsWallet = await createSquadsWallet({
-            connection,
+            client: config.client,
             feePayer: squadsFeePayer,
             members: squadsMembers,
             approvalsRequired: 2,

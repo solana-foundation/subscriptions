@@ -1,24 +1,48 @@
 import { createHash } from 'node:crypto';
-import { type Address, AccountRole, type Instruction } from '@solana/kit';
-import { type Connection, Keypair, PublicKey, TransactionMessage } from '@solana/web3.js';
+import {
+    AccountRole,
+    type Address,
+    address,
+    appendTransactionMessageInstructions,
+    compileTransactionMessage,
+    createNoopSigner,
+    createTransactionMessage,
+    fetchEncodedAccount,
+    generateKeyPairSigner,
+    getAddressDecoder,
+    getAddressEncoder,
+    getProgramDerivedAddress,
+    type Instruction,
+    type KeyPairSigner,
+    pipe,
+    setTransactionMessageFeePayer,
+    type TransactionSigner,
+} from '@solana/kit';
 import type { SmartWallet } from './SmartWallet.ts';
-import { sendWeb3Instructions, toWeb3Instruction } from './utils.ts';
+import { sendKitInstructions, type SmartWalletClient } from './utils.ts';
 
-const SQUADS_PROGRAM_ID = new PublicKey('SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf');
+const SQUADS_PROGRAM_ADDRESS = address('SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf');
 const SYSTEM_PROGRAM_ADDRESS = '11111111111111111111111111111111' as Address;
 const ALL_PERMISSIONS = 0b111;
 const PROGRAM_CONFIG_TREASURY_OFFSET = 48;
 
 type SquadsWalletConfig = {
-    connection: Connection;
-    feePayer: Keypair;
-    members: Keypair[];
+    client: SmartWalletClient;
+    feePayer: KeyPairSigner;
+    members: KeyPairSigner[];
     approvalsRequired: number;
 };
 
-function findPda(seeds: (Buffer | PublicKey | string)[]): PublicKey {
-    const bytes = seeds.map(seed => (seed instanceof PublicKey ? seed.toBuffer() : Buffer.from(seed)));
-    return PublicKey.findProgramAddressSync([Buffer.from('multisig'), ...bytes], SQUADS_PROGRAM_ID)[0];
+function addressBytes(value: Address): Buffer {
+    return Buffer.from(getAddressEncoder().encode(value));
+}
+
+async function findPda(seeds: (Buffer | string)[]): Promise<Address> {
+    const [pda] = await getProgramDerivedAddress({
+        programAddress: SQUADS_PROGRAM_ADDRESS,
+        seeds: ['multisig', ...seeds],
+    });
+    return pda;
 }
 
 function u8(value: number): Buffer {
@@ -43,53 +67,62 @@ function u64(value: bigint): Buffer {
     return buffer;
 }
 
-function optionPubkey(value: PublicKey | null): Buffer {
-    return value ? Buffer.concat([u8(1), value.toBuffer()]) : u8(0);
+function optionPubkey(value: Address | null): Buffer {
+    return value ? Buffer.concat([u8(1), addressBytes(value)]) : u8(0);
 }
 
 const NONE = u8(0);
 
-function squadsInstruction(
-    name: string,
-    accounts: [PublicKey | Address, AccountRole][],
-    args: Buffer[] = [],
-): Instruction {
+function squadsInstruction(name: string, accounts: [Address, AccountRole][], args: Buffer[] = []): Instruction {
     const discriminator = createHash('sha256').update(`global:${name}`).digest().subarray(0, 8);
     return {
-        accounts: accounts.map(([address, role]) => ({ address: address.toString() as Address, role })),
+        accounts: accounts.map(([accountAddress, role]) => ({ address: accountAddress, role })),
         data: Buffer.concat([discriminator, ...args]),
-        programAddress: SQUADS_PROGRAM_ID.toBase58() as Address,
+        programAddress: SQUADS_PROGRAM_ADDRESS,
     };
 }
 
-function serializeVaultMessage(message: TransactionMessage): {
+function serializeVaultMessage(
+    vault: Address,
+    instructions: Instruction[],
+): {
     bytes: Buffer;
-    remainingAccounts: [PublicKey, AccountRole][];
+    remainingAccounts: [Address, AccountRole][];
 } {
-    const compiled = message.compileToV0Message();
-    const { numReadonlySignedAccounts, numReadonlyUnsignedAccounts, numRequiredSignatures } = compiled.header;
-    const keys = compiled.staticAccountKeys;
-    const numWritableSigners = numRequiredSignatures - numReadonlySignedAccounts;
-    const numWritableNonSigners = keys.length - numRequiredSignatures - numReadonlyUnsignedAccounts;
+    const compiled = compileTransactionMessage(
+        pipe(
+            createTransactionMessage({ version: 0 }),
+            tx => setTransactionMessageFeePayer(vault, tx),
+            tx => appendTransactionMessageInstructions(instructions, tx),
+        ),
+    );
+    const {
+        numReadonlyNonSignerAccounts,
+        numReadonlySignerAccounts,
+        numSignerAccounts: numRequiredSignatures,
+    } = compiled.header;
+    const keys = compiled.staticAccounts;
+    const numWritableSigners = numRequiredSignatures - numReadonlySignerAccounts;
+    const numWritableNonSigners = keys.length - numRequiredSignatures - numReadonlyNonSignerAccounts;
 
     const bytes = Buffer.concat([
         u8(numRequiredSignatures),
         u8(numWritableSigners),
         u8(numWritableNonSigners),
         u8(keys.length),
-        ...keys.map(key => key.toBuffer()),
-        u8(compiled.compiledInstructions.length),
-        ...compiled.compiledInstructions.flatMap(ix => [
-            u8(ix.programIdIndex),
-            u8(ix.accountKeyIndexes.length),
-            Buffer.from(ix.accountKeyIndexes),
-            u16(ix.data.length),
-            Buffer.from(ix.data),
+        ...keys.map(addressBytes),
+        u8(compiled.instructions.length),
+        ...compiled.instructions.flatMap(({ accountIndices = [], data = new Uint8Array(), programAddressIndex }) => [
+            u8(programAddressIndex),
+            u8(accountIndices.length),
+            Buffer.from(accountIndices),
+            u16(data.length),
+            Buffer.from(data),
         ]),
         u8(0),
     ]);
 
-    const remainingAccounts = keys.map((key, index): [PublicKey, AccountRole] => {
+    const remainingAccounts = keys.map((key, index): [Address, AccountRole] => {
         const isWritable =
             index < numWritableSigners ||
             (index >= numRequiredSignatures && index - numRequiredSignatures < numWritableNonSigners);
@@ -102,48 +135,45 @@ function serializeVaultMessage(message: TransactionMessage): {
 class SquadsSmartWallet implements SmartWallet {
     public readonly name = 'squads';
     public readonly address: Address;
-    private readonly connection: Connection;
-    private readonly feePayer: Keypair;
-    private readonly members: Keypair[];
+    public readonly signer: TransactionSigner;
+    private readonly client: SmartWalletClient;
+    private readonly feePayer: KeyPairSigner;
+    private readonly members: KeyPairSigner[];
     private readonly approvalsRequired: number;
-    private readonly multisigPda: PublicKey;
-    private readonly vaultPda: PublicKey;
+    private readonly multisigPda: Address;
     private nextTransactionIndex = 1n;
 
     constructor(config: {
-        connection: Connection;
-        feePayer: Keypair;
-        members: Keypair[];
+        client: SmartWalletClient;
+        feePayer: KeyPairSigner;
+        members: KeyPairSigner[];
         approvalsRequired: number;
-        multisigPda: PublicKey;
+        multisigPda: Address;
+        vaultPda: Address;
     }) {
-        this.connection = config.connection;
+        this.client = config.client;
         this.feePayer = config.feePayer;
         this.members = config.members;
         this.approvalsRequired = config.approvalsRequired;
         this.multisigPda = config.multisigPda;
-        this.vaultPda = findPda([this.multisigPda, 'vault', u8(0)]);
-        this.address = this.vaultPda.toBase58() as Address;
+        this.address = config.vaultPda;
+        this.signer = createNoopSigner(this.address);
     }
 
     async sendInstructions(instructions: Instruction[]): Promise<string> {
         const creator = this.members[0];
-        const feePayer = this.feePayer.publicKey;
+        const feePayer = this.feePayer.address;
 
         const transactionIndex = this.nextTransactionIndex;
         this.nextTransactionIndex += 1n;
-        const transactionPda = findPda([this.multisigPda, 'transaction', u64(transactionIndex)]);
-        const proposalPda = findPda([this.multisigPda, 'transaction', u64(transactionIndex), 'proposal']);
+        const multisigBytes = addressBytes(this.multisigPda);
+        const transactionPda = await findPda([multisigBytes, 'transaction', u64(transactionIndex)]);
+        const proposalPda = await findPda([multisigBytes, 'transaction', u64(transactionIndex), 'proposal']);
 
-        const message = new TransactionMessage({
-            instructions: instructions.map(toWeb3Instruction),
-            payerKey: this.vaultPda,
-            recentBlockhash: (await this.connection.getLatestBlockhash()).blockhash,
-        });
-        const { bytes, remainingAccounts } = serializeVaultMessage(message);
+        const { bytes, remainingAccounts } = serializeVaultMessage(this.address, instructions);
 
-        await sendWeb3Instructions(
-            this.connection,
+        await sendKitInstructions(
+            this.client,
             this.feePayer,
             [],
             [
@@ -161,8 +191,8 @@ class SquadsSmartWallet implements SmartWallet {
             ],
         );
 
-        await sendWeb3Instructions(
-            this.connection,
+        await sendKitInstructions(
+            this.client,
             this.feePayer,
             [creator],
             [
@@ -171,7 +201,7 @@ class SquadsSmartWallet implements SmartWallet {
                     [
                         [this.multisigPda, AccountRole.READONLY],
                         [proposalPda, AccountRole.WRITABLE],
-                        [creator.publicKey, AccountRole.READONLY_SIGNER],
+                        [creator.address, AccountRole.READONLY_SIGNER],
                         [feePayer, AccountRole.WRITABLE_SIGNER],
                         [SYSTEM_PROGRAM_ADDRESS, AccountRole.READONLY],
                     ],
@@ -181,8 +211,8 @@ class SquadsSmartWallet implements SmartWallet {
         );
 
         for (const member of this.members.slice(0, this.approvalsRequired)) {
-            await sendWeb3Instructions(
-                this.connection,
+            await sendKitInstructions(
+                this.client,
                 this.feePayer,
                 [member],
                 [
@@ -190,7 +220,7 @@ class SquadsSmartWallet implements SmartWallet {
                         'proposal_approve',
                         [
                             [this.multisigPda, AccountRole.READONLY],
-                            [member.publicKey, AccountRole.WRITABLE_SIGNER],
+                            [member.address, AccountRole.WRITABLE_SIGNER],
                             [proposalPda, AccountRole.WRITABLE],
                         ],
                         [NONE],
@@ -199,8 +229,8 @@ class SquadsSmartWallet implements SmartWallet {
             );
         }
 
-        return sendWeb3Instructions(
-            this.connection,
+        return sendKitInstructions(
+            this.client,
             this.feePayer,
             [creator],
             [
@@ -208,7 +238,7 @@ class SquadsSmartWallet implements SmartWallet {
                     [this.multisigPda, AccountRole.READONLY],
                     [proposalPda, AccountRole.WRITABLE],
                     [transactionPda, AccountRole.READONLY],
-                    [creator.publicKey, AccountRole.READONLY_SIGNER],
+                    [creator.address, AccountRole.READONLY_SIGNER],
                     ...remainingAccounts,
                 ]),
             ],
@@ -217,21 +247,20 @@ class SquadsSmartWallet implements SmartWallet {
 }
 
 export async function createSquadsWallet(config: SquadsWalletConfig): Promise<SmartWallet> {
-    const programConfigPda = findPda(['program_config']);
-    const programConfig = await config.connection.getAccountInfo(programConfigPda);
-    if (!programConfig) {
-        throw new Error(`Squads program config ${programConfigPda.toBase58()} not found; run against a mainnet fork`);
+    const programConfigPda = await findPda(['program_config']);
+    const programConfig = await fetchEncodedAccount(config.client.rpc, programConfigPda);
+    if (!programConfig.exists) {
+        throw new Error(`Squads program config ${programConfigPda} not found; run against a mainnet fork`);
     }
-    const treasury = new PublicKey(
-        programConfig.data.subarray(PROGRAM_CONFIG_TREASURY_OFFSET, PROGRAM_CONFIG_TREASURY_OFFSET + 32),
-    );
+    const treasury = getAddressDecoder().decode(programConfig.data, PROGRAM_CONFIG_TREASURY_OFFSET);
 
-    const createKey = Keypair.generate();
-    const multisigPda = findPda(['multisig', createKey.publicKey]);
+    const createKey = await generateKeyPairSigner();
+    const multisigPda = await findPda(['multisig', addressBytes(createKey.address)]);
+    const vaultPda = await findPda([addressBytes(multisigPda), 'vault', u8(0)]);
     const creator = config.members[0];
 
-    await sendWeb3Instructions(
-        config.connection,
+    await sendKitInstructions(
+        config.client,
         creator,
         [createKey],
         [
@@ -241,15 +270,15 @@ export async function createSquadsWallet(config: SquadsWalletConfig): Promise<Sm
                     [programConfigPda, AccountRole.READONLY],
                     [treasury, AccountRole.WRITABLE],
                     [multisigPda, AccountRole.WRITABLE],
-                    [createKey.publicKey, AccountRole.READONLY_SIGNER],
-                    [creator.publicKey, AccountRole.WRITABLE_SIGNER],
+                    [createKey.address, AccountRole.READONLY_SIGNER],
+                    [creator.address, AccountRole.WRITABLE_SIGNER],
                     [SYSTEM_PROGRAM_ADDRESS, AccountRole.READONLY],
                 ],
                 [
-                    optionPubkey(config.feePayer.publicKey),
+                    optionPubkey(config.feePayer.address),
                     u16(config.approvalsRequired),
                     u32(config.members.length),
-                    ...config.members.map(member => Buffer.concat([member.publicKey.toBuffer(), u8(ALL_PERMISSIONS)])),
+                    ...config.members.map(member => Buffer.concat([addressBytes(member.address), u8(ALL_PERMISSIONS)])),
                     u32(0),
                     optionPubkey(null),
                     NONE,
@@ -260,9 +289,10 @@ export async function createSquadsWallet(config: SquadsWalletConfig): Promise<Sm
 
     return new SquadsSmartWallet({
         approvalsRequired: config.approvalsRequired,
-        connection: config.connection,
+        client: config.client,
         feePayer: config.feePayer,
         members: config.members,
         multisigPda,
+        vaultPda,
     });
 }
