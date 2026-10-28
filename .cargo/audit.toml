@@ -1,9 +1,5 @@
 [advisories]
 ignore = [
-    # crypto-bigint 0.5.x has no patched release and is pinned by elliptic-curve 0.13 via
-    # k256, reached only by the integration-tests crate through litesvm. The fix landed in
-    # 0.7.6, which needs elliptic-curve 0.14.
-    "RUSTSEC-2026-0387",
     # zstd 0.13 / zstd-safe 7 are pinned by solana-account-decoder-client-types 3.x, reached
     # only through solana-rpc-client behind the Rust client's optional `fetch` feature. The
     # fixes need zstd 0.14 / zstd-safe 8, which only the unreleased 4.4 Agave crates use.

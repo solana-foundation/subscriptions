@@ -214,7 +214,7 @@ export class IntegrationTest {
         }
 
         const wallets = await createAdapterSmartWallets({
-            rpcUrl: SURFPOOL_RPC_URL,
+            client: this.client,
             choice,
             airdrop: (address, lamportsAmount) => this.airdropToAddress(address, lamportsAmount),
         });

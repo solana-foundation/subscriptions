@@ -6,6 +6,10 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking**: the `@solana/kit` peer dependency is now `^8.5.0` (was `^7.0.0`). `@solana-program/system`, `@solana-program/token`, `@solana-program/token-2022` and `@solana/program-client-core` move to their kit 8.5 releases.
+
 ## [0.5.0] — 2026-08-10
 
 _Matches on-chain program `program-v0.5.0`. Supersedes prereleases `0.5.0-beta.1` and `0.5.0-beta.2`._
