@@ -4,8 +4,6 @@
 # Configuration (can be overridden via environment)
 KEYPAIR_FILE="${KEYPAIR_FILE:-keys/subscriptions-keypair.json}"
 PROGRAM_SO="${PROGRAM_SO:-target/deploy/subscriptions_program.so}"
-LEDGER_DIR="${LEDGER_DIR:-.validator-ledger}"
-RPC_PORT="${RPC_PORT:-8899}"
 
 # Colors
 RED='\033[0;31m'
@@ -16,13 +14,6 @@ NC='\033[0m'
 
 # Track last spawned service PID
 LAST_SERVICE_PID=""
-
-check_keypair() {
-  if [ ! -f "$KEYPAIR_FILE" ]; then
-    echo -e "${RED}Error: Keypair file not found: $KEYPAIR_FILE${NC}"
-    exit 1
-  fi
-}
 
 check_program_so() {
   local build_if_missing="${1:-false}"
@@ -39,93 +30,6 @@ check_program_so() {
       exit 1
     fi
   fi
-}
-
-get_program_id() {
-  solana-keygen pubkey "$KEYPAIR_FILE"
-}
-
-is_validator_running() {
-  curl -s -X POST http://127.0.0.1:$RPC_PORT \
-    -H "Content-Type: application/json" \
-    -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' 2>/dev/null | grep -q '"result":"ok"'
-}
-
-build_surfpool_args() {
-  SURFPOOL_ARGS=(
-    --no-tui
-    --port "$RPC_PORT"
-    --offline
-  )
-}
-
-start_validator_foreground() {
-  local program_id="$1"
-
-  build_surfpool_args
-
-  echo -e "${GREEN}Starting surfpool...${NC}"
-  echo -e "  - Program ID: $program_id"
-  echo -e "  - Program SO: $PROGRAM_SO"
-  echo -e "  - RPC Port: $RPC_PORT"
-  echo ""
-
-  surfpool start "${SURFPOOL_ARGS[@]}"
-}
-
-start_validator_background() {
-  local program_id="$1"
-
-  build_surfpool_args
-
-  surfpool start "${SURFPOOL_ARGS[@]}" > /tmp/validator.log 2>&1 &
-  VALIDATOR_PID=$!
-  echo "  Validator PID: $VALIDATOR_PID"
-}
-
-# Waits for RPC to respond to getHealth. Returns 1 on timeout.
-wait_for_validator() {
-  local timeout="${1:-30}"
-
-  echo -e "${YELLOW}  Waiting for validator to start...${NC}"
-  for i in $(seq 1 $timeout); do
-    if is_validator_running; then
-      echo -e "  ${GREEN}Validator is ready!${NC}"
-      return 0
-    fi
-    if [ $i -eq $timeout ]; then
-      echo -e "  ${RED}Validator failed to start within ${timeout}s${NC}"
-      echo "  Check /tmp/validator.log for details"
-      cat /tmp/validator.log 2>/dev/null || true
-      return 1
-    fi
-    sleep 1
-  done
-}
-
-# Polls until program account is executable. Returns 1 on timeout.
-wait_for_program() {
-  local program_id="$1"
-  local timeout="${2:-30}"
-  local rpc_url="${3:-http://127.0.0.1:$RPC_PORT}"
-
-  echo -e "${YELLOW}  Waiting for program deployment...${NC}"
-  for i in $(seq 1 $timeout); do
-    if curl -s -X POST "$rpc_url" \
-      -H "Content-Type: application/json" \
-      -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getAccountInfo\",\"params\":[\"$program_id\",{\"encoding\":\"base64\"}]}" \
-      | grep -q '"executable":true'; then
-      echo -e "  ${GREEN}Program deployed successfully${NC}"
-      return 0
-    fi
-    if [ $i -eq $timeout ]; then
-      echo -e "  ${RED}Program not found after ${timeout}s${NC}"
-      echo "  Check /tmp/validator.log for details"
-      cat /tmp/validator.log 2>/dev/null | tail -20 || true
-      return 1
-    fi
-    sleep 1
-  done
 }
 
 # Polls a local HTTP endpoint until it responds. Returns 1 on timeout.
@@ -174,15 +78,6 @@ build_client_lib() {
   cd "$project_root/clients/typescript" && pnpm install --silent && pnpm run build
   cd "$project_root"
   echo -e "  ${GREEN}Client built${NC}"
-}
-
-# Install webapp deps and build
-install_and_build_webapp() {
-  local project_root
-  project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-  cd "$project_root/webapp" && pnpm install --silent && pnpm run build
-  cd "$project_root"
-  echo -e "  ${GREEN}Webapp built${NC}"
 }
 
 # Start API server on :3001

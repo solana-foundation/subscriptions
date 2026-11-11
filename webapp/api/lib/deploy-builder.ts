@@ -1,8 +1,6 @@
 import { getAddressFromPublicKey, createKeyPairFromPrivateKeyBytes } from '@solana/kit';
 import crypto from 'node:crypto';
-import { CHUNK_SIZE } from './bpf-loader.js';
-
-export { CHUNK_SIZE };
+export const CHUNK_SIZE = 900;
 
 /**
  * Generate a fresh ed25519 keypair and serialize it as the 64-byte
@@ -42,25 +40,6 @@ function chunkSoBytes(soBytes: Uint8Array): string[] {
 }
 
 export async function buildDeployPlan(soBytes: Uint8Array, programAddress: string): Promise<DeployPlan> {
-    const soHash = crypto.createHash('sha256').update(soBytes).digest('hex');
-
-    const { keypairBytes: bufferKeypairBytes, publicKey: bufferPubKey } = await generateKeypairBytes();
-    const bufferAddress = await getAddressFromPublicKey(bufferPubKey);
-
-    const chunks = chunkSoBytes(soBytes);
-
-    return {
-        bufferKeypair: Array.from(bufferKeypairBytes),
-        bufferAddress: bufferAddress.toString(),
-        chunks,
-        totalChunks: chunks.length,
-        programAddress,
-        soHash,
-        soSize: soBytes.length,
-    };
-}
-
-export async function buildUpgradePlan(soBytes: Uint8Array, programAddress: string): Promise<DeployPlan> {
     const soHash = crypto.createHash('sha256').update(soBytes).digest('hex');
 
     const { keypairBytes: bufferKeypairBytes, publicKey: bufferPubKey } = await generateKeypairBytes();

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { readFile, writeFile, stat } from 'fs/promises';
 import crypto from 'node:crypto';
 import { checkProgramStatus } from './lib/program-status.js';
-import { buildDeployPlan, buildUpgradePlan } from './lib/deploy-builder.js';
+import { buildDeployPlan } from './lib/deploy-builder.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, '../..');
@@ -269,7 +269,7 @@ async function handlePrepareDeploy(body: {
             const config = await readConfig();
             const network = networkFromRpcUrl(rpcUrl ?? RPC_URL);
             const programAddr = config.networks[network]?.programAddress ?? PROGRAM_ADDRESS;
-            plan = await buildUpgradePlan(soBytes, programAddr);
+            plan = await buildDeployPlan(soBytes, programAddr);
         } else {
             if (!programAddress || !BASE58_RE.test(programAddress)) {
                 return jsonResponse({ error: 'Program address required for initial deploy' }, 400);
