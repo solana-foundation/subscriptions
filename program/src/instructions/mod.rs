@@ -65,11 +65,11 @@ pub enum SubscriptionsInstruction {
     ))]
     #[codama(account(name = "user_ata", writable, docs = "The ata that we are setting up delegation for"))]
     #[codama(account(
-        name = "system_program",
+        name = "system_program", display(skip = always),
         docs = "The system program",
         default_value = program("system")
     ))]
-    #[codama(account(name = "token_program", docs = "Token program"))]
+    #[codama(account(name = "token_program", display(skip = always), docs = "Token program"))]
     #[codama(account(
         name = "payer",
         signer,
@@ -78,6 +78,10 @@ pub enum SubscriptionsInstruction {
         docs = "Optional sponsor that funds the account rent. Defaults to the owner/signer when omitted."
     ))]
     #[codama(optional_account_strategy = omitted)]
+    #[codama(display(
+        intent = "Grant spending authority",
+        interpolated_intent = "Allow the subscriptions program to spend ${accounts.tokenMint} from ${accounts.userAta}"
+    ))]
     InitSubscriptionAuthority = 0,
 
     #[codama(account(name = "delegator", signer, writable, docs = "The user creating the delegation"))]
@@ -85,7 +89,7 @@ pub enum SubscriptionsInstruction {
     #[codama(account(name = "delegation_account", writable, docs = "The fixed delegation PDA being created"))]
     #[codama(account(name = "delegatee", docs = "The user receiving delegation rights"))]
     #[codama(account(
-        name = "system_program",
+        name = "system_program", display(skip = always),
         docs = "The system program",
         default_value = program("system")
     ))]
@@ -97,14 +101,22 @@ pub enum SubscriptionsInstruction {
         docs = "Optional sponsor that funds the account rent. Defaults to the delegator/signer when omitted."
     ))]
     #[codama(optional_account_strategy = omitted)]
-    CreateFixedDelegation(#[codama(name = "fixed_delegation")] CreateFixedDelegationData) = 1,
+    #[codama(display(
+        intent = "Create fixed delegation",
+        interpolated_intent = "Allow ${accounts.delegatee} to spend a fixed amount"
+    ))]
+    CreateFixedDelegation(
+        #[codama(name = "fixed_delegation")]
+        #[codama(display(flatten))]
+        CreateFixedDelegationData,
+    ) = 1,
 
     #[codama(account(name = "delegator", signer, writable, docs = "The user creating the delegation"))]
     #[codama(account(name = "subscription_authority", docs = "The subscription_authority PDA for this token"))]
     #[codama(account(name = "delegation_account", writable, docs = "The recurring delegation PDA being created"))]
     #[codama(account(name = "delegatee", docs = "The user receiving delegation rights"))]
     #[codama(account(
-        name = "system_program",
+        name = "system_program", display(skip = always),
         docs = "The system program",
         default_value = program("system")
     ))]
@@ -116,7 +128,15 @@ pub enum SubscriptionsInstruction {
         docs = "Optional sponsor that funds the account rent. Defaults to the delegator/signer when omitted."
     ))]
     #[codama(optional_account_strategy = omitted)]
-    CreateRecurringDelegation(#[codama(name = "recurring_delegation")] CreateRecurringDelegationData) = 2,
+    #[codama(display(
+        intent = "Create recurring delegation",
+        interpolated_intent = "Allow ${accounts.delegatee} to spend a recurring amount"
+    ))]
+    CreateRecurringDelegation(
+        #[codama(name = "recurring_delegation")]
+        #[codama(display(flatten))]
+        CreateRecurringDelegationData,
+    ) = 2,
 
     #[codama(account(
         name = "authority",
@@ -125,6 +145,10 @@ pub enum SubscriptionsInstruction {
         docs = "The delegator revoking the delegation (receives rent)"
     ))]
     #[codama(account(name = "delegation_account", writable, docs = "The delegation PDA to close"))]
+    #[codama(display(
+        intent = "Revoke delegation",
+        interpolated_intent = "Revoke delegation ${accounts.delegationAccount}"
+    ))]
     RevokeDelegation = 3,
 
     #[codama(account(name = "delegation_pda", writable, docs = "The fixed delegation PDA to transfer from"))]
@@ -132,38 +156,54 @@ pub enum SubscriptionsInstruction {
     #[codama(account(name = "delegator_ata", writable, docs = "The delegator's ATA to transfer from"))]
     #[codama(account(name = "receiver_ata", writable, docs = "The receiver's ATA to transfer to"))]
     #[codama(account(name = "token_mint", docs = "The token mint"))]
-    #[codama(account(name = "token_program", docs = "Token program"))]
+    #[codama(account(name = "token_program", display(skip = always), docs = "Token program"))]
     #[codama(account(name = "delegatee", signer, docs = "The delegatee signing the transfer"))]
     #[codama(account(
-        name = "event_authority",
+        name = "event_authority", display(skip = always),
         docs = "The event authority PDA",
         default_value = pda("eventAuthority")
     ))]
     #[codama(account(
-        name = "self_program",
+        name = "self_program", display(skip = always),
         docs = "This program (for self-CPI)",
         default_value = public_key("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44")
     ))]
-    TransferFixed(#[codama(name = "transfer_data")] TransferData) = 4,
+    #[codama(display(
+        intent = "Transfer (fixed delegation)",
+        interpolated_intent = "Transfer to ${accounts.receiverAta} under a fixed delegation"
+    ))]
+    TransferFixed(
+        #[codama(name = "transfer_data")]
+        #[codama(display(flatten))]
+        TransferData,
+    ) = 4,
 
     #[codama(account(name = "delegation_pda", writable, docs = "The recurring delegation PDA to transfer from"))]
     #[codama(account(name = "subscription_authority", docs = "The subscription-authority PDA"))]
     #[codama(account(name = "delegator_ata", writable, docs = "The delegator's ATA to transfer from"))]
     #[codama(account(name = "receiver_ata", writable, docs = "The receiver's ATA to transfer to"))]
     #[codama(account(name = "token_mint", docs = "The token mint"))]
-    #[codama(account(name = "token_program", docs = "Token program"))]
+    #[codama(account(name = "token_program", display(skip = always), docs = "Token program"))]
     #[codama(account(name = "delegatee", signer, docs = "The delegatee signing the transfer"))]
     #[codama(account(
-        name = "event_authority",
+        name = "event_authority", display(skip = always),
         docs = "The event authority PDA",
         default_value = pda("eventAuthority")
     ))]
     #[codama(account(
-        name = "self_program",
+        name = "self_program", display(skip = always),
         docs = "This program (for self-CPI)",
         default_value = public_key("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44")
     ))]
-    TransferRecurring(#[codama(name = "transfer_data")] TransferData) = 5,
+    #[codama(display(
+        intent = "Transfer (recurring delegation)",
+        interpolated_intent = "Transfer to ${accounts.receiverAta} under a recurring delegation"
+    ))]
+    TransferRecurring(
+        #[codama(name = "transfer_data")]
+        #[codama(display(flatten))]
+        TransferData,
+    ) = 5,
 
     #[codama(account(
         name = "user",
@@ -179,18 +219,22 @@ pub enum SubscriptionsInstruction {
         docs = "Optional rent recipient, required when the recorded payer differs from the user. Must match the stored payer."
     ))]
     #[codama(optional_account_strategy = omitted)]
+    #[codama(display(
+        intent = "Close spending authority",
+        interpolated_intent = "Close spending authority ${accounts.subscriptionAuthority}"
+    ))]
     CloseSubscriptionAuthority = 6,
 
     #[codama(account(name = "merchant", signer, writable, docs = "The merchant creating the plan"))]
     #[codama(account(name = "plan_pda", writable, docs = "The plan PDA being created"))]
     #[codama(account(name = "token_mint", docs = "The token mint"))]
     #[codama(account(
-        name = "system_program",
+        name = "system_program", display(skip = always),
         docs = "The system program",
         default_value = program("system")
     ))]
     #[codama(account(
-        name = "token_program",
+        name = "token_program", display(skip = always),
         docs = "The token program",
         default_value = program("token")
     ))]
@@ -202,24 +246,38 @@ pub enum SubscriptionsInstruction {
         docs = "Optional sponsor that funds the plan rent. Defaults to the merchant/signer when omitted; delete_plan refunds the owner, not the payer."
     ))]
     #[codama(optional_account_strategy = omitted)]
-    CreatePlan(#[codama(name = "plan_data")] PlanData) = 7,
+    #[codama(display(
+        intent = "Create plan",
+        interpolated_intent = "Create a subscription plan for ${accounts.tokenMint}"
+    ))]
+    CreatePlan(
+        #[codama(name = "plan_data")]
+        #[codama(display(flatten))]
+        PlanData,
+    ) = 7,
 
     #[codama(account(name = "owner", signer, docs = "The plan owner updating the plan"))]
     #[codama(account(name = "plan_pda", writable, docs = "The plan PDA being updated"))]
     #[codama(account(
-        name = "event_authority",
+        name = "event_authority", display(skip = always),
         docs = "The event authority PDA",
         default_value = pda("eventAuthority")
     ))]
     #[codama(account(
-        name = "self_program",
+        name = "self_program", display(skip = always),
         docs = "This program (for self-CPI)",
         default_value = public_key("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44")
     ))]
-    UpdatePlan(#[codama(name = "update_plan_data")] UpdatePlanData) = 8,
+    #[codama(display(intent = "Update plan", interpolated_intent = "Update plan ${accounts.planPda}"))]
+    UpdatePlan(
+        #[codama(name = "update_plan_data")]
+        #[codama(display(flatten))]
+        UpdatePlanData,
+    ) = 8,
 
     #[codama(account(name = "owner", signer, writable, docs = "The plan owner deleting the plan (receives rent)"))]
     #[codama(account(name = "plan_pda", writable, docs = "The plan PDA being deleted"))]
+    #[codama(display(intent = "Delete plan", interpolated_intent = "Delete plan ${accounts.planPda}"))]
     DeletePlan = 9,
 
     #[codama(account(name = "subscription_pda", writable, docs = "The subscription delegation PDA"))]
@@ -229,18 +287,26 @@ pub enum SubscriptionsInstruction {
     #[codama(account(name = "receiver_ata", writable, docs = "The receiver's ATA to transfer to"))]
     #[codama(account(name = "caller", signer, docs = "The authorized puller (plan owner or whitelisted)"))]
     #[codama(account(name = "token_mint", docs = "The token mint"))]
-    #[codama(account(name = "token_program", docs = "Token program"))]
+    #[codama(account(name = "token_program", display(skip = always), docs = "Token program"))]
     #[codama(account(
-        name = "event_authority",
+        name = "event_authority", display(skip = always),
         docs = "The event authority PDA",
         default_value = pda("eventAuthority")
     ))]
     #[codama(account(
-        name = "self_program",
+        name = "self_program", display(skip = always),
         docs = "This program (for self-CPI)",
         default_value = public_key("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44")
     ))]
-    TransferSubscription(#[codama(name = "transfer_data")] TransferData) = 10,
+    #[codama(display(
+        intent = "Collect subscription payment",
+        interpolated_intent = "Collect a subscription payment to ${accounts.receiverAta}"
+    ))]
+    TransferSubscription(
+        #[codama(name = "transfer_data")]
+        #[codama(display(flatten))]
+        TransferData,
+    ) = 10,
 
     #[codama(account(
         name = "subscriber",
@@ -261,17 +327,17 @@ pub enum SubscriptionsInstruction {
         docs = "The subscriber's SubscriptionAuthority PDA for the plan's mint"
     ))]
     #[codama(account(
-        name = "system_program",
+        name = "system_program", display(skip = always),
         docs = "The system program",
         default_value = program("system")
     ))]
     #[codama(account(
-        name = "event_authority",
+        name = "event_authority", display(skip = always),
         docs = "The event authority PDA",
         default_value = pda("eventAuthority")
     ))]
     #[codama(account(
-        name = "self_program",
+        name = "self_program", display(skip = always),
         docs = "This program (for self-CPI)",
         default_value = public_key("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44")
     ))]
@@ -283,7 +349,12 @@ pub enum SubscriptionsInstruction {
         docs = "Optional sponsor that funds the account rent. Defaults to the subscriber/signer when omitted."
     ))]
     #[codama(optional_account_strategy = omitted)]
-    Subscribe(#[codama(name = "subscribe_data")] SubscribeData) = 11,
+    #[codama(display(intent = "Subscribe", interpolated_intent = "Subscribe to a plan from ${accounts.merchant}"))]
+    Subscribe(
+        #[codama(name = "subscribe_data")]
+        #[codama(display(flatten))]
+        SubscribeData,
+    ) = 11,
 
     #[codama(account(name = "subscriber", signer, docs = "The subscriber cancelling the subscription"))]
     #[codama(account(name = "plan_pda", docs = "The plan PDA for the subscription"))]
@@ -294,14 +365,18 @@ pub enum SubscriptionsInstruction {
         default_value = pda("subscriptionDelegation", [seed("planPda", account("plan_pda")), seed("subscriber", account("subscriber"))])
     ))]
     #[codama(account(
-        name = "event_authority",
+        name = "event_authority", display(skip = always),
         docs = "The event authority PDA",
         default_value = pda("eventAuthority")
     ))]
     #[codama(account(
-        name = "self_program",
+        name = "self_program", display(skip = always),
         docs = "This program (for self-CPI)",
         default_value = public_key("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44")
+    ))]
+    #[codama(display(
+        intent = "Cancel subscription",
+        interpolated_intent = "Cancel subscription to plan ${accounts.planPda}"
     ))]
     CancelSubscription = 12,
 
@@ -318,16 +393,24 @@ pub enum SubscriptionsInstruction {
         docs = "The subscriber's SubscriptionAuthority PDA for the plan's mint"
     ))]
     #[codama(account(
-        name = "event_authority",
+        name = "event_authority", display(skip = always),
         docs = "The event authority PDA",
         default_value = pda("eventAuthority")
     ))]
     #[codama(account(
-        name = "self_program",
+        name = "self_program", display(skip = always),
         docs = "This program (for self-CPI)",
         default_value = public_key("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44")
     ))]
-    ResumeSubscription(#[codama(name = "resume_data")] ResumeData) = 13,
+    #[codama(display(
+        intent = "Resume subscription",
+        interpolated_intent = "Resume subscription to plan ${accounts.planPda}"
+    ))]
+    ResumeSubscription(
+        #[codama(name = "resume_data")]
+        #[codama(display(flatten))]
+        ResumeData,
+    ) = 13,
 
     #[codama(account(
         name = "user",
@@ -337,7 +420,7 @@ pub enum SubscriptionsInstruction {
     ))]
     #[codama(account(name = "user_ata", writable, docs = "The user's ATA whose delegate is being revoked"))]
     #[codama(account(name = "token_mint", docs = "The token mint of the user's ATA"))]
-    #[codama(account(name = "token_program", docs = "Token program"))]
+    #[codama(account(name = "token_program", display(skip = always), docs = "Token program"))]
     #[codama(account(
         name = "subscription_authority",
         writable,
@@ -351,6 +434,10 @@ pub enum SubscriptionsInstruction {
         docs = "Optional rent recipient, required when the SubscriptionAuthority is still open and its recorded payer differs from the user. Must match the stored payer."
     ))]
     #[codama(optional_account_strategy = omitted)]
+    #[codama(display(
+        intent = "Revoke spending authority",
+        interpolated_intent = "Revoke the subscriptions program's spending authority over ${accounts.userAta}"
+    ))]
     RevokeSubscriptionAuthority = 14,
 
     #[codama(account(name = "payer", signer, writable, docs = "The recorded payer reclaiming rent"))]
@@ -358,6 +445,10 @@ pub enum SubscriptionsInstruction {
     #[codama(account(
         name = "subscription_authority",
         docs = "The delegation's recorded SubscriptionAuthority PDA (may be closed)"
+    ))]
+    #[codama(display(
+        intent = "Revoke abandoned delegation",
+        interpolated_intent = "Revoke abandoned delegation ${accounts.delegationAccount}"
     ))]
     RevokeAbandonedDelegation = 15,
 
@@ -368,6 +459,10 @@ pub enum SubscriptionsInstruction {
         docs = "The subscriber's recorded SubscriptionAuthority PDA for the plan's mint (may be closed)"
     ))]
     #[codama(account(name = "plan_pda", docs = "The plan the subscription belongs to; provides the mint"))]
+    #[codama(display(
+        intent = "Revoke abandoned subscription",
+        interpolated_intent = "Revoke abandoned subscription ${accounts.subscriptionAccount}"
+    ))]
     RevokeAbandonedSubscription = 16,
 
     #[codama(account(name = "subscriber", signer, docs = "The subscriber cancelling the subscription"))]
@@ -384,16 +479,24 @@ pub enum SubscriptionsInstruction {
         default_value = pda("subscriptionDelegation", [seed("planPda", account("plan_pda")), seed("subscriber", account("subscriber"))])
     ))]
     #[codama(account(
-        name = "event_authority",
+        name = "event_authority", display(skip = always),
         docs = "The event authority PDA",
         default_value = pda("eventAuthority")
     ))]
     #[codama(account(
-        name = "self_program",
+        name = "self_program", display(skip = always),
         docs = "This program (for self-CPI)",
         default_value = public_key("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44")
     ))]
-    CancelSubscriptionNow(#[codama(name = "cancel_subscription_now_data")] CancelSubscriptionNowData) = 17,
+    #[codama(display(
+        intent = "Cancel subscription now",
+        interpolated_intent = "Cancel subscription to ${accounts.merchant} plan immediately"
+    ))]
+    CancelSubscriptionNow(
+        #[codama(name = "cancel_subscription_now_data")]
+        #[codama(display(flatten))]
+        CancelSubscriptionNowData,
+    ) = 17,
 
     #[codama(account(
         name = "target_account",
@@ -405,11 +508,15 @@ pub enum SubscriptionsInstruction {
         writable,
         docs = "The account receiving the excess lamports. Must match the payer recorded on the target account, or its owner for a plan."
     ))]
+    #[codama(display(
+        intent = "Reclaim excess rent",
+        interpolated_intent = "Reclaim excess rent from ${accounts.targetAccount} to ${accounts.receiver}"
+    ))]
     ReclaimExcessRent = 18,
 
     #[codama(skip)]
     #[codama(account(
-        name = "event_authority",
+        name = "event_authority", display(skip = always),
         signer,
         docs = "The event authority PDA",
         default_value = pda("eventAuthority")

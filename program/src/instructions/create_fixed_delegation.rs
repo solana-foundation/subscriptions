@@ -14,13 +14,18 @@ use pinocchio::{error::ProgramError, AccountView, ProgramResult};
 pub struct CreateFixedDelegationData {
     /// Client-chosen nonce that disambiguates multiple delegations between the
     /// same delegator/delegatee pair.
+    #[codama(display(skip = always))]
     pub nonce: u64,
     /// Total token amount the delegatee is authorized to transfer.
+    #[codama(display(label = "Total amount"))]
+    #[codama(display(amount))]
     pub amount: u64,
     /// Unix timestamp after which the delegation expires. Must be in the future
     /// (with [`TIME_DRIFT_ALLOWED_SECS`] tolerance).
+    #[codama(display(label = "Expires (unix time, 0 = never)"))]
     pub expiry_ts: i64,
     /// SubscriptionAuthority generation the delegator approved.
+    #[codama(display(skip = always))]
     pub expected_subscription_authority_init_id: i64,
 }
 

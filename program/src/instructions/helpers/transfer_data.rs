@@ -9,10 +9,12 @@ use crate::SubscriptionsError;
 #[derive(CodamaType, Debug, Clone)]
 pub struct TransferData {
     /// Token amount to transfer.
+    #[codama(display(amount))]
     pub amount: u64,
     /// The delegator (token owner) whose ATA to debit.
     pub delegator: Address,
     /// The token mint (used to locate the correct SubscriptionAuthority PDA and ATA).
+    #[codama(display(label = "Token"))]
     pub mint: Address,
 }
 

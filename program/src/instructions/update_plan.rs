@@ -22,24 +22,31 @@ use crate::{
 pub struct UpdatePlanData {
     /// New plan status (see [`PlanStatus`]). Setting to
     /// `Sunset` prevents new subscriptions and requires a non-zero `end_ts`.
+    #[codama(display(label = "Status (0 = sunset, 1 = active)"))]
     pub status: u8,
     /// New end timestamp. `0` means no end (only valid for active plans).
+    #[codama(display(label = "End (unix time, 0 = never)"))]
     pub end_ts: i64,
     /// Updated puller whitelist.
     pub pullers: [Address; 4],
     /// Updated metadata URI.
     #[codama(type = fixed_size(string(utf8), 128))]
+    #[codama(display(label = "Metadata URI"))]
     pub metadata_uri: [u8; 128],
     /// Observed `terms.created_at`; rejects approvals from a prior plan
     /// lifecycle recreated at the same PDA.
+    #[codama(display(skip = always))]
     pub expected_created_at: i64,
     /// Observed `end_ts`.
+    #[codama(display(skip = always))]
     pub expected_end_ts: i64,
     /// Observed puller whitelist; a stale update cannot restore a puller
     /// removed since signing.
+    #[codama(display(skip = always))]
     pub expected_pullers: [Address; 4],
     /// Observed metadata URI.
     #[codama(type = fixed_size(string(utf8), 128))]
+    #[codama(display(skip = always))]
     pub expected_metadata_uri: [u8; 128],
 }
 

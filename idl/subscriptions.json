@@ -1,5 +1,4 @@
 {
-  "additionalPrograms": [],
   "kind": "rootNode",
   "program": {
     "accounts": [
@@ -364,7 +363,6 @@
       },
       {
         "data": {
-          "fields": [],
           "kind": "structTypeNode"
         },
         "kind": "accountNode",
@@ -375,7 +373,6 @@
         }
       }
     ],
-    "constants": [],
     "definedTypes": [
       {
         "kind": "definedTypeNode",
@@ -383,6 +380,10 @@
         "type": {
           "fields": [
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "skip": "always"
+              },
               "kind": "structFieldTypeNode",
               "name": "expectedCurrentPeriodStartTs",
               "type": {
@@ -401,6 +402,10 @@
         "type": {
           "fields": [
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "skip": "always"
+              },
               "kind": "structFieldTypeNode",
               "name": "nonce",
               "type": {
@@ -410,15 +415,26 @@
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "label": "Total amount"
+              },
               "kind": "structFieldTypeNode",
               "name": "amount",
               "type": {
+                "display": {
+                  "kind": "amountNumberDisplayNode"
+                },
                 "endian": "le",
                 "format": "u64",
                 "kind": "numberTypeNode"
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "label": "Expires (unix time, 0 = never)"
+              },
               "kind": "structFieldTypeNode",
               "name": "expiryTs",
               "type": {
@@ -428,6 +444,10 @@
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "skip": "always"
+              },
               "kind": "structFieldTypeNode",
               "name": "expectedSubscriptionAuthorityInitId",
               "type": {
@@ -446,15 +466,26 @@
         "type": {
           "fields": [
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "label": "Amount per period"
+              },
               "kind": "structFieldTypeNode",
               "name": "amount",
               "type": {
+                "display": {
+                  "kind": "amountNumberDisplayNode"
+                },
                 "endian": "le",
                 "format": "u64",
                 "kind": "numberTypeNode"
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "label": "Period (hours)"
+              },
               "kind": "structFieldTypeNode",
               "name": "periodHours",
               "type": {
@@ -464,6 +495,10 @@
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "skip": "always"
+              },
               "kind": "structFieldTypeNode",
               "name": "createdAt",
               "type": {
@@ -482,6 +517,10 @@
         "type": {
           "fields": [
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "label": "Plan ID"
+              },
               "kind": "structFieldTypeNode",
               "name": "planId",
               "type": {
@@ -491,6 +530,10 @@
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "label": "Token"
+              },
               "kind": "structFieldTypeNode",
               "name": "mint",
               "type": {
@@ -498,6 +541,10 @@
               }
             },
             {
+              "display": {
+                "flatten": true,
+                "kind": "structFieldDisplayNode"
+              },
               "kind": "structFieldTypeNode",
               "name": "terms",
               "type": {
@@ -506,6 +553,10 @@
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "label": "End (unix time, 0 = never)"
+              },
               "kind": "structFieldTypeNode",
               "name": "endTs",
               "type": {
@@ -543,6 +594,10 @@
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "label": "Metadata URI"
+              },
               "kind": "structFieldTypeNode",
               "name": "metadataUri",
               "type": {
@@ -564,6 +619,10 @@
         "type": {
           "fields": [
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "skip": "always"
+              },
               "kind": "structFieldTypeNode",
               "name": "nonce",
               "type": {
@@ -573,15 +632,26 @@
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "label": "Amount per period"
+              },
               "kind": "structFieldTypeNode",
               "name": "amountPerPeriod",
               "type": {
+                "display": {
+                  "kind": "amountNumberDisplayNode"
+                },
                 "endian": "le",
                 "format": "u64",
                 "kind": "numberTypeNode"
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "label": "Period (seconds)"
+              },
               "kind": "structFieldTypeNode",
               "name": "periodLengthS",
               "type": {
@@ -591,6 +661,10 @@
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "label": "Start (unix time, 0 = now)"
+              },
               "kind": "structFieldTypeNode",
               "name": "startTs",
               "type": {
@@ -600,6 +674,10 @@
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "label": "Expires (unix time, 0 = never)"
+              },
               "kind": "structFieldTypeNode",
               "name": "expiryTs",
               "type": {
@@ -609,6 +687,10 @@
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "skip": "always"
+              },
               "kind": "structFieldTypeNode",
               "name": "expectedSubscriptionAuthorityInitId",
               "type": {
@@ -627,6 +709,10 @@
         "type": {
           "fields": [
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "label": "Plan ID"
+              },
               "kind": "structFieldTypeNode",
               "name": "planId",
               "type": {
@@ -636,6 +722,10 @@
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "skip": "always"
+              },
               "kind": "structFieldTypeNode",
               "name": "planBump",
               "type": {
@@ -645,6 +735,10 @@
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "label": "Token"
+              },
               "kind": "structFieldTypeNode",
               "name": "expectedMint",
               "type": {
@@ -652,15 +746,26 @@
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "label": "Amount per period"
+              },
               "kind": "structFieldTypeNode",
               "name": "expectedAmount",
               "type": {
+                "display": {
+                  "kind": "amountNumberDisplayNode"
+                },
                 "endian": "le",
                 "format": "u64",
                 "kind": "numberTypeNode"
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "label": "Period (hours)"
+              },
               "kind": "structFieldTypeNode",
               "name": "expectedPeriodHours",
               "type": {
@@ -670,6 +775,10 @@
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "skip": "always"
+              },
               "kind": "structFieldTypeNode",
               "name": "expectedCreatedAt",
               "type": {
@@ -679,6 +788,10 @@
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "skip": "always"
+              },
               "kind": "structFieldTypeNode",
               "name": "expectedSubscriptionAuthorityInitId",
               "type": {
@@ -697,6 +810,10 @@
         "type": {
           "fields": [
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "label": "Status (0 = sunset, 1 = active)"
+              },
               "kind": "structFieldTypeNode",
               "name": "status",
               "type": {
@@ -706,6 +823,10 @@
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "label": "End (unix time, 0 = never)"
+              },
               "kind": "structFieldTypeNode",
               "name": "endTs",
               "type": {
@@ -729,6 +850,10 @@
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "label": "Metadata URI"
+              },
               "kind": "structFieldTypeNode",
               "name": "metadataUri",
               "type": {
@@ -741,6 +866,10 @@
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "skip": "always"
+              },
               "kind": "structFieldTypeNode",
               "name": "expectedCreatedAt",
               "type": {
@@ -750,6 +879,10 @@
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "skip": "always"
+              },
               "kind": "structFieldTypeNode",
               "name": "expectedEndTs",
               "type": {
@@ -759,6 +892,10 @@
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "skip": "always"
+              },
               "kind": "structFieldTypeNode",
               "name": "expectedPullers",
               "type": {
@@ -773,6 +910,10 @@
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "skip": "always"
+              },
               "kind": "structFieldTypeNode",
               "name": "expectedMetadataUri",
               "type": {
@@ -797,6 +938,9 @@
               "kind": "structFieldTypeNode",
               "name": "amount",
               "type": {
+                "display": {
+                  "kind": "amountNumberDisplayNode"
+                },
                 "endian": "le",
                 "format": "u64",
                 "kind": "numberTypeNode"
@@ -810,6 +954,10 @@
               }
             },
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "label": "Token"
+              },
               "kind": "structFieldTypeNode",
               "name": "mint",
               "type": {
@@ -826,6 +974,10 @@
         "type": {
           "fields": [
             {
+              "display": {
+                "kind": "structFieldDisplayNode",
+                "skip": "always"
+              },
               "kind": "structFieldTypeNode",
               "name": "expectedExpiresAtTs",
               "type": {
@@ -2159,6 +2311,10 @@
               "kind": "publicKeyValueNode",
               "publicKey": "11111111111111111111111111111111"
             },
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
+            },
             "docs": [
               "The system program"
             ],
@@ -2168,6 +2324,10 @@
             "name": "systemProgram"
           },
           {
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
+            },
             "docs": [
               "Token program"
             ],
@@ -2194,6 +2354,10 @@
               "number": 0
             },
             "defaultValueStrategy": "omitted",
+            "display": {
+              "kind": "structFieldDisplayNode",
+              "skip": "always"
+            },
             "kind": "instructionArgumentNode",
             "name": "discriminator",
             "type": {
@@ -2210,6 +2374,11 @@
             "offset": 0
           }
         ],
+        "display": {
+          "intent": "Grant spending authority",
+          "interpolatedIntent": "Allow the subscriptions program to spend ${accounts.tokenMint} from ${accounts.userAta}",
+          "kind": "instructionDisplayNode"
+        },
         "kind": "instructionNode",
         "name": "initSubscriptionAuthority",
         "optionalAccountStrategy": "omitted"
@@ -2257,6 +2426,10 @@
               "kind": "publicKeyValueNode",
               "publicKey": "11111111111111111111111111111111"
             },
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
+            },
             "docs": [
               "The system program"
             ],
@@ -2283,6 +2456,10 @@
               "number": 1
             },
             "defaultValueStrategy": "omitted",
+            "display": {
+              "kind": "structFieldDisplayNode",
+              "skip": "always"
+            },
             "kind": "instructionArgumentNode",
             "name": "discriminator",
             "type": {
@@ -2292,6 +2469,10 @@
             }
           },
           {
+            "display": {
+              "flatten": true,
+              "kind": "structFieldDisplayNode"
+            },
             "kind": "instructionArgumentNode",
             "name": "fixedDelegation",
             "type": {
@@ -2307,6 +2488,11 @@
             "offset": 0
           }
         ],
+        "display": {
+          "intent": "Create fixed delegation",
+          "interpolatedIntent": "Allow ${accounts.delegatee} to spend a fixed amount",
+          "kind": "instructionDisplayNode"
+        },
         "kind": "instructionNode",
         "name": "createFixedDelegation",
         "optionalAccountStrategy": "omitted"
@@ -2354,6 +2540,10 @@
               "kind": "publicKeyValueNode",
               "publicKey": "11111111111111111111111111111111"
             },
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
+            },
             "docs": [
               "The system program"
             ],
@@ -2380,6 +2570,10 @@
               "number": 2
             },
             "defaultValueStrategy": "omitted",
+            "display": {
+              "kind": "structFieldDisplayNode",
+              "skip": "always"
+            },
             "kind": "instructionArgumentNode",
             "name": "discriminator",
             "type": {
@@ -2389,6 +2583,10 @@
             }
           },
           {
+            "display": {
+              "flatten": true,
+              "kind": "structFieldDisplayNode"
+            },
             "kind": "instructionArgumentNode",
             "name": "recurringDelegation",
             "type": {
@@ -2404,6 +2602,11 @@
             "offset": 0
           }
         ],
+        "display": {
+          "intent": "Create recurring delegation",
+          "interpolatedIntent": "Allow ${accounts.delegatee} to spend a recurring amount",
+          "kind": "instructionDisplayNode"
+        },
         "kind": "instructionNode",
         "name": "createRecurringDelegation",
         "optionalAccountStrategy": "omitted"
@@ -2436,6 +2639,10 @@
               "number": 3
             },
             "defaultValueStrategy": "omitted",
+            "display": {
+              "kind": "structFieldDisplayNode",
+              "skip": "always"
+            },
             "kind": "instructionArgumentNode",
             "name": "discriminator",
             "type": {
@@ -2452,6 +2659,11 @@
             "offset": 0
           }
         ],
+        "display": {
+          "intent": "Revoke delegation",
+          "interpolatedIntent": "Revoke delegation ${accounts.delegationAccount}",
+          "kind": "instructionDisplayNode"
+        },
         "kind": "instructionNode",
         "name": "revokeDelegation"
       },
@@ -2503,6 +2715,10 @@
             "name": "tokenMint"
           },
           {
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
+            },
             "docs": [
               "Token program"
             ],
@@ -2526,8 +2742,11 @@
               "pda": {
                 "kind": "pdaLinkNode",
                 "name": "eventAuthority"
-              },
-              "seeds": []
+              }
+            },
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
             },
             "docs": [
               "The event authority PDA"
@@ -2541,6 +2760,10 @@
             "defaultValue": {
               "kind": "publicKeyValueNode",
               "publicKey": "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44"
+            },
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
             },
             "docs": [
               "This program (for self-CPI)"
@@ -2558,6 +2781,10 @@
               "number": 4
             },
             "defaultValueStrategy": "omitted",
+            "display": {
+              "kind": "structFieldDisplayNode",
+              "skip": "always"
+            },
             "kind": "instructionArgumentNode",
             "name": "discriminator",
             "type": {
@@ -2567,6 +2794,10 @@
             }
           },
           {
+            "display": {
+              "flatten": true,
+              "kind": "structFieldDisplayNode"
+            },
             "kind": "instructionArgumentNode",
             "name": "transferData",
             "type": {
@@ -2582,6 +2813,11 @@
             "offset": 0
           }
         ],
+        "display": {
+          "intent": "Transfer (fixed delegation)",
+          "interpolatedIntent": "Transfer to ${accounts.receiverAta} under a fixed delegation",
+          "kind": "instructionDisplayNode"
+        },
         "kind": "instructionNode",
         "name": "transferFixed"
       },
@@ -2633,6 +2869,10 @@
             "name": "tokenMint"
           },
           {
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
+            },
             "docs": [
               "Token program"
             ],
@@ -2656,8 +2896,11 @@
               "pda": {
                 "kind": "pdaLinkNode",
                 "name": "eventAuthority"
-              },
-              "seeds": []
+              }
+            },
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
             },
             "docs": [
               "The event authority PDA"
@@ -2671,6 +2914,10 @@
             "defaultValue": {
               "kind": "publicKeyValueNode",
               "publicKey": "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44"
+            },
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
             },
             "docs": [
               "This program (for self-CPI)"
@@ -2688,6 +2935,10 @@
               "number": 5
             },
             "defaultValueStrategy": "omitted",
+            "display": {
+              "kind": "structFieldDisplayNode",
+              "skip": "always"
+            },
             "kind": "instructionArgumentNode",
             "name": "discriminator",
             "type": {
@@ -2697,6 +2948,10 @@
             }
           },
           {
+            "display": {
+              "flatten": true,
+              "kind": "structFieldDisplayNode"
+            },
             "kind": "instructionArgumentNode",
             "name": "transferData",
             "type": {
@@ -2712,6 +2967,11 @@
             "offset": 0
           }
         ],
+        "display": {
+          "intent": "Transfer (recurring delegation)",
+          "interpolatedIntent": "Transfer to ${accounts.receiverAta} under a recurring delegation",
+          "kind": "instructionDisplayNode"
+        },
         "kind": "instructionNode",
         "name": "transferRecurring"
       },
@@ -2753,6 +3013,10 @@
               "number": 6
             },
             "defaultValueStrategy": "omitted",
+            "display": {
+              "kind": "structFieldDisplayNode",
+              "skip": "always"
+            },
             "kind": "instructionArgumentNode",
             "name": "discriminator",
             "type": {
@@ -2769,6 +3033,11 @@
             "offset": 0
           }
         ],
+        "display": {
+          "intent": "Close spending authority",
+          "interpolatedIntent": "Close spending authority ${accounts.subscriptionAuthority}",
+          "kind": "instructionDisplayNode"
+        },
         "kind": "instructionNode",
         "name": "closeSubscriptionAuthority",
         "optionalAccountStrategy": "omitted"
@@ -2807,6 +3076,10 @@
               "kind": "publicKeyValueNode",
               "publicKey": "11111111111111111111111111111111"
             },
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
+            },
             "docs": [
               "The system program"
             ],
@@ -2819,6 +3092,10 @@
             "defaultValue": {
               "kind": "publicKeyValueNode",
               "publicKey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+            },
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
             },
             "docs": [
               "The token program"
@@ -2846,6 +3123,10 @@
               "number": 7
             },
             "defaultValueStrategy": "omitted",
+            "display": {
+              "kind": "structFieldDisplayNode",
+              "skip": "always"
+            },
             "kind": "instructionArgumentNode",
             "name": "discriminator",
             "type": {
@@ -2855,6 +3136,10 @@
             }
           },
           {
+            "display": {
+              "flatten": true,
+              "kind": "structFieldDisplayNode"
+            },
             "kind": "instructionArgumentNode",
             "name": "planData",
             "type": {
@@ -2870,6 +3155,11 @@
             "offset": 0
           }
         ],
+        "display": {
+          "intent": "Create plan",
+          "interpolatedIntent": "Create a subscription plan for ${accounts.tokenMint}",
+          "kind": "instructionDisplayNode"
+        },
         "kind": "instructionNode",
         "name": "createPlan",
         "optionalAccountStrategy": "omitted"
@@ -2900,8 +3190,11 @@
               "pda": {
                 "kind": "pdaLinkNode",
                 "name": "eventAuthority"
-              },
-              "seeds": []
+              }
+            },
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
             },
             "docs": [
               "The event authority PDA"
@@ -2915,6 +3208,10 @@
             "defaultValue": {
               "kind": "publicKeyValueNode",
               "publicKey": "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44"
+            },
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
             },
             "docs": [
               "This program (for self-CPI)"
@@ -2932,6 +3229,10 @@
               "number": 8
             },
             "defaultValueStrategy": "omitted",
+            "display": {
+              "kind": "structFieldDisplayNode",
+              "skip": "always"
+            },
             "kind": "instructionArgumentNode",
             "name": "discriminator",
             "type": {
@@ -2941,6 +3242,10 @@
             }
           },
           {
+            "display": {
+              "flatten": true,
+              "kind": "structFieldDisplayNode"
+            },
             "kind": "instructionArgumentNode",
             "name": "updatePlanData",
             "type": {
@@ -2956,6 +3261,11 @@
             "offset": 0
           }
         ],
+        "display": {
+          "intent": "Update plan",
+          "interpolatedIntent": "Update plan ${accounts.planPda}",
+          "kind": "instructionDisplayNode"
+        },
         "kind": "instructionNode",
         "name": "updatePlan"
       },
@@ -2987,6 +3297,10 @@
               "number": 9
             },
             "defaultValueStrategy": "omitted",
+            "display": {
+              "kind": "structFieldDisplayNode",
+              "skip": "always"
+            },
             "kind": "instructionArgumentNode",
             "name": "discriminator",
             "type": {
@@ -3003,6 +3317,11 @@
             "offset": 0
           }
         ],
+        "display": {
+          "intent": "Delete plan",
+          "interpolatedIntent": "Delete plan ${accounts.planPda}",
+          "kind": "instructionDisplayNode"
+        },
         "kind": "instructionNode",
         "name": "deletePlan"
       },
@@ -3072,6 +3391,10 @@
             "name": "tokenMint"
           },
           {
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
+            },
             "docs": [
               "Token program"
             ],
@@ -3086,8 +3409,11 @@
               "pda": {
                 "kind": "pdaLinkNode",
                 "name": "eventAuthority"
-              },
-              "seeds": []
+              }
+            },
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
             },
             "docs": [
               "The event authority PDA"
@@ -3101,6 +3427,10 @@
             "defaultValue": {
               "kind": "publicKeyValueNode",
               "publicKey": "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44"
+            },
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
             },
             "docs": [
               "This program (for self-CPI)"
@@ -3118,6 +3448,10 @@
               "number": 10
             },
             "defaultValueStrategy": "omitted",
+            "display": {
+              "kind": "structFieldDisplayNode",
+              "skip": "always"
+            },
             "kind": "instructionArgumentNode",
             "name": "discriminator",
             "type": {
@@ -3127,6 +3461,10 @@
             }
           },
           {
+            "display": {
+              "flatten": true,
+              "kind": "structFieldDisplayNode"
+            },
             "kind": "instructionArgumentNode",
             "name": "transferData",
             "type": {
@@ -3142,6 +3480,11 @@
             "offset": 0
           }
         ],
+        "display": {
+          "intent": "Collect subscription payment",
+          "interpolatedIntent": "Collect a subscription payment to ${accounts.receiverAta}",
+          "kind": "instructionDisplayNode"
+        },
         "kind": "instructionNode",
         "name": "transferSubscription"
       },
@@ -3222,6 +3565,10 @@
               "kind": "publicKeyValueNode",
               "publicKey": "11111111111111111111111111111111"
             },
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
+            },
             "docs": [
               "The system program"
             ],
@@ -3236,8 +3583,11 @@
               "pda": {
                 "kind": "pdaLinkNode",
                 "name": "eventAuthority"
-              },
-              "seeds": []
+              }
+            },
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
             },
             "docs": [
               "The event authority PDA"
@@ -3251,6 +3601,10 @@
             "defaultValue": {
               "kind": "publicKeyValueNode",
               "publicKey": "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44"
+            },
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
             },
             "docs": [
               "This program (for self-CPI)"
@@ -3278,6 +3632,10 @@
               "number": 11
             },
             "defaultValueStrategy": "omitted",
+            "display": {
+              "kind": "structFieldDisplayNode",
+              "skip": "always"
+            },
             "kind": "instructionArgumentNode",
             "name": "discriminator",
             "type": {
@@ -3287,6 +3645,10 @@
             }
           },
           {
+            "display": {
+              "flatten": true,
+              "kind": "structFieldDisplayNode"
+            },
             "kind": "instructionArgumentNode",
             "name": "subscribeData",
             "type": {
@@ -3302,6 +3664,11 @@
             "offset": 0
           }
         ],
+        "display": {
+          "intent": "Subscribe",
+          "interpolatedIntent": "Subscribe to a plan from ${accounts.merchant}",
+          "kind": "instructionDisplayNode"
+        },
         "kind": "instructionNode",
         "name": "subscribe",
         "optionalAccountStrategy": "omitted"
@@ -3366,8 +3733,11 @@
               "pda": {
                 "kind": "pdaLinkNode",
                 "name": "eventAuthority"
-              },
-              "seeds": []
+              }
+            },
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
             },
             "docs": [
               "The event authority PDA"
@@ -3381,6 +3751,10 @@
             "defaultValue": {
               "kind": "publicKeyValueNode",
               "publicKey": "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44"
+            },
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
             },
             "docs": [
               "This program (for self-CPI)"
@@ -3398,6 +3772,10 @@
               "number": 12
             },
             "defaultValueStrategy": "omitted",
+            "display": {
+              "kind": "structFieldDisplayNode",
+              "skip": "always"
+            },
             "kind": "instructionArgumentNode",
             "name": "discriminator",
             "type": {
@@ -3414,6 +3792,11 @@
             "offset": 0
           }
         ],
+        "display": {
+          "intent": "Cancel subscription",
+          "interpolatedIntent": "Cancel subscription to plan ${accounts.planPda}",
+          "kind": "instructionDisplayNode"
+        },
         "kind": "instructionNode",
         "name": "cancelSubscription"
       },
@@ -3486,8 +3869,11 @@
               "pda": {
                 "kind": "pdaLinkNode",
                 "name": "eventAuthority"
-              },
-              "seeds": []
+              }
+            },
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
             },
             "docs": [
               "The event authority PDA"
@@ -3501,6 +3887,10 @@
             "defaultValue": {
               "kind": "publicKeyValueNode",
               "publicKey": "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44"
+            },
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
             },
             "docs": [
               "This program (for self-CPI)"
@@ -3518,6 +3908,10 @@
               "number": 13
             },
             "defaultValueStrategy": "omitted",
+            "display": {
+              "kind": "structFieldDisplayNode",
+              "skip": "always"
+            },
             "kind": "instructionArgumentNode",
             "name": "discriminator",
             "type": {
@@ -3527,6 +3921,10 @@
             }
           },
           {
+            "display": {
+              "flatten": true,
+              "kind": "structFieldDisplayNode"
+            },
             "kind": "instructionArgumentNode",
             "name": "resumeData",
             "type": {
@@ -3542,6 +3940,11 @@
             "offset": 0
           }
         ],
+        "display": {
+          "intent": "Resume subscription",
+          "interpolatedIntent": "Resume subscription to plan ${accounts.planPda}",
+          "kind": "instructionDisplayNode"
+        },
         "kind": "instructionNode",
         "name": "resumeSubscription"
       },
@@ -3575,6 +3978,10 @@
             "name": "tokenMint"
           },
           {
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
+            },
             "docs": [
               "Token program"
             ],
@@ -3635,6 +4042,10 @@
               "number": 14
             },
             "defaultValueStrategy": "omitted",
+            "display": {
+              "kind": "structFieldDisplayNode",
+              "skip": "always"
+            },
             "kind": "instructionArgumentNode",
             "name": "discriminator",
             "type": {
@@ -3651,6 +4062,11 @@
             "offset": 0
           }
         ],
+        "display": {
+          "intent": "Revoke spending authority",
+          "interpolatedIntent": "Revoke the subscriptions program's spending authority over ${accounts.userAta}",
+          "kind": "instructionDisplayNode"
+        },
         "kind": "instructionNode",
         "name": "revokeSubscriptionAuthority",
         "optionalAccountStrategy": "omitted"
@@ -3692,6 +4108,10 @@
               "number": 15
             },
             "defaultValueStrategy": "omitted",
+            "display": {
+              "kind": "structFieldDisplayNode",
+              "skip": "always"
+            },
             "kind": "instructionArgumentNode",
             "name": "discriminator",
             "type": {
@@ -3708,6 +4128,11 @@
             "offset": 0
           }
         ],
+        "display": {
+          "intent": "Revoke abandoned delegation",
+          "interpolatedIntent": "Revoke abandoned delegation ${accounts.delegationAccount}",
+          "kind": "instructionDisplayNode"
+        },
         "kind": "instructionNode",
         "name": "revokeAbandonedDelegation"
       },
@@ -3757,6 +4182,10 @@
               "number": 16
             },
             "defaultValueStrategy": "omitted",
+            "display": {
+              "kind": "structFieldDisplayNode",
+              "skip": "always"
+            },
             "kind": "instructionArgumentNode",
             "name": "discriminator",
             "type": {
@@ -3773,6 +4202,11 @@
             "offset": 0
           }
         ],
+        "display": {
+          "intent": "Revoke abandoned subscription",
+          "interpolatedIntent": "Revoke abandoned subscription ${accounts.subscriptionAccount}",
+          "kind": "instructionDisplayNode"
+        },
         "kind": "instructionNode",
         "name": "revokeAbandonedSubscription"
       },
@@ -3845,8 +4279,11 @@
               "pda": {
                 "kind": "pdaLinkNode",
                 "name": "eventAuthority"
-              },
-              "seeds": []
+              }
+            },
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
             },
             "docs": [
               "The event authority PDA"
@@ -3860,6 +4297,10 @@
             "defaultValue": {
               "kind": "publicKeyValueNode",
               "publicKey": "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44"
+            },
+            "display": {
+              "kind": "instructionAccountDisplayNode",
+              "skip": "always"
             },
             "docs": [
               "This program (for self-CPI)"
@@ -3877,6 +4318,10 @@
               "number": 17
             },
             "defaultValueStrategy": "omitted",
+            "display": {
+              "kind": "structFieldDisplayNode",
+              "skip": "always"
+            },
             "kind": "instructionArgumentNode",
             "name": "discriminator",
             "type": {
@@ -3886,6 +4331,10 @@
             }
           },
           {
+            "display": {
+              "flatten": true,
+              "kind": "structFieldDisplayNode"
+            },
             "kind": "instructionArgumentNode",
             "name": "cancelSubscriptionNowData",
             "type": {
@@ -3901,6 +4350,11 @@
             "offset": 0
           }
         ],
+        "display": {
+          "intent": "Cancel subscription now",
+          "interpolatedIntent": "Cancel subscription to ${accounts.merchant} plan immediately",
+          "kind": "instructionDisplayNode"
+        },
         "kind": "instructionNode",
         "name": "cancelSubscriptionNow"
       },
@@ -3932,6 +4386,10 @@
               "number": 18
             },
             "defaultValueStrategy": "omitted",
+            "display": {
+              "kind": "structFieldDisplayNode",
+              "skip": "always"
+            },
             "kind": "instructionArgumentNode",
             "name": "discriminator",
             "type": {
@@ -3948,6 +4406,11 @@
             "offset": 0
           }
         ],
+        "display": {
+          "intent": "Reclaim excess rent",
+          "interpolatedIntent": "Reclaim excess rent from ${accounts.targetAccount} to ${accounts.receiver}",
+          "kind": "instructionDisplayNode"
+        },
         "kind": "instructionNode",
         "name": "reclaimExcessRent"
       }
@@ -4190,5 +4653,5 @@
     "version": "0.5.0"
   },
   "standard": "codama",
-  "version": "1.6.0"
+  "version": "1.8.0"
 }

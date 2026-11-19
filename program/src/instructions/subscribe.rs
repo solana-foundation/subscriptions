@@ -32,16 +32,24 @@ pub const DISCRIMINATOR: &u8 = &11;
 #[derive(CodamaType, Debug, Clone)]
 pub struct SubscribeData {
     /// The plan's `plan_id` (used together with the merchant address to derive the plan PDA).
+    #[codama(display(label = "Plan ID"))]
     pub plan_id: u64,
     /// The plan PDA's bump seed (avoids an on-chain `find_program_address` call).
+    #[codama(display(skip = always))]
     pub plan_bump: u8,
     /// Plan terms the subscriber consented to. The program rejects if the live
     /// plan disagrees, preventing a stale signed subscribe from binding the
     /// subscriber to terms different from what was displayed at signing time.
+    #[codama(display(label = "Token"))]
     pub expected_mint: Address,
+    #[codama(display(label = "Amount per period"))]
+    #[codama(display(amount))]
     pub expected_amount: u64,
+    #[codama(display(label = "Period (hours)"))]
     pub expected_period_hours: u64,
+    #[codama(display(skip = always))]
     pub expected_created_at: i64,
+    #[codama(display(skip = always))]
     pub expected_subscription_authority_init_id: i64,
 }
 

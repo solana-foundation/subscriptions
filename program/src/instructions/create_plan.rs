@@ -29,10 +29,14 @@ pub const MAX_PULLERS: usize = 4;
 #[derive(Debug, Clone, Copy, CodamaType)]
 pub struct PlanTerms {
     /// Maximum token amount that can be pulled per billing period.
+    #[codama(display(label = "Amount per period"))]
+    #[codama(display(amount))]
     pub amount: u64,
     /// Billing period length in hours (must be > 0 and <= [`MAX_PLAN_PERIOD_HOURS`]).
+    #[codama(display(label = "Period (hours)"))]
     pub period_hours: u64,
     /// Unix timestamp when the plan was created on-chain. Set by the program at plan creation time.
+    #[codama(display(skip = always))]
     pub created_at: i64,
 }
 
@@ -50,12 +54,16 @@ impl PlanTerms {
 #[derive(Debug, Clone, CodamaType)]
 pub struct PlanData {
     /// Merchant-chosen identifier for the plan (unique per owner).
+    #[codama(display(label = "Plan ID"))]
     pub plan_id: u64,
     /// SPL token mint that subscriptions under this plan operate on.
+    #[codama(display(label = "Token"))]
     pub mint: Address,
     /// Immutable plan terms
+    #[codama(display(flatten))]
     pub terms: PlanTerms,
     /// Optional unix timestamp after which the plan expires. `0` means no end.
+    #[codama(display(label = "End (unix time, 0 = never)"))]
     pub end_ts: i64,
     /// Whitelisted destination wallets for transfers. All-zero entries are ignored.
     pub destinations: [Address; 4],
@@ -63,6 +71,7 @@ pub struct PlanData {
     pub pullers: [Address; 4],
     /// UTF-8 metadata URI (e.g., pointing to off-chain plan details). Padded with zeros.
     #[codama(type = fixed_size(string(utf8), 128))]
+    #[codama(display(label = "Metadata URI"))]
     pub metadata_uri: [u8; 128],
 }
 
