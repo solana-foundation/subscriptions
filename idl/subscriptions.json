@@ -433,14 +433,11 @@
             {
               "display": {
                 "kind": "structFieldDisplayNode",
-                "label": "Expires"
+                "label": "Expires (unix time, 0 = never)"
               },
               "kind": "structFieldTypeNode",
               "name": "expiryTs",
               "type": {
-                "display": {
-                  "kind": "dateTimeNumberDisplayNode"
-                },
                 "endian": "le",
                 "format": "i64",
                 "kind": "numberTypeNode"

@@ -22,8 +22,7 @@ pub struct CreateFixedDelegationData {
     pub amount: u64,
     /// Unix timestamp after which the delegation expires. Must be in the future
     /// (with [`TIME_DRIFT_ALLOWED_SECS`] tolerance).
-    #[codama(display(label = "Expires"))]
-    #[codama(display(date_time))]
+    #[codama(display(label = "Expires (unix time, 0 = never)"))]
     pub expiry_ts: i64,
     /// SubscriptionAuthority generation the delegator approved.
     #[codama(display(skip = always))]
