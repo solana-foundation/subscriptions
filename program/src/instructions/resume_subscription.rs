@@ -27,6 +27,7 @@ pub struct ResumeData {
     /// The `expires_at_ts` the subscriber observed when signing. The program
     /// rejects if the live value differs, so a stale signed resume cannot clear
     /// a later cancellation the subscriber never approved.
+    #[codama(display(skip = always))]
     pub expected_expires_at_ts: i64,
 }
 

@@ -19,17 +19,24 @@ pub const MAX_DELEGATION_PERIOD_SECS: u64 = 31_536_000;
 pub struct CreateRecurringDelegationData {
     /// Client-chosen nonce that disambiguates multiple delegations between the
     /// same delegator/delegatee pair.
+    #[codama(display(skip = always))]
     pub nonce: u64,
     /// Maximum token amount the delegatee may transfer per period.
+    #[codama(display(label = "Amount per period"))]
+    #[codama(display(amount))]
     pub amount_per_period: u64,
     /// Length of each period in seconds (must be > 0 and <= [`MAX_DELEGATION_PERIOD_SECS`]).
+    #[codama(display(label = "Period (seconds)"))]
     pub period_length_s: u64,
     /// Unix timestamp when the first period begins, or 0 to start when the
     /// transaction lands (requires a non-zero `expiry_ts`).
+    #[codama(display(label = "Start (unix time, 0 = now)"))]
     pub start_ts: i64,
     /// Unix timestamp after which the delegation expires (0 = never).
+    #[codama(display(label = "Expires (unix time, 0 = never)"))]
     pub expiry_ts: i64,
     /// SubscriptionAuthority generation the delegator approved.
+    #[codama(display(skip = always))]
     pub expected_subscription_authority_init_id: i64,
 }
 

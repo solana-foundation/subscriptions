@@ -25,6 +25,7 @@ pub struct CancelSubscriptionNowData {
     /// subscription PDA is reused across `(plan, subscriber)` incarnations, so
     /// this binds the dual approval to the specific incarnation and rejects a
     /// signed transaction replayed against a later re-subscription.
+    #[codama(display(skip = always))]
     pub expected_current_period_start_ts: i64,
 }
 
