@@ -262,7 +262,7 @@ To read `metadataUri`, strip trailing NUL padding, then:
 | starts with `https://` | a hosted JSON document at that URL                  |
 | anything else          | an app-specific tag; show the plan without metadata |
 
-A hosted document uses Metaplex token metadata field names; only `name` is required:
+A hosted document is a JSON object; only `name` is required:
 
 ```json
 {
