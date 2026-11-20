@@ -249,7 +249,7 @@ Embedded payload within the Plan PDA:
 - `end_ts`: 8 bytes (`i64`) - Plan expiration timestamp (0 = no expiry)
 - `destinations`: 128 bytes (`[Address; 4]`) - Up to 4 fund recipients (all zeros = any destination valid at transfer time)
 - `pullers`: 128 bytes (`[Address; 4]`) - Up to 4 authorized pullers
-- `metadata_uri`: 128 bytes (`[u8; 128]`) - Optional metadata URI
+- `metadata_uri`: 128 bytes (`[u8; 128]`) - Optional display metadata; any bytes are accepted. The recommended format is [`schemas/plan-metadata.v1.json`](../schemas/plan-metadata.v1.json), described under [Plan Metadata](../README.md#plan-metadata).
 
 Plans are always recurring; there is no one-time variant.
 
