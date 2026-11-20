@@ -17,7 +17,7 @@
         },
         "document": {
             "title": "Hosted document",
-            "description": "Served from an https URL stored in `metadataUri`. Field names follow the Metaplex token metadata standard, so Metaplex-style documents conform.",
+            "description": "Served from an https URL stored in `metadataUri`. Only `name` is required; other fields are optional, and fields not defined here are allowed.",
             "type": "object",
             "required": ["name"],
             "properties": {
