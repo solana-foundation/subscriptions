@@ -1,0 +1,78 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://raw.githubusercontent.com/solana-foundation/subscriptions/plan-metadata-v1/schemas/plan-metadata.v1.json",
+    "title": "Subscriptions plan metadata (v1)",
+    "description": "Recommended format for the display metadata a plan's `metadataUri` refers to. The program accepts any 128 bytes; readers must not reject plans that don't follow this format. Amount, mint, period, destinations and pullers are deliberately absent: they are on-chain, and readers should show them from the plan account. Metadata is not part of the subscription terms, and hosted content can change after someone subscribes.",
+    "oneOf": [{ "$ref": "#/$defs/document" }, { "$ref": "#/$defs/compact" }],
+    "$defs": {
+        "uri": {
+            "type": "string",
+            "maxLength": 512,
+            "pattern": "^(https://|ipfs://|ar://)\\S+$"
+        },
+        "webUrl": {
+            "type": "string",
+            "maxLength": 512,
+            "pattern": "^https?://\\S+$"
+        },
+        "document": {
+            "title": "Hosted document",
+            "description": "Served from an https URL stored in `metadataUri`. Only `name` is required; other fields are optional, and fields not defined here are allowed.",
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+                "$schema": { "type": "string" },
+                "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+                "description": { "type": "string", "maxLength": 1000 },
+                "image": { "$ref": "#/$defs/uri" },
+                "external_url": { "$ref": "#/$defs/webUrl" },
+                "terms_url": { "$ref": "#/$defs/webUrl" },
+                "support_url": { "$ref": "#/$defs/webUrl" },
+                "features": {
+                    "type": "array",
+                    "maxItems": 32,
+                    "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+                },
+                "attributes": {
+                    "type": "array",
+                    "maxItems": 64,
+                    "items": {
+                        "type": "object",
+                        "required": ["trait_type", "value"],
+                        "properties": {
+                            "trait_type": { "type": "string", "minLength": 1, "maxLength": 64 },
+                            "value": { "type": ["string", "number"] }
+                        }
+                    }
+                },
+                "n": false
+            }
+        },
+        "compact": {
+            "title": "Inline form",
+            "description": "Stored in `metadataUri` itself. n = name, d = description, w = website. All single-letter keys are reserved for this specification.",
+            "type": "object",
+            "required": ["n"],
+            "properties": {
+                "n": { "type": "string", "minLength": 1, "maxLength": 64 },
+                "d": { "type": "string", "maxLength": 1000 },
+                "w": { "$ref": "#/$defs/webUrl" },
+                "name": false
+            }
+        }
+    },
+    "examples": [
+        {
+            "$schema": "https://raw.githubusercontent.com/solana-foundation/subscriptions/plan-metadata-v1/schemas/plan-metadata.v1.json",
+            "name": "Pro",
+            "description": "Unlimited API calls and priority support.",
+            "image": "https://example.com/pro.png",
+            "external_url": "https://example.com/pricing#pro",
+            "terms_url": "https://example.com/terms",
+            "support_url": "https://example.com/help",
+            "features": ["Unlimited API calls", "Priority support"],
+            "attributes": [{ "trait_type": "tier", "value": "pro" }]
+        },
+        { "n": "Pro", "d": "Unlimited API calls", "w": "https://example.com" }
+    ]
+}

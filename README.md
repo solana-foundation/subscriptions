@@ -80,6 +80,7 @@ subscriptions/
 │   └── scripts/                   # Environment init, mock test-token minting
 ├── scripts/                       # Shell scripts (validator, webapp launcher)
 ├── docs/                          # Architecture Decision Records
+├── schemas/                       # JSON Schemas (plan metadata)
 ├── runbooks/                      # Surfpool deployment runbooks
 ├── .github/                       # CI workflows and shared setup action
 ├── .githooks/                     # Git hooks (pre-push: fmt + lint checks)
@@ -244,6 +245,49 @@ cargo add subscriptions
 ```rust
 use subscriptions::instructions::*;
 ```
+
+## Plan Metadata
+
+A plan's `metadataUri` holds up to 128 bytes, and the program accepts any value. For display
+metadata (name, description, image), plans **should** follow
+[`schemas/plan-metadata.v1.json`](schemas/plan-metadata.v1.json). This is a recommendation, not a
+rule: readers must not reject plans that don't follow it.
+
+To read `metadataUri`, strip trailing NUL padding, then:
+
+| Value                  | Meaning                                             |
+| ---------------------- | --------------------------------------------------- |
+| empty                  | no metadata                                         |
+| starts with `{`        | inline JSON, stored in `metadataUri` itself         |
+| starts with `https://` | a hosted JSON document at that URL                  |
+| anything else          | an app-specific tag; show the plan without metadata |
+
+A hosted document is a JSON object; only `name` is required:
+
+```json
+{
+    "$schema": "https://raw.githubusercontent.com/solana-foundation/subscriptions/plan-metadata-v1/schemas/plan-metadata.v1.json",
+    "name": "Pro",
+    "description": "Unlimited API calls and priority support.",
+    "image": "https://example.com/pro.png",
+    "external_url": "https://example.com/pricing#pro",
+    "terms_url": "https://example.com/terms",
+    "support_url": "https://example.com/help",
+    "features": ["Unlimited API calls", "Priority support"],
+    "attributes": [{ "trait_type": "tier", "value": "pro" }]
+}
+```
+
+The inline form fits in the 128 bytes: `{"n":"Pro","d":"Unlimited API calls","w":"https://example.com"}`
+(`n` name, `d` description, `w` website). All single-letter keys are reserved for this schema.
+
+Amount, mint, period, destinations and pullers are not part of the metadata. Show them from the
+plan account: a price repeated in metadata can disagree with what the plan charges. Metadata is not
+part of the subscription terms either; hosted content can change after someone subscribes.
+
+Anyone can create a plan, so treat `metadataUri` as untrusted: fetch only `https` URLs that resolve
+to public addresses, cap response size and time, and show the plan address when metadata is
+missing or invalid.
 
 ## Webapp Demo
 

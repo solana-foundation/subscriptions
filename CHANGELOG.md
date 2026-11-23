@@ -10,6 +10,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Added
 
 - `ReclaimExcessRent` (discriminator 18) returns lamports above the rent-exempt minimum to the address recorded on a PDA, without closing it. Permissionless: the receiver must match the recorded `payer`, or the `owner` for `Plan`. An account at the floor is rejected with `NoExcessLamports` (138).
+- `schemas/plan-metadata.v1.json`: recommended format for a plan's `metadataUri` (hosted JSON document or compact inline JSON), with reader guidance in the README. Recommendation only: the program still accepts any 128 bytes. ([#277])
 
 ## [0.5.0] — 2026-08-10
 
@@ -88,3 +89,4 @@ Initial audited mainnet release (`program-v0.3.0`, commit `0221a37`).
 [#214]: https://github.com/solana-foundation/subscriptions/pull/214
 [#221]: https://github.com/solana-foundation/subscriptions/pull/221
 [#222]: https://github.com/solana-foundation/subscriptions/pull/222
+[#277]: https://github.com/solana-foundation/subscriptions/issues/277
